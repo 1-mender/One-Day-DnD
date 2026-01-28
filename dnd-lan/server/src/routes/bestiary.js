@@ -1,0 +1,179 @@
+import express from "express";
+import multer from "multer";
+import path from "node:path";
+import fs from "node:fs";
+import { dmAuthMiddleware } from "../auth.js";
+import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
+import { now, jsonParse } from "../util.js";
+import { logEvent } from "../events.js";
+
+export const bestiaryRouter = express.Router();
+
+const MONSTERS_DIR = path.resolve("server", "uploads", "monsters");
+const BESTIARY_DIR = path.resolve("server", "uploads", "bestiary");
+fs.mkdirSync(MONSTERS_DIR, { recursive: true });
+fs.mkdirSync(BESTIARY_DIR, { recursive: true });
+
+const UPLOAD_DIR = MONSTERS_DIR;
+
+function imageUrl(filename) {
+  const bestiaryPath = path.join(BESTIARY_DIR, filename);
+  if (fs.existsSync(bestiaryPath)) return `/uploads/bestiary/${filename}`;
+  return `/uploads/monsters/${filename}`;
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
+  filename: (req, file, cb) => {
+    const safe = `${Date.now()}_${Math.random().toString(16).slice(2)}_${file.originalname}`.replace(/[^\w.\-]/g, "_");
+    cb(null, safe);
+  }
+});
+const upload = multer({ storage });
+
+function authPlayer(req) {
+  const token = req.header("x-player-token");
+  if (!token) return null;
+  const db = getDb();
+  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
+  if (!sess) return null;
+  return sess;
+}
+
+bestiaryRouter.get("/", (req, res) => {
+  const db = getDb();
+  const settings = getPartySettings(1);
+  const isDm = !!req.cookies?.[process.env.DM_COOKIE || "dm_token"];
+  const sess = authPlayer(req);
+
+  if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [] });
+
+  const rows = db.prepare("SELECT * FROM monsters ORDER BY name").all().map((m) => ({
+    ...m,
+    stats: jsonParse(m.stats, {}),
+    abilities: jsonParse(m.abilities, []),
+    images: db.prepare("SELECT id, filename FROM monster_images WHERE monster_id=? ORDER BY id").all(m.id).map((im) => ({
+      id: im.id,
+      url: imageUrl(im.filename)
+    }))
+  }));
+
+  // players: hide hidden monsters (optional)
+  const filtered = (isDm) ? rows : rows.filter((m) => !m.is_hidden);
+  res.json({ enabled: !!settings.bestiary_enabled, items: filtered });
+});
+
+bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const b = req.body || {};
+  const name = String(b.name || "").trim();
+  if (!name) return res.status(400).json({ error: "name_required" });
+  const t = now();
+  const id = db.prepare(
+    "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
+  ).run(
+    name,
+    String(b.type || ""),
+    String(b.habitat || ""),
+    String(b.cr || ""),
+    JSON.stringify(b.stats || {}),
+    JSON.stringify(b.abilities || []),
+    String(b.description || ""),
+    b.is_hidden ? 1 : 0,
+    t, t
+  ).lastInsertRowid;
+
+  logEvent({
+    partyId: getParty().id,
+    type: "bestiary.created",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "monster",
+    targetId: Number(id),
+    message: `Добавлен монстр: ${name}`,
+    io: req.app.locals.io
+  });
+
+  req.app.locals.io?.emit("bestiary:updated");
+  res.json({ ok: true, id });
+});
+
+bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const cur = db.prepare("SELECT * FROM monsters WHERE id=?").get(id);
+  if (!cur) return res.status(404).json({ error: "not_found" });
+
+  const b = req.body || {};
+  const name = String(b.name ?? cur.name).trim();
+  if (!name) return res.status(400).json({ error: "name_required" });
+
+  db.prepare(
+    "UPDATE monsters SET name=?, type=?, habitat=?, cr=?, stats=?, abilities=?, description=?, is_hidden=?, updated_at=? WHERE id=?"
+  ).run(
+    name,
+    String(b.type ?? cur.type ?? ""),
+    String(b.habitat ?? cur.habitat ?? ""),
+    String(b.cr ?? cur.cr ?? ""),
+    JSON.stringify(b.stats ?? jsonParse(cur.stats, {})),
+    JSON.stringify(b.abilities ?? jsonParse(cur.abilities, [])),
+    String(b.description ?? cur.description ?? ""),
+    (b.is_hidden ?? cur.is_hidden) ? 1 : 0,
+    now(),
+    id
+  );
+
+  logEvent({
+    partyId: getParty().id,
+    type: "bestiary.updated",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "monster",
+    targetId: Number(id),
+    message: `Изменён монстр: ${name}`,
+    io: req.app.locals.io
+  });
+
+  req.app.locals.io?.emit("bestiary:updated");
+  res.json({ ok: true });
+});
+
+bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const cur = db.prepare("SELECT name FROM monsters WHERE id=?").get(id);
+  db.prepare("DELETE FROM monsters WHERE id=?").run(id);
+  logEvent({
+    partyId: getParty().id,
+    type: "bestiary.deleted",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "monster",
+    targetId: Number(id),
+    message: `Удалён монстр: ${cur?.name || id}`,
+    io: req.app.locals.io
+  });
+  req.app.locals.io?.emit("bestiary:updated");
+  res.json({ ok: true });
+});
+
+bestiaryRouter.post("/:id/image", dmAuthMiddleware, upload.single("image"), (req, res) => {
+  const db = getDb();
+  const id = Number(req.params.id);
+  const cur = db.prepare("SELECT * FROM monsters WHERE id=?").get(id);
+  if (!cur) return res.status(404).json({ error: "not_found" });
+  if (!req.file) return res.status(400).json({ error: "file_required" });
+
+  db.prepare("INSERT INTO monster_images(monster_id, filename, original_name, mime, created_at) VALUES(?,?,?,?,?)")
+    .run(id, req.file.filename, req.file.originalname, req.file.mimetype, now());
+
+  req.app.locals.io?.emit("bestiary:updated");
+  res.json({ ok: true, url: `/uploads/monsters/${req.file.filename}` });
+});
+
+bestiaryRouter.post("/settings/toggle", dmAuthMiddleware, (req, res) => {
+  const enabled = !!req.body?.enabled;
+  setPartySettings(1, { bestiary_enabled: enabled ? 1 : 0 });
+  req.app.locals.io?.emit("settings:updated");
+  res.json({ ok: true });
+});

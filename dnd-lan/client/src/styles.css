@@ -1,0 +1,30 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: #0b0f14; color: #e7eef7; }
+a { color: #7bd2ff; text-decoration: none; }
+input, button, select, textarea { font: inherit; }
+.container { max-width: 980px; margin: 0 auto; padding: 16px; }
+.card { background: #101826; border: 1px solid #1f2a3a; border-radius: 14px; padding: 14px; }
+.row { display: flex; gap: 12px; flex-wrap: wrap; }
+.btn { background: #1f6feb; border: 0; color: white; padding: 10px 12px; border-radius: 12px; cursor: pointer; }
+.btn.secondary { background: #223047; }
+.btn.danger { background: #d64545; }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.badge { padding: 4px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #2a3a52; }
+.badge.ok { background:#0f2a1f; border-color:#1e5a3d; }
+.badge.warn { background:#2a220f; border-color:#6a5622; }
+.badge.off { background:#2a1212; border-color:#6a2a2a; }
+.navbar { display:flex; gap:10px; padding:10px; border-bottom:1px solid #1f2a3a; position:sticky; top:0; background:#0b0f14; z-index:5; }
+.small { opacity:.8; font-size: 12px; }
+.grid2 { display:grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 900px) { .grid2 { grid-template-columns: 1.1fr .9fr; } }
+.list { display:flex; flex-direction:column; gap: 10px; }
+.item { display:flex; align-items:center; justify-content:space-between; gap: 10px; padding: 10px; border: 1px solid #1f2a3a; border-radius: 12px; background:#0e1622; }
+.kv { display:flex; flex-direction:column; gap:4px; }
+.tabs { display:flex; gap:8px; flex-wrap:wrap; }
+.tab { padding:8px 10px; border-radius:12px; border:1px solid #1f2a3a; background:#0e1622; cursor:pointer; }
+.tab.active { border-color:#1f6feb; }
+.bottomnav { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:space-around; gap:10px; padding:10px; background:#0b0f14; border-top:1px solid #1f2a3a; }
+.bottomnav a { padding:8px 10px; border-radius:12px; border:1px solid #1f2a3a; background:#0e1622; }
+.padBottom { padding-bottom: 80px; }
+hr { border:0; border-top:1px solid #1f2a3a; margin: 12px 0; }
