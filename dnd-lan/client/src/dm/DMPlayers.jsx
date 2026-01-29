@@ -26,7 +26,7 @@ export default function DMPlayers() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
       <div className="small">“Как игрок” открывается в режиме read-only</div>
       <hr />

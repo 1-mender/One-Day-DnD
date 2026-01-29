@@ -104,7 +104,7 @@ export default function DMInfoBlocks() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
         <div>
           <div style={{ fontWeight: 900, fontSize: 20 }}>Info Blocks (DM)</div>
@@ -117,10 +117,13 @@ export default function DMInfoBlocks() {
       <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск…" style={inp} />
       <div className="list" style={{ marginTop: 12 }}>
         {filtered.map((b) => (
-          <div key={b.id} className="item">
-            <div className="kv">
-              <div style={{ fontWeight: 800 }}>{b.title}</div>
-              <div className="small">{b.category} • access: {b.access}</div>
+          <div key={b.id} className="item taped note-card" data-cat={b.category || "note"}>
+            <div>
+              <div className="note-title">{b.title}</div>
+              <div className="note-meta">
+                <span className="badge secondary">{b.category}</span>
+                <span className="badge">{b.access}</span>
+              </div>
             </div>
             <div className="row">
               <button className="btn secondary" onClick={() => startEdit(b)}>Ред.</button>
@@ -149,7 +152,7 @@ export default function DMInfoBlocks() {
           </div>
 
           {form.access === "selected" && (
-            <div className="card">
+            <div className="card taped">
               <div style={{ fontWeight: 700 }}>Кто видит</div>
               <div className="list" style={{ marginTop: 8 }}>
                 {players.map((p) => {
@@ -199,4 +202,4 @@ export default function DMInfoBlocks() {
     </div>
   );
 }
-const inp = { padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7", width:"100%" };
+const inp = { width: "100%" };

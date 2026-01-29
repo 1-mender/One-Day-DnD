@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
+import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 
 const empty = { name:"", type:"", habitat:"", cr:"", description:"", abilities:[], stats:{}, is_hidden:false };
 
@@ -204,7 +205,7 @@ export default function DMBestiary() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
         <div>
           <div style={{ fontWeight: 900, fontSize: 20 }}>Bestiary (DM)</div>
@@ -247,7 +248,7 @@ export default function DMBestiary() {
       {portErr && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {portErr}</div>}
       {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
       {portPlan && (
-        <div className="card" style={{ marginTop: 12 }}>
+        <div className="card taped" style={{ marginTop: 12 }}>
           <div style={{ fontWeight: 900 }}>Dry-run план</div>
           <div className="small" style={{ marginTop: 6 }}>
             mode={portPlan.mode}, match={portPlan.match}, onExisting={portPlan.onExisting}, imagesMeta={String(portPlan.imagesMeta)}
@@ -276,12 +277,15 @@ export default function DMBestiary() {
       <hr />
       <div className="list">
         {items.map((m) => (
-          <div key={m.id} className="item">
-            <div className="kv">
-              <div style={{ fontWeight: 800 }}>{m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}</div>
+          <div key={m.id} className="item taped" style={{ alignItems: "stretch" }}>
+            <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 800 }}>
+                {m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}
+              </div>
               <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
             </div>
-            <div className="row">
+            <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
               <button className="btn secondary" onClick={() => startEdit(m)}>Ред.</button>
               <button className="btn danger" onClick={() => del(m.id)}>Удал.</button>
             </div>
@@ -320,17 +324,13 @@ export default function DMBestiary() {
             <button className="btn" onClick={() => fileRef.current?.click()} disabled={!edit}>+ Загрузить</button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginTop: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12, marginTop: 12 }}>
             {images.map((img) => (
-              <div key={img.id} style={{ border: "1px solid #1f2a3a", borderRadius: 14, overflow: "hidden" }}>
-                <div style={{ aspectRatio: "1 / 1", background: "#0b0f14" }}>
-                  <img src={img.url} alt={img.originalName || "image"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                </div>
-                <div style={{ padding: 8 }}>
-                  <button className="btn danger" style={{ width: "100%" }} onClick={() => delImage(img.id)}>
-                    Удалить
-                  </button>
-                </div>
+              <div key={img.id} className="item taped" style={{ flexDirection: "column", alignItems: "center" }}>
+                <PolaroidFrame src={img.url} alt={img.originalName || "image"} fallback="IMG" className="lg" />
+                <button className="btn danger" style={{ width: "100%", marginTop: 8 }} onClick={() => delImage(img.id)}>
+                  Удалить
+                </button>
               </div>
             ))}
             {edit && images.length === 0 && <div className="small">Пока нет изображений.</div>}
@@ -340,4 +340,4 @@ export default function DMBestiary() {
     </div>
   );
 }
-const inp = { padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7", width:"100%" };
+const inp = { width: "100%" };

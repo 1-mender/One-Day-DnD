@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
+import InventoryItemCard from "../components/vintage/InventoryItemCard.jsx";
 
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public" };
 
@@ -39,7 +40,7 @@ export default function DMInventory() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Inventory (DM)</div>
       <div className="small">Просмотр/выдача предметов игрокам</div>
       <hr />
@@ -51,13 +52,11 @@ export default function DMInventory() {
       </div>
       <div className="list" style={{ marginTop: 12 }}>
         {items.map((it) => (
-          <div key={it.id} className="item">
-            <div className="kv">
-              <div style={{ fontWeight: 800 }}>{it.name} <span className="small">x{it.qty}</span></div>
-              <div className="small">{it.visibility}</div>
-            </div>
-            <span className="badge">{it.updated_by}</span>
-          </div>
+          <InventoryItemCard
+            key={it.id}
+            item={it}
+            readOnly
+          />
         ))}
       </div>
 
@@ -89,4 +88,4 @@ export default function DMInventory() {
     </div>
   );
 }
-const inp = { padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7", width:"100%" };
+const inp = { width: "100%" };

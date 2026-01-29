@@ -113,7 +113,7 @@ export default function Inventory() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
         <div>
       <div style={{ fontWeight: 800, fontSize: 18 }}>Инвентарь</div>
@@ -198,4 +198,4 @@ export default function Inventory() {
   );
 }
 
-const inp = { padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7", width:"100%" };
+const inp = { width: "100%" };

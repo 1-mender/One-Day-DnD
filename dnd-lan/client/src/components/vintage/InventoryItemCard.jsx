@@ -16,6 +16,7 @@ export default function InventoryItemCard({ item, readOnly, onEdit, onDelete, on
   const icon = pickIcon(item);
   const vis = item.visibility === "hidden" ? "Скрытый" : "Публичный";
   const img = item.imageUrl || null;
+  const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility;
 
   return (
     <div className="item taped" style={{ alignItems: "stretch" }}>
@@ -47,13 +48,17 @@ export default function InventoryItemCard({ item, readOnly, onEdit, onDelete, on
         ) : null}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 110 }}>
-        <button className="btn secondary" onClick={onEdit} disabled={readOnly}>Ред.</button>
-        <button className="btn secondary" onClick={onToggleVisibility} disabled={readOnly}>
-          {item.visibility === "hidden" ? "Сделать публичным" : "Сделать скрытым"}
-        </button>
-        <button className="btn danger" onClick={onDelete} disabled={readOnly}>Удал.</button>
-      </div>
+      {hasActions ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 110 }}>
+          {onEdit && <button className="btn secondary" onClick={onEdit} disabled={readOnly}>Ред.</button>}
+          {onToggleVisibility && (
+            <button className="btn secondary" onClick={onToggleVisibility} disabled={readOnly}>
+              {item.visibility === "hidden" ? "Сделать публичным" : "Сделать скрытым"}
+            </button>
+          )}
+          {onDelete && <button className="btn danger" onClick={onDelete} disabled={readOnly}>Удал.</button>}
+        </div>
+      ) : null}
     </div>
   );
 }

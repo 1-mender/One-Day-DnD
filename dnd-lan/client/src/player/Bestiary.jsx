@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
+import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 
 export default function Bestiary() {
   const [enabled, setEnabled] = useState(false);
@@ -25,20 +26,21 @@ export default function Bestiary() {
     return () => socket.disconnect();
   }, []);
 
-  if (!enabled) return <div className="card"><div className="badge warn">Бестиарий отключён DM</div></div>;
+  if (!enabled) return <div className="card taped"><div className="badge warn">Бестиарий отключён DM</div></div>;
 
   const filtered = items.filter((m) => (m.name || "").toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 800, fontSize: 18 }}>Bestiary</div>
       <div className="small">Read-only для игроков</div>
       <hr />
   <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по имени..." style={{ width:"100%" }} />
       <div className="list" style={{ marginTop: 12 }}>
         {filtered.map((m) => (
-          <div key={m.id} className="item" style={{ cursor:"pointer" }} onClick={() => { setCur(m); setOpen(true); }}>
-            <div className="kv">
+          <div key={m.id} className="item taped" style={{ cursor:"pointer", alignItems: "stretch" }} onClick={() => { setCur(m); setOpen(true); }}>
+            <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" />
+            <div className="kv" style={{ flex: 1 }}>
               <div style={{ fontWeight: 700 }}>{m.name}</div>
               <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
             </div>
@@ -50,9 +52,11 @@ export default function Bestiary() {
       <Modal open={open} title={cur?.name || ""} onClose={() => setOpen(false)}>
         <div className="small">Type: {cur?.type || "—"} • Habitat: {cur?.habitat || "—"} • CR: {cur?.cr || "—"}</div>
         <hr />
-        {(cur?.images || []).map((im) => (
-          <img key={im.id} src={im.url} alt="" style={{ width:"100%", borderRadius: 12, border:"1px solid #1f2a3a", marginBottom: 10 }} />
-        ))}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12, marginBottom: 10 }}>
+          {(cur?.images || []).map((im) => (
+            <PolaroidFrame key={im.id} src={im.url} alt="" fallback="IMG" className="lg" />
+          ))}
+        </div>
         <MarkdownView source={cur?.description} />
       </Modal>
     </div>

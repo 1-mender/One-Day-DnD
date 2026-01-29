@@ -28,7 +28,7 @@ export default function DMDashboard() {
 
   return (
     <div className="grid2">
-      <div className="card">
+      <div className="card taped">
         <div style={{ fontWeight: 900, fontSize: 20 }}>Dashboard</div>
         <div className="small">LAN IP/URL (покажите игрокам или дайте QR)</div>
         <hr />
@@ -42,8 +42,9 @@ export default function DMDashboard() {
           </div>
 
           {info && (
-            <div className="badge warn" style={{ display: "block", marginTop: 6 }}>
-              <b>LAN подсказка:</b> устройства должны быть в одной Wi-Fi сети. Если Windows спросит — разрешите доступ в Firewall (Private networks).
+            <div className="paper-note" style={{ marginTop: 6 }}>
+              <div className="title">LAN подсказка</div>
+              <div className="small">Устройства должны быть в одной Wi‑Fi сети. Если Windows спросит — разрешите доступ в Firewall (Private networks).</div>
             </div>
           )}
 
@@ -57,7 +58,7 @@ export default function DMDashboard() {
             </span>
           </div>
 
-          <div className="card">
+          <div className="card taped">
             <div style={{ fontWeight: 800 }}>Подключены</div>
             <div className="small">Online/Offline обновляется по WebSocket</div>
             <hr />

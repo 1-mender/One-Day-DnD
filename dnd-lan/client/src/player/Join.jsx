@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, storage } from "../api.js";
+import VintageShell from "../components/vintage/VintageShell.jsx";
 
 export default function Join() {
   const nav = useNavigate();
@@ -28,28 +29,30 @@ export default function Join() {
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <div style={{ fontWeight: 800, fontSize: 20 }}>Подключиться к партии</div>
-        <div className="small" style={{ marginTop: 6 }}>
-          {info?.party?.name ? `Партия: ${info.party.name}` : "Загрузка…"}
-        </div>
-        <hr />
-        <form onSubmit={submit} className="list">
-          <div className="kv">
-            <div>Имя игрока/персонажа *</div>
-            <input value={displayName} onChange={(e)=>setDisplayName(e.target.value)} placeholder="Напр. Aria / Bob" style={{ padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7" }} />
+    <VintageShell>
+      <div className="container">
+        <div className="card taped">
+          <div style={{ fontWeight: 800, fontSize: 20 }}>Подключиться к партии</div>
+          <div className="paper-note" style={{ marginTop: 8 }}>
+            {info?.party?.name ? `Партия: ${info.party.name}` : "Загрузка…"}
           </div>
-          {info?.party?.joinCodeEnabled && (
+          <hr />
+          <form onSubmit={submit} className="list">
             <div className="kv">
-              <div>Код партии</div>
-              <input value={joinCode} onChange={(e)=>setJoinCode(e.target.value)} placeholder="Если включён DM" style={{ padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7" }} />
+              <div>Имя игрока/персонажа *</div>
+              <input value={displayName} onChange={(e)=>setDisplayName(e.target.value)} placeholder="Напр. Aria / Bob" style={{ width: "100%" }} />
             </div>
-          )}
-          {err && <div className="badge off">Ошибка: {err}</div>}
-          <button className="btn" type="submit">Отправить заявку</button>
-        </form>
+            {info?.party?.joinCodeEnabled && (
+              <div className="kv">
+                <div>Код партии</div>
+                <input value={joinCode} onChange={(e)=>setJoinCode(e.target.value)} placeholder="Если включён DM" style={{ width: "100%" }} />
+              </div>
+            )}
+            {err && <div className="badge off">Ошибка: {err}</div>}
+            <button className="btn" type="submit">Отправить заявку</button>
+          </form>
+        </div>
       </div>
-    </div>
+    </VintageShell>
   );
 }

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { storage } from "../api.js";
 import { connectSocket } from "../socket.js";
+import VintageShell from "../components/vintage/VintageShell.jsx";
 
 export default function Waiting() {
   const nav = useNavigate();
@@ -25,19 +26,21 @@ export default function Waiting() {
   }, []);
 
   return (
-    <div className="container">
-      <div className="card">
-        <div style={{ fontWeight: 800, fontSize: 20 }}>Ожидание подтверждения</div>
-        <div className="small" style={{ marginTop: 8 }}>
-          DM должен принять вашу заявку в лобби.
+    <VintageShell>
+      <div className="container">
+        <div className="card taped">
+          <div style={{ fontWeight: 800, fontSize: 20 }}>Ожидание подтверждения</div>
+          <div className="small" style={{ marginTop: 8 }}>
+            DM должен принять вашу заявку в лобби.
+          </div>
+          <hr />
+          {status === "waiting" && <div className="badge warn">Ожидание…</div>}
+          {status === "rejected" && <div className="badge off">{msg}</div>}
+          <button className="btn secondary" onClick={() => nav("/", { replace: true })} style={{ marginTop: 12 }}>
+            Назад
+          </button>
         </div>
-        <hr />
-        {status === "waiting" && <div className="badge warn">Ожидание…</div>}
-        {status === "rejected" && <div className="badge off">{msg}</div>}
-        <button className="btn secondary" onClick={() => nav("/", { replace: true })} style={{ marginTop: 12 }}>
-          Назад
-        </button>
       </div>
-    </div>
+    </VintageShell>
   );
 }

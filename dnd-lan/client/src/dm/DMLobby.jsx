@@ -32,7 +32,7 @@ export default function DMLobby() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Лобби / Подключения</div>
       <div className="small">Заявки на вход: принять / отклонить / заблокировать IP</div>
       <hr />
@@ -40,7 +40,7 @@ export default function DMLobby() {
       <div className="list">
         {items.length === 0 && <div className="badge warn">Нет заявок</div>}
         {items.map((r) => (
-          <div key={r.id} className="item">
+          <div key={r.id} className="item taped">
             <div className="kv">
               <div style={{ fontWeight: 800 }}>{r.display_name}</div>
               <div className="small">{new Date(r.created_at).toLocaleTimeString()} • {r.ip || "ip?"}</div>

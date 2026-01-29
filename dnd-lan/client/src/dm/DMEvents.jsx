@@ -133,7 +133,7 @@ export default function DMEvents() {
   }
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ fontWeight: 900, fontSize: 20 }}>Events</div>
@@ -172,14 +172,17 @@ export default function DMEvents() {
             Удалить старше X дней
           </button>
         </div>
-        <div className="small">Очистка DM-only. Retention (20k) продолжает работать как раньше.</div>
+        <div className="paper-note" style={{ maxWidth: 520 }}>
+          <div className="title">Очистка</div>
+          <div className="small">DM-only. Retention (20k) продолжает работать как раньше.</div>
+        </div>
       </div>
 
       {err && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {err}</div>}
 
       <div className="list" style={{ marginTop: 12 }}>
         {items.map((e) => (
-          <div key={e.id} className="item" style={{ alignItems: "flex-start" }}>
+          <div key={e.id} className="item taped" style={{ alignItems: "flex-start" }}>
             <div className="kv" style={{ minWidth: 170 }}>
               <div style={{ fontWeight: 800 }}>{fmtTime(e.created_at)}</div>
               <div className="small">{e.type}</div>
@@ -213,13 +216,5 @@ function fmtTime(ts) {
   return d.toLocaleString();
 }
 
-const inp = {
-  padding: 10,
-  borderRadius: 12,
-  border: "1px solid #1f2a3a",
-  background: "#0b0f14",
-  color: "#e7eef7",
-  width: "min(520px, 100%)"
-};
-
-const sel = { padding: 10, borderRadius: 12 };
+const inp = { width: "min(520px, 100%)" };
+const sel = {};

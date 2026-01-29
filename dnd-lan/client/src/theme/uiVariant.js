@@ -1,5 +1,5 @@
 export const UI_VARIANTS = ["v1", "v2", "v3"];
-const DEFAULT_UI = "v2";
+const DEFAULT_UI = "v3";
 
 export function applyUiVariant() {
   if (typeof window === "undefined" || typeof document === "undefined") return;

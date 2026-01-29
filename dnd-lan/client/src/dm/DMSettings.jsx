@@ -91,7 +91,7 @@ export default function DMSettings() {
   const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Settings</div>
       <div className="small">Код партии, безопасность, подсказки LAN/Firewall</div>
       <hr />
@@ -99,7 +99,7 @@ export default function DMSettings() {
       {msg && <div className="badge ok">{msg}</div>}
 
       <div className="list">
-        <div className="card">
+        <div className="card taped">
           <div style={{ fontWeight: 800 }}>Код партии (join-code)</div>
           <div className="small">Если включён — игроки должны ввести код на экране подключения.</div>
           <hr />
@@ -123,7 +123,7 @@ export default function DMSettings() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card taped">
           <div style={{ fontWeight: 800 }}>Смена пароля DM</div>
           <div className="small">Рекомендуется сменить пароль сразу после первого запуска.</div>
           <hr />
@@ -149,12 +149,13 @@ export default function DMSettings() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card taped">
           <div style={{ fontWeight: 800 }}>LAN / Windows Firewall</div>
           <div className="small">Проверьте доступность сервера с телефонов в той же сети.</div>
           <hr />
-          <div className="badge warn" style={{ display: "block", marginBottom: 10 }}>
-            Убедитесь, что все устройства в одной Wi-Fi сети (LAN) и открывают адрес сервера по IP.
+          <div className="paper-note" style={{ marginBottom: 10 }}>
+            <div className="title">LAN подсказка</div>
+            <div className="small">Убедитесь, что все устройства в одной Wi‑Fi сети (LAN) и открывают адрес сервера по IP.</div>
           </div>
           <div className="small" style={{ lineHeight: 1.5 }}>
             <b>Ссылка для игроков:</b> {lanUrl || "—"}<br />
@@ -167,7 +168,7 @@ export default function DMSettings() {
           </div>
         </div>
 
-        <div className="card">
+        <div className="card taped">
           <div style={{ fontWeight: 800 }}>Backup</div>
           <div className="small">Экспорт/импорт: app.db + uploads/ (zip)</div>
           <hr />
@@ -180,4 +181,4 @@ export default function DMSettings() {
     </div>
   );
 }
-const inp = { padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7", width:"100%" };
+const inp = { width: "100%" };

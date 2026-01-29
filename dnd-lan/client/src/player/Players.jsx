@@ -44,7 +44,7 @@ export default function Players() {
   }, [players, q]);
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 1000, fontSize: 20 }}>Игроки</div>
       <div className="small">Досье и статусы (Online/Idle/Offline)</div>
       <hr />

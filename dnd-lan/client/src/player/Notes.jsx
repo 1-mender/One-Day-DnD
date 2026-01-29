@@ -25,19 +25,28 @@ export default function Notes() {
   const filtered = items.filter((b) => (b.title || "").toLowerCase().includes(q.toLowerCase()));
 
   return (
-    <div className="card">
+    <div className="card taped">
       <div style={{ fontWeight: 800, fontSize: 18 }}>Notes</div>
       <div className="small">Показываются только доступные вам блоки</div>
       <hr />
       <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." style={{ width:"100%" }} />
       <div className="list" style={{ marginTop: 12 }}>
         {filtered.map((b) => (
-          <div key={b.id} className="item" onClick={() => { setCur(b); setOpen(true); }} style={{ cursor:"pointer" }}>
-            <div className="kv">
-              <div style={{ fontWeight: 700 }}>{b.title}</div>
-              <div className="small">{b.category} • {b.access}</div>
+          <div
+            key={b.id}
+            className="item taped note-card"
+            data-cat={b.category || "note"}
+            onClick={() => { setCur(b); setOpen(true); }}
+            style={{ cursor:"pointer" }}
+          >
+            <div>
+              <div className="note-title">{b.title}</div>
+              <div className="note-meta">
+                <span className="badge secondary">{b.category}</span>
+                <span className="badge">{b.access}</span>
+              </div>
             </div>
-            <span className="badge">Открыть</span>
+            <span className="badge note-cta">Открыть</span>
           </div>
         ))}
       </div>

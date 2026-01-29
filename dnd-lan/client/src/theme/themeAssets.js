@@ -14,11 +14,11 @@ function loadRarityTextures() {
   for (const [path, url] of Object.entries(glob)) {
     const file = path.split("/").pop()?.toLowerCase() || "";
     const key =
-      file.includes("very") ? "very_rare"
-      : file.includes("legend") ? "legendary"
-      : file.includes("uncommon") ? "uncommon"
-      : file.includes("common") ? "common"
-      : file.includes("rare") ? "rare"
+      file.includes("very") || file.includes("violet") || file.includes("purple") ? "very_rare"
+      : file.includes("legend") || file.includes("gold") || file.includes("yellow") || file.includes("orange") ? "legendary"
+      : file.includes("uncommon") || file.includes("green") ? "uncommon"
+      : file.includes("common") || file.includes("grey") || file.includes("gray") ? "common"
+      : file.includes("rare") || file.includes("blue") ? "rare"
       : file.includes("custom") ? "custom"
       : null;
 

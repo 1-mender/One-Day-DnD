@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
+import PolaroidFrame from "./vintage/PolaroidFrame.jsx";
 
 export default function QRCodeCard({ url }) {
   const [dataUrl, setDataUrl] = useState("");
@@ -10,11 +11,17 @@ export default function QRCodeCard({ url }) {
   }, [url]);
 
   return (
-    <div className="card">
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>QR для игроков</div>
-      <div className="small">{url}</div>
-      <div style={{ marginTop: 10 }}>
-        {dataUrl ? <img src={dataUrl} alt="QR" style={{ width: 220, borderRadius: 12, border: "1px solid #1f2a3a" }} /> : "Генерация…"}
+    <div className="card taped">
+      <div style={{ fontWeight: 800, marginBottom: 8 }}>QR для игроков</div>
+      <div className="paper-note" style={{ marginBottom: 10 }}>{url}</div>
+      <div style={{ marginTop: 4 }}>
+        <PolaroidFrame
+          src={dataUrl}
+          alt="QR"
+          fallback="QR"
+          className="qr"
+          innerStyle={{ background: "#fff" }}
+        />
       </div>
     </div>
   );

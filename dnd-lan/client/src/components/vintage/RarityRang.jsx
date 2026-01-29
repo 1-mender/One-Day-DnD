@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function RarityRang({ rarity }) {
-  const r = String(rarity || "common").toLowerCase();
+  const r = String(rarity || "common").toLowerCase().replace(/\s+/g, "_");
   const key =
     r === "very_rare" ? "very_rare" :
     r === "legendary" ? "legendary" :
