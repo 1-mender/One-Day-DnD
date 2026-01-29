@@ -18,3 +18,6 @@ npm run start
 
 Откройте DM: http://localhost:3000/dm
 Игроки: ссылка/QR в DM Dashboard.
+
+## Горячие клавиши
+- `Ctrl+Shift+U` — переключение вариантов UI (v1/v2/v3). Можно также задать через URL: `?ui=v1|v2|v3`.

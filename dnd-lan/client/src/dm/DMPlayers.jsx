@@ -35,7 +35,7 @@ export default function DMPlayers() {
           <PlayerDossierCard
             key={p.id}
             player={p}
-            actions={(
+            rightActions={(
               <>
                 <button className="btn secondary" onClick={() => viewAs(p.id)}>Как игрок</button>
                 <button className="btn danger" onClick={() => api.dmKick(p.id).then(load)}>Kick</button>

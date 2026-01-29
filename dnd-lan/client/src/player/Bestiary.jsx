@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
+import MarkdownView from "../components/markdown/MarkdownView.jsx";
 
 export default function Bestiary() {
   const [enabled, setEnabled] = useState(false);
@@ -33,7 +34,7 @@ export default function Bestiary() {
       <div style={{ fontWeight: 800, fontSize: 18 }}>Bestiary</div>
       <div className="small">Read-only для игроков</div>
       <hr />
-      <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по имени…" style={{ padding: 10, borderRadius: 12, border: "1px solid #1f2a3a", background:"#0b0f14", color:"#e7eef7", width:"100%" }} />
+  <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по имени..." style={{ width:"100%" }} />
       <div className="list" style={{ marginTop: 12 }}>
         {filtered.map((m) => (
           <div key={m.id} className="item" style={{ cursor:"pointer" }} onClick={() => { setCur(m); setOpen(true); }}>
@@ -52,7 +53,7 @@ export default function Bestiary() {
         {(cur?.images || []).map((im) => (
           <img key={im.id} src={im.url} alt="" style={{ width:"100%", borderRadius: 12, border:"1px solid #1f2a3a", marginBottom: 10 }} />
         ))}
-        <pre style={{ whiteSpace:"pre-wrap", margin: 0 }}>{cur?.description}</pre>
+        <MarkdownView source={cur?.description} />
       </Modal>
     </div>
   );

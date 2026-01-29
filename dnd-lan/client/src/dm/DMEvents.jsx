@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
+import { useToast } from "../components/ui/ToastProvider.jsx";
 
 const scopes = [
   { key: "", label: "All", prefix: "" },
@@ -19,6 +20,7 @@ export default function DMEvents() {
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const toast = useToast();
   const [cleanupDays, setCleanupDays] = useState(30);
 
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
@@ -100,9 +102,11 @@ export default function DMEvents() {
     try {
       const r = await api.dmEventsCleanup({ mode: "all", confirm: "DELETE" });
       await load(true);
-      alert(`Удалено событий: ${r.deleted}`);
+      toast.success(`Удалено: ${r.deleted}`);
     } catch (e) {
-      setErr(e.body?.error || e.message || "cleanup_failed");
+      const msg = e.body?.error || e.message || "cleanup_failed";
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
@@ -118,9 +122,11 @@ export default function DMEvents() {
     try {
       const r = await api.dmEventsCleanup({ mode: "olderThanDays", days });
       await load(true);
-      alert(`Удалено событий: ${r.deleted}`);
+      toast.success(`Удалено: ${r.deleted}`);
     } catch (e) {
-      setErr(e.body?.error || e.message || "cleanup_failed");
+      const msg = e.body?.error || e.message || "cleanup_failed";
+      setErr(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
