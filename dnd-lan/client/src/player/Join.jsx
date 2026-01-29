@@ -11,7 +11,7 @@ export default function Join() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    api.serverInfo().then(setInfo).catch(() => {});
+    api.serverInfo().then(setInfo).catch((e) => setErr(e?.body?.error || e.message || "offline"));
     // if already has token -> go app
     if (storage.getPlayerToken()) nav("/app", { replace: true });
   }, []);
@@ -31,7 +31,7 @@ export default function Join() {
   return (
     <VintageShell>
       <div className="container">
-        <div className="card taped">
+        <div className="card taped panel">
           <div style={{ fontWeight: 800, fontSize: 20 }}>Подключиться к партии</div>
           <div className="paper-note" style={{ marginTop: 8 }}>
             {info?.party?.name ? `Партия: ${info.party.name}` : "Загрузка…"}

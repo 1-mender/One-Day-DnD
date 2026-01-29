@@ -28,13 +28,19 @@ export default function DMBestiary() {
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
   async function load() {
-    const r = await api.bestiary();
-    setEnabled(!!r.enabled);
-    setItems(r.items || []);
+    setErr("");
+    try {
+      const r = await api.bestiary();
+      setEnabled(!!r.enabled);
+      setItems(r.items || []);
+    } catch (e) {
+      setErr(e.body?.error || e.message);
+      throw e;
+    }
   }
 
   useEffect(() => {
-    load().catch(()=>{});
+    load().catch(() => {});
     socket.on("bestiary:updated", () => load().catch(()=>{}));
     socket.on("settings:updated", () => load().catch(()=>{}));
     return () => socket.disconnect();
@@ -61,7 +67,10 @@ export default function DMBestiary() {
   function startEdit(m) {
     setErr("");
     setEdit(m);
-    setForm({ ...m });
+    const abilitiesText = Array.isArray(m.abilities)
+      ? m.abilities.join("\n")
+      : (typeof m.abilities === "string" ? m.abilities : "");
+    setForm({ ...m, abilitiesText });
     setOpen(true);
     loadImages(m.id).catch(() => {});
   }
@@ -304,7 +313,7 @@ export default function DMBestiary() {
           <input value={form.cr||""} onChange={(e)=>setForm({ ...form, cr: e.target.value })} placeholder="CR (число/строка)" style={inp} />
           <textarea value={form.description||""} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание (markdown)" rows={5} style={inp} />
           <textarea
-            value={(form.abilitiesText ?? (form.abilities||[]).join("\n"))}
+            value={(form.abilitiesText ?? (Array.isArray(form.abilities) ? form.abilities.join("\n") : ""))}
             onChange={(e)=>setForm({ ...form, abilitiesText: e.target.value })}
             placeholder="Способности (по одной на строку)"
             rows={4}

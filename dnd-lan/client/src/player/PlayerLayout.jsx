@@ -26,6 +26,7 @@ export default function PlayerLayout() {
   const [me, setMe] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [netErr, setNetErr] = useState("");
 
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
 
@@ -47,12 +48,19 @@ export default function PlayerLayout() {
       nav("/", { replace: true });
     });
     socket.on("settings:updated", async () => {
-      const inf = await api.serverInfo().catch(() => null);
+      const inf = await api.serverInfo().catch((e) => {
+        setNetErr(e?.body?.error || e.message || "server_info_failed");
+        return null;
+      });
       if (inf) setBestiaryEnabled(!!inf.settings?.bestiaryEnabled);
     });
 
-    api.serverInfo().then((inf) => setBestiaryEnabled(!!inf.settings?.bestiaryEnabled)).catch(() => {});
-    api.me().then(setMe).catch(() => {});
+    api.serverInfo()
+      .then((inf) => setBestiaryEnabled(!!inf.settings?.bestiaryEnabled))
+      .catch((e) => setNetErr(e?.body?.error || e.message || "server_info_failed"));
+    api.me()
+      .then(setMe)
+      .catch((e) => setNetErr(e?.body?.error || e.message || "me_failed"));
 
     const shouldSend = () => !storage.isImpersonating();
     let last = 0;
@@ -148,6 +156,7 @@ export default function PlayerLayout() {
       )}
       <VintageShell>
         <div className="container padBottom">
+          {netErr && <div className="badge off">Ошибка сети: {netErr}</div>}
           <Outlet context={{ socket }} />
         </div>
       </VintageShell>

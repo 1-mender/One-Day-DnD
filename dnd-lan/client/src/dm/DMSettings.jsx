@@ -70,13 +70,20 @@ export default function DMSettings() {
   }
 
   async function exportZip() {
-    const blob = await api.exportZip();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "dnd-lan-backup.zip";
-    a.click();
-    URL.revokeObjectURL(url);
+    setMsg("");
+    setErr("");
+    try {
+      const blob = await api.exportZip();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "dnd-lan-backup.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+      setMsg("Экспорт готов.");
+    } catch (e) {
+      setErr(e.body?.error || e.message);
+    }
   }
 
   async function importZip(e) {
@@ -84,8 +91,14 @@ export default function DMSettings() {
     setErr("");
     const file = e.target.files?.[0];
     if (!file) return;
-    await api.importZip(file);
-    setMsg("Импорт выполнен. Клиентам обновить страницу (если нужно).");
+    try {
+      await api.importZip(file);
+      setMsg("Импорт выполнен. Клиентам обновить страницу (если нужно).");
+    } catch (e) {
+      setErr(e.body?.error || e.message);
+    } finally {
+      e.target.value = "";
+    }
   }
 
   const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");

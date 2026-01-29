@@ -11,17 +11,28 @@ export default function DMInventory() {
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
+  const [err, setErr] = useState("");
 
   async function loadPlayers() {
-    const p = await api.dmPlayers();
-    setPlayers(p.items || []);
-    if (!selectedId && (p.items || []).length) setSelectedId(p.items[0].id);
+    setErr("");
+    try {
+      const p = await api.dmPlayers();
+      setPlayers(p.items || []);
+      if (!selectedId && (p.items || []).length) setSelectedId(p.items[0].id);
+    } catch (e) {
+      setErr(e.body?.error || e.message);
+    }
   }
 
   async function loadInv(pid) {
     if (!pid) return;
-    const r = await api.invDmGetPlayer(pid);
-    setItems(r.items || []);
+    setErr("");
+    try {
+      const r = await api.invDmGetPlayer(pid);
+      setItems(r.items || []);
+    } catch (e) {
+      setErr(e.body?.error || e.message);
+    }
   }
 
   useEffect(() => {
@@ -33,10 +44,15 @@ export default function DMInventory() {
   }, [selectedId]);
 
   async function give() {
-    await api.invDmAddToPlayer(selectedId, { ...form, qty: Number(form.qty), weight: Number(form.weight) });
-    setOpen(false);
-    setForm(empty);
-    await loadInv(selectedId);
+    setErr("");
+    try {
+      await api.invDmAddToPlayer(selectedId, { ...form, qty: Number(form.qty), weight: Number(form.weight) });
+      setOpen(false);
+      setForm(empty);
+      await loadInv(selectedId);
+    } catch (e) {
+      setErr(e.body?.error || e.message);
+    }
   }
 
   return (
@@ -44,6 +60,7 @@ export default function DMInventory() {
       <div style={{ fontWeight: 900, fontSize: 20 }}>Inventory (DM)</div>
       <div className="small">Просмотр/выдача предметов игрокам</div>
       <hr />
+      {err && <div className="badge off">Ошибка: {err}</div>}
       <div className="row" style={{ alignItems:"center" }}>
         <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
           {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
@@ -51,6 +68,7 @@ export default function DMInventory() {
         <button className="btn" onClick={() => setOpen(true)} disabled={!selectedId}>+ Выдать</button>
       </div>
       <div className="list" style={{ marginTop: 12 }}>
+        {items.length === 0 && <div className="badge warn">Нет предметов у игрока</div>}
         {items.map((it) => (
           <InventoryItemCard
             key={it.id}

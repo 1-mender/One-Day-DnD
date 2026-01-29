@@ -38,48 +38,17 @@ body{
   margin:0;
   color: var(--ink);
   background:
-    radial-gradient(900px 700px at 30% -10%, rgba(255,220,160,.10), transparent 60%),
+    var(--tex-back, none),
+    radial-gradient(900px 700px at 30% -10%, rgba(255,220,160,.08), transparent 60%),
     radial-gradient(800px 600px at 80% 20%, rgba(255,255,255,.06), transparent 55%),
-    linear-gradient(180deg, var(--bg0), var(--leather));
+    linear-gradient(180deg, #070605, #17120e);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
   font-family: ui-serif, Georgia, "Times New Roman", serif;
 }
 
-.vintage-shell{
-  max-width: 1200px;
-  margin: 18px auto 92px;
-  padding: 14px;
-  border-radius: 28px;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.07), rgba(255,255,255,0)),
-    radial-gradient(900px 400px at 50% 0%, rgba(255,255,255,.06), transparent 60%),
-    linear-gradient(180deg, #1b1612, #0f0c0a);
-  border: 1px solid rgba(255,255,255,.08);
-  box-shadow: var(--shadow0);
-}
-
-.vintage-book{
-  border-radius: 22px;
-  padding: 14px;
-  background:
-    linear-gradient(90deg, rgba(0,0,0,.22), transparent 18%, transparent 82%, rgba(0,0,0,.22)),
-    linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.22));
-}
-
-.vintage-page{
-  border-radius: 18px;
-  padding: 14px;
-  background:
-    var(--noise),
-    repeating-linear-gradient(180deg,
-      rgba(0,0,0,0) 0px,
-      rgba(0,0,0,0) 22px,
-      rgba(60,45,25,.10) 23px),
-    linear-gradient(180deg, var(--paper), var(--paper2));
-  border: 1px solid rgba(110,90,55,.38);
-  box-shadow: var(--shadow1);
-}
-
-.container{ max-width: 1040px; margin: 0 auto; }
+.container{ max-width: var(--page-max); margin: 0 auto; }
 .padBottom{ padding-bottom: 92px; }
 .row{ display:flex; gap:10px; align-items:center; }
 .small{ opacity:.78; font-size: 13px; }
@@ -268,17 +237,6 @@ a:hover{ color: #000; }
   font-weight: 900;
 }
 
-/* --- Photo-based theme overrides --- */
-body{
-  background:
-    var(--tex-back),
-    radial-gradient(900px 700px at 30% -10%, rgba(255,220,160,.08), transparent 60%),
-    linear-gradient(180deg, #070605, #17120e);
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-}
-
 .vintage-shell{
   max-width: none;
   width: 100%;
@@ -309,6 +267,7 @@ body{
   width: min(var(--page-max), 100%);
   padding: var(--page-pad-y) var(--page-pad-x);
   min-height: clamp(460px, 60vh, 780px);
+  overflow-x: hidden !important;
   background:
     var(--noise),
     linear-gradient(90deg,
@@ -425,6 +384,12 @@ body{
   font-weight: 900;
 }
 
+/* centered panel (login/join screens) */
+.panel{
+  max-width: 720px;
+  margin: 0 auto;
+}
+
 /* journal-style note cards */
 .note-card{
   position: relative;
@@ -439,7 +404,7 @@ body{
 .note-card::after{
   content:"";
   position:absolute;
-  right: -6px;
+  right: 6px;
   top: 16px;
   width: 18px;
   height: 36px;
@@ -479,6 +444,44 @@ body{
   border: 1px solid rgba(60,45,20,.50);
   background: rgba(255,255,255,.35);
   font-weight: 1000;
+}
+
+/* responsive stacking */
+@media (max-width: 640px){
+  .card .row{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .card .row > *{
+    width: 100% !important;
+  }
+  .item{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .item .row{
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .panel{ max-width: 100%; }
+  .vintage-page{ min-height: 0; }
+  input, textarea, select{
+    font-size: 16px !important;
+    min-height: 44px;
+  }
+  .btn{
+    font-size: 15px;
+    min-height: 44px;
+  }
+  .bottom-nav-link{
+    padding: 12px 8px;
+  }
+}
+
+@media (max-width: 420px){
+  .padBottom{ padding-bottom: 110px; }
+  .bottom-nav{ padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+  .bottom-nav-inner{ gap: 6px; }
 }
 
 .theme-no-textures body{

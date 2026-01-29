@@ -93,7 +93,7 @@ export default function DMEvents() {
 
     const phrase = window.prompt("Для подтверждения введите слово DELETE (заглавными):", "");
     if (phrase !== "DELETE") {
-      alert("Отменено. Неверное подтверждение.");
+      toast.warn("Отменено. Неверное подтверждение.");
       return;
     }
 

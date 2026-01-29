@@ -213,3 +213,17 @@
   :root[data-ui="v3"] .dm-topbar-wrap{ position: sticky; width: auto; top: 0; }
   :root[data-ui="v3"] .dm-topbar{ flex-direction: row; flex-wrap: wrap; justify-content: center; }
 }
+
+@media (max-width: 720px){
+  :root[data-ui="v2"] .dm-topbar,
+  :root[data-ui="v3"] .dm-topbar{
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+  :root[data-ui="v2"] .dm-tab,
+  :root[data-ui="v3"] .dm-tab{
+    white-space: nowrap;
+    flex: 0 0 auto;
+  }
+}

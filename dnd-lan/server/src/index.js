@@ -44,12 +44,24 @@ app.use(express.json({ limit: "2mb" }));
 // DEV: allow Vite dev server with credentials
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && origin.includes("localhost:5173")) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Headers", "content-type, x-player-token");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    if (req.method === "OPTIONS") return res.sendStatus(204);
+  if (origin && process.env.NODE_ENV !== "production") {
+    let allow = false;
+    try {
+      const u = new URL(origin);
+      if ((u.protocol === "http:" || u.protocol === "https:") && u.port === "5173") {
+        allow = true;
+      }
+    } catch {}
+    if (!allow) {
+      allow = /^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}):5173$/.test(origin);
+    }
+    if (allow) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+      res.setHeader("Access-Control-Allow-Credentials", "true");
+      res.setHeader("Access-Control-Allow-Headers", "content-type, x-player-token");
+      res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+      if (req.method === "OPTIONS") return res.sendStatus(204);
+    }
   }
   next();
 });

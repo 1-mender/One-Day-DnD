@@ -31,7 +31,7 @@ export default function DMLogin() {
   return (
     <VintageShell>
       <div className="container">
-        <div className="card taped">
+        <div className="card taped panel">
           <div style={{ fontWeight: 900, fontSize: 22 }}>DM Login</div>
           <div className="small">Локальный доступ. Пароль хранится хешированно.</div>
           <hr />

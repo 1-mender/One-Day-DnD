@@ -28,7 +28,7 @@ export default function Waiting() {
   return (
     <VintageShell>
       <div className="container">
-        <div className="card taped">
+        <div className="card taped panel">
           <div style={{ fontWeight: 800, fontSize: 20 }}>Ожидание подтверждения</div>
           <div className="small" style={{ marginTop: 8 }}>
             DM должен принять вашу заявку в лобби.

@@ -136,6 +136,18 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, upload.single("file"
     }
     normalized.push(m);
   }
+  // soft warning for duplicate ids inside import file (replace mode will ignore dup ids)
+  const seenIds = new Set();
+  const dupIds = new Set();
+  for (const m of normalized) {
+    if (!m.origId) continue;
+    if (seenIds.has(m.origId)) dupIds.add(m.origId);
+    else seenIds.add(m.origId);
+  }
+  if (dupIds.size) {
+    const listIds = Array.from(dupIds).slice(0, 6).join(", ");
+    warnings.push(`В импорте есть дубли id: ${listIds}${dupIds.size > 6 ? "…" : ""}`);
+  }
 
   const existingCount = db.prepare("SELECT COUNT(*) AS c FROM monsters").get().c;
 
@@ -224,6 +236,7 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, upload.single("file"
       db.prepare("DELETE FROM monster_images").run();
       db.prepare("DELETE FROM monsters").run();
 
+      const usedIds = new Set();
       for (const m of normalized) {
         const stmtWithId = db.prepare(
           "INSERT INTO monsters(id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
@@ -233,7 +246,16 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, upload.single("file"
         );
 
         let monsterId;
-        if (m.origId) {
+        let useId = !!m.origId;
+        if (useId && usedIds.has(m.origId)) {
+          useId = false;
+          if (warnings.length < 50) {
+            warnings.push(`Дублирующий id ${m.origId} для "${m.name}": вставлен без id`);
+          }
+        }
+        if (useId) usedIds.add(m.origId);
+
+        if (useId) {
           monsterId = stmtWithId.run(
             m.origId,
             m.name,

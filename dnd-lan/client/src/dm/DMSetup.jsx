@@ -30,7 +30,7 @@ export default function DMSetup() {
   return (
     <VintageShell>
       <div className="container">
-        <div className="card taped">
+        <div className="card taped panel">
           <div style={{ fontWeight: 900, fontSize: 22 }}>Первый запуск — создать DM</div>
           <div className="small">Рекомендуется пароль от 6+ символов.</div>
           <hr />

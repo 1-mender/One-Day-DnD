@@ -7,9 +7,6 @@
     "start": "npm --prefix server run start"
   },
   "dependencies": {
-    "multer": "^2.0.2",
-    "react-markdown": "^10.1.0",
-    "rehype-sanitize": "^6.0.0",
-    "remark-gfm": "^4.0.1"
+    "multer": "^2.0.2"
   }
 }
