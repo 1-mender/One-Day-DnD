@@ -154,7 +154,7 @@ export default function PlayerLayout() {
           </div>
         </div>
       )}
-      <VintageShell>
+      <VintageShell layout="spread">
         <div className="container padBottom">
           {netErr && <div className="badge off">Ошибка сети: {netErr}</div>}
           <Outlet context={{ socket }} />

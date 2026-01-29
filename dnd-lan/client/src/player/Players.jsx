@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
+import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
@@ -44,32 +45,71 @@ export default function Players() {
   }, [players, q]);
 
   return (
-    <div className="card taped">
-      <div style={{ fontWeight: 1000, fontSize: 20 }}>Игроки</div>
-      <div className="small">Досье и статусы (Online/Idle/Offline)</div>
-      <hr />
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." style={{ width: "min(520px, 100%)" }} />
-        <button className="btn secondary" onClick={load}>Обновить</button>
+    <div className="spread-grid">
+      <div className="spread-col">
+        <div className="card taped scrap-card paper-stack">
+          <div style={{ fontWeight: 1000, fontSize: 20 }}>Игроки</div>
+          <div className="small">Досье и статусы (Online/Idle/Offline)</div>
+          <hr />
+          <div className="row" style={{ flexWrap: "wrap" }}>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." style={{ width: "min(520px, 100%)" }} />
+            <button className="btn secondary" onClick={load}>Обновить</button>
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <ErrorBanner message={err} onRetry={load} />
+
+            {loading ? (
+              <div className="list">
+                <div className="item"><Skeleton h={120} w="100%" /></div>
+                <div className="item"><Skeleton h={120} w="100%" /></div>
+              </div>
+            ) : filtered.length === 0 ? (
+              <EmptyState title="Нет игроков" hint="Подключите игроков через лобби." />
+            ) : (
+              <div className="list">
+                {filtered.map((p) => (
+                  <PlayerDossierCard key={p.id} player={p} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      <div style={{ marginTop: 12 }}>
-        <ErrorBanner message={err} onRetry={load} />
-
-        {loading ? (
+      <div className="spread-col">
+        <div className="card taped scrap-card">
+          <div style={{ fontWeight: 800 }}>Легенда статусов</div>
+          <div className="small">Отражает текущую активность</div>
+          <hr />
           <div className="list">
-            <div className="item"><Skeleton h={120} w="100%" /></div>
-            <div className="item"><Skeleton h={120} w="100%" /></div>
+            <div className="item">
+              <div className="kv">
+                <div style={{ fontWeight: 700 }}>Online</div>
+                <div className="small">Игрок активен</div>
+              </div>
+              <PlayerStatusPill status="online" />
+            </div>
+            <div className="item">
+              <div className="kv">
+                <div style={{ fontWeight: 700 }}>Idle</div>
+                <div className="small">Нет активности</div>
+              </div>
+              <PlayerStatusPill status="idle" />
+            </div>
+            <div className="item">
+              <div className="kv">
+                <div style={{ fontWeight: 700 }}>Offline</div>
+                <div className="small">Отключён</div>
+              </div>
+              <PlayerStatusPill status="offline" />
+            </div>
           </div>
-        ) : filtered.length === 0 ? (
-          <EmptyState title="Нет игроков" hint="Подключите игроков через лобби." />
-        ) : (
-          <div className="list">
-            {filtered.map((p) => (
-              <PlayerDossierCard key={p.id} player={p} />
-            ))}
+          <div className="paper-note" style={{ marginTop: 10 }}>
+            <div className="title">Совет</div>
+            <div className="small">Если статус завис — обновите страницу.</div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

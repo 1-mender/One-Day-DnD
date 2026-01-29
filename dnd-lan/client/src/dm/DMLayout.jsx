@@ -25,7 +25,7 @@ export default function DMLayout() {
   return (
     <div className="dm-root">
       <OfflineBanner online={online && navigator.onLine} />
-      <VintageShell>
+      <VintageShell layout="spread">
         <DMTabBar />
         <div className="container">
           <Outlet context={{ socket }} />

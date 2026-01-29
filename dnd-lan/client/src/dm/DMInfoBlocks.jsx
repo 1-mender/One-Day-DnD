@@ -104,33 +104,69 @@ export default function DMInfoBlocks() {
   }
 
   return (
-    <div className="card taped">
-      <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Info Blocks (DM)</div>
-          <div className="small">Доступ: DM-only / All / Selected players</div>
-        </div>
-        <button className="btn" onClick={startNew}>+ Добавить</button>
-      </div>
-      <hr />
-      {err && <div className="badge off">Ошибка: {err}</div>}
-      <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск…" style={inp} />
-      <div className="list" style={{ marginTop: 12 }}>
-        {filtered.map((b) => (
-          <div key={b.id} className="item taped note-card" data-cat={b.category || "note"}>
+    <div className="spread-grid">
+      <div className="spread-col">
+        <div className="card taped scrap-card paper-stack">
+          <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
             <div>
-              <div className="note-title">{b.title}</div>
-              <div className="note-meta">
-                <span className="badge secondary">{b.category}</span>
-                <span className="badge">{b.access}</span>
+              <div style={{ fontWeight: 900, fontSize: 20 }}>Info Blocks (DM)</div>
+              <div className="small">Доступ: DM-only / All / Selected players</div>
+            </div>
+            <button className="btn" onClick={startNew}>+ Добавить</button>
+          </div>
+          <hr />
+          {err && <div className="badge off">Ошибка: {err}</div>}
+          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск…" style={inp} />
+          <div className="list" style={{ marginTop: 12 }}>
+            {filtered.map((b) => (
+              <div key={b.id} className="item taped note-card" data-cat={b.category || "note"}>
+                <div>
+                  <div className="note-title">{b.title}</div>
+                  <div className="note-meta">
+                    <span className="badge secondary">{b.category}</span>
+                    <span className="badge">{b.access}</span>
+                  </div>
+                </div>
+                <div className="row">
+                  <button className="btn secondary" onClick={() => startEdit(b)}>Ред.</button>
+                  <button className="btn danger" onClick={() => del(b.id)}>Удал.</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="spread-col">
+        <div className="card taped scrap-card">
+          <div style={{ fontWeight: 800 }}>Легенда доступа</div>
+          <div className="small">Кому видны блоки</div>
+          <hr />
+          <div className="list">
+            <div className="item">
+              <div className="kv">
+                <div style={{ fontWeight: 700 }}>DM-only</div>
+                <div className="small">Только мастер</div>
               </div>
             </div>
-            <div className="row">
-              <button className="btn secondary" onClick={() => startEdit(b)}>Ред.</button>
-              <button className="btn danger" onClick={() => del(b.id)}>Удал.</button>
+            <div className="item">
+              <div className="kv">
+                <div style={{ fontWeight: 700 }}>All</div>
+                <div className="small">Все игроки</div>
+              </div>
+            </div>
+            <div className="item">
+              <div className="kv">
+                <div style={{ fontWeight: 700 }}>Selected</div>
+                <div className="small">Выбранные игроки</div>
+              </div>
             </div>
           </div>
-        ))}
+          <div className="paper-note" style={{ marginTop: 10 }}>
+            <div className="title">Подсказка</div>
+            <div className="small">Поддерживается markdown для текста и картинок.</div>
+          </div>
+        </div>
       </div>
 
       <Modal open={open} title={edit ? "Редактировать блок" : "Новый блок"} onClose={() => setOpen(false)}>

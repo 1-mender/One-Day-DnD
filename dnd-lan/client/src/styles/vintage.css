@@ -55,14 +55,28 @@ body{
 .kv{ display:flex; flex-direction:column; gap:4px; }
 
 .card{
+  position: relative;
   border-radius: var(--radius);
   padding: 14px;
   background:
     var(--noise),
-    linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0)),
-    linear-gradient(180deg, var(--paper), var(--paper2));
-  border: 1px solid rgba(110,90,55,.38);
-  box-shadow: var(--shadow2);
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.2)),
+    linear-gradient(180deg, #f7ecd0, #e7d5b4);
+  border: 1px solid rgba(110,90,55,.35);
+  box-shadow: 0 10px 18px rgba(0,0,0,.28), 0 2px 0 rgba(255,255,255,.45) inset;
+}
+.card::before{
+  content:"";
+  position:absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120px 24px at 15% 100%, rgba(0,0,0,.08), transparent 60%),
+    radial-gradient(120px 24px at 85% 0%, rgba(0,0,0,.06), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,0));
+  pointer-events:none;
+  mix-blend-mode: multiply;
+  opacity: .45;
 }
 
 hr{
@@ -261,6 +275,27 @@ a:hover{ color: #000; }
   background-position: center;
   filter: drop-shadow(0 26px 60px rgba(0,0,0,.55));
 }
+.vintage-book::before{
+  content:"";
+  position:absolute;
+  inset: 12px;
+  background-image: var(--noise);
+  opacity: .12;
+  mix-blend-mode: multiply;
+  pointer-events:none;
+}
+.vintage-book::after{
+  content:"";
+  position:absolute;
+  inset: 6px;
+  background-image: var(--tex-plenka);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  mix-blend-mode: multiply;
+  opacity: .18;
+  pointer-events:none;
+}
 
 .vintage-page{
   border-radius: 18px;
@@ -285,6 +320,58 @@ a:hover{ color: #000; }
     linear-gradient(180deg, #f1e6cf, #e6d6b6);
   border: 1px solid rgba(110,90,55,.25);
   box-shadow: 0 10px 26px rgba(0,0,0,.28);
+}
+
+/* spread layout helper */
+.spread-grid{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.spread-col{ min-width: 0; }
+@media (max-width: 1023px){
+  .spread-grid{ grid-template-columns: 1fr; }
+}
+
+/* scrapbook cards */
+.scrap-card{
+  position: relative;
+}
+.scrap-card{
+  transform: rotate(var(--tilt, 0deg));
+}
+.tilt-1{ --tilt: -1.2deg; }
+.tilt-2{ --tilt: 0.9deg; }
+.tilt-3{ --tilt: -0.6deg; }
+.scrap-card::after{
+  content:"";
+  position:absolute;
+  right: 10px;
+  bottom: -8px;
+  width: 140px;
+  height: 18px;
+  background-image: var(--tex-tape);
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: .55;
+  transform: rotate(1.4deg);
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,.15));
+}
+.paper-stack{
+  position: relative;
+  z-index: 0;
+}
+.paper-stack::before{
+  content:"";
+  position:absolute;
+  inset: 6px -6px -6px 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(110,90,55,.20);
+  background: rgba(255,255,255,.28);
+  z-index: -1;
+  transform: rotate(0.6deg);
 }
 
 .taped{
@@ -317,7 +404,6 @@ a:hover{ color: #000; }
 /* subtle polaroid tilt for organic feel */
 .list > .taped:nth-child(odd) .polaroid{ transform: rotate(-1.2deg); }
 .list > .taped:nth-child(3n) .polaroid{ transform: rotate(1deg); }
-.polaroid.qr{ transform: none; }
 @media (max-width: 560px){
   .taped::before{ width: 120px; height: 40px; left: 12px; top: -8px; }
 }
@@ -345,10 +431,39 @@ a:hover{ color: #000; }
 .polaroid.qr{
   width: 220px;
   height: 240px;
+  transform: rotate(6deg);
+  filter: drop-shadow(0 16px 26px rgba(0,0,0,.35));
+}
+.polaroid.qr::before{
+  content:"";
+  position:absolute;
+  top: -12px;
+  left: 8px;
+  width: 140px;
+  height: 40px;
+  background-image: var(--tex-tape);
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: .95;
+  transform: rotate(-6deg);
+  pointer-events:none;
+}
+.polaroid.qr::after{
+  content:"";
+  position:absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: 26px;
+  background: rgba(255,255,255,.92);
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.8);
+  pointer-events:none;
 }
 .polaroid.qr .inner{
   width: 180px;
   height: 180px;
+  background: #fff;
 }
 .polaroid .inner{
   width: 78px;
@@ -575,10 +690,11 @@ a:hover{ color: #000; }
   padding: 6px 10px;
   border-radius: 14px;
   font-weight: 1000;
-  letter-spacing: .5px;
+  letter-spacing: .8px;
   text-transform: uppercase;
   border: 2px solid rgba(30,20,10,.45);
   box-shadow: 0 6px 14px rgba(0,0,0,.25);
+  transform: rotate(-2deg);
 }
 .stamp.online{
   background: var(--noise), linear-gradient(180deg,#d7f3d7,#b7e1bb);

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import PolaroidFrame from "./vintage/PolaroidFrame.jsx";
 
-export default function QRCodeCard({ url }) {
+export default function QRCodeCard({ url, className = "" }) {
   const [dataUrl, setDataUrl] = useState("");
   useEffect(() => {
     let alive = true;
@@ -11,7 +11,7 @@ export default function QRCodeCard({ url }) {
   }, [url]);
 
   return (
-    <div className="card taped">
+    <div className={`card taped ${className}`.trim()}>
       <div style={{ fontWeight: 800, marginBottom: 8 }}>QR для игроков</div>
       <div className="paper-note" style={{ marginBottom: 10 }}>{url}</div>
       <div style={{ marginTop: 4 }}>

@@ -214,92 +214,102 @@ export default function DMBestiary() {
   }
 
   return (
-    <div className="card taped">
-      <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
-        <div>
+    <div className="spread-grid">
+      <div className="spread-col">
+        <div className="card taped scrap-card paper-stack">
           <div style={{ fontWeight: 900, fontSize: 20 }}>Bestiary (DM)</div>
-          <div className="small">Глобальный переключатель для игроков</div>
-        </div>
-        <div className="row">
-          <button className="btn secondary" onClick={() => api.dmBestiaryToggle(!enabled).then(load)}>
-            {enabled ? "Выключить для игроков" : "Включить для игроков"}
-          </button>
-          <button className="btn" onClick={startNew}>+ Добавить</button>
+          <div className="small">Список существ и доступ для игроков</div>
+          <hr />
+          {err && <div className="badge off">Ошибка: {err}</div>}
+          <div className="list">
+            {items.map((m) => (
+              <div key={m.id} className="item taped" style={{ alignItems: "stretch" }}>
+                <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 800 }}>
+                    {m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}
+                  </div>
+                  <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
+                </div>
+                <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+                  <button className="btn secondary" onClick={() => startEdit(m)}>Ред.</button>
+                  <button className="btn danger" onClick={() => del(m.id)}>Удал.</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
-      <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
-        <button className="btn secondary" onClick={doExport} disabled={portBusy}>Export JSON</button>
-        <input
-          ref={importRef}
-          type="file"
-          accept="application/json,.json"
-          style={{ display: "none" }}
-          onChange={onPickImport}
-        />
-        <button className="btn" onClick={() => importRef.current?.click()} disabled={portBusy}>Import JSON (dry-run)</button>
-        <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-          <option value="merge">merge</option>
-          <option value="replace">replace</option>
-        </select>
-        <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-          <option value="name">match: name</option>
-          <option value="id">match: id</option>
-        </select>
-        <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-          <option value="update">при совпадении: обновлять</option>
-          <option value="skip">при совпадении: не трогать (skip)</option>
-        </select>
-        <label className="row" style={{ gap: 6, alignItems: "center" }}>
-          <input type="checkbox" checked={portImagesMeta} onChange={(e) => setPortImagesMeta(e.target.checked)} />
-          <span className="small">импортировать метаданные картинок</span>
-        </label>
-      </div>
-      {portErr && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {portErr}</div>}
-      {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
-      {portPlan && (
-        <div className="card taped" style={{ marginTop: 12 }}>
-          <div style={{ fontWeight: 900 }}>Dry-run план</div>
-          <div className="small" style={{ marginTop: 6 }}>
-            mode={portPlan.mode}, match={portPlan.match}, onExisting={portPlan.onExisting}, imagesMeta={String(portPlan.imagesMeta)}
+
+      <div className="spread-col">
+        <div className="card taped scrap-card">
+          <div style={{ fontWeight: 800 }}>Управление</div>
+          <div className="small">Экспорт / импорт / глобальная видимость</div>
+          <hr />
+          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <button className="btn secondary" onClick={() => api.dmBestiaryToggle(!enabled).then(load)}>
+              {enabled ? "Выключить для игроков" : "Включить для игроков"}
+            </button>
+            <button className="btn" onClick={startNew}>+ Добавить</button>
           </div>
-          <div style={{ marginTop: 8 }}>
-            <b>created:</b> {portPlan.created} &nbsp; <b>updated:</b> {portPlan.updated} &nbsp; <b>skipped:</b> {portPlan.skipped}
-            {portPlan.mode === "replace" && <span> &nbsp; • <b>удалит существующих:</b> {portPlan.willDelete}</span>}
+
+          <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+            <button className="btn secondary" onClick={doExport} disabled={portBusy}>Export JSON</button>
+            <input
+              ref={importRef}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: "none" }}
+              onChange={onPickImport}
+            />
+            <button className="btn" onClick={() => importRef.current?.click()} disabled={portBusy}>Import JSON (dry-run)</button>
+            <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+              <option value="merge">merge</option>
+              <option value="replace">replace</option>
+            </select>
+            <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+              <option value="name">match: name</option>
+              <option value="id">match: id</option>
+            </select>
+            <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+              <option value="update">при совпадении: обновлять</option>
+              <option value="skip">при совпадении: не трогать (skip)</option>
+            </select>
+            <label className="row" style={{ gap: 6, alignItems: "center" }}>
+              <input type="checkbox" checked={portImagesMeta} onChange={(e) => setPortImagesMeta(e.target.checked)} />
+              <span className="small">импортировать метаданные картинок</span>
+            </label>
           </div>
-          {Array.isArray(portPlan.warnings) && portPlan.warnings.length > 0 && (
-            <div className="badge warn" style={{ display: "block", marginTop: 10 }}>
-              {portPlan.warnings.slice(0, 3).join(" • ")}
+          {portErr && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {portErr}</div>}
+          {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
+          {portPlan && (
+            <div className="card taped" style={{ marginTop: 12 }}>
+              <div style={{ fontWeight: 900 }}>Dry-run план</div>
+              <div className="small" style={{ marginTop: 6 }}>
+                mode={portPlan.mode}, match={portPlan.match}, onExisting={portPlan.onExisting}, imagesMeta={String(portPlan.imagesMeta)}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <b>created:</b> {portPlan.created} &nbsp; <b>updated:</b> {portPlan.updated} &nbsp; <b>skipped:</b> {portPlan.skipped}
+                {portPlan.mode === "replace" && <span> &nbsp; • <b>удалит существующих:</b> {portPlan.willDelete}</span>}
+              </div>
+              {Array.isArray(portPlan.warnings) && portPlan.warnings.length > 0 && (
+                <div className="badge warn" style={{ display: "block", marginTop: 10 }}>
+                  {portPlan.warnings.slice(0, 3).join(" • ")}
+                </div>
+              )}
+              <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                <button className="btn" onClick={applyImport} disabled={portBusy || !portPendingFile}>Применить</button>
+                <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={portBusy || !portPendingFile}>Пересчитать</button>
+                <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
+              </div>
+              <div className="small" style={{ marginTop: 8 }}>
+                Примеры: created={portPlan.samples?.created?.slice(0,5)?.join(", ") || "—"}<br />
+                updated={portPlan.samples?.updated?.slice(0,5)?.join(", ") || "—"}<br />
+                skipped={portPlan.samples?.skipped?.slice(0,5)?.join(", ") || "—"}
+              </div>
             </div>
           )}
-          <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-            <button className="btn" onClick={applyImport} disabled={portBusy || !portPendingFile}>Применить</button>
-            <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={portBusy || !portPendingFile}>Пересчитать</button>
-            <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
-          </div>
-          <div className="small" style={{ marginTop: 8 }}>
-            Примеры: created={portPlan.samples?.created?.slice(0,5)?.join(", ") || "—"}<br />
-            updated={portPlan.samples?.updated?.slice(0,5)?.join(", ") || "—"}<br />
-            skipped={portPlan.samples?.skipped?.slice(0,5)?.join(", ") || "—"}
-          </div>
         </div>
-      )}
-      <hr />
-      <div className="list">
-        {items.map((m) => (
-          <div key={m.id} className="item taped" style={{ alignItems: "stretch" }}>
-            <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 800 }}>
-                {m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}
-              </div>
-              <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
-            </div>
-            <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
-              <button className="btn secondary" onClick={() => startEdit(m)}>Ред.</button>
-              <button className="btn danger" onClick={() => del(m.id)}>Удал.</button>
-            </div>
-          </div>
-        ))}
       </div>
 
       <Modal open={open} title={edit ? "Редактировать" : "Новый монстр"} onClose={() => setOpen(false)}>
