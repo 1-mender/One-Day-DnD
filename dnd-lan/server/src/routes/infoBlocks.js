@@ -2,14 +2,15 @@ import express from "express";
 import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
-import { dmAuthMiddleware } from "../auth.js";
+import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
+import { uploadsDir } from "../paths.js";
 
 export const infoBlocksRouter = express.Router();
 
-const ASSETS_DIR = path.resolve("server", "uploads", "assets");
+const ASSETS_DIR = path.join(uploadsDir, "assets");
 fs.mkdirSync(ASSETS_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -32,9 +33,20 @@ function authPlayer(req) {
   return { sess, player };
 }
 
+function isDmRequest(req) {
+  const token = req.cookies?.[getDmCookieName()];
+  if (!token) return false;
+  try {
+    verifyDmToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 infoBlocksRouter.get("/", (req, res) => {
   const db = getDb();
-  const isDm = !!req.cookies?.[process.env.DM_COOKIE || "dm_token"];
+  const isDm = isDmRequest(req);
   if (isDm) {
     const items = db.prepare("SELECT * FROM info_blocks ORDER BY updated_at DESC").all().map(mapBlock);
     return res.json({ items });

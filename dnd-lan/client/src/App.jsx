@@ -8,6 +8,7 @@ import Players from "./player/Players.jsx";
 import Inventory from "./player/Inventory.jsx";
 import Notes from "./player/Notes.jsx";
 import Bestiary from "./player/Bestiary.jsx";
+import Profile from "./player/Profile.jsx";
 
 import DMLogin from "./dm/DMLogin.jsx";
 import DMSetup from "./dm/DMSetup.jsx";
@@ -20,6 +21,7 @@ import DMBestiary from "./dm/DMBestiary.jsx";
 import DMEvents from "./dm/DMEvents.jsx";
 import DMInfoBlocks from "./dm/DMInfoBlocks.jsx";
 import DMSettings from "./dm/DMSettings.jsx";
+import DMPlayerProfile from "./dm/DMPlayerProfile.jsx";
 
 export default function App() {
   return (
@@ -32,6 +34,7 @@ export default function App() {
         <Route path="players" element={<Players />} />
         <Route path="inventory" element={<Inventory />} />
         <Route path="notes" element={<Notes />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="bestiary" element={<Bestiary />} />
       </Route>
 
@@ -43,6 +46,7 @@ export default function App() {
         <Route path="dashboard" element={<DMDashboard />} />
         <Route path="lobby" element={<DMLobby />} />
         <Route path="players" element={<DMPlayers />} />
+        <Route path="players/:id/profile" element={<DMPlayerProfile />} />
         <Route path="inventory" element={<DMInventory />} />
         <Route path="bestiary" element={<DMBestiary />} />
         <Route path="events" element={<DMEvents />} />

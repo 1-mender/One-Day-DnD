@@ -3,6 +3,8 @@ import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { RefreshCcw } from "lucide-react";
 import { useQueryState } from "../hooks/useQueryState.js";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
@@ -15,6 +17,7 @@ export default function Players() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const [listRef] = useAutoAnimate({ duration: 200 });
 
   async function load() {
     setErr("");
@@ -38,22 +41,24 @@ export default function Players() {
 
   const filtered = useMemo(() => {
     const qq = String(q || "").toLowerCase().trim();
-    return (players || []).filter((p) => {
-      if (!qq) return true;
-      return String(p.displayName || "").toLowerCase().includes(qq);
-    });
+    return (players || [])
+      .filter((p) => ["online", "idle"].includes(String(p.status || "offline")))
+      .filter((p) => {
+        if (!qq) return true;
+        return String(p.displayName || "").toLowerCase().includes(qq);
+      });
   }, [players, q]);
 
   return (
     <div className="spread-grid">
       <div className="spread-col">
-        <div className="card taped scrap-card paper-stack">
+        <div className="card taped scrap-card paper-stack no-stamp">
           <div style={{ fontWeight: 1000, fontSize: 20 }}>Игроки</div>
-          <div className="small">Досье и статусы (Online/Idle/Offline)</div>
+          <div className="small">Показаны только Online/Idle (Offline скрыты)</div>
           <hr />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." style={{ width: "min(520px, 100%)" }} />
-            <button className="btn secondary" onClick={load}>Обновить</button>
+            <button className="btn secondary" onClick={load}><RefreshCcw className="icon" />Обновить</button>
           </div>
 
           <div style={{ marginTop: 12 }}>
@@ -65,9 +70,9 @@ export default function Players() {
                 <div className="item"><Skeleton h={120} w="100%" /></div>
               </div>
             ) : filtered.length === 0 ? (
-              <EmptyState title="Нет игроков" hint="Подключите игроков через лобби." />
+              <EmptyState title="Нет онлайн игроков" hint="Offline игроки скрыты. Подключите игроков через лобби." />
             ) : (
-              <div className="list">
+              <div className="list" ref={listRef}>
                 {filtered.map((p) => (
                   <PlayerDossierCard key={p.id} player={p} />
                 ))}
@@ -78,7 +83,7 @@ export default function Players() {
       </div>
 
       <div className="spread-col">
-        <div className="card taped scrap-card">
+        <div className="card taped scrap-card no-stamp">
           <div style={{ fontWeight: 800 }}>Легенда статусов</div>
           <div className="small">Отражает текущую активность</div>
           <hr />

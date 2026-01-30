@@ -13,7 +13,7 @@ export default function PlayerDossierCard({ player, rightActions = null }) {
   const avatar = player.avatarUrl || null;
 
   return (
-    <div className="item taped" style={{ alignItems: "stretch" }}>
+    <div className="item taped dossier-card" style={{ alignItems: "stretch" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <PolaroidFrame src={avatar} alt={player.displayName} fallback={initial} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -24,9 +24,13 @@ export default function PlayerDossierCard({ player, rightActions = null }) {
 
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <span className="badge secondary">PROFILE</span>
-          <span className="badge secondary">NOTES</span>
-          <span className="badge secondary">INVENTORY</span>
+          {player.profileCreated ? (
+            <span className="badge ok">ПРОФИЛЬ OK</span>
+          ) : (
+            <span className="badge warn">НЕТ ПРОФИЛЯ</span>
+          )}
+          <span className="badge secondary">ЗАМЕТКИ</span>
+          <span className="badge secondary">ИНВЕНТАРЬ</span>
         </div>
 
         <div style={{ marginTop: 10, fontWeight: 1000, fontSize: 18 }}>

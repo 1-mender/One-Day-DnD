@@ -126,9 +126,41 @@ CREATE TABLE IF NOT EXISTS events (
   FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS character_profiles (
+  player_id INTEGER PRIMARY KEY,
+  character_name TEXT,
+  class_role TEXT,
+  level INTEGER,
+  stats TEXT NOT NULL DEFAULT '{}',
+  bio TEXT,
+  avatar_url TEXT,
+  editable_fields TEXT NOT NULL DEFAULT '[]',
+  allow_requests INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS profile_change_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  proposed_changes TEXT NOT NULL DEFAULT '{}',
+  reason TEXT,
+  status TEXT NOT NULL DEFAULT 'pending',
+  created_at INTEGER NOT NULL,
+  resolved_at INTEGER,
+  resolved_by TEXT,
+  dm_note TEXT,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
 CREATE INDEX IF NOT EXISTS idx_info_blocks_title ON info_blocks(title);
 CREATE INDEX IF NOT EXISTS idx_events_party_created ON events(party_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_player ON character_profiles(player_id);
+CREATE INDEX IF NOT EXISTS idx_profile_requests_status ON profile_change_requests(status);
+CREATE INDEX IF NOT EXISTS idx_profile_requests_player ON profile_change_requests(player_id);

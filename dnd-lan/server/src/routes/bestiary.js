@@ -2,15 +2,16 @@ import express from "express";
 import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
-import { dmAuthMiddleware } from "../auth.js";
+import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
+import { uploadsDir } from "../paths.js";
 
 export const bestiaryRouter = express.Router();
 
-const MONSTERS_DIR = path.resolve("server", "uploads", "monsters");
-const BESTIARY_DIR = path.resolve("server", "uploads", "bestiary");
+const MONSTERS_DIR = path.join(uploadsDir, "monsters");
+const BESTIARY_DIR = path.join(uploadsDir, "bestiary");
 fs.mkdirSync(MONSTERS_DIR, { recursive: true });
 fs.mkdirSync(BESTIARY_DIR, { recursive: true });
 
@@ -40,10 +41,22 @@ function authPlayer(req) {
   return sess;
 }
 
+function isDmRequest(req) {
+  const token = req.cookies?.[getDmCookieName()];
+  if (!token) return false;
+  try {
+    verifyDmToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 bestiaryRouter.get("/", (req, res) => {
   const db = getDb();
-  const settings = getPartySettings(1);
-  const isDm = !!req.cookies?.[process.env.DM_COOKIE || "dm_token"];
+  const party = getParty();
+  const settings = getPartySettings(party.id);
+  const isDm = isDmRequest(req);
   const sess = authPlayer(req);
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [] });
@@ -173,7 +186,7 @@ bestiaryRouter.post("/:id/image", dmAuthMiddleware, upload.single("image"), (req
 
 bestiaryRouter.post("/settings/toggle", dmAuthMiddleware, (req, res) => {
   const enabled = !!req.body?.enabled;
-  setPartySettings(1, { bestiary_enabled: enabled ? 1 : 0 });
+  setPartySettings(getParty().id, { bestiary_enabled: enabled ? 1 : 0 });
   req.app.locals.io?.emit("settings:updated");
   res.json({ ok: true });
 });

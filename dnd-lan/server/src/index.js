@@ -2,7 +2,6 @@ import express from "express";
 import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
-import { fileURLToPath } from "node:url";
 import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
@@ -11,6 +10,7 @@ import { getDb, initDb } from "./db.js";
 import { ensureUploads } from "./uploads.js";
 import { createSocketServer } from "./sockets.js";
 import { now } from "./util.js";
+import { uploadsDir, publicDir } from "./paths.js";
 
 import { serverInfoRouter } from "./routes/serverInfo.js";
 import { setupRouter } from "./routes/setup.js";
@@ -25,12 +25,9 @@ import { infoBlocksRouter } from "./routes/infoBlocks.js";
 import { backupRouter } from "./routes/backup.js";
 import { bestiaryImagesRouter } from "./routes/bestiaryImages.js";
 import { infoUploadsRouter } from "./routes/infoUploads.js";
+import { profileRouter } from "./routes/profile.js";
 
 const PORT = Number(process.env.PORT || 3000);
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const repoRoot = path.resolve(__dirname, "..", "..");
 
 initDb();
 ensureUploads();
@@ -67,7 +64,7 @@ app.use((req, res, next) => {
 });
 
 // Static uploads
-app.use("/uploads", express.static(path.join(repoRoot, "server", "uploads")));
+app.use("/uploads", express.static(uploadsDir));
 
 // API routes
 app.use("/api/server", serverInfoRouter);
@@ -83,9 +80,9 @@ app.use("/api/info-blocks", infoUploadsRouter);
 app.use("/api/info-blocks", infoBlocksRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/events", eventsRouter);
+app.use("/api", profileRouter);
 
 // Serve built client (prod)
-const publicDir = path.join(repoRoot, "server", "public");
 if (fs.existsSync(publicDir)) {
   app.use(express.static(publicDir));
   app.get("*", (req, res) => {

@@ -1,12 +1,14 @@
 import express from "express";
 import path from "node:path";
 import multer from "multer";
-import { dmAuthMiddleware } from "../auth.js";
-import { randId } from "../util.js";
+import { getDmCookieName, verifyDmToken } from "../auth.js";
+import { getDb } from "../db.js";
+import { jsonParse, now, randId } from "../util.js";
+import { uploadsDir } from "../paths.js";
 
 export const infoUploadsRouter = express.Router();
 
-const UPLOAD_DIR = path.resolve("server", "uploads", "assets");
+const UPLOAD_DIR = path.join(uploadsDir, "assets");
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -25,7 +27,40 @@ function isImage(mime) {
   return String(mime || "").toLowerCase().startsWith("image/");
 }
 
-infoUploadsRouter.post("/upload", dmAuthMiddleware, upload.single("file"), (req, res) => {
+function getPlayerSession(req) {
+  const token = req.header("x-player-token");
+  if (!token) return null;
+  const db = getDb();
+  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
+  if (!sess) return null;
+  return sess;
+}
+
+function dmOrAvatarUpload(req, res, next) {
+  const token = req.cookies?.[getDmCookieName()];
+  if (token) {
+    try {
+      verifyDmToken(token);
+      return next();
+    } catch {
+      // fall through to player check
+    }
+  }
+
+  const sess = getPlayerSession(req);
+  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  if (sess.impersonated && !sess.impersonated_write) {
+    return res.status(403).json({ error: "read_only_impersonation" });
+  }
+  const row = getDb().prepare("SELECT editable_fields FROM character_profiles WHERE player_id=?").get(sess.player_id);
+  if (!row) return res.status(404).json({ error: "profile_not_created" });
+  const parsed = jsonParse(row.editable_fields, []);
+  const fields = Array.isArray(parsed) ? parsed : [];
+  if (!fields.includes("avatarUrl")) return res.status(403).json({ error: "field_not_allowed" });
+  return next();
+}
+
+infoUploadsRouter.post("/upload", dmOrAvatarUpload, upload.single("file"), (req, res) => {
   const f = req.file;
   if (!f) return res.status(400).json({ error: "file_required" });
 

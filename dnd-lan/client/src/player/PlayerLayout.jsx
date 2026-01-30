@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav.jsx";
 import OfflineBanner from "../components/OfflineBanner.jsx";
 import { api, storage } from "../api.js";
@@ -8,6 +8,7 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 
 export default function PlayerLayout() {
   const nav = useNavigate();
+  const location = useLocation();
 
   const sp = new URLSearchParams(window.location.search);
   const imp = sp.get("imp") === "1";
@@ -116,6 +117,7 @@ export default function PlayerLayout() {
 
   const items = [
     { to: "/app/players", label: "Players" },
+    { to: "/app/profile", label: "Profile" },
     { to: "/app/inventory", label: "Inventory" },
     { to: "/app/notes", label: "Notes" },
   ];
@@ -154,7 +156,7 @@ export default function PlayerLayout() {
           </div>
         </div>
       )}
-      <VintageShell layout="spread">
+      <VintageShell layout="spread" pageKey={location.pathname}>
         <div className="container padBottom">
           {netErr && <div className="badge off">Ошибка сети: {netErr}</div>}
           <Outlet context={{ socket }} />

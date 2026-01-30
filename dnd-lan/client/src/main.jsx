@@ -4,6 +4,8 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
 import "./styles.css";
 import "./styles/vintage.css";
+import "@fontsource/cinzel";
+import "@fontsource/special-elite";
 import { ToastProvider } from "./components/ui/ToastProvider.jsx";
 import { applyThemeAssets } from "./theme/themeAssets.js";
 import { applyUiVariant, cycleUiVariant } from "./theme/uiVariant.js";

@@ -1,4 +1,5 @@
 import React from "react";
+import { Eye, EyeOff, Package, PencilLine, Scale, Trash2 } from "lucide-react";
 import MarkdownView from "../markdown/MarkdownView.jsx";
 import PolaroidFrame from "./PolaroidFrame.jsx";
 import RarityRang from "./RarityRang.jsx";
@@ -12,51 +13,93 @@ function pickIcon(item) {
   return "ПРЕДМ";
 }
 
-export default function InventoryItemCard({ item, readOnly, onEdit, onDelete, onToggleVisibility }) {
+export default function InventoryItemCard({
+  item,
+  readOnly,
+  onEdit,
+  onDelete,
+  onToggleVisibility,
+  actionsVariant = "stack"
+}) {
   const icon = pickIcon(item);
-  const vis = item.visibility === "hidden" ? "Скрытый" : "Публичный";
+  const isHidden = item.visibility === "hidden";
+  const vis = isHidden ? "Скрытый" : "Публичный";
   const img = item.imageUrl || null;
   const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility;
+  const weight = Number(item.weight || 0);
+  const compact = actionsVariant === "compact";
 
   return (
-    <div className="item taped" style={{ alignItems: "stretch" }}>
-      <PolaroidFrame src={img} alt={item.name} fallback={icon} />
+    <div className="item taped inv-card" data-visibility={item.visibility} style={{ alignItems: "stretch" }}>
+      <div className="inv-illu">
+        <PolaroidFrame className="sm" src={img} alt={item.name} fallback={icon} />
+      </div>
 
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <div style={{ fontWeight: 1000, fontSize: 16 }}>{item.name}</div>
-          <span className="badge">x{item.qty}</span>
-          <span className="badge">{vis}</span>
-          <span className="badge">вес:{Number(item.weight || 0)}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div className="inv-meta">
+          <div className="inv-title">{item.name}</div>
+          <span className="badge"><Package className="icon" />x{item.qty}</span>
+          <span className={`badge ${isHidden ? "off" : "ok"}`}>
+            {isHidden ? <EyeOff className="icon" /> : <Eye className="icon" />}{vis}
+          </span>
+          <span className="badge secondary"><Scale className="icon" />{weight.toFixed(2)}</span>
           {item.updated_by === "dm" && <span className="badge warn">изменено DM</span>}
         </div>
 
-        <div style={{ marginTop: 8 }}>
+        <div className="inv-meta" style={{ marginTop: 8 }}>
           <RarityRang rarity={item.rarity} />
+          {Array.isArray(item.tags) && item.tags.length ? (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {item.tags.slice(0, 8).map((t) => <span key={t} className="badge secondary">{t}</span>)}
+            </div>
+          ) : null}
         </div>
 
         {item.description ? (
-          <div style={{ marginTop: 8 }}>
+          <div className="inv-desc" style={{ marginTop: 8 }}>
             <MarkdownView source={item.description} />
-          </div>
-        ) : null}
-
-        {Array.isArray(item.tags) && item.tags.length ? (
-          <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {item.tags.slice(0, 8).map((t) => <span key={t} className="badge secondary">{t}</span>)}
           </div>
         ) : null}
       </div>
 
       {hasActions ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 110 }}>
-          {onEdit && <button className="btn secondary" onClick={onEdit} disabled={readOnly}>Ред.</button>}
-          {onToggleVisibility && (
-            <button className="btn secondary" onClick={onToggleVisibility} disabled={readOnly}>
-              {item.visibility === "hidden" ? "Сделать публичным" : "Сделать скрытым"}
+        <div className={`inv-actions ${compact ? "compact" : ""}`.trim()}>
+          {onEdit && (
+            <button
+              className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
+              onClick={onEdit}
+              disabled={readOnly}
+              title="Редактировать"
+              aria-label="Редактировать"
+            >
+              <PencilLine className="icon" />
+              {compact ? null : "Редактировать"}
             </button>
           )}
-          {onDelete && <button className="btn danger" onClick={onDelete} disabled={readOnly}>Удал.</button>}
+          {onToggleVisibility && (
+            <button
+              className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
+              onClick={onToggleVisibility}
+              disabled={readOnly}
+              title={isHidden ? "Сделать публичным" : "Сделать скрытым"}
+              aria-label={isHidden ? "Сделать публичным" : "Сделать скрытым"}
+            >
+              {isHidden ? <Eye className="icon" /> : <EyeOff className="icon" />}
+              {compact ? null : (isHidden ? "Сделать публичным" : "Сделать скрытым")}
+            </button>
+          )}
+          {onDelete && (
+            <button
+              className={`btn danger ${compact ? "icon-btn" : ""}`.trim()}
+              onClick={onDelete}
+              disabled={readOnly}
+              title="Удалить"
+              aria-label="Удалить"
+            >
+              <Trash2 className="icon" />
+              {compact ? null : "Удалить"}
+            </button>
+          )}
         </div>
       ) : null}
     </div>

@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
+  const nav = useNavigate();
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
   async function load() {
@@ -25,6 +27,10 @@ export default function DMPlayers() {
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  function openProfile(playerId) {
+    nav(`/dm/app/players/${playerId}/profile`);
+  }
+
   return (
     <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
@@ -37,6 +43,7 @@ export default function DMPlayers() {
             player={p}
             rightActions={(
               <>
+                <button className="btn" onClick={() => openProfile(p.id)}>Профиль персонажа</button>
                 <button className="btn secondary" onClick={() => viewAs(p.id)}>Как игрок</button>
                 <button className="btn danger" onClick={() => api.dmKick(p.id).then(load)}>Kick</button>
               </>

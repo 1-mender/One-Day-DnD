@@ -1,5 +1,5 @@
 import express from "express";
-import { getDmCookieName, loginDm, signDmToken, changeDmPassword } from "../auth.js";
+import { getDmCookieName, loginDm, signDmToken, changeDmPassword, verifyDmToken } from "../auth.js";
 import { dbHasDm, getDb } from "../db.js";
 import { dmAuthMiddleware } from "../auth.js";
 
@@ -10,8 +10,7 @@ authRouter.get("/me", (req, res) => {
   const token = req.cookies?.[getDmCookieName()];
   if (!token) return res.json({ authenticated: false });
   try {
-    // verify by reading user in DB (token verify done in middleware normally)
-    // here simply check cookie exists; client will navigate accordingly
+    verifyDmToken(token);
     return res.json({ authenticated: true });
   } catch {
     return res.json({ authenticated: false });

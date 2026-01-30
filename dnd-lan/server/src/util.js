@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import crypto from "node:crypto";
 
 export const now = () => Date.now();
 export const jsonParse = (s, fallback) => {
@@ -10,8 +11,9 @@ export const ensureDir = (p) => fs.mkdirSync(p, { recursive: true });
 
 export const randId = (len = 16) => {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const bytes = crypto.randomBytes(len);
   let out = "";
-  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < len; i++) out += chars[bytes[i] % chars.length];
   return out;
 };
 

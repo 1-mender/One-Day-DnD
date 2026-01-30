@@ -6,6 +6,7 @@ import unzipper from "unzipper";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
 import { closeDb, reloadDb, DATA_DIR, DB_PATH } from "../db.js";
+import { uploadsDir } from "../paths.js";
 
 export const backupRouter = express.Router();
 
@@ -13,7 +14,7 @@ const upload = multer({ dest: path.join(DATA_DIR, "tmp") });
 
 backupRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const dbPath = DB_PATH;
-  const uploadsPath = path.resolve("server", "uploads");
+  const uploadsPath = uploadsDir;
 
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", "attachment; filename=\"dnd-lan-backup.zip\"");
@@ -49,7 +50,7 @@ backupRouter.post("/import", dmAuthMiddleware, upload.single("zip"), async (req,
     if (!fs.existsSync(srcDb)) return res.status(400).json({ error: "invalid_backup_no_db" });
 
     const dstDb = DB_PATH;
-    const dstUploads = path.resolve("server", "uploads");
+    const dstUploads = uploadsDir;
     fs.mkdirSync(DATA_DIR, { recursive: true });
 
     // backup old

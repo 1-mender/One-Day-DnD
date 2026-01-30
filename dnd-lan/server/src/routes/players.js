@@ -18,7 +18,19 @@ function getPlayerFromToken(req) {
 playersRouter.get("/", (req, res) => {
   const db = getDb();
   const partyId = getPartyId();
-  const rows = db.prepare("SELECT id, display_name as displayName, status, last_seen as lastSeen FROM players WHERE party_id=? AND banned=0 ORDER BY id").all(partyId);
+  const rows = db.prepare(
+    `
+    SELECT p.id,
+           p.display_name as displayName,
+           p.status,
+           p.last_seen as lastSeen,
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated
+    FROM players p
+    LEFT JOIN character_profiles cp ON cp.player_id = p.id
+    WHERE p.party_id=? AND p.banned=0
+    ORDER BY p.id
+  `
+  ).all(partyId);
   res.json({ items: rows });
 });
 
@@ -33,6 +45,19 @@ playersRouter.get("/me", (req, res) => {
 playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getPartyId();
-  const rows = db.prepare("SELECT id, display_name as displayName, status, last_seen as lastSeen, created_at as createdAt FROM players WHERE party_id=? ORDER BY id").all(partyId);
+  const rows = db.prepare(
+    `
+    SELECT p.id,
+           p.display_name as displayName,
+           p.status,
+           p.last_seen as lastSeen,
+           p.created_at as createdAt,
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated
+    FROM players p
+    LEFT JOIN character_profiles cp ON cp.player_id = p.id
+    WHERE p.party_id=?
+    ORDER BY p.id
+  `
+  ).all(partyId);
   res.json({ items: rows });
 });

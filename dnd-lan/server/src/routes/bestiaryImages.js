@@ -6,10 +6,11 @@ import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
 import { now, randId } from "../util.js";
 import { logEvent } from "../events.js";
+import { uploadsDir } from "../paths.js";
 
 export const bestiaryImagesRouter = express.Router();
 
-const UPLOAD_DIR = path.resolve("server", "uploads", "bestiary");
+const UPLOAD_DIR = path.join(uploadsDir, "bestiary");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const storage = multer.diskStorage({

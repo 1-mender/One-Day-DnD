@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Outlet, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import OfflineBanner from "../components/OfflineBanner.jsx";
 import { connectSocket } from "../socket.js";
@@ -8,6 +8,7 @@ import DMTabBar from "./DMTabBar.jsx";
 
 export default function DMLayout() {
   const nav = useNavigate();
+  const location = useLocation();
   const [online, setOnline] = useState(true);
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
@@ -25,7 +26,7 @@ export default function DMLayout() {
   return (
     <div className="dm-root">
       <OfflineBanner online={online && navigator.onLine} />
-      <VintageShell layout="spread">
+      <VintageShell layout="spread" pageKey={location.pathname}>
         <DMTabBar />
         <div className="container">
           <Outlet context={{ socket }} />

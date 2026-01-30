@@ -40,6 +40,16 @@ function ensureMigrations(database) {
   if (!cols.includes("impersonated_write")) {
     database.exec("ALTER TABLE sessions ADD COLUMN impersonated_write INTEGER NOT NULL DEFAULT 0;");
   }
+
+  const reqCols = database.prepare("PRAGMA table_info(profile_change_requests)").all().map((c) => c.name);
+  if (reqCols.length) {
+    if (!reqCols.includes("reason")) {
+      database.exec("ALTER TABLE profile_change_requests ADD COLUMN reason TEXT;");
+    }
+    if (!reqCols.includes("dm_note")) {
+      database.exec("ALTER TABLE profile_change_requests ADD COLUMN dm_note TEXT;");
+    }
+  }
 }
 
 export function initDb() {

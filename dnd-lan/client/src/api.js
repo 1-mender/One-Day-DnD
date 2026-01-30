@@ -45,7 +45,10 @@ async function request(path, opts = {}) {
 async function upload(path, file) {
   const fd = new FormData();
   fd.append("file", file);
-  const res = await fetch(path, { method: "POST", body: fd, credentials: "include" });
+  const headers = {};
+  const token = storage.getPlayerToken();
+  if (token) headers["x-player-token"] = token;
+  const res = await fetch(path, { method: "POST", body: fd, headers, credentials: "include" });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(body?.error || "upload_failed"), { status: res.status, body });
   return body;
@@ -73,6 +76,27 @@ export const api = {
   players: () => request("/api/players", { method: "GET" }),
   me: () => request("/api/players/me", { method: "GET" }),
   dmPlayers: () => request("/api/players/dm/list", { method: "GET" }),
+  playerProfile: (playerId) => request(`/api/players/${playerId}/profile`, { method: "GET" }),
+  dmUpdatePlayerProfile: (playerId, profile) =>
+    request(`/api/players/${playerId}/profile`, { method: "PUT", body: JSON.stringify(profile) }),
+  playerPatchProfile: (playerId, patch) =>
+    request(`/api/players/${playerId}/profile`, { method: "PATCH", body: JSON.stringify(patch) }),
+  playerProfileRequest: (playerId, proposedChanges, reason = "") =>
+    request(`/api/players/${playerId}/profile-requests`, { method: "POST", body: JSON.stringify({ proposedChanges, reason }) }),
+  dmProfileRequests: (status = "pending") =>
+    request(`/api/profile-requests?status=${encodeURIComponent(status)}`, { method: "GET" }),
+  dmApproveProfileRequest: (requestId, note = "") =>
+    request(`/api/profile-requests/${requestId}/approve`, { method: "POST", body: JSON.stringify({ note }) }),
+  dmRejectProfileRequest: (requestId, note = "") =>
+    request(`/api/profile-requests/${requestId}/reject`, { method: "POST", body: JSON.stringify({ note }) }),
+  playerProfileRequests: (playerId, { status = "", limit = 5 } = {}) => {
+    const sp = new URLSearchParams();
+    if (status) sp.set("status", status);
+    if (limit) sp.set("limit", String(limit));
+    const qs = sp.toString();
+    return request(`/api/players/${playerId}/profile-requests${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
+  uploadAsset: (file) => upload("/api/info-blocks/upload", file),
 
   invMine: () => request("/api/inventory/mine", { method: "GET" }),
   invAddMine: (item) => request("/api/inventory/mine", { method: "POST", body: JSON.stringify(item) }),

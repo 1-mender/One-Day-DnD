@@ -5,6 +5,8 @@ import { connectSocket } from "../socket.js";
 import InventoryItemCard from "../components/vintage/InventoryItemCard.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
+import { useAutoAnimate } from "@formkit/auto-animate/react";
+import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale } from "lucide-react";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
@@ -17,6 +19,8 @@ export default function Inventory() {
 
   const [q, setQ] = useQueryState("q", "");
   const [vis, setVis] = useQueryState("vis", "");
+  const [rarity, setRarity] = useQueryState("rarity", "");
+  const [view, setView] = useQueryState("view", "list");
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
@@ -24,6 +28,7 @@ export default function Inventory() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const [listRef] = useAutoAnimate({ duration: 200 });
 
   const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
 
@@ -46,15 +51,9 @@ export default function Inventory() {
     return () => socket.disconnect();
   }, []);
 
-  const filtered = useMemo(() => {
-    const qq = String(q || "").toLowerCase().trim();
-    return (items || []).filter((it) => {
-      if (vis && String(it.visibility) !== vis) return false;
-      if (!qq) return true;
-      return String(it.name || "").toLowerCase().includes(qq);
-    });
-  }, [items, q, vis]);
-  const totalWeight = filtered.reduce((s, it) => s + (Number(it.weight)||0) * (Number(it.qty)||1), 0);
+  const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
+  const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
+  const hasAny = items.length > 0;
 
   function startAdd() {
     if (readOnly) return;
@@ -119,7 +118,7 @@ export default function Inventory() {
       <div style={{ fontWeight: 800, fontSize: 18 }}>Инвентарь</div>
       <div className="small">Вес (по фильтру): {totalWeight.toFixed(2)} {readOnly ? "• read-only" : ""}</div>
         </div>
-        <button className="btn" onClick={startAdd} disabled={readOnly}>+ Добавить</button>
+        <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" />Добавить</button>
       </div>
       <hr />
       <div className="row" style={{ flexWrap: "wrap" }}>
@@ -129,11 +128,32 @@ export default function Inventory() {
           <option value="public">Публичные</option>
           <option value="hidden">Скрытые</option>
         </select>
-        <button className="btn secondary" onClick={load}>Обновить</button>
+        <select value={rarity} onChange={(e)=>setRarity(e.target.value)} style={{ width: 200 }}>
+          <option value="">Редкость: все</option>
+          <option value="common">common</option>
+          <option value="uncommon">uncommon</option>
+          <option value="rare">rare</option>
+          <option value="very_rare">very_rare</option>
+          <option value="legendary">legendary</option>
+          <option value="custom">custom</option>
+        </select>
+        <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
+          <List className="icon" />Список
+        </button>
+        <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
+          <LayoutGrid className="icon" />Плитка
+        </button>
+        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" />Обновить</button>
       </div>
 
       <div className="small" style={{ marginTop: 10 }}>
-        Всего: <b>{filtered.length}</b> • Вес: <b>{totalWeight.toFixed(2)}</b> {readOnly ? "• read-only" : ""}
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <span className="badge"><Package className="icon" />Всего: {filtered.length}</span>
+          <span className="badge ok"><Eye className="icon" />Публичные: {publicCount}</span>
+          <span className="badge off"><EyeOff className="icon" />Скрытые: {hiddenCount}</span>
+          <span className="badge secondary"><Scale className="icon" />Вес: {totalWeight.toFixed(2)}</span>
+          {readOnly ? <span className="badge warn">read-only</span> : null}
+        </div>
       </div>
 
       <div style={{ marginTop: 12 }}>
@@ -146,14 +166,18 @@ export default function Inventory() {
             <div className="item"><Skeleton h={86} w="100%" /></div>
           </div>
         ) : filtered.length === 0 ? (
-          <EmptyState title="Нет предметов" hint="Добавьте предмет или измените фильтры." />
+          <EmptyState
+            title={hasAny ? "Ничего не найдено" : "Инвентарь пуст"}
+            hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
+          />
         ) : (
-          <div className="list">
+          <div className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`} ref={listRef}>
             {filtered.map((it) => (
               <InventoryItemCard
                 key={it.id}
                 item={it}
                 readOnly={readOnly}
+                actionsVariant={view === "grid" ? "compact" : "stack"}
                 onEdit={() => startEdit(it)}
                 onDelete={() => del(it.id)}
                 onToggleVisibility={() => toggleVisibility(it)}
@@ -199,3 +223,25 @@ export default function Inventory() {
 }
 
 const inp = { width: "100%" };
+
+function filterInventory(items, { q, vis, rarity }) {
+  const list = items || [];
+  const qq = String(q || "").toLowerCase().trim();
+  return list.filter((it) => {
+    if (vis && String(it.visibility) !== vis) return false;
+    if (rarity && String(it.rarity || "") !== rarity) return false;
+    if (!qq) return true;
+    return String(it.name || "").toLowerCase().includes(qq);
+  });
+}
+
+function summarizeInventory(list) {
+  return (list || []).reduce((acc, it) => {
+    const qty = Number(it.qty) || 1;
+    const weight = Number(it.weight) || 0;
+    acc.totalWeight += weight * qty;
+    if (String(it.visibility) === "hidden") acc.hiddenCount += 1;
+    else acc.publicCount += 1;
+    return acc;
+  }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
+}
