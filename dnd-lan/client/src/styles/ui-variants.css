@@ -89,34 +89,32 @@
   gap: 8px;
   flex-wrap: wrap;
   justify-content: center;
-  padding: 10px;
-  border-radius: 18px;
-  background:
-    var(--noise),
-    linear-gradient(180deg, #f2e6cd, #dcc59d);
-  border: 1px solid rgba(110,90,55,.42);
-  box-shadow: 0 12px 24px rgba(0,0,0,.25);
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.12);
+  box-shadow: 0 12px 24px rgba(0,0,0,.35);
 }
 :root[data-ui="v2"] .dm-tab{
   text-decoration: none;
-  border-radius: 14px;
-  padding: 10px 12px;
-  font-weight: 1000;
-  color: var(--ink);
-  border: 2px solid rgba(70,55,30,.30);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 800;
+  color: #2f2418;
+  border: 1px solid rgba(70,55,30,.25);
   background:
-    var(--noise),
-    linear-gradient(180deg, #f7ecd1, #e2caa4);
-  box-shadow: 0 6px 12px rgba(0,0,0,.18);
+    var(--paper-grain),
+    linear-gradient(180deg, #f4ead2, #e5d2b0);
+  box-shadow: 0 6px 10px rgba(0,0,0,.18);
   position: relative;
 }
-:root[data-ui="v2"] .dm-tab:nth-child(odd){ transform: rotate(-1.2deg); }
-:root[data-ui="v2"] .dm-tab:nth-child(even){ transform: rotate(0.8deg); }
+:root[data-ui="v2"] .dm-tab:nth-child(odd){ transform: rotate(-0.4deg); }
+:root[data-ui="v2"] .dm-tab:nth-child(even){ transform: rotate(0.3deg); }
 :root[data-ui="v2"] .dm-tab.active{
   background:
-    var(--noise),
-    linear-gradient(180deg, #fff3d6, #e6cfaa);
-  box-shadow: 0 8px 16px rgba(0,0,0,.22);
+    var(--paper-grain),
+    linear-gradient(180deg, #fff6dd, #ead6b4);
+  box-shadow: 0 8px 16px rgba(0,0,0,.28);
 }
 
 :root[data-ui="v3"]{
