@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api, storage } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
@@ -11,8 +11,9 @@ import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
 import { formatError } from "../lib/formatError.js";
+import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 
-const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public" };
+const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", imageUrl:"" };
 
 export default function Inventory() {
   const toast = useToast();
@@ -32,7 +33,7 @@ export default function Inventory() {
 
   const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
 
-  async function load() {
+  const load = useCallback(async () => {
     setErr("");
     setLoading(true);
     try {
@@ -43,13 +44,13 @@ export default function Inventory() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load().catch(()=>{});
-    socket.on("inventory:updated", () => load().catch(()=>{}));
+    load().catch(() => {});
+    socket.on("inventory:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
@@ -64,7 +65,7 @@ export default function Inventory() {
   function startEdit(it) {
     if (readOnly) return;
     setEdit(it);
-    setForm({ ...it, tags: it.tags || [] });
+    setForm({ ...it, imageUrl: it.imageUrl || it.image_url || "", tags: it.tags || [] });
     setOpen(true);
   }
 
@@ -130,12 +131,9 @@ export default function Inventory() {
         </select>
         <select value={rarity} onChange={(e)=>setRarity(e.target.value)} style={{ width: 200 }}>
           <option value="">Редкость: все</option>
-          <option value="common">common</option>
-          <option value="uncommon">uncommon</option>
-          <option value="rare">rare</option>
-          <option value="very_rare">very_rare</option>
-          <option value="legendary">legendary</option>
-          <option value="custom">custom</option>
+          {RARITY_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
         <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
           <List className="icon" />Список
@@ -197,18 +195,21 @@ export default function Inventory() {
           </div>
           <div className="row">
             <select value={form.rarity} onChange={(e)=>setForm({ ...form, rarity: e.target.value })} style={inp}>
-              <option value="common">common</option>
-              <option value="uncommon">uncommon</option>
-              <option value="rare">rare</option>
-              <option value="very_rare">very_rare</option>
-              <option value="legendary">legendary</option>
-              <option value="custom">custom</option>
+              {RARITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
             <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} style={inp}>
               <option value="public">Public</option>
               <option value="hidden">Hidden</option>
             </select>
           </div>
+          <input
+            value={form.imageUrl || ""}
+            onChange={(e)=>setForm({ ...form, imageUrl: e.target.value })}
+            placeholder="URL изображения"
+            style={inp}
+          />
           <input
             value={(form.tags || []).join(", ")}
             onChange={(e)=>setForm({ ...form, tags: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) })}

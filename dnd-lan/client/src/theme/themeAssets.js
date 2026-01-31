@@ -48,11 +48,9 @@ export function applyThemeAssets() {
     { key: "--tex-tape", url: tapeUrl }
   ];
 
-  let missing = 0;
   for (const c of checks) {
     const img = new Image();
     img.onerror = () => {
-      missing += 1;
       root.style.setProperty(c.key, "none");
       root.classList.add("theme-no-textures");
     };

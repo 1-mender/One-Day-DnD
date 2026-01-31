@@ -1,5 +1,9 @@
-export function formatError(e) {
-  if (!e) return "unknown_error";
+import { ERROR_CODES } from "./errorCodes.js";
+
+export function formatError(e, fallback = ERROR_CODES.REQUEST_FAILED) {
+  if (!e) return fallback;
+  if (typeof e === "string") return e;
   const bodyErr = e?.body?.error;
-  return bodyErr || e.message || "request_failed";
+  const directErr = e?.error;
+  return bodyErr || directErr || e.message || fallback;
 }

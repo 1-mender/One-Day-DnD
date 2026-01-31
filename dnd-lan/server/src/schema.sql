@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   player_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   description TEXT,
+  image_url TEXT,
   qty INTEGER NOT NULL DEFAULT 1,
   weight REAL NOT NULL DEFAULT 0,
   rarity TEXT NOT NULL DEFAULT 'common',

@@ -17,6 +17,14 @@ export const randId = (len = 16) => {
   return out;
 };
 
+export const wrapMulter = (middleware) => (req, res, next) => {
+  middleware(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
+    return res.status(400).json({ error: "upload_failed", details: String(err?.message || err) });
+  });
+};
+
 export const copyClientDistToServerPublic = () => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);

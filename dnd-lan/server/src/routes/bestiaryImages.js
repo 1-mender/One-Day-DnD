@@ -4,7 +4,7 @@ import fs from "node:fs";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
-import { now, randId } from "../util.js";
+import { now, randId, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 
@@ -29,7 +29,13 @@ function isAllowedImage(mime) {
 const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => cb(null, isAllowedImage(file.mimetype))
+  fileFilter: (req, file, cb) => {
+    if (!isAllowedImage(file.mimetype)) {
+      req.fileValidationError = "unsupported_file_type";
+      return cb(null, false);
+    }
+    cb(null, true);
+  }
 });
 
 bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
@@ -52,7 +58,7 @@ bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
   res.json({ items: rows });
 });
 
-bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, upload.single("file"), (req, res) => {
+bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
   const db = getDb();
   const monsterId = Number(req.params.monsterId);
   if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
@@ -61,6 +67,7 @@ bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, upload.single(
   if (!monster) return res.status(404).json({ error: "monster_not_found" });
 
   const f = req.file;
+  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
   if (!f) return res.status(400).json({ error: "file_required" });
   if (!isAllowedImage(f.mimetype)) return res.status(415).json({ error: "unsupported_file_type" });
 

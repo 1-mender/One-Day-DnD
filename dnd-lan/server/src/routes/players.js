@@ -1,6 +1,8 @@
 import express from "express";
-import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getPartyId } from "../db.js";
+import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
+import { getDb, getPartyId, getParty } from "../db.js";
+import { now } from "../util.js";
+import { logEvent } from "../events.js";
 
 export const playersRouter = express.Router();
 
@@ -15,7 +17,22 @@ function getPlayerFromToken(req) {
   return { sess, player };
 }
 
+function isDmRequest(req) {
+  const token = req.cookies?.[getDmCookieName()];
+  if (!token) return false;
+  try {
+    verifyDmToken(token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 playersRouter.get("/", (req, res) => {
+  const isDm = isDmRequest(req);
+  const me = getPlayerFromToken(req);
+  if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
+
   const db = getDb();
   const partyId = getPartyId();
   const rows = db.prepare(
@@ -60,4 +77,67 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
   `
   ).all(partyId);
   res.json({ items: rows });
+});
+
+playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {
+  const pid = Number(req.params.id);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "not_found" });
+
+  const name = String(req.body?.displayName || "").trim();
+  if (!name) return res.status(400).json({ error: "name_required" });
+
+  db.prepare("UPDATE players SET display_name=? WHERE id=?").run(name, pid);
+
+  req.app.locals.io?.to("dm").emit("players:updated");
+  req.app.locals.io?.to(`party:${player.party_id}`).emit("players:updated");
+
+  logEvent({
+    partyId: player.party_id ?? getParty().id,
+    type: "player.updated",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: pid,
+    message: `Переименован игрок: ${player.display_name} → ${name}`,
+    data: { playerId: pid, from: player.display_name, to: name },
+    io: req.app.locals.io
+  });
+
+  res.json({ ok: true });
+});
+
+playersRouter.delete("/dm/:id", dmAuthMiddleware, (req, res) => {
+  const pid = Number(req.params.id);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "not_found" });
+
+  db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
+  db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(now(), pid);
+  db.prepare("DELETE FROM players WHERE id=?").run(pid);
+
+  req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
+  req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
+  req.app.locals.io?.to("dm").emit("players:updated");
+  req.app.locals.io?.to(`party:${player.party_id}`).emit("players:updated");
+
+  logEvent({
+    partyId: player.party_id ?? getParty().id,
+    type: "player.deleted",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: pid,
+    message: `Удалён игрок: ${player.display_name || pid}`,
+    data: { playerId: pid },
+    io: req.app.locals.io
+  });
+
+  res.json({ ok: true });
 });

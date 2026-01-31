@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
@@ -19,7 +19,7 @@ export default function Players() {
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
   const [listRef] = useAutoAnimate({ duration: 200 });
 
-  async function load() {
+  const load = useCallback(async () => {
     setErr("");
     setLoading(true);
     try {
@@ -30,14 +30,14 @@ export default function Players() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    load().catch(()=>{});
-    socket.on("player:statusChanged", () => load().catch(()=>{}));
-    socket.on("players:updated", () => load().catch(()=>{}));
+    load().catch(() => {});
+    socket.on("player:statusChanged", () => load().catch(() => {}));
+    socket.on("players:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
   const filtered = useMemo(() => {
     const qq = String(q || "").toLowerCase().trim();

@@ -1,3 +1,6 @@
+import { ERROR_CODES } from "./lib/errorCodes.js";
+import { safeFetch, parseBody, makeError, requestBlob } from "./api/http.js";
+
 const PLAYER_TOKEN_KEY = "dnd_player_token";
 const JOIN_REQ_KEY = "dnd_join_request_id";
 const IMP_FLAG_KEY = "dnd_impersonating";
@@ -31,26 +34,29 @@ async function request(path, opts = {}) {
   const token = storage.getPlayerToken();
   if (token) headers["x-player-token"] = token;
 
-  const res = await fetch(path, {
+  const res = await safeFetch(path, {
     ...opts,
     headers,
     credentials: "include"
   });
-  const ct = res.headers.get("content-type") || "";
-  const body = ct.includes("application/json") ? await res.json() : await res.text();
-  if (!res.ok) throw Object.assign(new Error(body?.error || "request_failed"), { status: res.status, body });
+  const body = await parseBody(res);
+  if (!res.ok) throw makeError(body?.error || ERROR_CODES.REQUEST_FAILED, res, body);
   return body;
 }
 
 async function upload(path, file) {
   const fd = new FormData();
   fd.append("file", file);
+  return await uploadForm(path, fd, ERROR_CODES.UPLOAD_FAILED);
+}
+
+async function uploadForm(path, formData, fallbackError) {
   const headers = {};
   const token = storage.getPlayerToken();
   if (token) headers["x-player-token"] = token;
-  const res = await fetch(path, { method: "POST", body: fd, headers, credentials: "include" });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(body?.error || "upload_failed"), { status: res.status, body });
+  const res = await safeFetch(path, { method: "POST", body: formData, headers, credentials: "include" });
+  const body = await parseBody(res);
+  if (!res.ok) throw makeError(body?.error || fallbackError, res, body);
   return body;
 }
 
@@ -76,6 +82,10 @@ export const api = {
   players: () => request("/api/players", { method: "GET" }),
   me: () => request("/api/players/me", { method: "GET" }),
   dmPlayers: () => request("/api/players/dm/list", { method: "GET" }),
+  dmUpdatePlayer: (playerId, patch) =>
+    request(`/api/players/dm/${playerId}`, { method: "PUT", body: JSON.stringify(patch) }),
+  dmDeletePlayer: (playerId) =>
+    request(`/api/players/dm/${playerId}`, { method: "DELETE" }),
   playerProfile: (playerId) => request(`/api/players/${playerId}/profile`, { method: "GET" }),
   dmUpdatePlayerProfile: (playerId, profile) =>
     request(`/api/players/${playerId}/profile`, { method: "PUT", body: JSON.stringify(profile) }),
@@ -104,6 +114,10 @@ export const api = {
   invDeleteMine: (id) => request(`/api/inventory/mine/${id}`, { method: "DELETE" }),
   invDmGetPlayer: (playerId) => request(`/api/inventory/player/${playerId}`, { method: "GET" }),
   invDmAddToPlayer: (playerId, item) => request(`/api/inventory/dm/player/${playerId}`, { method: "POST", body: JSON.stringify(item) }),
+  invDmUpdatePlayerItem: (playerId, itemId, item) =>
+    request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "PUT", body: JSON.stringify(item) }),
+  invDmDeletePlayerItem: (playerId, itemId) =>
+    request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "DELETE" }),
 
   bestiary: () => request("/api/bestiary", { method: "GET" }),
   dmBestiaryCreate: (m) => request("/api/bestiary", { method: "POST", body: JSON.stringify(m) }),
@@ -113,11 +127,8 @@ export const api = {
   dmBestiaryImages: (monsterId) => request(`/api/bestiary/${monsterId}/images`, { method: "GET" }),
   dmBestiaryUploadImage: (monsterId, file) => upload(`/api/bestiary/${monsterId}/images`, file),
   dmBestiaryDeleteImage: (imageId) => request(`/api/bestiary/images/${imageId}`, { method: "DELETE" }),
-  dmBestiaryExportJson: async (withImages = true) => {
-    const res = await fetch(`/api/bestiary/export?withImages=${withImages ? "1" : "0"}`, { credentials: "include" });
-    if (!res.ok) throw new Error("export_failed");
-    return await res.blob();
-  },
+  dmBestiaryExportJson: async (withImages = true) =>
+    requestBlob(`/api/bestiary/export?withImages=${withImages ? "1" : "0"}`, ERROR_CODES.EXPORT_FAILED),
   dmBestiaryImportJson: (file, {
     mode = "merge",
     match = "name",
@@ -169,9 +180,7 @@ export const api = {
     if (since) sp.set("since", String(since));
     sp.set("max", String(max));
 
-    const res = await fetch(`/api/events/export?${sp.toString()}`, { credentials: "include" });
-    if (!res.ok) throw new Error("export_failed");
-    return await res.blob();
+    return requestBlob(`/api/events/export?${sp.toString()}`, ERROR_CODES.EXPORT_FAILED);
   },
   dmEventsCleanup: (payload) =>
     request("/api/events/cleanup", { method: "POST", body: JSON.stringify(payload) }),
@@ -182,18 +191,10 @@ export const api = {
   dmInfoDelete: (id) => request(`/api/info-blocks/${id}`, { method: "DELETE" }),
   dmInfoUploadAsset: (file) => upload("/api/info-blocks/upload", file),
 
-  exportZip: async () => {
-    const res = await fetch("/api/backup/export", { credentials: "include" });
-    if (!res.ok) throw new Error("export_failed");
-    const blob = await res.blob();
-    return blob;
-  },
+  exportZip: async () => requestBlob("/api/backup/export", ERROR_CODES.EXPORT_FAILED),
   importZip: async (file) => {
     const fd = new FormData();
     fd.append("zip", file);
-    const res = await fetch("/api/backup/import", { method: "POST", body: fd, credentials: "include" });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw Object.assign(new Error(body?.error || "import_failed"), { body });
-    return body;
+    return uploadForm("/api/backup/import", fd, ERROR_CODES.IMPORT_FAILED);
   }
 };

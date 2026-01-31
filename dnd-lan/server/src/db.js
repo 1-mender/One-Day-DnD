@@ -50,6 +50,11 @@ function ensureMigrations(database) {
       database.exec("ALTER TABLE profile_change_requests ADD COLUMN dm_note TEXT;");
     }
   }
+
+  const invCols = database.prepare("PRAGMA table_info(inventory_items)").all().map((c) => c.name);
+  if (invCols.length && !invCols.includes("image_url")) {
+    database.exec("ALTER TABLE inventory_items ADD COLUMN image_url TEXT;");
+  }
 }
 
 export function initDb() {

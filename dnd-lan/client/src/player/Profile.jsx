@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, storage } from "../api.js";
 import { connectSocket } from "../socket.js";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
@@ -43,10 +43,28 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
+  const reqStatusRef = useRef(reqStatus);
 
   const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
 
-  async function load() {
+  useEffect(() => {
+    reqStatusRef.current = reqStatus;
+  }, [reqStatus]);
+
+  const loadRequests = useCallback(async (pid, status) => {
+    if (!pid) return;
+    setReqLoading(true);
+    try {
+      const r = await api.playerProfileRequests(pid, { limit: 10, status: status === "all" ? "" : status });
+      setRequests(r.items || []);
+    } catch {
+      setRequests([]);
+    } finally {
+      setReqLoading(false);
+    }
+  }, []);
+
+  const load = useCallback(async () => {
     setErr("");
     setLoading(true);
     try {
@@ -62,36 +80,32 @@ export default function Profile() {
         setProfile(r.profile);
         setNotCreated(false);
       }
-      await loadRequests(pid);
+      await loadRequests(pid, reqStatusRef.current);
     } catch (e) {
       setErr(formatError(e));
     } finally {
       setLoading(false);
     }
-  }
+  }, [loadRequests]);
 
-  async function loadRequests(pid = playerId, status = reqStatus) {
-    if (!pid) return;
-    setReqLoading(true);
-    try {
-      const r = await api.playerProfileRequests(pid, { limit: 10, status: status === "all" ? "" : status });
-      setRequests(r.items || []);
-    } catch {
-      setRequests([]);
-    } finally {
-      setReqLoading(false);
-    }
-  }
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
-    load().catch(()=>{});
-    socket.on("profile:updated", () => load().catch(()=>{}));
-    return () => socket.disconnect();
-  }, []);
+    loadRef.current?.().catch(() => {});
+    const onUpdated = () => loadRef.current?.().catch(() => {});
+    socket.on("profile:updated", onUpdated);
+    return () => {
+      socket.off("profile:updated", onUpdated);
+      socket.disconnect();
+    };
+  }, [socket]);
 
   useEffect(() => {
-    if (playerId) loadRequests(playerId, reqStatus).catch(()=>{});
-  }, [playerId, reqStatus]);
+    if (playerId) loadRequests(playerId, reqStatus).catch(() => {});
+  }, [playerId, reqStatus, loadRequests]);
 
   const editableFields = profile?.editableFields || [];
   const allowRequests = !!profile?.allowRequests;

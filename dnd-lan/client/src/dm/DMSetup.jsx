@@ -2,18 +2,22 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
+import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
 
 export default function DMSetup() {
   const nav = useNavigate();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [netErr, setNetErr] = useState("");
 
   useEffect(() => {
     api.serverInfo().then((r) => {
+      setNetErr("");
       if (r.hasDm) nav("/dm", { replace: true });
-    }).catch(()=>{});
-  }, []);
+    }).catch((e) => setNetErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
+  }, [nav]);
 
   async function submit(e) {
     e.preventDefault();
@@ -23,7 +27,7 @@ export default function DMSetup() {
       await api.dmLogin(username, password);
       nav("/dm/app/dashboard", { replace: true });
     } catch (e2) {
-      setErr(e2.body?.error || e2.message);
+      setErr(formatError(e2));
     }
   }
 
@@ -38,6 +42,7 @@ export default function DMSetup() {
             <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="username" style={{ width: "100%" }} />
             <input value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="password (>=6)" type="password" style={{ width: "100%" }} />
             {err && <div className="badge off">Ошибка: {err}</div>}
+            {netErr && <div className="badge off">Сеть: {netErr}</div>}
             <button className="btn" type="submit">Создать</button>
           </form>
         </div>

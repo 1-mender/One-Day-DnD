@@ -50,7 +50,8 @@ eventsRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const partyId = getParty().id;
 
   const { where, args, filters } = buildWhere(req, partyId);
-  const max = Math.max(1, Math.min(50000, Number(req.query.max ?? 20000)));
+  const maxRaw = Number(req.query.max ?? 20000);
+  const max = Math.max(1, Math.min(50000, Number.isFinite(maxRaw) ? maxRaw : 20000));
 
   const rows = db
     .prepare(

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, storage } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
+import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
 
 export default function Join() {
   const nav = useNavigate();
@@ -11,10 +13,10 @@ export default function Join() {
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    api.serverInfo().then(setInfo).catch((e) => setErr(e?.body?.error || e.message || "offline"));
+    api.serverInfo().then(setInfo).catch((e) => setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
     // if already has token -> go app
     if (storage.getPlayerToken()) nav("/app", { replace: true });
-  }, []);
+  }, [nav]);
 
   async function submit(e) {
     e.preventDefault();
@@ -24,7 +26,7 @@ export default function Join() {
       storage.setJoinRequestId(r.joinRequestId);
       nav("/waiting", { replace: true });
     } catch (e2) {
-      setErr(e2.body?.error || e2.message);
+      setErr(formatError(e2));
     }
   }
 

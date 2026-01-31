@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { formatError } from "../lib/formatError.js";
 
 const empty = { title:"", content:"", category:"note", access:"dm", selectedPlayerIds:[], tags:[] };
 
@@ -16,21 +18,30 @@ export default function DMInfoBlocks() {
   const fileRef = useRef(null);
   const taRef = useRef(null);
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const debouncedQ = useDebouncedValue(q, 200);
 
-  async function load() {
-    const r = await api.infoBlocks();
-    setItems(r.items || []);
-    const p = await api.dmPlayers();
-    setPlayers(p.items || []);
-  }
-
-  useEffect(() => {
-    load().catch(()=>{});
-    socket.on("infoBlocks:updated", () => load().catch(()=>{}));
-    return () => socket.disconnect();
+  const load = useCallback(async () => {
+    try {
+      const r = await api.infoBlocks();
+      setItems(r.items || []);
+      const p = await api.dmPlayers();
+      setPlayers(p.items || []);
+    } catch (e) {
+      setErr(formatError(e));
+    }
   }, []);
 
-  const filtered = items.filter((b) => (b.title || "").toLowerCase().includes(q.toLowerCase()));
+  useEffect(() => {
+    load().catch(() => {});
+    socket.on("infoBlocks:updated", () => load().catch(() => {}));
+    return () => socket.disconnect();
+  }, [load, socket]);
+
+  const filtered = useMemo(() => {
+    const dq = String(debouncedQ || "").toLowerCase();
+    if (!dq) return items;
+    return items.filter((b) => (b.title || "").toLowerCase().includes(dq));
+  }, [items, debouncedQ]);
 
   function startNew() {
     setErr("");
@@ -59,7 +70,7 @@ export default function DMInfoBlocks() {
       setOpen(false);
       await load();
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
   }
   async function del(id) {
@@ -68,7 +79,7 @@ export default function DMInfoBlocks() {
       await api.dmInfoDelete(id);
       await load();
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
   }
 
@@ -97,7 +108,7 @@ export default function DMInfoBlocks() {
       const r = await api.dmInfoUploadAsset(f);
       insertAtCursor(`\n${r.markdown}\n`);
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     } finally {
       ev.target.value = "";
     }

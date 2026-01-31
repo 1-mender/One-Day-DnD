@@ -1,8 +1,9 @@
-import React from "react";
-import { Eye, EyeOff, Package, PencilLine, Scale, Trash2 } from "lucide-react";
+import React, { memo } from "react";
+import { Eye, EyeOff, PencilLine, Trash2 } from "lucide-react";
+import { getInventoryImageProps } from "../../lib/imageSizing.js";
+import { getRarityLabel } from "../../lib/inventoryRarity.js";
 import MarkdownView from "../markdown/MarkdownView.jsx";
-import PolaroidFrame from "./PolaroidFrame.jsx";
-import RarityRang from "./RarityRang.jsx";
+import RarityBadge from "./RarityBadge.jsx";
 
 function pickIcon(item) {
   const tags = (item.tags || []).map((t) => String(t).toLowerCase());
@@ -13,7 +14,7 @@ function pickIcon(item) {
   return "ПРЕДМ";
 }
 
-export default function InventoryItemCard({
+function InventoryItemCard({
   item,
   readOnly,
   onEdit,
@@ -24,39 +25,67 @@ export default function InventoryItemCard({
   const icon = pickIcon(item);
   const isHidden = item.visibility === "hidden";
   const vis = isHidden ? "Скрытый" : "Публичный";
-  const img = item.imageUrl || null;
+  const img = item.imageUrl || item.image_url || null;
+  const imageProps = getInventoryImageProps(img);
   const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility;
   const weight = Number(item.weight || 0);
+  const rarity = String(item.rarity || "common");
+  const rarityLabel = getRarityLabel(rarity);
+  const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
   const compact = actionsVariant === "compact";
+  const metaParts = [
+    `Вес: ${weight.toFixed(2)}`,
+    `Редкость: ${rarityLabel}`,
+    tags.length ? `Теги: ${tags.slice(0, 3).join(", ")}` : null,
+    item.updated_by === "dm" ? "изменено DM" : null
+  ].filter(Boolean);
 
   return (
-    <div className="item taped inv-card" data-visibility={item.visibility} style={{ alignItems: "stretch" }}>
-      <div className="inv-illu">
-        <PolaroidFrame className="sm" src={img} alt={item.name} fallback={icon} />
+    <div
+      className="item taped inv-card"
+      data-visibility={item.visibility}
+      data-variant={actionsVariant}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "180px" }}
+    >
+      <div className="inv-hero">
+        {img ? (
+          <img
+            src={img}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            width={imageProps.width}
+            height={imageProps.height}
+            sizes={imageProps.sizes}
+            srcSet={imageProps.srcSet}
+          />
+        ) : (
+          <div className="inv-fallback">{icon}</div>
+        )}
       </div>
 
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="inv-meta">
+      <div className="inv-body">
+        <div className="inv-title-row">
           <div className="inv-title">{item.name}</div>
-          <span className="badge"><Package className="icon" />x{item.qty}</span>
+          <RarityBadge rarity={rarity} />
+        </div>
+        <div className="inv-badges">
+          <span className="badge">x{item.qty}</span>
           <span className={`badge ${isHidden ? "off" : "ok"}`}>
             {isHidden ? <EyeOff className="icon" /> : <Eye className="icon" />}{vis}
           </span>
-          <span className="badge secondary"><Scale className="icon" />{weight.toFixed(2)}</span>
-          {item.updated_by === "dm" && <span className="badge warn">изменено DM</span>}
         </div>
-
-        <div className="inv-meta" style={{ marginTop: 8 }}>
-          <RarityRang rarity={item.rarity} />
-          {Array.isArray(item.tags) && item.tags.length ? (
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {item.tags.slice(0, 8).map((t) => <span key={t} className="badge secondary">{t}</span>)}
-            </div>
-          ) : null}
-        </div>
-
+        {metaParts.length ? (
+          <div className="inv-meta-line small">
+            {metaParts.map((part, idx) => (
+              <span key={`${part}-${idx}`} className="inv-meta-item">
+                {idx > 0 ? "• " : ""}{part}
+              </span>
+            ))}
+          </div>
+        ) : null}
         {item.description ? (
-          <div className="inv-desc" style={{ marginTop: 8 }}>
+          <div className="inv-desc">
             <MarkdownView source={item.description} />
           </div>
         ) : null}
@@ -105,3 +134,5 @@ export default function InventoryItemCard({
     </div>
   );
 }
+
+export default memo(InventoryItemCard);

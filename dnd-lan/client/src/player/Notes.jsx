@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 
 export default function Notes() {
   const [items, setItems] = useState([]);
@@ -10,19 +11,24 @@ export default function Notes() {
   const [open, setOpen] = useState(false);
   const [cur, setCur] = useState(null);
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const debouncedQ = useDebouncedValue(q, 200);
 
-  async function load() {
+  const load = useCallback(async () => {
     const r = await api.infoBlocks();
     setItems(r.items || []);
-  }
-
-  useEffect(() => {
-    load().catch(()=>{});
-    socket.on("infoBlocks:updated", () => load().catch(()=>{}));
-    return () => socket.disconnect();
   }, []);
 
-  const filtered = items.filter((b) => (b.title || "").toLowerCase().includes(q.toLowerCase()));
+  useEffect(() => {
+    load().catch(() => {});
+    socket.on("infoBlocks:updated", () => load().catch(() => {}));
+    return () => socket.disconnect();
+  }, [load, socket]);
+
+  const filtered = useMemo(() => {
+    const dq = String(debouncedQ || "").toLowerCase();
+    if (!dq) return items;
+    return items.filter((b) => (b.title || "").toLowerCase().includes(dq));
+  }, [items, debouncedQ]);
 
   return (
     <div className="card taped">

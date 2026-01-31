@@ -1,7 +1,11 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 const scopes = [
   { key: "", label: "All", prefix: "" },
@@ -26,46 +30,76 @@ export default function DMEvents() {
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
   const limit = 200;
+  const debouncedQ = useDebouncedValue(q, 250);
   const prefix = scopes.find((s) => s.key === scope)?.prefix || "";
+  const offsetRef = useRef(0);
 
-  async function load(reset = true) {
+  useEffect(() => {
+    offsetRef.current = offset;
+  }, [offset]);
+
+  const load = useCallback(async (reset = true) => {
     setErr("");
     setBusy(true);
     try {
+      const pageOffset = reset ? 0 : offsetRef.current;
       const r = await api.dmEventsList({
         limit,
-        offset: reset ? 0 : offset,
-        q,
+        offset: pageOffset,
+        q: debouncedQ,
         prefix
       });
       const next = r.items || [];
       if (reset) {
         setItems(next);
         setOffset(next.length);
+        offsetRef.current = next.length;
       } else {
         setItems((prev) => [...prev, ...next]);
-        setOffset((prev) => prev + next.length);
+        setOffset((prev) => {
+          const updated = prev + next.length;
+          offsetRef.current = updated;
+          return updated;
+        });
       }
       setHasMore(!!r.hasMore);
     } catch (e) {
-      setErr(e.body?.error || e.message || "load_failed");
+      setErr(formatError(e, ERROR_CODES.LOAD_FAILED));
     } finally {
       setBusy(false);
     }
-  }
+  }, [limit, debouncedQ, prefix]);
+
+  const loadRef = useRef(load);
+  useEffect(() => {
+    loadRef.current = load;
+  }, [load]);
 
   useEffect(() => {
     load(true).catch(() => {});
-    socket.on("events:updated", () => {
-      load(true).catch(() => {});
-    });
-    return () => socket.disconnect();
-  }, []);
+  }, [load]);
 
   useEffect(() => {
-    const t = setTimeout(() => load(true).catch(() => {}), 250);
-    return () => clearTimeout(t);
-  }, [q, scope]);
+    const onUpdated = () => loadRef.current?.(true).catch(() => {});
+    socket.on("events:updated", onUpdated);
+    return () => {
+      socket.off("events:updated", onUpdated);
+      socket.disconnect();
+    };
+  }, [socket]);
+
+  const rows = useMemo(() => items.map((e) => ({
+    ...e,
+    _time: fmtTime(e.created_at)
+  })), [items]);
+
+  const listRef = useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 140,
+    overscan: 8
+  });
 
   async function exportJson() {
     setErr("");
@@ -81,7 +115,7 @@ export default function DMEvents() {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setErr(e.message || "export_failed");
+      setErr(formatError(e, ERROR_CODES.EXPORT_FAILED));
     } finally {
       setBusy(false);
     }
@@ -104,7 +138,7 @@ export default function DMEvents() {
       await load(true);
       toast.success(`Удалено: ${r.deleted}`);
     } catch (e) {
-      const msg = e.body?.error || e.message || "cleanup_failed";
+      const msg = formatError(e, ERROR_CODES.LOAD_FAILED);
       setErr(msg);
       toast.error(msg);
     } finally {
@@ -124,7 +158,7 @@ export default function DMEvents() {
       await load(true);
       toast.success(`Удалено: ${r.deleted}`);
     } catch (e) {
-      const msg = e.body?.error || e.message || "cleanup_failed";
+      const msg = formatError(e, ERROR_CODES.LOAD_FAILED);
       setErr(msg);
       toast.error(msg);
     } finally {
@@ -180,25 +214,48 @@ export default function DMEvents() {
 
       {err && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {err}</div>}
 
-      <div className="list" style={{ marginTop: 12 }}>
-        {items.map((e) => (
-          <div key={e.id} className="item taped" style={{ alignItems: "flex-start" }}>
-            <div className="kv" style={{ minWidth: 170 }}>
-              <div style={{ fontWeight: 800 }}>{fmtTime(e.created_at)}</div>
-              <div className="small">{e.type}</div>
-              <div className="small">
-                {e.actor_role}{e.actor_name ? ` • ${e.actor_name}` : ""}
-              </div>
-            </div>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700 }}>{e.message || "—"}</div>
-              <div className="small">
-                {e.target_type ? `target: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
-              </div>
-            </div>
+      <div
+        ref={listRef}
+        className="list"
+        style={{ marginTop: 12, height: "70vh", overflow: "auto" }}
+      >
+        {rows.length === 0 && !busy ? (
+          <div className="small">Событий пока нет.</div>
+        ) : (
+          <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
+            {rowVirtualizer.getVirtualItems().map((vRow) => {
+              const e = rows[vRow.index];
+              return (
+                <div
+                  key={e.id}
+                  className="item taped"
+                  style={{
+                    alignItems: "flex-start",
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${vRow.start}px)`
+                  }}
+                >
+                  <div className="kv" style={{ minWidth: 170 }}>
+                    <div style={{ fontWeight: 800 }}>{e._time}</div>
+                    <div className="small">{e.type}</div>
+                    <div className="small">
+                      {e.actor_role}{e.actor_name ? ` • ${e.actor_name}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700 }}>{e.message || "—"}</div>
+                    <div className="small">
+                      {e.target_type ? `target: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
-        {items.length === 0 && !busy && <div className="small">Событий пока нет.</div>}
+        )}
       </div>
 
       {hasMore && (

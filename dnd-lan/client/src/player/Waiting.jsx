@@ -23,7 +23,7 @@ export default function Waiting() {
       setMsg(p?.banned ? "Заявка отклонена. Вы заблокированы." : "Заявка отклонена.");
     });
     return () => socket.disconnect();
-  }, []);
+  }, [nav, socket]);
 
   return (
     <VintageShell>

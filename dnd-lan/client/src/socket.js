@@ -12,6 +12,6 @@ export function connectSocket({ role }) {
     if (rid) auth.joinRequestId = rid;
   }
   // DM uses cookie
-  const s = io("/", { auth, transports: ["websocket"] });
+  const s = io("/", { auth });
   return s;
 }

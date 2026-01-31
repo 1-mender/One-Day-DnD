@@ -10,8 +10,18 @@ export default function RarityRang({ rarity }) {
     r === "custom" ? "custom" :
     "common";
 
+  const labelMap = {
+    common: "Общего доступа",
+    uncommon: "Для служебного пользования",
+    rare: "Секретно",
+    very_rare: "Совершенно секретно",
+    legendary: "Особой важности",
+    custom: "Другое"
+  };
+  const label = labelMap[key] || key;
+
   if (typeof document === "undefined" || typeof getComputedStyle === "undefined") {
-    return <span className="rang fallback">{key}</span>;
+    return <span className="rang fallback">{label}</span>;
   }
 
   let style = "";
@@ -21,8 +31,8 @@ export default function RarityRang({ rarity }) {
     style = "";
   }
   if (!style) {
-    return <span className="rang fallback">{key}</span>;
+    return <span className="rang fallback">{label}</span>;
   }
 
-  return <div className={`rang ${key}`} title={key} />;
+  return <div className={`rang ${key}`} title={label} />;
 }

@@ -1,10 +1,12 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav.jsx";
 import OfflineBanner from "../components/OfflineBanner.jsx";
 import { api, storage } from "../api.js";
 import { connectSocket } from "../socket.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
+import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
 
 export default function PlayerLayout() {
   const nav = useNavigate();
@@ -21,8 +23,12 @@ export default function PlayerLayout() {
   }
 
   const [online, setOnline] = useState(true);
+  const [showOffline, setShowOffline] = useState(false);
+  const offlineTimerRef = useRef(null);
+  const hasConnectedRef = useRef(false);
+  const closingRef = useRef(false);
   const [bestiaryEnabled, setBestiaryEnabled] = useState(false);
-  const [impersonating, setImpersonating] = useState(storage.isImpersonating());
+  const [impersonating] = useState(storage.isImpersonating());
   const [impMode, setImpMode] = useState(storage.getImpMode());
   const [me, setMe] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -30,12 +36,46 @@ export default function PlayerLayout() {
   const [netErr, setNetErr] = useState("");
 
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const OFFLINE_BANNER_DELAY_MS = 2500;
 
   useEffect(() => {
     if (!storage.getPlayerToken()) nav("/", { replace: true });
 
-    socket.on("connect", () => setOnline(true));
-    socket.on("disconnect", () => setOnline(false));
+    closingRef.current = false;
+    const clearOfflineTimer = () => {
+      if (offlineTimerRef.current) {
+        clearTimeout(offlineTimerRef.current);
+        offlineTimerRef.current = null;
+      }
+    };
+    const scheduleOffline = () => {
+      clearOfflineTimer();
+      offlineTimerRef.current = setTimeout(() => {
+        setShowOffline(true);
+      }, OFFLINE_BANNER_DELAY_MS);
+    };
+
+    const onConnect = () => {
+      hasConnectedRef.current = true;
+      clearOfflineTimer();
+      setOnline(true);
+      setShowOffline(false);
+    };
+    const onDisconnect = () => {
+      if (closingRef.current) return;
+      setOnline(false);
+      if (!hasConnectedRef.current) return;
+      scheduleOffline();
+    };
+    const onConnectError = () => {
+      if (closingRef.current) return;
+      if (hasConnectedRef.current) {
+        scheduleOffline();
+      }
+    };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
     socket.on("player:kicked", () => {
       storage.clearPlayerToken();
       storage.clearImpersonating();
@@ -50,7 +90,7 @@ export default function PlayerLayout() {
     });
     socket.on("settings:updated", async () => {
       const inf = await api.serverInfo().catch((e) => {
-        setNetErr(e?.body?.error || e.message || "server_info_failed");
+        setNetErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
         return null;
       });
       if (inf) setBestiaryEnabled(!!inf.settings?.bestiaryEnabled);
@@ -58,10 +98,10 @@ export default function PlayerLayout() {
 
     api.serverInfo()
       .then((inf) => setBestiaryEnabled(!!inf.settings?.bestiaryEnabled))
-      .catch((e) => setNetErr(e?.body?.error || e.message || "server_info_failed"));
+      .catch((e) => setNetErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
     api.me()
       .then(setMe)
-      .catch((e) => setNetErr(e?.body?.error || e.message || "me_failed"));
+      .catch((e) => setNetErr(formatError(e, ERROR_CODES.ME_FAILED)));
 
     const shouldSend = () => !storage.isImpersonating();
     let last = 0;
@@ -89,6 +129,11 @@ export default function PlayerLayout() {
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
+      closingRef.current = true;
+      clearOfflineTimer();
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect_error", onConnectError);
       socket.disconnect();
       window.removeEventListener("pointerdown", emitActivity);
       window.removeEventListener("keydown", emitActivity);
@@ -97,7 +142,7 @@ export default function PlayerLayout() {
       window.removeEventListener("focus", emitActivity);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, []);
+  }, [nav, socket]);
 
   async function setWriteMode(nextMode) {
     if (!impersonating || !me?.player?.id) return;
@@ -109,7 +154,7 @@ export default function PlayerLayout() {
       storage.setImpMode(nextMode);
       setImpMode(nextMode);
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     } finally {
       setBusy(false);
     }
@@ -125,7 +170,7 @@ export default function PlayerLayout() {
 
   return (
     <div>
-      <OfflineBanner online={online && navigator.onLine} />
+      <OfflineBanner online={!showOffline} />
       {impersonating && (
         <div style={{ padding: 10, background: "#2a220f", borderBottom: "1px solid #6a5622" }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>

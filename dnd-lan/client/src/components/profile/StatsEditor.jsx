@@ -4,6 +4,7 @@ const DEFAULT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
 const MAX_STATS = 20;
 const KEY_MAX = 24;
 const VALUE_MAX = 64;
+const genRowId = () => `row_${Math.random().toString(36).slice(2, 10)}`;
 
 function normalizeStats(stats) {
   if (stats && typeof stats === "object" && !Array.isArray(stats)) return stats;
@@ -15,12 +16,12 @@ function buildRows(stats) {
   const rows = [];
   const used = new Set();
   for (const key of DEFAULT_KEYS) {
-    rows.push({ key, value: s[key] ?? "" , fixed: true });
+    rows.push({ id: `fixed_${key}`, key, value: s[key] ?? "", fixed: true });
     used.add(key);
   }
   for (const key of Object.keys(s)) {
     if (used.has(key)) continue;
-    rows.push({ key, value: s[key] ?? "", fixed: false });
+    rows.push({ id: `extra_${key}`, key, value: s[key] ?? "", fixed: false });
   }
   return rows;
 }
@@ -73,7 +74,7 @@ export function StatsEditor({ value, onChange }) {
 
   function addRow() {
     if (rows.length >= MAX_STATS) return;
-    const next = [...rows, { key: "", value: "", fixed: false }];
+    const next = [...rows, { id: genRowId(), key: "", value: "", fixed: false }];
     setRows(next);
   }
 
@@ -88,7 +89,7 @@ export function StatsEditor({ value, onChange }) {
   return (
     <div className="list">
       {rows.map((row, idx) => (
-        <div key={`${row.key}-${idx}`} className="row" style={{ alignItems: "center" }}>
+        <div key={row.id} className="row" style={{ alignItems: "center" }}>
           {row.fixed ? (
             <div className="badge" style={{ minWidth: 74, textTransform: "uppercase", textAlign: "center" }}>
               {row.key}

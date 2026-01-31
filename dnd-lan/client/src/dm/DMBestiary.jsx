@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
+import { formatError } from "../lib/formatError.js";
 
 const empty = { name:"", type:"", habitat:"", cr:"", description:"", abilities:[], stats:{}, is_hidden:false };
 
@@ -27,34 +28,33 @@ export default function DMBestiary() {
   const importRef = useRef(null);
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
-  async function load() {
+  const load = useCallback(async () => {
     setErr("");
     try {
       const r = await api.bestiary();
       setEnabled(!!r.enabled);
       setItems(r.items || []);
     } catch (e) {
-      setErr(e.body?.error || e.message);
-      throw e;
+      setErr(formatError(e));
     }
-  }
+  }, []);
 
   useEffect(() => {
     load().catch(() => {});
-    socket.on("bestiary:updated", () => load().catch(()=>{}));
-    socket.on("settings:updated", () => load().catch(()=>{}));
+    socket.on("bestiary:updated", () => load().catch(() => {}));
+    socket.on("settings:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
-  async function loadImages(monsterId) {
+  const loadImages = useCallback(async (monsterId) => {
     try {
       const r = await api.dmBestiaryImages(monsterId);
       setImages(r.items || []);
     } catch (e) {
       setImages([]);
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
-  }
+  }, []);
 
   function startNew() {
     setErr("");
@@ -64,7 +64,7 @@ export default function DMBestiary() {
     setOpen(true);
   }
 
-  function startEdit(m) {
+  const startEdit = useCallback((m) => {
     setErr("");
     setEdit(m);
     const abilitiesText = Array.isArray(m.abilities)
@@ -73,7 +73,7 @@ export default function DMBestiary() {
     setForm({ ...m, abilitiesText });
     setOpen(true);
     loadImages(m.id).catch(() => {});
-  }
+  }, [loadImages]);
 
   async function save() {
     setErr("");
@@ -85,19 +85,19 @@ export default function DMBestiary() {
       setOpen(false);
       await load();
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
   }
 
-  async function del(id) {
+  const del = useCallback(async (id) => {
     setErr("");
     try {
       await api.dmBestiaryDelete(id);
       await load();
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
-  }
+  }, [load]);
 
   async function onPickFile(ev) {
     const f = ev.target.files?.[0];
@@ -107,7 +107,7 @@ export default function DMBestiary() {
       await api.dmBestiaryUploadImage(edit.id, f);
       await loadImages(edit.id);
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     } finally {
       ev.target.value = "";
     }
@@ -120,7 +120,17 @@ export default function DMBestiary() {
       await api.dmBestiaryDeleteImage(imageId);
       await loadImages(edit.id);
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
+    }
+  }
+
+  async function toggleEnabled() {
+    setErr("");
+    try {
+      await api.dmBestiaryToggle(!enabled);
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
     }
   }
 
@@ -140,7 +150,7 @@ export default function DMBestiary() {
       URL.revokeObjectURL(url);
       setPortMsg("Экспорт JSON готов.");
     } catch (e) {
-      setPortErr(e.message || "export_failed");
+      setPortErr(formatError(e));
     } finally {
       setPortBusy(false);
     }
@@ -162,7 +172,7 @@ export default function DMBestiary() {
       setPortMsg("Dry-run готов: проверьте план и нажмите «Применить».");
     } catch (e) {
       setPortPlan(null);
-      setPortErr(e.body?.error || e.message || "dryrun_failed");
+      setPortErr(formatError(e));
     } finally {
       setPortBusy(false);
     }
@@ -192,7 +202,7 @@ export default function DMBestiary() {
       setPortPendingFile(null);
       await load();
     } catch (e) {
-      setPortErr(e.body?.error || e.message || "import_failed");
+      setPortErr(formatError(e));
     } finally {
       setPortBusy(false);
     }
@@ -213,6 +223,10 @@ export default function DMBestiary() {
     await runDryRun(file);
   }
 
+  const bestiaryRows = useMemo(() => items.map((m) => (
+    <BestiaryRow key={m.id} item={m} onEdit={startEdit} onDelete={del} />
+  )), [items, startEdit, del]);
+
   return (
     <div className="spread-grid">
       <div className="spread-col">
@@ -222,21 +236,7 @@ export default function DMBestiary() {
           <hr />
           {err && <div className="badge off">Ошибка: {err}</div>}
           <div className="list">
-            {items.map((m) => (
-              <div key={m.id} className="item taped" style={{ alignItems: "stretch" }}>
-                <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800 }}>
-                    {m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}
-                  </div>
-                  <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
-                </div>
-                <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
-                  <button className="btn secondary" onClick={() => startEdit(m)}>Ред.</button>
-                  <button className="btn danger" onClick={() => del(m.id)}>Удал.</button>
-                </div>
-              </div>
-            ))}
+            {bestiaryRows}
           </div>
         </div>
       </div>
@@ -247,7 +247,7 @@ export default function DMBestiary() {
           <div className="small">Экспорт / импорт / глобальная видимость</div>
           <hr />
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <button className="btn secondary" onClick={() => api.dmBestiaryToggle(!enabled).then(load)}>
+            <button className="btn secondary" onClick={toggleEnabled}>
               {enabled ? "Выключить для игроков" : "Включить для игроков"}
             </button>
             <button className="btn" onClick={startNew}>+ Добавить</button>
@@ -360,3 +360,21 @@ export default function DMBestiary() {
   );
 }
 const inp = { width: "100%" };
+
+const BestiaryRow = React.memo(function BestiaryRow({ item, onEdit, onDelete }) {
+  return (
+    <div className="item taped" style={{ alignItems: "stretch", contentVisibility: "auto", containIntrinsicSize: "160px" }}>
+      <PolaroidFrame src={item.images?.[0]?.url} alt={item.name} fallback="МОН" />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 800 }}>
+          {item.name} {item.is_hidden ? <span className="badge off">hidden</span> : null}
+        </div>
+        <div className="small">{item.type || "—"} • CR: {item.cr || "—"}</div>
+      </div>
+      <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
+        <button className="btn secondary" onClick={() => onEdit(item)}>Ред.</button>
+        <button className="btn danger" onClick={() => onDelete(item.id)}>Удал.</button>
+      </div>
+    </div>
+  );
+});

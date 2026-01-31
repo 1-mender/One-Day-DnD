@@ -2,7 +2,7 @@ import express from "express";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
-import { now } from "../util.js";
+import { now, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 
 export const bestiaryPortabilityRouter = express.Router();
@@ -103,7 +103,7 @@ bestiaryPortabilityRouter.get("/export", dmAuthMiddleware, (req, res) => {
   res.send(JSON.stringify(payload, null, 2));
 });
 
-bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, upload.single("file"), (req, res) => {
+bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
   const db = getDb();
   const mode = String(pickParam(req, "mode", "merge")).toLowerCase();
   const match = String(pickParam(req, "match", "name")).toLowerCase();

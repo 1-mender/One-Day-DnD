@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
@@ -9,20 +9,20 @@ export default function DMDashboard() {
   const [players, setPlayers] = useState([]);
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
-  async function load() {
+  const load = useCallback(async () => {
     const i = await api.serverInfo();
     setInfo(i);
     const p = await api.dmPlayers();
     setPlayers(p.items || []);
-  }
+  }, []);
 
   useEffect(() => {
-    load().catch(()=>{});
-    socket.on("players:updated", () => load().catch(()=>{}));
-    socket.on("player:approved", () => load().catch(()=>{}));
-    socket.on("settings:updated", () => load().catch(()=>{}));
+    load().catch(() => {});
+    socket.on("players:updated", () => load().catch(() => {}));
+    socket.on("player:approved", () => load().catch(() => {}));
+    socket.on("settings:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
   const url = (info?.urls?.[0] || "http://<LAN-IP>:3000");
 

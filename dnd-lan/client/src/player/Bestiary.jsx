@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { connectSocket } from "../socket.js";
@@ -13,18 +13,18 @@ export default function Bestiary() {
   const [open, setOpen] = useState(false);
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
 
-  async function load() {
+  const load = useCallback(async () => {
     const r = await api.bestiary();
     setEnabled(!!r.enabled);
     setItems(r.items || []);
-  }
+  }, []);
 
   useEffect(() => {
-    load().catch(()=>{});
-    socket.on("bestiary:updated", () => load().catch(()=>{}));
-    socket.on("settings:updated", () => load().catch(()=>{}));
+    load().catch(() => {});
+    socket.on("bestiary:updated", () => load().catch(() => {}));
+    socket.on("settings:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
   if (!enabled) return <div className="card taped"><div className="badge warn">Бестиарий отключён DM</div></div>;
 

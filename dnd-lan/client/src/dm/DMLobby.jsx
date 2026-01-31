@@ -1,34 +1,35 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
+import { formatError } from "../lib/formatError.js";
 
 export default function DMLobby() {
   const [items, setItems] = useState([]);
   const [err, setErr] = useState("");
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
-  async function load() {
+  const load = useCallback(async () => {
     const r = await api.dmRequests();
     setItems(r.items || []);
-  }
+  }, []);
 
   useEffect(() => {
-    load().catch(()=>{});
-    socket.on("player:joinRequested", () => load().catch(()=>{}));
+    load().catch(() => {});
+    socket.on("player:joinRequested", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
   async function approve(id) {
     setErr("");
-    try { await api.dmApprove(id); await load(); } catch (e) { setErr(e.body?.error || e.message); }
+    try { await api.dmApprove(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
   async function reject(id) {
     setErr("");
-    try { await api.dmReject(id); await load(); } catch (e) { setErr(e.body?.error || e.message); }
+    try { await api.dmReject(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
   async function ban(id) {
     setErr("");
-    try { await api.dmBan(id); await load(); } catch (e) { setErr(e.body?.error || e.message); }
+    try { await api.dmBan(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
 
   return (

@@ -1,8 +1,9 @@
 import React from "react";
+import { createPortal } from "react-dom";
 
 export default function Modal({ open, title, children, onClose }) {
   if (!open) return null;
-  return (
+  const content = (
     <div className="vintage-modal-overlay" onMouseDown={onClose}>
       <div className="vintage-modal" onMouseDown={(e) => e.stopPropagation()}>
         <div className="vintage-modal-header">
@@ -13,4 +14,6 @@ export default function Modal({ open, title, children, onClose }) {
       </div>
     </div>
   );
+  if (typeof document === "undefined") return content;
+  return createPortal(content, document.body);
 }

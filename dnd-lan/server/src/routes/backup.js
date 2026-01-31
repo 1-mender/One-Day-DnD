@@ -4,13 +4,53 @@ import fs from "node:fs";
 import archiver from "archiver";
 import unzipper from "unzipper";
 import multer from "multer";
+import { pipeline } from "node:stream/promises";
 import { dmAuthMiddleware } from "../auth.js";
 import { closeDb, reloadDb, DATA_DIR, DB_PATH } from "../db.js";
+import { wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
 
 export const backupRouter = express.Router();
 
-const upload = multer({ dest: path.join(DATA_DIR, "tmp") });
+const MAX_BACKUP_BYTES = Number(process.env.BACKUP_IMPORT_MAX_BYTES || 200 * 1024 * 1024);
+const MAX_BACKUP_EXTRACT_BYTES = Number(process.env.BACKUP_IMPORT_MAX_EXTRACT_BYTES || 500 * 1024 * 1024);
+const upload = multer({ dest: path.join(DATA_DIR, "tmp"), limits: { fileSize: MAX_BACKUP_BYTES } });
+
+async function safeExtractZip(zipPath, destDir) {
+  const base = path.resolve(destDir);
+  const directory = await unzipper.Open.file(zipPath);
+  let total = 0;
+  for (const entry of directory.files) {
+    const rel = String(entry.path || "").replace(/\\/g, "/");
+    if (!rel || rel.startsWith("/") || rel.includes("..")) {
+      entry.autodrain();
+      continue;
+    }
+    const entrySize = Number(entry.uncompressedSize || 0);
+    if (Number.isFinite(entrySize)) {
+      if (entrySize > MAX_BACKUP_EXTRACT_BYTES) {
+        entry.autodrain();
+        throw new Error("backup_too_large");
+      }
+      total += entrySize;
+      if (total > MAX_BACKUP_EXTRACT_BYTES) {
+        entry.autodrain();
+        throw new Error("backup_too_large");
+      }
+    }
+    const target = path.resolve(base, rel);
+    if (!target.startsWith(base + path.sep)) {
+      entry.autodrain();
+      continue;
+    }
+    if (entry.type === "Directory") {
+      fs.mkdirSync(target, { recursive: true });
+      continue;
+    }
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    await pipeline(entry.stream(), fs.createWriteStream(target));
+  }
+}
 
 backupRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const dbPath = DB_PATH;
@@ -29,7 +69,7 @@ backupRouter.get("/export", dmAuthMiddleware, (req, res) => {
   archive.finalize();
 });
 
-backupRouter.post("/import", dmAuthMiddleware, upload.single("zip"), async (req, res) => {
+backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file_required" });
 
   const tmpDir = path.join(DATA_DIR, "import_tmp");
@@ -37,12 +77,7 @@ backupRouter.post("/import", dmAuthMiddleware, upload.single("zip"), async (req,
   fs.mkdirSync(tmpDir, { recursive: true });
 
   try {
-    // close DB before replace
-    closeDb();
-
-    await fs.createReadStream(req.file.path)
-      .pipe(unzipper.Extract({ path: tmpDir }))
-      .promise();
+    await safeExtractZip(req.file.path, tmpDir);
 
     const srcDb = path.join(tmpDir, "app.db");
     const srcUploads = path.join(tmpDir, "uploads");
@@ -52,6 +87,9 @@ backupRouter.post("/import", dmAuthMiddleware, upload.single("zip"), async (req,
     const dstDb = DB_PATH;
     const dstUploads = uploadsDir;
     fs.mkdirSync(DATA_DIR, { recursive: true });
+
+    // close DB before replace
+    closeDb();
 
     // backup old
     if (fs.existsSync(dstDb)) fs.copyFileSync(dstDb, dstDb + ".bak");
@@ -76,8 +114,13 @@ backupRouter.post("/import", dmAuthMiddleware, upload.single("zip"), async (req,
 
     res.json({ ok: true });
   } catch (e) {
-    res.status(500).json({ error: "import_failed", details: String(e) });
+    const msg = String(e?.message || e);
+    if (msg === "backup_too_large") {
+      return res.status(413).json({ error: "backup_too_large" });
+    }
+    res.status(500).json({ error: "import_failed", details: msg });
   } finally {
     fs.rmSync(req.file.path, { force: true });
+    fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
@@ -70,12 +70,6 @@ export default function DMPlayerProfile() {
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
 
-  useEffect(() => {
-    socket.on("profile:requestCreated", () => loadRequests().catch(()=>{}));
-    socket.on("profile:requestsUpdated", () => loadRequests().catch(()=>{}));
-    return () => socket.disconnect();
-  }, []);
-
   function applyProfile(p) {
     setProfile(p);
     setForm({
@@ -90,7 +84,7 @@ export default function DMPlayerProfile() {
     });
   }
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!playerId) return;
     setErr("");
     setLoading(true);
@@ -115,9 +109,9 @@ export default function DMPlayerProfile() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [playerId]);
 
-  async function loadRequests() {
+  const loadRequests = useCallback(async () => {
     if (!playerId) return;
     setReqLoading(true);
     try {
@@ -128,12 +122,29 @@ export default function DMPlayerProfile() {
     } finally {
       setReqLoading(false);
     }
-  }
+  }, [playerId]);
+
+  const loadRequestsRef = useRef(null);
+  useEffect(() => {
+    loadRequestsRef.current = loadRequests;
+  }, [loadRequests]);
 
   useEffect(() => {
-    load().catch(()=>{});
-    loadRequests().catch(()=>{});
-  }, [playerId]);
+    const onCreated = () => loadRequestsRef.current?.().catch(() => {});
+    const onUpdated = () => loadRequestsRef.current?.().catch(() => {});
+    socket.on("profile:requestCreated", onCreated);
+    socket.on("profile:requestsUpdated", onUpdated);
+    return () => {
+      socket.off("profile:requestCreated", onCreated);
+      socket.off("profile:requestsUpdated", onUpdated);
+      socket.disconnect();
+    };
+  }, [socket]);
+
+  useEffect(() => {
+    load().catch(() => {});
+    loadRequests().catch(() => {});
+  }, [load, loadRequests]);
 
   async function save() {
     if (!playerId) return;

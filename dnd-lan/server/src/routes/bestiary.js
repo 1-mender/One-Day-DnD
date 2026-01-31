@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
-import { now, jsonParse } from "../util.js";
+import { now, jsonParse, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 
@@ -30,7 +30,22 @@ const storage = multer.diskStorage({
     cb(null, safe);
   }
 });
-const upload = multer({ storage });
+const BESTIARY_IMAGE_MAX_BYTES = Number(process.env.BESTIARY_IMAGE_MAX_BYTES || 5 * 1024 * 1024);
+const BESTIARY_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+function isAllowedBestiaryImage(mime) {
+  return BESTIARY_IMAGE_MIMES.has(String(mime || "").toLowerCase());
+}
+const upload = multer({
+  storage,
+  limits: { fileSize: BESTIARY_IMAGE_MAX_BYTES },
+  fileFilter: (req, file, cb) => {
+    if (!isAllowedBestiaryImage(file.mimetype)) {
+      req.fileValidationError = "unsupported_file_type";
+      return cb(null, false);
+    }
+    cb(null, true);
+  }
+});
 
 function authPlayer(req) {
   const token = req.header("x-player-token");
@@ -61,14 +76,27 @@ bestiaryRouter.get("/", (req, res) => {
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [] });
 
-  const rows = db.prepare("SELECT * FROM monsters ORDER BY name").all().map((m) => ({
+  const monsters = db.prepare("SELECT * FROM monsters ORDER BY name").all();
+  const monsterIds = monsters.map((m) => m.id);
+  const imagesByMonster = new Map();
+
+  if (monsterIds.length) {
+    const placeholders = monsterIds.map(() => "?").join(",");
+    const imageRows = db.prepare(
+      `SELECT id, monster_id, filename FROM monster_images WHERE monster_id IN (${placeholders}) ORDER BY id`
+    ).all(...monsterIds);
+    for (const im of imageRows) {
+      const list = imagesByMonster.get(im.monster_id) || [];
+      list.push({ id: im.id, url: imageUrl(im.filename) });
+      imagesByMonster.set(im.monster_id, list);
+    }
+  }
+
+  const rows = monsters.map((m) => ({
     ...m,
     stats: jsonParse(m.stats, {}),
     abilities: jsonParse(m.abilities, []),
-    images: db.prepare("SELECT id, filename FROM monster_images WHERE monster_id=? ORDER BY id").all(m.id).map((im) => ({
-      id: im.id,
-      url: imageUrl(im.filename)
-    }))
+    images: imagesByMonster.get(m.id) || []
   }));
 
   // players: hide hidden monsters (optional)
@@ -170,11 +198,12 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   res.json({ ok: true });
 });
 
-bestiaryRouter.post("/:id/image", dmAuthMiddleware, upload.single("image"), (req, res) => {
+bestiaryRouter.post("/:id/image", dmAuthMiddleware, wrapMulter(upload.single("image")), (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   const cur = db.prepare("SELECT * FROM monsters WHERE id=?").get(id);
   if (!cur) return res.status(404).json({ error: "not_found" });
+  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
   if (!req.file) return res.status(400).json({ error: "file_required" });
 
   db.prepare("INSERT INTO monster_images(monster_id, filename, original_name, mime, created_at) VALUES(?,?,?,?,?)")

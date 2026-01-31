@@ -4,7 +4,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getParty } from "../db.js";
-import { now, jsonParse } from "../util.js";
+import { now, jsonParse, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 
@@ -20,7 +20,8 @@ const storage = multer.diskStorage({
     cb(null, safe);
   }
 });
-const upload = multer({ storage });
+const INFO_ASSET_MAX_BYTES = Number(process.env.INFO_ASSET_MAX_BYTES || 10 * 1024 * 1024);
+const upload = multer({ storage, limits: { fileSize: INFO_ASSET_MAX_BYTES } });
 
 function authPlayer(req) {
   const token = req.header("x-player-token");
@@ -55,13 +56,25 @@ infoBlocksRouter.get("/", (req, res) => {
   const me = authPlayer(req);
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
-  const all = db.prepare("SELECT * FROM info_blocks ORDER BY updated_at DESC").all().map(mapBlock);
-  const filtered = all.filter((b) => {
-    if (b.access === "all") return true;
-    if (b.access === "selected") return (b.selectedPlayerIds || []).includes(me.player.id);
-    return false;
-  });
-  res.json({ items: filtered });
+  try {
+    const rows = db.prepare(
+      `SELECT * FROM info_blocks
+       WHERE access='all'
+          OR (access='selected' AND EXISTS (
+            SELECT 1 FROM json_each(info_blocks.selected_player_ids) WHERE value=?
+          ))
+       ORDER BY updated_at DESC`
+    ).all(me.player.id);
+    return res.json({ items: rows.map(mapBlock) });
+  } catch {
+    const all = db.prepare("SELECT * FROM info_blocks ORDER BY updated_at DESC").all().map(mapBlock);
+    const filtered = all.filter((b) => {
+      if (b.access === "all") return true;
+      if (b.access === "selected") return (b.selectedPlayerIds || []).includes(me.player.id);
+      return false;
+    });
+    return res.json({ items: filtered });
+  }
 });
 
 infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
@@ -164,7 +177,7 @@ infoBlocksRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
 });
 
 // upload helper for local images (DM вставляет ссылку в markdown)
-infoBlocksRouter.post("/upload", dmAuthMiddleware, upload.single("file"), (req, res) => {
+infoBlocksRouter.post("/upload", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file_required" });
   res.json({ ok: true, url: `/uploads/assets/${req.file.filename}` });
 });

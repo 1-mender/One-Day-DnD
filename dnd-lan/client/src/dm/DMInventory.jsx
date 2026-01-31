@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import InventoryItemCard from "../components/vintage/InventoryItemCard.jsx";
@@ -8,24 +8,31 @@ import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
 import { formatError } from "../lib/formatError.js";
+import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
-const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public" };
+const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", imageUrl:"" };
 
 export default function DMInventory() {
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(0);
   const [items, setItems] = useState([]);
   const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
   const [q, setQ] = useState("");
   const [vis, setVis] = useState("");
   const [rarity, setRarity] = useState("");
   const [view, setView] = useState("list");
-  const [listRef] = useAutoAnimate({ duration: 200 });
+  const [autoAnimateRef] = useAutoAnimate({ duration: 200 });
+  const debouncedQ = useDebouncedValue(q, 200);
 
-  async function loadPlayers() {
+  const loadPlayers = useCallback(async () => {
     setErr("");
     try {
       const p = await api.dmPlayers();
@@ -35,14 +42,14 @@ export default function DMInventory() {
         setSelectedId(0);
         setItems([]);
         setLoading(false);
-      } else if (!selectedId) {
-        setSelectedId(list[0].id);
+      } else {
+        setSelectedId((prev) => (prev ? prev : list[0].id));
       }
     } catch (e) {
       setErr(formatError(e));
       setLoading(false);
     }
-  }
+  }, []);
 
   async function loadInv(pid) {
     if (!pid) return;
@@ -59,47 +66,106 @@ export default function DMInventory() {
   }
 
   useEffect(() => {
-    loadPlayers().catch(()=>{});
-  }, []);
+    loadPlayers().catch(() => {});
+  }, [loadPlayers]);
 
   useEffect(() => {
     if (selectedId) loadInv(selectedId).catch(()=>{});
   }, [selectedId]);
 
-  async function give() {
+  function startAdd() {
+    setEdit(null);
+    setForm(empty);
+    setOpen(true);
+  }
+
+  function startEdit(item) {
+    setEdit(item);
+    setForm({ ...item, imageUrl: item.imageUrl || item.image_url || "", tags: item.tags || [] });
+    setOpen(true);
+  }
+
+  async function save() {
     setErr("");
     try {
-      await api.invDmAddToPlayer(selectedId, { ...form, qty: Number(form.qty), weight: Number(form.weight) });
+      const payload = { ...form, qty: Number(form.qty), weight: Number(form.weight), tags: (form.tags || []).filter(Boolean) };
+      if (edit) {
+        await api.invDmUpdatePlayerItem(selectedId, edit.id, payload);
+      } else {
+        await api.invDmAddToPlayer(selectedId, payload);
+      }
       setOpen(false);
       setForm(empty);
+      setEdit(null);
       await loadInv(selectedId);
     } catch (e) {
       setErr(formatError(e));
     }
   }
 
-  const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
+  async function delItem(item) {
+    if (!item) return;
+    if (!window.confirm(`Удалить предмет "${item.name}"?`)) return;
+    setErr("");
+    try {
+      await api.invDmDeletePlayerItem(selectedId, item.id);
+      await loadInv(selectedId);
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
+  async function toggleVisibility(item) {
+    if (!item) return;
+    const next = item.visibility === "hidden" ? "public" : "hidden";
+    try {
+      await api.invDmUpdatePlayerItem(selectedId, item.id, { ...item, visibility: next, tags: item.tags || [] });
+      await loadInv(selectedId);
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
+  async function onPickImage(ev) {
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    setErr("");
+    setUploading(true);
+    try {
+      const r = await api.uploadAsset(f);
+      setForm((prev) => ({ ...prev, imageUrl: r.url || "" }));
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setUploading(false);
+      ev.target.value = "";
+    }
+  }
+
+  const filtered = useMemo(() => filterInventory(items, { q: debouncedQ, vis, rarity }), [items, debouncedQ, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
   const hasAny = items.length > 0;
+  const listRef = useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: filtered.length,
+    getScrollElement: () => listRef.current,
+    estimateSize: () => 180,
+    overscan: 8
+  });
 
   return (
     <div className="card taped">
-      <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Inventory (DM)</div>
-          <div className="small">Просмотр/выдача предметов игрокам</div>
-        </div>
-        <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
-          <RefreshCcw className="icon" />Обновить
-        </button>
+      <div>
+        <div style={{ fontWeight: 900, fontSize: 20 }}>Inventory (DM)</div>
+        <div className="small">Просмотр/выдача предметов игрокам</div>
       </div>
       <hr />
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />
-      <div className="row" style={{ alignItems:"center", flexWrap: "wrap" }}>
+      <div className="inv-toolbar">
         <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
           {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
         </select>
-        <button className="btn" onClick={() => setOpen(true)} disabled={!selectedId}><Plus className="icon" />Выдать</button>
+        <button className="btn" onClick={startAdd} disabled={!selectedId}><Plus className="icon" />Выдать</button>
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(360px, 100%)" }} />
         <select value={vis} onChange={(e)=>setVis(e.target.value)} style={{ width: 180 }}>
           <option value="">Видимость: все</option>
@@ -108,18 +174,18 @@ export default function DMInventory() {
         </select>
         <select value={rarity} onChange={(e)=>setRarity(e.target.value)} style={{ width: 180 }}>
           <option value="">Редкость: все</option>
-          <option value="common">common</option>
-          <option value="uncommon">uncommon</option>
-          <option value="rare">rare</option>
-          <option value="very_rare">very_rare</option>
-          <option value="legendary">legendary</option>
-          <option value="custom">custom</option>
+          {RARITY_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
         <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
           <List className="icon" />Список
         </button>
         <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
           <LayoutGrid className="icon" />Плитка
+        </button>
+        <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
+          <RefreshCcw className="icon" />Обновить
         </button>
       </div>
       <div className="small" style={{ marginTop: 10 }}>
@@ -131,7 +197,11 @@ export default function DMInventory() {
         </div>
       </div>
 
-      <div className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`} style={{ marginTop: 12 }} ref={listRef}>
+      <div
+        className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`}
+        style={{ marginTop: 12, height: view === "list" ? "70vh" : undefined, overflow: view === "list" ? "auto" : undefined }}
+        ref={view === "grid" ? autoAnimateRef : listRef}
+      >
         {loading ? (
           <>
             <div className="item"><Skeleton h={86} w="100%" /></div>
@@ -142,18 +212,51 @@ export default function DMInventory() {
             title={hasAny ? "Ничего не найдено" : "Нет предметов у игрока"}
             hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Выдайте предмет или выберите другого игрока."}
           />
+        ) : view === "list" ? (
+          <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
+            {rowVirtualizer.getVirtualItems().map((vRow) => {
+              const it = filtered[vRow.index];
+              return (
+                <div
+                  key={it.id}
+                  data-index={vRow.index}
+                  ref={rowVirtualizer.measureElement}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${vRow.start}px)`
+                  }}
+                >
+                  <InventoryItemCard
+                    item={it}
+                    readOnly={false}
+                    actionsVariant="stack"
+                    onEdit={() => startEdit(it)}
+                    onDelete={() => delItem(it)}
+                    onToggleVisibility={() => toggleVisibility(it)}
+                  />
+                </div>
+              );
+            })}
+          </div>
         ) : (
           filtered.map((it) => (
             <InventoryItemCard
               key={it.id}
               item={it}
-              readOnly
+              readOnly={false}
+              actionsVariant="compact"
+              onEdit={() => startEdit(it)}
+              onDelete={() => delItem(it)}
+              onToggleVisibility={() => toggleVisibility(it)}
             />
           ))
         )}
       </div>
 
-      <Modal open={open} title="Выдать предмет" onClose={() => setOpen(false)}>
+      <Modal open={open} title={edit ? "Редактировать предмет" : "Выдать предмет"} onClose={() => setOpen(false)}>
         <div className="list">
           <input value={form.name} onChange={(e)=>setForm({ ...form, name: e.target.value })} placeholder="Название*" style={inp} />
           <textarea value={form.description} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={4} style={inp} />
@@ -163,19 +266,34 @@ export default function DMInventory() {
           </div>
           <div className="row">
             <select value={form.rarity} onChange={(e)=>setForm({ ...form, rarity: e.target.value })} style={inp}>
-              <option value="common">common</option>
-              <option value="uncommon">uncommon</option>
-              <option value="rare">rare</option>
-              <option value="very_rare">very_rare</option>
-              <option value="legendary">legendary</option>
-              <option value="custom">custom</option>
+              {RARITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
             <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} style={inp}>
               <option value="public">Public</option>
               <option value="hidden">Hidden</option>
             </select>
           </div>
-          <button className="btn" onClick={give}>Выдать</button>
+          <div className="row" style={{ alignItems: "center" }}>
+            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickImage} />
+            <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
+              {uploading ? "Загрузка..." : "Загрузить изображение"}
+            </button>
+            <input
+              value={form.imageUrl || ""}
+              onChange={(e)=>setForm({ ...form, imageUrl: e.target.value })}
+              placeholder="URL изображения"
+              style={inp}
+            />
+          </div>
+          <input
+            value={(form.tags || []).join(", ")}
+            onChange={(e)=>setForm({ ...form, tags: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) })}
+            placeholder="Теги (через запятую)"
+            style={inp}
+          />
+          <button className="btn" onClick={save}>{edit ? "Сохранить" : "Выдать"}</button>
         </div>
       </Modal>
     </div>

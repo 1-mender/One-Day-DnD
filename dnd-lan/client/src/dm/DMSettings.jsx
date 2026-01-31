@@ -1,6 +1,8 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
+import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
 
 export default function DMSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -17,19 +19,23 @@ export default function DMSettings() {
 
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
-  async function load() {
+  const load = useCallback(async () => {
     setErr("");
-    const [jc, si] = await Promise.all([api.dmGetJoinCode(), api.serverInfo()]);
-    setJoinEnabled(!!jc.enabled);
-    setJoinCode(jc.joinCode || "");
-    setInfo(si);
-  }
+    try {
+      const [jc, si] = await Promise.all([api.dmGetJoinCode(), api.serverInfo()]);
+      setJoinEnabled(!!jc.enabled);
+      setJoinCode(jc.joinCode || "");
+      setInfo(si);
+    } catch (e) {
+      setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
+    }
+  }, []);
 
   useEffect(() => {
-    load().catch((e) => setErr(e.body?.error || e.message));
+    load().catch((e) => setErr(formatError(e)));
     socket.on("settings:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
-  }, []);
+  }, [load, socket]);
 
   async function saveJoinCode() {
     setMsg("");
@@ -48,7 +54,7 @@ export default function DMSettings() {
       await api.dmSetJoinCode(code);
       setMsg("Код партии сохранён.");
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
   }
 
@@ -65,7 +71,7 @@ export default function DMSettings() {
       setNewPass2("");
       setMsg("Пароль DM успешно изменён.");
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e));
     }
   }
 
@@ -82,7 +88,7 @@ export default function DMSettings() {
       URL.revokeObjectURL(url);
       setMsg("Экспорт готов.");
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e, ERROR_CODES.EXPORT_FAILED));
     }
   }
 
@@ -95,7 +101,7 @@ export default function DMSettings() {
       await api.importZip(file);
       setMsg("Импорт выполнен. Клиентам обновить страницу (если нужно).");
     } catch (e) {
-      setErr(e.body?.error || e.message);
+      setErr(formatError(e, ERROR_CODES.IMPORT_FAILED));
     } finally {
       e.target.value = "";
     }

@@ -1,10 +1,28 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { getDb } from "./db.js";
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import { getDb, DATA_DIR } from "./db.js";
 import { now } from "./util.js";
 
+let cachedSecret;
+
 export function getJwtSecret() {
-  return process.env.JWT_SECRET || "dev_secret_change_me";
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  if (cachedSecret) return cachedSecret;
+  const secretPath = path.join(DATA_DIR, ".jwt_secret");
+  try {
+    cachedSecret = fs.readFileSync(secretPath, "utf8").trim();
+  } catch {
+    // ignore read error
+  }
+  if (!cachedSecret) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    cachedSecret = crypto.randomBytes(32).toString("hex");
+    fs.writeFileSync(secretPath, cachedSecret, { mode: 0o600 });
+  }
+  return cachedSecret;
 }
 
 export function getDmCookieName() {

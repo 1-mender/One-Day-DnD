@@ -3,7 +3,7 @@ import path from "node:path";
 import multer from "multer";
 import { getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb } from "../db.js";
-import { jsonParse, now, randId } from "../util.js";
+import { jsonParse, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
 
 export const infoUploadsRouter = express.Router();
@@ -20,11 +20,23 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (req.isPlayerUpload && !isAllowedPlayerImage(file.mimetype)) {
+      req.fileValidationError = "unsupported_file_type";
+      return cb(null, false);
+    }
+    cb(null, true);
+  }
 });
 
 function isImage(mime) {
   return String(mime || "").toLowerCase().startsWith("image/");
+}
+
+const PLAYER_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+function isAllowedPlayerImage(mime) {
+  return PLAYER_IMAGE_MIMES.has(String(mime || "").toLowerCase());
 }
 
 function getPlayerSession(req) {
@@ -41,6 +53,7 @@ function dmOrAvatarUpload(req, res, next) {
   if (token) {
     try {
       verifyDmToken(token);
+      req.isPlayerUpload = false;
       return next();
     } catch {
       // fall through to player check
@@ -57,10 +70,12 @@ function dmOrAvatarUpload(req, res, next) {
   const parsed = jsonParse(row.editable_fields, []);
   const fields = Array.isArray(parsed) ? parsed : [];
   if (!fields.includes("avatarUrl")) return res.status(403).json({ error: "field_not_allowed" });
+  req.isPlayerUpload = true;
   return next();
 }
 
-infoUploadsRouter.post("/upload", dmOrAvatarUpload, upload.single("file"), (req, res) => {
+infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("file")), (req, res) => {
+  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
   const f = req.file;
   if (!f) return res.status(400).json({ error: "file_required" });
 
