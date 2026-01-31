@@ -900,15 +900,41 @@ a:hover{ color: #000; }
 }
 
 @media (max-width: 700px){
-  body{ background-attachment: scroll; }
-  .vintage-book{
-    background-image: none;
-    border-radius: 18px;
-    background:
-      var(--noise),
-      linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0)),
-      linear-gradient(180deg, var(--paper), var(--paper2));
-  }
+    body{ background-attachment: scroll; }
+    .vintage-book{
+      background-image: none;
+      border-radius: 18px;
+      padding: 14px 12px;
+      background:
+        var(--noise),
+        linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0)),
+        linear-gradient(180deg, var(--paper), var(--paper2));
+    }
+    .vintage-book::before,
+    .vintage-book::after{
+      display:none;
+    }
+    .vintage-page{
+      min-height: 0;
+      border-radius: 12px;
+    }
+    .vintage-page::before,
+    .vintage-page::after{
+      display:none;
+    }
+    .spread-grid{ gap: 12px; }
+    .scrap-card,
+    .taped,
+    .polaroid,
+    .tilt-1,
+    .tilt-2,
+    .tilt-3{
+      transform: none !important;
+    }
+    .scrap-card::after,
+    .taped::before{
+      opacity: .3;
+    }
   .inv-card, .dossier{
     display: grid;
     grid-template-columns: 1fr;
@@ -1045,18 +1071,50 @@ a:hover{ color: #000; }
     justify-content: space-between;
     gap: 10px;
   }
-  .inv-title-row .badge{
+  .inv-title-row .badge,
+  .inv-title-row .rarity-medallion{
     flex: 0 0 auto;
   }
-  .badge.rarity{
-    font-weight: 900;
-    letter-spacing: .4px;
-    padding: 4px 10px;
+  .rarity-medallion{
+    width: 28px;
+    height: 28px;
     border-radius: 999px;
-    border: 1px solid rgba(70,55,30,.25);
-    background: rgba(255,255,255,.5);
+    border: 1px solid rgba(80,60,30,.45);
+    background: rgba(255,255,255,.6);
+    position: relative;
+    box-shadow: 0 6px 12px rgba(0,0,0,.18);
+    display:grid;
+    place-items:center;
+    color: rgba(35,25,15,.9);
   }
-  .badge.rarity{ box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+  .rarity-medallion::before{
+    content:"";
+    position:absolute;
+    inset: 4px;
+    border-radius: 999px;
+    border: 1px dashed rgba(60,45,20,.35);
+    opacity: .75;
+    z-index: 0;
+  }
+  .rarity-medallion::after{
+    content:"";
+    position:absolute;
+    left: 6px;
+    right: 6px;
+    top: 6px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--medal-glint, rgba(255,255,255,.65));
+    opacity: .7;
+    z-index: 1;
+  }
+  .rarity-medal-icon{
+    position: relative;
+    z-index: 2;
+    width: 14px;
+    height: 14px;
+    stroke-width: 2.2;
+  }
 .inv-title{ font-weight: 1000; font-size: 18px; }
 .inv-badges{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
 .inv-badges .badge{
