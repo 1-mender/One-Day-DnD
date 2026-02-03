@@ -9,7 +9,6 @@ import DMTabBar from "./DMTabBar.jsx";
 export default function DMLayout() {
   const nav = useNavigate();
   const location = useLocation();
-  const [online, setOnline] = useState(true);
   const [showOffline, setShowOffline] = useState(false);
   const offlineTimerRef = useRef(null);
   const hasConnectedRef = useRef(false);
@@ -40,12 +39,10 @@ export default function DMLayout() {
     const onConnect = () => {
       hasConnectedRef.current = true;
       clearOfflineTimer();
-      setOnline(true);
       setShowOffline(false);
     };
     const onDisconnect = () => {
       if (closingRef.current) return;
-      setOnline(false);
       if (!hasConnectedRef.current) return;
       scheduleOffline();
     };

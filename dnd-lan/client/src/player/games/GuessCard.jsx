@@ -17,7 +17,6 @@ const RANKS = ["A", "K", "Q"];
 const MAX_ATTEMPTS = 3;
 const TIME_LIMIT = 40;
 const GRID_COLS = 4;
-const GRID_ROWS = 3;
 
 let cardId = 1;
 const nextId = () => cardId++;

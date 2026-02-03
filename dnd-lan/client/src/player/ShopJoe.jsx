@@ -112,7 +112,7 @@ export default function ShopJoe() {
     <div className="card taped shop-shell">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div className="shop-title">Джо • Магазин билетов</div>
+          <div className="shop-title">DJO • Магазин билетов</div>
           <div className="small">Билеты имеют вес: сильные бонусы ограничены.</div>
         </div>
         <div className="ticket-bank">

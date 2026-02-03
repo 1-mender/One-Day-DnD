@@ -99,6 +99,10 @@ export const api = {
     request(`/api/profile-requests/${requestId}/approve`, { method: "POST", body: JSON.stringify({ note }) }),
   dmRejectProfileRequest: (requestId, note = "") =>
     request(`/api/profile-requests/${requestId}/reject`, { method: "POST", body: JSON.stringify({ note }) }),
+  profilePresets: () => request("/api/profile-presets", { method: "GET" }),
+  dmProfilePresets: () => request("/api/profile-presets/dm", { method: "GET" }),
+  dmProfilePresetsUpdate: (payload) =>
+    request("/api/profile-presets/dm", { method: "PUT", body: JSON.stringify(payload) }),
   playerProfileRequests: (playerId, { status = "", limit = 5 } = {}) => {
     const sp = new URLSearchParams();
     if (status) sp.set("status", status);

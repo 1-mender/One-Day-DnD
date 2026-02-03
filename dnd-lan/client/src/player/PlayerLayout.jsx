@@ -22,7 +22,6 @@ export default function PlayerLayout() {
     window.history.replaceState({}, "", window.location.pathname);
   }
 
-  const [online, setOnline] = useState(true);
   const [showOffline, setShowOffline] = useState(false);
   const offlineTimerRef = useRef(null);
   const hasConnectedRef = useRef(false);
@@ -58,12 +57,10 @@ export default function PlayerLayout() {
     const onConnect = () => {
       hasConnectedRef.current = true;
       clearOfflineTimer();
-      setOnline(true);
       setShowOffline(false);
     };
     const onDisconnect = () => {
       if (closingRef.current) return;
-      setOnline(false);
       if (!hasConnectedRef.current) return;
       scheduleOffline();
     };
@@ -165,8 +162,8 @@ export default function PlayerLayout() {
     { to: "/app/profile", label: "Profile" },
     { to: "/app/inventory", label: "Inventory" },
     { to: "/app/notes", label: "Notes" },
-    { to: "/app/arcade", label: "Рыб" },
-    { to: "/app/shop", label: "Джо" },
+    { to: "/app/arcade", label: "Fish" },
+    { to: "/app/shop", label: "DJO" },
   ];
   if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Bestiary" });
 

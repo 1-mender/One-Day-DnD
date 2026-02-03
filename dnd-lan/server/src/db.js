@@ -64,6 +64,12 @@ function ensureMigrations(database) {
     if (!partyCols.includes("tickets_rules")) {
       database.exec("ALTER TABLE party_settings ADD COLUMN tickets_rules TEXT NOT NULL DEFAULT '{}';");
     }
+    if (!partyCols.includes("profile_presets")) {
+      database.exec("ALTER TABLE party_settings ADD COLUMN profile_presets TEXT NOT NULL DEFAULT '[]';");
+    }
+    if (!partyCols.includes("profile_presets_access")) {
+      database.exec("ALTER TABLE party_settings ADD COLUMN profile_presets_access TEXT NOT NULL DEFAULT '{}';");
+    }
   }
 }
 
@@ -81,8 +87,9 @@ export function initDb() {
     const t = now();
     const partyId = db.prepare("INSERT INTO parties(name, join_code, created_at) VALUES(?,?,?)")
       .run("Default Party", null, t).lastInsertRowid;
-    db.prepare("INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules) VALUES(?,?,?,?)")
-      .run(partyId, 0, 1, "{}");
+    db.prepare(
+      "INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access) VALUES(?,?,?,?,?,?)"
+    ).run(partyId, 0, 1, "{}", "[]", "{}");
   }
   return db;
 }
@@ -103,7 +110,14 @@ export function getPartyId() {
 
 export function getPartySettings(partyId) {
   const row = getDb().prepare("SELECT * FROM party_settings WHERE party_id=?").get(partyId);
-  return row || { party_id: partyId, bestiary_enabled: 0, tickets_enabled: 1, tickets_rules: "{}" };
+  return row || {
+    party_id: partyId,
+    bestiary_enabled: 0,
+    tickets_enabled: 1,
+    tickets_rules: "{}",
+    profile_presets: "[]",
+    profile_presets_access: "{}"
+  };
 }
 
 export function setPartySettings(partyId, patch) {
@@ -111,14 +125,18 @@ export function setPartySettings(partyId, patch) {
   const bestiary = patch.bestiary_enabled ?? cur.bestiary_enabled;
   const ticketsEnabled = patch.tickets_enabled ?? cur.tickets_enabled ?? 1;
   const ticketsRules = patch.tickets_rules ?? cur.tickets_rules ?? "{}";
+  const profilePresets = patch.profile_presets ?? cur.profile_presets ?? "[]";
+  const profilePresetsAccess = patch.profile_presets_access ?? cur.profile_presets_access ?? "{}";
   getDb().prepare(
-    `INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules)
-     VALUES(?,?,?,?)
+    `INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access)
+     VALUES(?,?,?,?,?,?)
      ON CONFLICT(party_id) DO UPDATE SET
        bestiary_enabled=excluded.bestiary_enabled,
        tickets_enabled=excluded.tickets_enabled,
-       tickets_rules=excluded.tickets_rules`
-  ).run(partyId, bestiary, ticketsEnabled, ticketsRules);
+       tickets_rules=excluded.tickets_rules,
+       profile_presets=excluded.profile_presets,
+       profile_presets_access=excluded.profile_presets_access`
+  ).run(partyId, bestiary, ticketsEnabled, ticketsRules, profilePresets, profilePresetsAccess);
 }
 
 export function getParty() {

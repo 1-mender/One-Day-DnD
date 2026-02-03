@@ -58,7 +58,7 @@ export default function Players() {
           <hr />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." style={{ width: "min(520px, 100%)" }} />
-            <button className="btn secondary" onClick={load}><RefreshCcw className="icon" />Обновить</button>
+            <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
           </div>
 
           <div style={{ marginTop: 12 }}>
@@ -119,3 +119,4 @@ export default function Players() {
     </div>
   );
 }
+

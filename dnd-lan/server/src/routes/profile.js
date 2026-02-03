@@ -1,7 +1,7 @@
 import express from "express";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
-import { getDb } from "../db.js";
-import { jsonParse, now } from "../util.js";
+import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
+import { jsonParse, now, randId } from "../util.js";
 
 export const profileRouter = express.Router();
 
@@ -24,6 +24,19 @@ const LIMITS = {
   statKey: 24,
   statValue: 64,
   maxStats: 20
+};
+
+const PRESET_LIMITS = {
+  title: 80,
+  subtitle: 160,
+  maxPresets: 30
+};
+
+const DEFAULT_PRESET_ACCESS = {
+  enabled: true,
+  playerEdit: true,
+  playerRequest: true,
+  hideLocal: false
 };
 
 function getDmFromRequest(req) {
@@ -99,6 +112,44 @@ function validateStats(stats) {
     return "stats_invalid";
   }
   return null;
+}
+
+function normalizePresetAccess(value) {
+  const v = value && typeof value === "object" ? value : {};
+  return {
+    enabled: typeof v.enabled === "boolean" ? v.enabled : DEFAULT_PRESET_ACCESS.enabled,
+    playerEdit: typeof v.playerEdit === "boolean" ? v.playerEdit : DEFAULT_PRESET_ACCESS.playerEdit,
+    playerRequest: typeof v.playerRequest === "boolean" ? v.playerRequest : DEFAULT_PRESET_ACCESS.playerRequest,
+    hideLocal: typeof v.hideLocal === "boolean" ? v.hideLocal : DEFAULT_PRESET_ACCESS.hideLocal
+  };
+}
+
+function normalizePresetData(raw) {
+  const changes = sanitizeRequestChanges(raw || {});
+  const err = validateRequestChanges(changes);
+  if (err) return { error: err };
+  return {
+    characterName: String(changes.characterName || ""),
+    classRole: String(changes.classRole || ""),
+    level: changes.level === "" || changes.level == null ? "" : Number(changes.level),
+    stats: changes.stats || {},
+    bio: String(changes.bio || ""),
+    avatarUrl: String(changes.avatarUrl || "")
+  };
+}
+
+function sanitizePreset(preset, index) {
+  if (!preset || typeof preset !== "object") return null;
+  const title = String(preset.title || "").trim();
+  if (!title) return null;
+  if (title.length > PRESET_LIMITS.title) return { error: "preset_title_too_long" };
+  const subtitle = String(preset.subtitle || "").trim();
+  if (subtitle.length > PRESET_LIMITS.subtitle) return { error: "preset_subtitle_too_long" };
+  const data = normalizePresetData(preset.data || preset);
+  if (data?.error) return { error: data.error };
+  const idRaw = String(preset.id || preset.key || "").trim();
+  const id = idRaw ? idRaw.slice(0, 40) : `preset_${index}_${randId(4)}`;
+  return { id, title, subtitle, data };
 }
 
 function buildProfilePayload(body, existing) {
@@ -212,6 +263,64 @@ function ensureWritable(sess, res) {
   }
   return true;
 }
+
+profileRouter.get("/profile-presets", (req, res) => {
+  const dm = getDmFromRequest(req);
+  const me = getPlayerFromToken(req);
+  if (!dm && !me) return res.status(403).json({ error: "forbidden" });
+
+  const party = getParty();
+  const settings = getPartySettings(party.id);
+  let presets = jsonParse(settings.profile_presets, []);
+  const access = normalizePresetAccess(jsonParse(settings.profile_presets_access, {}));
+  presets = Array.isArray(presets) ? presets : [];
+  if (!dm && me && (!access.enabled || (!access.playerEdit && !access.playerRequest))) {
+    presets = [];
+  }
+  res.json({ presets, access });
+});
+
+profileRouter.get("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
+  const party = getParty();
+  const settings = getPartySettings(party.id);
+  const presets = jsonParse(settings.profile_presets, []);
+  const access = normalizePresetAccess(jsonParse(settings.profile_presets_access, {}));
+  res.json({ presets: Array.isArray(presets) ? presets : [], access });
+});
+
+profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
+  const body = req.body || {};
+  const party = getParty();
+
+  if (body.reset) {
+    setPartySettings(party.id, {
+      profile_presets: "[]",
+      profile_presets_access: JSON.stringify(DEFAULT_PRESET_ACCESS)
+    });
+    req.app.locals.io?.to("dm").emit("settings:updated");
+    req.app.locals.io?.to(`party:${party.id}`).emit("settings:updated");
+    return res.json({ presets: [], access: DEFAULT_PRESET_ACCESS });
+  }
+
+  const access = normalizePresetAccess(body.access);
+  const rawPresets = Array.isArray(body.presets) ? body.presets : [];
+  const presets = [];
+  for (const preset of rawPresets) {
+    if (presets.length >= PRESET_LIMITS.maxPresets) break;
+    const normalized = sanitizePreset(preset, presets.length + 1);
+    if (!normalized) continue;
+    if (normalized.error) return res.status(400).json({ error: normalized.error });
+    presets.push(normalized);
+  }
+
+  setPartySettings(party.id, {
+    profile_presets: JSON.stringify(presets),
+    profile_presets_access: JSON.stringify(access)
+  });
+  req.app.locals.io?.to("dm").emit("settings:updated");
+  req.app.locals.io?.to(`party:${party.id}`).emit("settings:updated");
+  res.json({ presets, access });
+});
 
 profileRouter.get("/players/:id/profile", (req, res) => {
   const playerId = Number(req.params.id);

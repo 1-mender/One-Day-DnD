@@ -119,7 +119,7 @@ export default function Inventory() {
       <div style={{ fontWeight: 800, fontSize: 18 }}>Инвентарь</div>
       <div className="small">Вес (по фильтру): {totalWeight.toFixed(2)} {readOnly ? "• read-only" : ""}</div>
         </div>
-        <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" />Добавить</button>
+        <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
       </div>
       <hr />
       <div className="row" style={{ flexWrap: "wrap" }}>
@@ -136,20 +136,20 @@ export default function Inventory() {
           ))}
         </select>
         <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
-          <List className="icon" />Список
+          <List className="icon" aria-hidden="true" />Список
         </button>
         <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
-          <LayoutGrid className="icon" />Плитка
+          <LayoutGrid className="icon" aria-hidden="true" />Плитка
         </button>
-        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" />Обновить</button>
+        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
       </div>
 
       <div className="small" style={{ marginTop: 10 }}>
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <span className="badge"><Package className="icon" />Всего: {filtered.length}</span>
-          <span className="badge ok"><Eye className="icon" />Публичные: {publicCount}</span>
-          <span className="badge off"><EyeOff className="icon" />Скрытые: {hiddenCount}</span>
-          <span className="badge secondary"><Scale className="icon" />Вес: {totalWeight.toFixed(2)}</span>
+          <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
+          <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
+          <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
+          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeight.toFixed(2)}</span>
           {readOnly ? <span className="badge warn">read-only</span> : null}
         </div>
       </div>
@@ -246,3 +246,4 @@ function summarizeInventory(list) {
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
 }
+

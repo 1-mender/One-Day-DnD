@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS party_settings (
   bestiary_enabled INTEGER NOT NULL DEFAULT 0,
   tickets_enabled INTEGER NOT NULL DEFAULT 1,
   tickets_rules TEXT NOT NULL DEFAULT '{}',
+  profile_presets TEXT NOT NULL DEFAULT '[]',
+  profile_presets_access TEXT NOT NULL DEFAULT '{}',
   FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );
 

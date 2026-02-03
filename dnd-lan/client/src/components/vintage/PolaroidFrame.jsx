@@ -5,7 +5,7 @@ export default function PolaroidFrame({ src, alt = "", fallback = "?", className
   const imageProps = getPolaroidImageProps(src, className);
   return (
     <div className={`polaroid ${className}`.trim()} style={style}>
-      <div className="inner" style={innerStyle}>
+      <div className="inner" style={innerStyle} data-has-image={src ? "true" : "false"}>
         {src ? (
           <img
             src={src}

@@ -222,8 +222,8 @@ export default function Arcade() {
     <div className="card taped arcade-shell">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div className="arcade-title">Рыб • Зал мини-игр</div>
-          <div className="small">Сыграй, собери серию и обменяй билеты у Джо.</div>
+          <div className="arcade-title">Fish • Зал мини-игр</div>
+          <div className="small">Сыграй, собери серию и обменяй билеты у DJO.</div>
         </div>
         <div className="ticket-bank">
           <div className="ticket-card">

@@ -1,17 +1,68 @@
 import React, { memo } from "react";
-import { Eye, EyeOff, PencilLine, Trash2 } from "lucide-react";
+import {
+  Axe,
+  Backpack,
+  BowArrow,
+  BookOpen,
+  Crown,
+  Eye,
+  EyeOff,
+  FlaskConical,
+  Gem,
+  Key,
+  PencilLine,
+  PocketKnife,
+  ScrollText,
+  Shield,
+  Skull,
+  Sword,
+  Trash2,
+  Wand
+} from "lucide-react";
 import { getInventoryImageProps } from "../../lib/imageSizing.js";
 import { getRarityLabel } from "../../lib/inventoryRarity.js";
 import MarkdownView from "../markdown/MarkdownView.jsx";
 import RarityBadge from "./RarityBadge.jsx";
 
-function pickIcon(item) {
-  const tags = (item.tags || []).map((t) => String(t).toLowerCase());
+const TAG_ICON_RULES = [
+  { icon: Sword, match: ["weapon", "sword", "blade", "меч", "клин", "оруж"] },
+  { icon: BowArrow, match: ["bow", "лук", "arrows", "ranged"] },
+  { icon: Axe, match: ["axe", "топор"] },
+  { icon: PocketKnife, match: ["dagger", "knife", "кинжал", "нож"] },
+  { icon: Shield, match: ["shield", "armor", "armour", "брон", "щит", "доспех"] },
+  { icon: Wand, match: ["wand", "staff", "посох", "жезл"] },
+  { icon: ScrollText, match: ["scroll", "свиток"] },
+  { icon: BookOpen, match: ["book", "tome", "grimoire", "книга", "том"] },
+  { icon: FlaskConical, match: ["potion", "elixir", "flask", "зель", "эликс"] },
+  { icon: Gem, match: ["gem", "jewel", "ring", "amulet", "камень", "самоцвет", "амулет", "кольц"] },
+  { icon: Crown, match: ["crown", "legendary", "релик", "артефакт"] },
+  { icon: Key, match: ["key", "ключ"] },
+  { icon: Skull, match: ["necromancy", "skull", "curse", "проклят", "череп"] },
+  { icon: Backpack, match: ["bag", "backpack", "рюк", "сумк", "pack"] }
+];
+
+function pickFallbackText(tokens) {
+  const tags = tokens.map((t) => String(t).toLowerCase());
   if (tags.some((t) => t.includes("weapon") || t.includes("меч") || t.includes("лук"))) return "МЕЧ";
-  if (tags.some((t) => t.includes("armor") || t.includes("брон"))) return "БРОНЯ";
-  if (tags.some((t) => t.includes("potion") || t.includes("зель"))) return "ЗЕЛЬЕ";
+  if (tags.some((t) => t.includes("armor") || t.includes("брон") || t.includes("shield") || t.includes("щит"))) return "БРОНЯ";
+  if (tags.some((t) => t.includes("potion") || t.includes("зель") || t.includes("elixir"))) return "ЗЕЛЬЕ";
   if (tags.some((t) => t.includes("scroll") || t.includes("свит"))) return "СВИТОК";
+  if (tags.some((t) => t.includes("book") || t.includes("книга"))) return "КНИГА";
+  if (tags.some((t) => t.includes("ring") || t.includes("amulet") || t.includes("камень"))) return "АРТЕФ";
   return "ПРЕДМ";
+}
+
+function pickIcon(item) {
+  const tokens = [
+    item.name,
+    item.type,
+    item.category,
+    ...(Array.isArray(item.tags) ? item.tags : [])
+  ].filter(Boolean).map((t) => String(t).toLowerCase());
+  const hay = tokens.join(" ");
+  const rule = TAG_ICON_RULES.find((r) => r.match.some((m) => hay.includes(m)));
+  if (rule?.icon) return { Icon: rule.icon };
+  return { text: pickFallbackText(tokens) };
 }
 
 function InventoryItemCard({
@@ -29,8 +80,8 @@ function InventoryItemCard({
   const imageProps = getInventoryImageProps(img);
   const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility;
   const weight = Number(item.weight || 0);
-  const rarity = String(item.rarity || "common");
-  const rarityLabel = getRarityLabel(rarity);
+  const rarityKey = String(item.rarity || "common").toLowerCase().replace(/\s+/g, "_");
+  const rarityLabel = getRarityLabel(rarityKey);
   const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
   const compact = actionsVariant === "compact";
   const metaParts = [
@@ -43,11 +94,12 @@ function InventoryItemCard({
   return (
     <div
       className="item taped inv-card"
+      data-rarity={rarityKey}
       data-visibility={item.visibility}
       data-variant={actionsVariant}
       style={{ contentVisibility: "auto", containIntrinsicSize: "180px" }}
     >
-      <div className="inv-hero">
+      <div className="inv-hero" data-has-image={img ? "true" : "false"}>
         {img ? (
           <img
             src={img}
@@ -59,20 +111,22 @@ function InventoryItemCard({
             sizes={imageProps.sizes}
             srcSet={imageProps.srcSet}
           />
+        ) : icon.Icon ? (
+          <icon.Icon className="inv-icon" aria-hidden="true" />
         ) : (
-          <div className="inv-fallback">{icon}</div>
+          <div className="inv-fallback">{icon.text}</div>
         )}
       </div>
 
       <div className="inv-body">
         <div className="inv-title-row">
           <div className="inv-title">{item.name}</div>
-          <RarityBadge rarity={rarity} />
+          <RarityBadge rarity={rarityKey} />
         </div>
         <div className="inv-badges">
           <span className="badge">x{item.qty}</span>
           <span className={`badge ${isHidden ? "off" : "ok"}`}>
-            {isHidden ? <EyeOff className="icon" /> : <Eye className="icon" />}{vis}
+            {isHidden ? <EyeOff className="icon" aria-hidden="true" /> : <Eye className="icon" aria-hidden="true" />}{vis}
           </span>
         </div>
         {metaParts.length ? (
@@ -101,7 +155,7 @@ function InventoryItemCard({
               title="Редактировать"
               aria-label="Редактировать"
             >
-              <PencilLine className="icon" />
+              <PencilLine className="icon" aria-hidden="true" />
               {compact ? null : "Редактировать"}
             </button>
           )}
@@ -113,7 +167,7 @@ function InventoryItemCard({
               title={isHidden ? "Сделать публичным" : "Сделать скрытым"}
               aria-label={isHidden ? "Сделать публичным" : "Сделать скрытым"}
             >
-              {isHidden ? <Eye className="icon" /> : <EyeOff className="icon" />}
+              {isHidden ? <Eye className="icon" aria-hidden="true" /> : <EyeOff className="icon" aria-hidden="true" />}
               {compact ? null : (isHidden ? "Сделать публичным" : "Сделать скрытым")}
             </button>
           )}
@@ -125,7 +179,7 @@ function InventoryItemCard({
               title="Удалить"
               aria-label="Удалить"
             >
-              <Trash2 className="icon" />
+              <Trash2 className="icon" aria-hidden="true" />
               {compact ? null : "Удалить"}
             </button>
           )}
@@ -136,3 +190,4 @@ function InventoryItemCard({
 }
 
 export default memo(InventoryItemCard);
+

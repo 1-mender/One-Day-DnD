@@ -21,6 +21,77 @@ const emptyDraft = {
   avatarUrl: ""
 };
 
+const PROFILE_PRESETS = [
+  {
+    key: "ranger",
+    title: "Следопыт",
+    subtitle: "Лесной разведчик и охотник",
+    statsLabel: "DEX 16 • WIS 14 • CON 12",
+    data: {
+      characterName: "Лира Туман",
+      classRole: "Следопыт",
+      level: 3,
+      stats: { str: 10, dex: 16, con: 12, int: 12, wis: 14, cha: 10 },
+      bio: "Лесная проводница, читает следы и охраняет тропы. Ищет потерянный артефакт рода."
+    }
+  },
+  {
+    key: "warrior",
+    title: "Воин",
+    subtitle: "Ветеран и защитник отряда",
+    statsLabel: "STR 16 • CON 14 • CHA 12",
+    data: {
+      characterName: "Бран Утес",
+      classRole: "Воин",
+      level: 2,
+      stats: { str: 16, dex: 11, con: 14, int: 10, wis: 11, cha: 12 },
+      bio: "Служил в гарнизоне, привык держать строй. Хочет вернуть честь семьи."
+    }
+  },
+  {
+    key: "mage",
+    title: "Маг",
+    subtitle: "Учёный и мастер ритуалов",
+    statsLabel: "INT 16 • WIS 13 • DEX 12",
+    data: {
+      characterName: "Эмрис Клинокниг",
+      classRole: "Маг",
+      level: 3,
+      stats: { str: 8, dex: 12, con: 11, int: 16, wis: 13, cha: 10 },
+      bio: "Исследователь древних руин. Считает, что каждый артефакт — ключ к новой школе магии."
+    }
+  },
+  {
+    key: "rogue",
+    title: "Разбойник",
+    subtitle: "Незаметный и дерзкий",
+    statsLabel: "DEX 16 • CHA 13 • INT 12",
+    data: {
+      characterName: "Ника Лис",
+      classRole: "Разбойник",
+      level: 2,
+      stats: { str: 9, dex: 16, con: 11, int: 12, wis: 10, cha: 13 },
+      bio: "Городская легенда: вскрывает любые замки. Работает ради свободы — и долга."
+    }
+  },
+  {
+    key: "cleric",
+    title: "Жрец",
+    subtitle: "Поддержка и духовный щит",
+    statsLabel: "WIS 16 • CON 12 • STR 11",
+    data: {
+      characterName: "Сора Нимб",
+      classRole: "Жрец",
+      level: 3,
+      stats: { str: 11, dex: 10, con: 12, int: 11, wis: 16, cha: 12 },
+      bio: "Несёт свет и исцеление. Ищет знамение, чтобы изменить судьбу общины."
+    }
+  }
+];
+
+const PRESET_HINT = "Шаблон заполнит имя, класс, уровень, статы и био. Можно потом поправить.";
+const PRESET_STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
+
 export default function Profile() {
   const toast = useToast();
   const socket = useMemo(() => connectSocket({ role: "player" }), []);
@@ -44,6 +115,8 @@ export default function Profile() {
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
   const reqStatusRef = useRef(reqStatus);
+  const [globalPresets, setGlobalPresets] = useState([]);
+  const [presetAccess, setPresetAccess] = useState({ enabled: false, playerEdit: false, playerRequest: false, hideLocal: false });
 
   const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
 
@@ -61,6 +134,22 @@ export default function Profile() {
       setRequests([]);
     } finally {
       setReqLoading(false);
+    }
+  }, []);
+
+  const loadPresets = useCallback(async () => {
+    try {
+      const r = await api.profilePresets();
+      setGlobalPresets(Array.isArray(r?.presets) ? r.presets : []);
+      setPresetAccess({
+        enabled: r?.access?.enabled !== false,
+        playerEdit: r?.access?.playerEdit !== false,
+        playerRequest: r?.access?.playerRequest !== false,
+        hideLocal: !!r?.access?.hideLocal
+      });
+    } catch {
+      setGlobalPresets([]);
+      setPresetAccess({ enabled: false, playerEdit: false, playerRequest: false, hideLocal: false });
     }
   }, []);
 
@@ -93,12 +182,21 @@ export default function Profile() {
     loadRef.current = load;
   }, [load]);
 
+  const loadPresetsRef = useRef(loadPresets);
+  useEffect(() => {
+    loadPresetsRef.current = loadPresets;
+  }, [loadPresets]);
+
   useEffect(() => {
     loadRef.current?.().catch(() => {});
+    loadPresetsRef.current?.().catch(() => {});
     const onUpdated = () => loadRef.current?.().catch(() => {});
+    const onSettings = () => loadPresetsRef.current?.().catch(() => {});
     socket.on("profile:updated", onUpdated);
+    socket.on("settings:updated", onSettings);
     return () => {
       socket.off("profile:updated", onUpdated);
+      socket.off("settings:updated", onSettings);
       socket.disconnect();
     };
   }, [socket]);
@@ -220,6 +318,16 @@ export default function Profile() {
   }
 
   const updatedLabel = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "-";
+  const allowGlobalEdit = !!presetAccess?.enabled && !!presetAccess?.playerEdit;
+  const allowGlobalRequest = !!presetAccess?.enabled && !!presetAccess?.playerRequest;
+  const editPresets = useMemo(
+    () => mergePresets(globalPresets, allowGlobalEdit, presetAccess?.hideLocal),
+    [globalPresets, allowGlobalEdit, presetAccess?.hideLocal]
+  );
+  const requestPresets = useMemo(
+    () => mergePresets(globalPresets, allowGlobalRequest, presetAccess?.hideLocal),
+    [globalPresets, allowGlobalRequest, presetAccess?.hideLocal]
+  );
 
   return (
     <div className="card taped no-stamp">
@@ -230,7 +338,7 @@ export default function Profile() {
             {readOnly ? "read-only (имперсонализация)" : "Твой профиль"} • Обновлён: {updatedLabel}
           </div>
         </div>
-        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" />Обновить</button>
+        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
       </div>
       <hr />
 
@@ -250,7 +358,7 @@ export default function Profile() {
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                 <div className="title">Визитка</div>
                 {canEdit("avatarUrl") ? (
-                  <button className="btn secondary" onClick={() => openEdit("avatar")}><ImageUp className="icon" />Редактировать</button>
+                  <button className="btn secondary" onClick={() => openEdit("avatar")}><ImageUp className="icon" aria-hidden="true" />Редактировать</button>
                 ) : null}
               </div>
               <div className="small note-hint" style={{ marginTop: 6 }}>
@@ -270,7 +378,7 @@ export default function Profile() {
                     Разрешено редактировать: {editableFields.length ? editableFields.join(", ") : "нет"}
                   </div>
                   {canEditBasic ? (
-                    <button className="btn secondary" style={{ marginTop: 10 }} onClick={() => openEdit("basic")}><PencilLine className="icon" />Редактировать</button>
+                    <button className="btn secondary" style={{ marginTop: 10 }} onClick={() => openEdit("basic")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
                   ) : null}
                 </div>
               </div>
@@ -281,7 +389,7 @@ export default function Profile() {
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                   <div className="title"><span className="section-icon stat" aria-hidden="true" />Статы</div>
                   {canEdit("stats") ? (
-                    <button className="btn secondary" onClick={() => openEdit("stats")}><PencilLine className="icon" />Редактировать</button>
+                    <button className="btn secondary" onClick={() => openEdit("stats")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
                   ) : null}
                 </div>
                 <div style={{ marginTop: 10 }}>
@@ -293,7 +401,7 @@ export default function Profile() {
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                   <div className="title"><span className="section-icon bio" aria-hidden="true" />Биография</div>
                   {canEdit("bio") ? (
-                    <button className="btn secondary" onClick={() => openEdit("bio")}><PencilLine className="icon" />Редактировать</button>
+                    <button className="btn secondary" onClick={() => openEdit("bio")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
                   ) : null}
                 </div>
                 <div className="small bio-text" style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
@@ -307,7 +415,7 @@ export default function Profile() {
             <div className="paper-note" style={{ marginTop: 14 }}>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                 <div className="title">Запросить изменение</div>
-                <button className="btn" onClick={openRequest}><Send className="icon" />Запросить изменение</button>
+                <button className="btn" onClick={openRequest}><Send className="icon" aria-hidden="true" />Запросить изменение</button>
               </div>
               <div className="small note-hint" style={{ marginTop: 6 }}>
                 Используйте запрос, если прямое редактирование запрещено.
@@ -326,7 +434,7 @@ export default function Profile() {
           <div className="paper-note" style={{ marginTop: 14 }}>
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div className="title">Последние запросы</div>
-              <button className="btn secondary" onClick={() => loadRequests(playerId, reqStatus)}><RefreshCcw className="icon" />Обновить</button>
+              <button className="btn secondary" onClick={() => loadRequests(playerId, reqStatus)}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
             </div>
             <div className="small note-hint" style={{ marginTop: 6 }}>Показываются последние 10 запросов.</div>
             <div className="row" style={{ marginTop: 8, flexWrap: "wrap" }}>
@@ -375,6 +483,29 @@ export default function Profile() {
 
       <Modal open={!!editMode} title="Редактировать профиль" onClose={() => setEditMode("")}>
         <div className="list">
+          <div className="preset-panel">
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+              <div className="title">Шаблоны профиля</div>
+              <div className="small">{PRESET_HINT}</div>
+            </div>
+            <div className="preset-grid">
+              {editPresets.map((preset) => (
+                <button
+                  key={preset.id || preset.key || preset.title}
+                  type="button"
+                  className="preset-card"
+                  onClick={() => setDraft((cur) => mergePreset(cur, preset))}
+                >
+                  <div className="preset-title">{preset.title}</div>
+                  <div className="small">{preset.subtitle}</div>
+                  {preset.source === "dm" ? (
+                    <span className="badge secondary" style={{ alignSelf: "flex-start", marginTop: 6 }}>DM</span>
+                  ) : null}
+                  <div className="preset-meta">{getPresetStatsLabel(preset)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
           {editMode === "basic" ? (
             <>
               <div className="small note-hint">Меняются только разрешённые поля.</div>
@@ -443,7 +574,7 @@ export default function Profile() {
                 style={{ display: "none" }}
               />
               <button className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                <ImageUp className="icon" />{uploading ? "Загрузка..." : "Загрузить файл"}
+                <ImageUp className="icon" aria-hidden="true" />{uploading ? "Загрузка..." : "Загрузить файл"}
               </button>
             </>
           ) : null}
@@ -454,6 +585,29 @@ export default function Profile() {
 
       <Modal open={requestOpen} title="Запрос изменения профиля" onClose={() => setRequestOpen(false)}>
         <div className="list">
+          <div className="preset-panel">
+            <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+              <div className="title">Шаблоны профиля</div>
+              <div className="small">{PRESET_HINT}</div>
+            </div>
+            <div className="preset-grid">
+              {requestPresets.map((preset) => (
+                <button
+                  key={preset.id || preset.key || preset.title}
+                  type="button"
+                  className="preset-card"
+                  onClick={() => setRequestDraft((cur) => mergePreset(cur, preset))}
+                >
+                  <div className="preset-title">{preset.title}</div>
+                  <div className="small">{preset.subtitle}</div>
+                  {preset.source === "dm" ? (
+                    <span className="badge secondary" style={{ alignSelf: "flex-start", marginTop: 6 }}>DM</span>
+                  ) : null}
+                  <div className="preset-meta">{getPresetStatsLabel(preset)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
           <textarea
             value={requestReason}
             onChange={(e) => setRequestReason(e.target.value)}
@@ -500,11 +654,52 @@ export default function Profile() {
             maxLength={512}
             style={inp}
           />
-          <button className="btn" onClick={submitRequest}><Send className="icon" />Отправить запрос</button>
+          <button className="btn" onClick={submitRequest}><Send className="icon" aria-hidden="true" />Отправить запрос</button>
         </div>
       </Modal>
     </div>
   );
+}
+
+function mergePreset(prev, preset) {
+  const data = preset?.data || {};
+  return {
+    ...prev,
+    ...data,
+    stats: { ...(data.stats || {}) }
+  };
+}
+
+function mergePresets(globalPresets, allowGlobal, hideLocal) {
+  const list = [];
+  if (allowGlobal && Array.isArray(globalPresets)) {
+    list.push(...globalPresets.map((preset) => ({ ...preset, source: "dm" })));
+  }
+  if (!hideLocal) {
+    list.push(...PROFILE_PRESETS.map((preset) => ({ ...preset, source: "local" })));
+  }
+  return list;
+}
+
+function getPresetStatsLabel(preset) {
+  if (preset?.statsLabel) return preset.statsLabel;
+  return buildStatsLabel(preset?.data?.stats || preset?.stats || {});
+}
+
+function buildStatsLabel(stats) {
+  if (!stats || typeof stats !== "object") return "";
+  const ordered = [];
+  for (const key of PRESET_STAT_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(stats, key)) ordered.push([key, stats[key]]);
+  }
+  for (const key of Object.keys(stats)) {
+    if (PRESET_STAT_KEYS.includes(key)) continue;
+    ordered.push([key, stats[key]]);
+  }
+  return ordered
+    .slice(0, 3)
+    .map(([k, v]) => `${String(k).toUpperCase()} ${v}`)
+    .join(" • ");
 }
 
 const inp = { width: "100%" };
@@ -530,3 +725,4 @@ function formatChangeFields(changes) {
   if (!keys.length) return "—";
   return keys.map((k) => changeLabels[k] || k).join(", ");
 }
+

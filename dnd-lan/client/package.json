@@ -2,9 +2,13 @@
   "name": "dnd-lan-client",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18.18.0"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "lint": "eslint . --ext .js,.jsx"
   },
   "dependencies": {
     "@fontsource/cinzel": "^5.2.8",
@@ -24,6 +28,10 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.1.2",
+    "eslint": "^8.57.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^4.6.2",
     "vite": "^7.3.1"
   }
 }

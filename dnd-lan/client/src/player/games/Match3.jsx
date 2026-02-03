@@ -242,6 +242,7 @@ export default function Match3Game({
     let combo = 1;
     let current = nextBoard;
     let maxRunLocal = 0;
+    // eslint-disable-next-line no-constant-condition -- intentional: resolve cascades until no matches
     while (true) {
       const { matched: m, maxRun } = findMatches(current);
       if (m.size === 0) break;

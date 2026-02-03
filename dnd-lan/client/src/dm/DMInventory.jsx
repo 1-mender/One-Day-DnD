@@ -165,7 +165,7 @@ export default function DMInventory() {
         <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
           {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
         </select>
-        <button className="btn" onClick={startAdd} disabled={!selectedId}><Plus className="icon" />Выдать</button>
+        <button className="btn" onClick={startAdd} disabled={!selectedId}><Plus className="icon" aria-hidden="true" />Выдать</button>
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(360px, 100%)" }} />
         <select value={vis} onChange={(e)=>setVis(e.target.value)} style={{ width: 180 }}>
           <option value="">Видимость: все</option>
@@ -179,21 +179,21 @@ export default function DMInventory() {
           ))}
         </select>
         <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
-          <List className="icon" />Список
+          <List className="icon" aria-hidden="true" />Список
         </button>
         <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
-          <LayoutGrid className="icon" />Плитка
+          <LayoutGrid className="icon" aria-hidden="true" />Плитка
         </button>
         <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
-          <RefreshCcw className="icon" />Обновить
+          <RefreshCcw className="icon" aria-hidden="true" />Обновить
         </button>
       </div>
       <div className="small" style={{ marginTop: 10 }}>
         <div className="row" style={{ flexWrap: "wrap" }}>
-          <span className="badge"><Package className="icon" />Всего: {filtered.length}</span>
-          <span className="badge ok"><Eye className="icon" />Публичные: {publicCount}</span>
-          <span className="badge off"><EyeOff className="icon" />Скрытые: {hiddenCount}</span>
-          <span className="badge secondary"><Scale className="icon" />Вес: {totalWeight.toFixed(2)}</span>
+          <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
+          <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
+          <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
+          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeight.toFixed(2)}</span>
         </div>
       </div>
 
@@ -322,3 +322,4 @@ function summarizeInventory(list) {
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
 }
+

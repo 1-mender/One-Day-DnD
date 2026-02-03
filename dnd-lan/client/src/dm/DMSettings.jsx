@@ -3,6 +3,8 @@ import { api } from "../api.js";
 import { connectSocket } from "../socket.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
+import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 
 export default function DMSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -20,17 +22,34 @@ export default function DMSettings() {
   const [ticketBusy, setTicketBusy] = useState(false);
   const [ticketMsg, setTicketMsg] = useState("");
   const [ticketErr, setTicketErr] = useState("");
+  const [profilePresets, setProfilePresets] = useState([]);
+  const [presetAccess, setPresetAccess] = useState({ enabled: true, playerEdit: true, playerRequest: true, hideLocal: false });
+  const [presetBusy, setPresetBusy] = useState(false);
+  const [presetMsg, setPresetMsg] = useState("");
+  const [presetErr, setPresetErr] = useState("");
 
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
   const load = useCallback(async () => {
     setErr("");
     try {
-      const [jc, si, tr] = await Promise.all([api.dmGetJoinCode(), api.serverInfo(), api.dmTicketsRules()]);
+      const [jc, si, tr, presets] = await Promise.all([
+        api.dmGetJoinCode(),
+        api.serverInfo(),
+        api.dmTicketsRules(),
+        api.dmProfilePresets()
+      ]);
       setJoinEnabled(!!jc.enabled);
       setJoinCode(jc.joinCode || "");
       setInfo(si);
       setTicketRules(tr?.rules || null);
+      setProfilePresets(Array.isArray(presets?.presets) ? presets.presets : []);
+      setPresetAccess({
+        enabled: presets?.access?.enabled !== false,
+        playerEdit: presets?.access?.playerEdit !== false,
+        playerRequest: presets?.access?.playerRequest !== false,
+        hideLocal: !!presets?.access?.hideLocal
+      });
     } catch (e) {
       setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
     }
@@ -143,6 +162,56 @@ export default function DMSettings() {
         }
       };
     });
+  }
+
+  function updatePreset(idx, patch) {
+    setProfilePresets((cur) => cur.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+  }
+
+  function updatePresetData(idx, patch) {
+    setProfilePresets((cur) => cur.map((p, i) => (
+      i === idx ? { ...p, data: { ...(p.data || {}), ...patch } } : p
+    )));
+  }
+
+  function addPreset() {
+    const id = `preset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    setProfilePresets((cur) => [
+      ...cur,
+      {
+        id,
+        title: "Новый пресет",
+        subtitle: "",
+        data: {
+          characterName: "",
+          classRole: "",
+          level: "",
+          stats: {},
+          bio: "",
+          avatarUrl: ""
+        }
+      }
+    ]);
+  }
+
+  function removePreset(idx) {
+    setProfilePresets((cur) => cur.filter((_, i) => i !== idx));
+  }
+
+  async function saveProfilePresets() {
+    setPresetMsg("");
+    setPresetErr("");
+    setPresetBusy(true);
+    try {
+      const r = await api.dmProfilePresetsUpdate({ presets: profilePresets, access: presetAccess });
+      setProfilePresets(Array.isArray(r?.presets) ? r.presets : profilePresets);
+      setPresetAccess(r?.access || presetAccess);
+      setPresetMsg("Пресеты сохранены.");
+    } catch (e) {
+      setPresetErr(formatError(e));
+    } finally {
+      setPresetBusy(false);
+    }
   }
 
   async function saveTicketRules() {
@@ -391,6 +460,148 @@ export default function DMSettings() {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="card taped">
+          <div style={{ fontWeight: 800 }}>Пресеты профиля</div>
+          <div className="small">Глобальные шаблоны для игроков: можно включать/выключать и давать доступ.</div>
+          <hr />
+          {presetErr ? <div className="badge off">Ошибка: {presetErr}</div> : null}
+          {presetMsg ? <div className="badge ok">{presetMsg}</div> : null}
+          <div className="list">
+            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={presetAccess.enabled !== false}
+                onChange={(e) => setPresetAccess({ ...presetAccess, enabled: e.target.checked })}
+              />
+              <span>Включить пресеты для игроков</span>
+            </label>
+            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={presetAccess.playerEdit !== false}
+                onChange={(e) => setPresetAccess({ ...presetAccess, playerEdit: e.target.checked })}
+              />
+              <span>Разрешить применение в прямом редактировании</span>
+            </label>
+            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={presetAccess.playerRequest !== false}
+                onChange={(e) => setPresetAccess({ ...presetAccess, playerRequest: e.target.checked })}
+              />
+              <span>Разрешить применение в запросах</span>
+            </label>
+            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+              <input
+                type="checkbox"
+                checked={!!presetAccess.hideLocal}
+                onChange={(e) => setPresetAccess({ ...presetAccess, hideLocal: e.target.checked })}
+              />
+              <span>Скрыть локальные пресеты (только DM)</span>
+            </label>
+
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <button className="btn secondary" onClick={addPreset}>+ Добавить пресет</button>
+              <button className="btn" onClick={saveProfilePresets} disabled={presetBusy}>Сохранить</button>
+            </div>
+
+            {profilePresets.length === 0 ? (
+              <div className="badge warn">Пресетов пока нет.</div>
+            ) : (
+              <div className="list">
+                {profilePresets.map((preset, idx) => (
+                  <div key={preset.id || `${preset.title}-${idx}`} className="paper-note">
+                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                      <div className="title">Пресет #{idx + 1}</div>
+                      <button className="btn danger" onClick={() => removePreset(idx)}>Удалить</button>
+                    </div>
+                    <div className="list" style={{ marginTop: 10 }}>
+                      <input
+                        value={preset.title || ""}
+                        onChange={(e) => updatePreset(idx, { title: e.target.value })}
+                        placeholder="Название пресета"
+                        maxLength={80}
+                        style={inp}
+                      />
+                      <input
+                        value={preset.subtitle || ""}
+                        onChange={(e) => updatePreset(idx, { subtitle: e.target.value })}
+                        placeholder="Подзаголовок/описание"
+                        maxLength={160}
+                        style={inp}
+                      />
+                      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                        <input
+                          value={preset.data?.characterName || ""}
+                          onChange={(e) => updatePresetData(idx, { characterName: e.target.value })}
+                          placeholder="Имя персонажа"
+                          maxLength={80}
+                          style={{ ...inp, minWidth: 220 }}
+                        />
+                        <input
+                          value={preset.data?.classRole || ""}
+                          onChange={(e) => updatePresetData(idx, { classRole: e.target.value })}
+                          placeholder="Класс / роль"
+                          maxLength={80}
+                          style={{ ...inp, minWidth: 220 }}
+                        />
+                        <input
+                          value={preset.data?.level ?? ""}
+                          onChange={(e) => updatePresetData(idx, { level: e.target.value })}
+                          placeholder="Уровень"
+                          style={{ ...inp, minWidth: 140 }}
+                        />
+                      </div>
+                      <div className="kv">
+                        <div className="title">Статы</div>
+                        <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} />
+                      </div>
+                      <div className="paper-note" style={{ marginTop: 8 }}>
+                        <div className="title">Превью</div>
+                        <div className="row" style={{ alignItems: "flex-start", marginTop: 10 }}>
+                          <PolaroidFrame
+                            className="sm"
+                            src={preset.data?.avatarUrl || ""}
+                            alt={preset.data?.characterName || preset.title}
+                            fallback={(preset.data?.characterName || preset.title || "?").slice(0, 1)}
+                          />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontWeight: 900 }}>{preset.data?.characterName || "Без имени"}</div>
+                            <div className="small" style={{ marginTop: 4 }}>
+                              {preset.data?.classRole || "Класс/роль"} • lvl {preset.data?.level || "?"}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ marginTop: 10 }}>
+                          <StatsView stats={preset.data?.stats || {}} />
+                        </div>
+                        <div className="small bio-text" style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
+                          {preset.data?.bio || "Биография не заполнена"}
+                        </div>
+                      </div>
+                      <textarea
+                        value={preset.data?.bio || ""}
+                        onChange={(e) => updatePresetData(idx, { bio: e.target.value })}
+                        rows={5}
+                        maxLength={2000}
+                        placeholder="Биография"
+                        style={inp}
+                      />
+                      <input
+                        value={preset.data?.avatarUrl || ""}
+                        onChange={(e) => updatePresetData(idx, { avatarUrl: e.target.value })}
+                        placeholder="URL аватара"
+                        maxLength={512}
+                        style={inp}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="card taped">

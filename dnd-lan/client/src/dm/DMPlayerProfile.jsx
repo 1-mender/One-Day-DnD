@@ -69,6 +69,7 @@ export default function DMPlayerProfile() {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
+  const [profilePresets, setProfilePresets] = useState([]);
 
   function applyProfile(p) {
     setProfile(p);
@@ -124,19 +125,36 @@ export default function DMPlayerProfile() {
     }
   }, [playerId]);
 
+  const loadPresets = useCallback(async () => {
+    try {
+      const r = await api.dmProfilePresets();
+      setProfilePresets(Array.isArray(r?.presets) ? r.presets : []);
+    } catch {
+      setProfilePresets([]);
+    }
+  }, []);
+
   const loadRequestsRef = useRef(null);
   useEffect(() => {
     loadRequestsRef.current = loadRequests;
   }, [loadRequests]);
 
+  const loadPresetsRef = useRef(null);
+  useEffect(() => {
+    loadPresetsRef.current = loadPresets;
+  }, [loadPresets]);
+
   useEffect(() => {
     const onCreated = () => loadRequestsRef.current?.().catch(() => {});
     const onUpdated = () => loadRequestsRef.current?.().catch(() => {});
+    const onSettings = () => loadPresetsRef.current?.().catch(() => {});
     socket.on("profile:requestCreated", onCreated);
     socket.on("profile:requestsUpdated", onUpdated);
+    socket.on("settings:updated", onSettings);
     return () => {
       socket.off("profile:requestCreated", onCreated);
       socket.off("profile:requestsUpdated", onUpdated);
+      socket.off("settings:updated", onSettings);
       socket.disconnect();
     };
   }, [socket]);
@@ -144,7 +162,8 @@ export default function DMPlayerProfile() {
   useEffect(() => {
     load().catch(() => {});
     loadRequests().catch(() => {});
-  }, [load, loadRequests]);
+    loadPresets().catch(() => {});
+  }, [load, loadRequests, loadPresets]);
 
   async function save() {
     if (!playerId) return;
@@ -170,6 +189,17 @@ export default function DMPlayerProfile() {
 
   function applyPreset(preset) {
     setForm((prev) => ({ ...prev, stats: { ...preset.stats } }));
+  }
+
+  function applyProfilePreset(preset) {
+    const data = preset?.data || {};
+    const nextLevel = data.level === "" || data.level == null ? "" : Number(data.level);
+    setForm((prev) => ({
+      ...prev,
+      ...data,
+      level: Number.isFinite(nextLevel) ? nextLevel : prev.level,
+      stats: data.stats ? { ...(data.stats || {}) } : prev.stats
+    }));
   }
 
   function normalizeRequestChanges(changes) {
@@ -280,7 +310,7 @@ export default function DMPlayerProfile() {
         </div>
         <div className="row">
           <button className="btn secondary" onClick={() => nav("/dm/app/players")}>Назад</button>
-          <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" />Сохранить</button>
+          <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" aria-hidden="true" />Сохранить</button>
         </div>
       </div>
       <hr />
@@ -318,7 +348,7 @@ export default function DMPlayerProfile() {
               <button className={`btn ${reqStatus === "all" ? "" : "secondary"}`} onClick={() => setReqStatus("all")}>
                 Все
               </button>
-              <button className="btn secondary" onClick={() => loadRequests()}><RefreshCcw className="icon" />Обновить</button>
+              <button className="btn secondary" onClick={() => loadRequests()}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
             </div>
 
             {reqLoading ? (
@@ -353,7 +383,7 @@ export default function DMPlayerProfile() {
                       </div>
                     </div>
                     <div style={{ minWidth: 160, display: "flex", flexDirection: "column", gap: 8 }}>
-                      <button className="btn secondary" onClick={() => applyFromRequest(r)}><Copy className="icon" />Скопировать в форму</button>
+                      <button className="btn secondary" onClick={() => applyFromRequest(r)}><Copy className="icon" aria-hidden="true" />Скопировать в форму</button>
                       {r.status === "pending" ? (
                         <>
                           <textarea
@@ -382,6 +412,27 @@ export default function DMPlayerProfile() {
             <div className="spread-grid" style={{ marginTop: 10 }}>
                 <div className="paper-note">
                   <div className="title">Данные персонажа</div>
+                  {profilePresets.length ? (
+                    <div className="preset-panel" style={{ marginTop: 8 }}>
+                      <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                        <div className="small">Глобальные пресеты</div>
+                        <div className="small note-hint">Применяет имя, класс, уровень, статы и био.</div>
+                      </div>
+                      <div className="preset-grid">
+                        {profilePresets.map((preset) => (
+                          <button
+                            key={preset.id || preset.title}
+                            type="button"
+                            className="preset-card"
+                            onClick={() => applyProfilePreset(preset)}
+                          >
+                            <div className="preset-title">{preset.title}</div>
+                            <div className="small">{preset.subtitle}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="list" style={{ marginTop: 10 }}>
                     <input value={form.characterName} onChange={(e) => setForm({ ...form, characterName: e.target.value })} placeholder="Имя персонажа" maxLength={80} style={inp} />
                     <input value={form.classRole} onChange={(e) => setForm({ ...form, classRole: e.target.value })} placeholder="Класс / роль" maxLength={80} style={inp} />
@@ -395,7 +446,7 @@ export default function DMPlayerProfile() {
                     style={{ display: "none" }}
                   />
                   <button className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-                    <ImageUp className="icon" />{uploading ? "Загрузка..." : "Загрузить аватар"}
+                    <ImageUp className="icon" aria-hidden="true" />{uploading ? "Загрузка..." : "Загрузить аватар"}
                   </button>
                     <div className="small note-hint">Можно вставить URL или загрузить файл (до 10MB).</div>
                     <div className="kv">
@@ -467,7 +518,7 @@ export default function DMPlayerProfile() {
                   </div>
                   <div className="row" style={{ marginTop: 12, gap: 8 }}>
                     <button className="btn secondary" onClick={resetForm}>Сбросить</button>
-                    <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" />Сохранить</button>
+                    <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" aria-hidden="true" />Сохранить</button>
                   </div>
                 </div>
               </div>
@@ -558,3 +609,4 @@ function hasUnsavedChanges(form, profile) {
   if (!profile) return hasAnyData(form);
   return JSON.stringify(snapshotFromForm(form)) !== JSON.stringify(snapshotFromProfile(profile));
 }
+

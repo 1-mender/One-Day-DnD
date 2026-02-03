@@ -7,6 +7,7 @@ import "./styles/vintage.css";
 import "@fontsource/cinzel";
 import "@fontsource/special-elite";
 import { ToastProvider } from "./components/ui/ToastProvider.jsx";
+import ErrorBoundary from "./components/ui/ErrorBoundary.jsx";
 import { applyThemeAssets } from "./theme/themeAssets.js";
 import { applyUiVariant, cycleUiVariant } from "./theme/uiVariant.js";
 import "./styles/ui-variants.css";
@@ -25,10 +26,12 @@ if (typeof window !== "undefined") {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ToastProvider>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </ToastProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );
