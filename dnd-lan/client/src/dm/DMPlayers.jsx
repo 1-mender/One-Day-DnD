@@ -9,18 +9,27 @@ import { formatError } from "../lib/formatError.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
+  const [tickets, setTickets] = useState({});
   const [err, setErr] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [editPlayer, setEditPlayer] = useState(null);
   const [editName, setEditName] = useState("");
+  const [ticketOpen, setTicketOpen] = useState(false);
+  const [ticketPlayer, setTicketPlayer] = useState(null);
+  const [ticketDelta, setTicketDelta] = useState("");
+  const [ticketSet, setTicketSet] = useState("");
+  const [ticketReason, setTicketReason] = useState("");
   const nav = useNavigate();
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
   const load = useCallback(async () => {
     setErr("");
     try {
-      const r = await api.dmPlayers();
+      const [r, t] = await Promise.all([api.dmPlayers(), api.dmTicketsList()]);
       setPlayers(r.items || []);
+      const map = {};
+      for (const row of t.items || []) map[row.playerId] = row;
+      setTickets(map);
     } catch (e) {
       setErr(formatError(e));
     }
@@ -30,6 +39,7 @@ export default function DMPlayers() {
     load().catch(() => {});
     socket.on("players:updated", () => load().catch(() => {}));
     socket.on("player:statusChanged", () => load().catch(() => {}));
+    socket.on("tickets:updated", () => load().catch(() => {}));
     return () => socket.disconnect();
   }, [load, socket]);
 
@@ -91,6 +101,46 @@ export default function DMPlayers() {
     }
   }
 
+  function openTickets(player) {
+    setTicketPlayer(player);
+    setTicketDelta("");
+    setTicketSet("");
+    setTicketReason("");
+    setTicketOpen(true);
+  }
+
+  async function applyTickets() {
+    if (!ticketPlayer) return;
+    const delta = Number(ticketDelta || 0);
+    const setVal = ticketSet === "" ? null : Number(ticketSet);
+    if (Number.isNaN(delta) || Number.isNaN(setVal)) {
+      setErr("Неверное значение билетов.");
+      return;
+    }
+    if (setVal == null && !delta) return;
+    setErr("");
+    try {
+      await api.dmTicketsAdjust({
+        playerId: ticketPlayer.id,
+        delta,
+        set: setVal == null ? undefined : setVal,
+        reason: ticketReason
+      });
+      setTicketOpen(false);
+      setTicketPlayer(null);
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
+  const playersWithTickets = useMemo(() => {
+    return (players || []).map((p) => {
+      const t = tickets[p.id] || {};
+      return { ...p, ticketBalance: Number(t.balance || 0), ticketStreak: Number(t.streak || 0) };
+    });
+  }, [players, tickets]);
+
   return (
     <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
@@ -98,13 +148,16 @@ export default function DMPlayers() {
       <hr />
       <ErrorBanner message={err} onRetry={load} />
       <div className="list">
-        {players.map((p) => (
+        {playersWithTickets.map((p) => (
           <PlayerDossierCard
             key={p.id}
             player={p}
+            ticketBalance={p.ticketBalance}
+            ticketStreak={p.ticketStreak}
             rightActions={(
               <>
                 <button className="btn" onClick={() => openProfile(p.id)}>Профиль персонажа</button>
+                <button className="btn secondary" onClick={() => openTickets(p)}>Билеты</button>
                 <button className="btn secondary" onClick={() => startEdit(p)}>Редактировать игрока</button>
                 <button className="btn secondary" onClick={() => viewAs(p.id)}>Как игрок</button>
                 <button className="btn danger" onClick={() => kickPlayer(p.id)}>Kick</button>
@@ -125,6 +178,42 @@ export default function DMPlayers() {
             maxLength={80}
           />
           <button className="btn" onClick={saveEdit}>Сохранить</button>
+        </div>
+      </Modal>
+
+      <Modal open={ticketOpen} title="Билеты игрока" onClose={() => setTicketOpen(false)}>
+        <div className="list">
+          <div className="small">
+            Игрок: <b>{ticketPlayer?.displayName || "—"}</b>
+          </div>
+          <div className="badge">Баланс: {ticketPlayer ? (tickets[ticketPlayer.id]?.balance ?? 0) : 0}</div>
+          <div className="small">Серия побед: {ticketPlayer ? (tickets[ticketPlayer.id]?.streak ?? 0) : 0}</div>
+          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+            <button className="btn secondary" onClick={() => setTicketDelta("1")}>+1</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("3")}>+3</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("-1")}>-1</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("-3")}>-3</button>
+          </div>
+          <input
+            value={ticketDelta}
+            onChange={(e) => setTicketDelta(e.target.value)}
+            placeholder="Дельта (например 2 или -2)"
+            style={{ width: "100%" }}
+          />
+          <input
+            value={ticketSet}
+            onChange={(e) => setTicketSet(e.target.value)}
+            placeholder="Установить баланс (опционально)"
+            style={{ width: "100%" }}
+          />
+          <input
+            value={ticketReason}
+            onChange={(e) => setTicketReason(e.target.value)}
+            placeholder="Причина (опционально)"
+            style={{ width: "100%" }}
+            maxLength={120}
+          />
+          <button className="btn" onClick={applyTickets}>Применить</button>
         </div>
       </Modal>
     </div>

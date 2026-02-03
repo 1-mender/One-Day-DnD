@@ -9,6 +9,8 @@ import Inventory from "./player/Inventory.jsx";
 import Notes from "./player/Notes.jsx";
 import Bestiary from "./player/Bestiary.jsx";
 import Profile from "./player/Profile.jsx";
+import Arcade from "./player/Arcade.jsx";
+import ShopJoe from "./player/ShopJoe.jsx";
 
 import DMLogin from "./dm/DMLogin.jsx";
 import DMSetup from "./dm/DMSetup.jsx";
@@ -35,6 +37,8 @@ export default function App() {
         <Route path="inventory" element={<Inventory />} />
         <Route path="notes" element={<Notes />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="arcade" element={<Arcade />} />
+        <Route path="shop" element={<ShopJoe />} />
         <Route path="bestiary" element={<Bestiary />} />
       </Route>
 

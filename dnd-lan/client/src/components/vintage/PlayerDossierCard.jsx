@@ -8,7 +8,7 @@ function StatusStamp({ status }) {
   return <span className={`stamp ${cls}`}>{label}</span>;
 }
 
-export default function PlayerDossierCard({ player, rightActions = null }) {
+export default function PlayerDossierCard({ player, rightActions = null, ticketBalance = null, ticketStreak = null }) {
   const initial = (player.displayName || "?").slice(0, 1).toUpperCase();
   const avatar = player.avatarUrl || null;
 
@@ -31,6 +31,12 @@ export default function PlayerDossierCard({ player, rightActions = null }) {
           )}
           <span className="badge secondary">ЗАМЕТКИ</span>
           <span className="badge secondary">ИНВЕНТАРЬ</span>
+          {ticketBalance != null ? (
+            <span className="badge">Билеты: {ticketBalance}</span>
+          ) : null}
+          {ticketStreak != null ? (
+            <span className="badge secondary">Серия: {ticketStreak}</span>
+          ) : null}
         </div>
 
         <div style={{ marginTop: 10, fontWeight: 1000, fontSize: 18 }}>

@@ -209,13 +209,17 @@
 :root[data-ui="v3"] .vintage-shell{
   margin-left: calc(var(--dm-index-w) + 18px);
   margin-right: 10px;
+  width: calc(100% - var(--dm-index-w) - 28px);
 }
 :root[data-ui="v3"] .vintage-book{
-  width: min(var(--book-max-w, 1400px), calc(100vw - var(--dm-index-w) - 32px));
+  width: min(var(--book-max-w, 1400px), 100%);
 }
 @media (max-width: 980px){
   :root[data-ui="v3"]{ --dm-index-w: 0px; }
-  :root[data-ui="v3"] .vintage-shell{ margin-left: 10px; }
+  :root[data-ui="v3"] .vintage-shell{
+    margin-left: 10px;
+    width: calc(100% - 20px);
+  }
   :root[data-ui="v3"] .dm-topbar-wrap{ position: sticky; width: auto; top: 0; }
   :root[data-ui="v3"] .dm-topbar{ flex-direction: row; flex-wrap: wrap; justify-content: center; }
 }

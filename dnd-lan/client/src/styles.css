@@ -24,7 +24,7 @@ input, button, select, textarea { font: inherit; }
 .tabs { display:flex; gap:8px; flex-wrap:wrap; }
 .tab { padding:8px 10px; border-radius:12px; border:1px solid #c9b087; background:#f3e3c4; cursor:pointer; }
 .tab.active { border-color:#1f6feb; }
-.bottomnav { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:space-around; gap:10px; padding:10px; background:rgba(255,255,255,.6); border-top:1px solid #c9b087; }
+.bottomnav { position:fixed; left:0; right:0; bottom:0; display:flex; justify-content:space-around; gap:10px; padding:10px 10px calc(10px + env(safe-area-inset-bottom)); background:rgba(255,255,255,.6); border-top:1px solid #c9b087; }
 .bottomnav a { padding:8px 10px; border-radius:12px; border:1px solid #c9b087; background:#f3e3c4; }
-.padBottom { padding-bottom: 80px; }
+.padBottom { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 hr { border:0; border-top:1px solid #c9b087; margin: 12px 0; }

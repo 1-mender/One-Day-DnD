@@ -246,24 +246,27 @@ export default function Profile() {
       ) : (
         <>
           <div className="spread-grid">
-            <div className="paper-note">
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                  <div className="title">Визитка</div>
+            <div className="paper-note character-card">
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div className="title">Визитка</div>
                 {canEdit("avatarUrl") ? (
                   <button className="btn secondary" onClick={() => openEdit("avatar")}><ImageUp className="icon" />Редактировать</button>
                 ) : null}
-                </div>
+              </div>
               <div className="small note-hint" style={{ marginTop: 6 }}>
                 Редактирование доступно, если DM разрешил поле.
               </div>
-              <div className="row" style={{ alignItems: "flex-start", marginTop: 12 }}>
-                <PolaroidFrame className="lg" src={profile.avatarUrl} alt={profile.characterName} fallback={(profile.characterName || "?").slice(0, 1)} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 1000, fontSize: 20 }}>{profile.characterName || "Без имени"}</div>
-                  <div className="small" style={{ marginTop: 6 }}>
-                    {profile.classRole || "Класс/роль"} • lvl {profile.level ?? "?"}
+              <div className="character-hero">
+                <div className="character-portrait">
+                  <PolaroidFrame className="lg character-polaroid" src={profile.avatarUrl} alt={profile.characterName} fallback={(profile.characterName || "?").slice(0, 1)} />
+                  <div className="character-tags">
+                    <span className="badge secondary">{profile.classRole || "Класс/роль"}</span>
+                    <span className="badge">lvl {profile.level ?? "?"}</span>
                   </div>
-                  <div className="small" style={{ marginTop: 8 }}>
+                </div>
+                <div className="character-info">
+                  <div className="character-nameplate">{profile.characterName || "Без имени"}</div>
+                  <div className="small character-sub">
                     Разрешено редактировать: {editableFields.length ? editableFields.join(", ") : "нет"}
                   </div>
                   {canEditBasic ? (

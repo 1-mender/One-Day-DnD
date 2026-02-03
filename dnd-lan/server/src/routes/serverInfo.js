@@ -15,6 +15,9 @@ serverInfoRouter.get("/info", (req, res) => {
     port,
     urls: ips.map((ip) => `http://${ip}:${port}`),
     party: { id: party.id, name: party.name, joinCodeEnabled: !!party.join_code },
-    settings: { bestiaryEnabled: !!settings.bestiary_enabled }
+    settings: {
+      bestiaryEnabled: !!settings.bestiary_enabled,
+      ticketsEnabled: settings.tickets_enabled == null ? true : !!settings.tickets_enabled
+    }
   });
 });

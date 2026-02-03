@@ -55,6 +55,16 @@ function ensureMigrations(database) {
   if (invCols.length && !invCols.includes("image_url")) {
     database.exec("ALTER TABLE inventory_items ADD COLUMN image_url TEXT;");
   }
+
+  const partyCols = database.prepare("PRAGMA table_info(party_settings)").all().map((c) => c.name);
+  if (partyCols.length) {
+    if (!partyCols.includes("tickets_enabled")) {
+      database.exec("ALTER TABLE party_settings ADD COLUMN tickets_enabled INTEGER NOT NULL DEFAULT 1;");
+    }
+    if (!partyCols.includes("tickets_rules")) {
+      database.exec("ALTER TABLE party_settings ADD COLUMN tickets_rules TEXT NOT NULL DEFAULT '{}';");
+    }
+  }
 }
 
 export function initDb() {
@@ -71,8 +81,8 @@ export function initDb() {
     const t = now();
     const partyId = db.prepare("INSERT INTO parties(name, join_code, created_at) VALUES(?,?,?)")
       .run("Default Party", null, t).lastInsertRowid;
-    db.prepare("INSERT INTO party_settings(party_id, bestiary_enabled) VALUES(?,?)")
-      .run(partyId, 0);
+    db.prepare("INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules) VALUES(?,?,?,?)")
+      .run(partyId, 0, 1, "{}");
   }
   return db;
 }
@@ -93,14 +103,22 @@ export function getPartyId() {
 
 export function getPartySettings(partyId) {
   const row = getDb().prepare("SELECT * FROM party_settings WHERE party_id=?").get(partyId);
-  return row || { party_id: partyId, bestiary_enabled: 0 };
+  return row || { party_id: partyId, bestiary_enabled: 0, tickets_enabled: 1, tickets_rules: "{}" };
 }
 
 export function setPartySettings(partyId, patch) {
   const cur = getPartySettings(partyId);
   const bestiary = patch.bestiary_enabled ?? cur.bestiary_enabled;
-  getDb().prepare("INSERT INTO party_settings(party_id, bestiary_enabled) VALUES(?,?) ON CONFLICT(party_id) DO UPDATE SET bestiary_enabled=excluded.bestiary_enabled")
-    .run(partyId, bestiary);
+  const ticketsEnabled = patch.tickets_enabled ?? cur.tickets_enabled ?? 1;
+  const ticketsRules = patch.tickets_rules ?? cur.tickets_rules ?? "{}";
+  getDb().prepare(
+    `INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules)
+     VALUES(?,?,?,?)
+     ON CONFLICT(party_id) DO UPDATE SET
+       bestiary_enabled=excluded.bestiary_enabled,
+       tickets_enabled=excluded.tickets_enabled,
+       tickets_rules=excluded.tickets_rules`
+  ).run(partyId, bestiary, ticketsEnabled, ticketsRules);
 }
 
 export function getParty() {

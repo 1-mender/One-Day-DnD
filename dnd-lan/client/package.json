@@ -10,7 +10,6 @@
     "@fontsource/cinzel": "^5.2.8",
     "@fontsource/special-elite": "^5.2.8",
     "@formkit/auto-animate": "^0.9.0",
-    "@motionone/react": "^10.16.4",
     "@radix-ui/colors": "^1.0.0",
     "@tanstack/react-virtual": "^3.10.4",
     "lucide-react": "^0.563.0",

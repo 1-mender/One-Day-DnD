@@ -16,16 +16,21 @@ export default function DMSettings() {
   const [info, setInfo] = useState(null);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [ticketRules, setTicketRules] = useState(null);
+  const [ticketBusy, setTicketBusy] = useState(false);
+  const [ticketMsg, setTicketMsg] = useState("");
+  const [ticketErr, setTicketErr] = useState("");
 
   const socket = useMemo(() => connectSocket({ role: "dm" }), []);
 
   const load = useCallback(async () => {
     setErr("");
     try {
-      const [jc, si] = await Promise.all([api.dmGetJoinCode(), api.serverInfo()]);
+      const [jc, si, tr] = await Promise.all([api.dmGetJoinCode(), api.serverInfo(), api.dmTicketsRules()]);
       setJoinEnabled(!!jc.enabled);
       setJoinCode(jc.joinCode || "");
       setInfo(si);
+      setTicketRules(tr?.rules || null);
     } catch (e) {
       setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
     }
@@ -107,6 +112,70 @@ export default function DMSettings() {
     }
   }
 
+  function updateTicketRules(patch) {
+    setTicketRules((cur) => {
+      if (!cur) return cur;
+      return { ...cur, ...patch };
+    });
+  }
+
+  function updateTicketGame(gameKey, patch) {
+    setTicketRules((cur) => {
+      if (!cur) return cur;
+      return {
+        ...cur,
+        games: {
+          ...(cur.games || {}),
+          [gameKey]: { ...(cur.games?.[gameKey] || {}), ...patch }
+        }
+      };
+    });
+  }
+
+  function updateTicketShop(itemKey, patch) {
+    setTicketRules((cur) => {
+      if (!cur) return cur;
+      return {
+        ...cur,
+        shop: {
+          ...(cur.shop || {}),
+          [itemKey]: { ...(cur.shop?.[itemKey] || {}), ...patch }
+        }
+      };
+    });
+  }
+
+  async function saveTicketRules() {
+    if (!ticketRules) return;
+    setTicketMsg("");
+    setTicketErr("");
+    setTicketBusy(true);
+    try {
+      const r = await api.dmTicketsUpdateRules({ rules: ticketRules });
+      setTicketRules(r?.rules || ticketRules);
+      setTicketMsg("Настройки игр сохранены.");
+    } catch (e) {
+      setTicketErr(formatError(e));
+    } finally {
+      setTicketBusy(false);
+    }
+  }
+
+  async function resetTicketRules() {
+    setTicketMsg("");
+    setTicketErr("");
+    setTicketBusy(true);
+    try {
+      const r = await api.dmTicketsUpdateRules({ reset: true });
+      setTicketRules(r?.rules || ticketRules);
+      setTicketMsg("Сброшено до значений по умолчанию.");
+    } catch (e) {
+      setTicketErr(formatError(e));
+    } finally {
+      setTicketBusy(false);
+    }
+  }
+
   const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");
 
   return (
@@ -169,6 +238,162 @@ export default function DMSettings() {
         </div>
 
         <div className="card taped">
+          <div style={{ fontWeight: 800 }}>Аркада и билеты</div>
+          <div className="small">Настройка игр, лимитов и цен. Сохраняется для всей партии.</div>
+          <hr />
+          {ticketErr ? <div className="badge off">Ошибка: {ticketErr}</div> : null}
+          {ticketMsg ? <div className="badge ok">{ticketMsg}</div> : null}
+          {!ticketRules ? (
+            <div className="badge warn">Загрузка настроек...</div>
+          ) : (
+            <div className="list">
+              <label className="row" style={{ gap: 10, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={ticketRules.enabled !== false}
+                  onChange={(e) => updateTicketRules({ enabled: e.target.checked })}
+                />
+                <span>Включить аркаду и билеты</span>
+              </label>
+
+              <div className="settings-fields">
+                <input
+                  type="number"
+                  min="0"
+                  value={ticketRules.dailyEarnCap ?? 0}
+                  onChange={(e) => updateTicketRules({ dailyEarnCap: Number(e.target.value) || 0 })}
+                  placeholder="Дневной лимит"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={ticketRules.streak?.max ?? 0}
+                  onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), max: Number(e.target.value) || 0 } })}
+                  placeholder="Серия max"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={ticketRules.streak?.step ?? 0}
+                  onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), step: Number(e.target.value) || 0 } })}
+                  placeholder="Серия шаг"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={ticketRules.streak?.flatBonus ?? 0}
+                  onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), flatBonus: Number(e.target.value) || 0 } })}
+                  placeholder="Бонус серии"
+                />
+              </div>
+
+              <div className="paper-note">
+                <div className="title">Игры</div>
+                <div className="settings-grid" style={{ marginTop: 8 }}>
+                  {Object.entries(ticketRules.games || {}).map(([key, g]) => (
+                    <div key={key} className="item settings-card">
+                      <div className="settings-head">
+                        <div style={{ fontWeight: 800 }}>{GAME_LABELS[key] || key}</div>
+                        <label className="row" style={{ gap: 6 }}>
+                          <input
+                            type="checkbox"
+                            checked={g.enabled !== false}
+                            onChange={(e) => updateTicketGame(key, { enabled: e.target.checked })}
+                          />
+                          <span>Вкл</span>
+                        </label>
+                      </div>
+                      <div className="settings-fields">
+                        <input
+                          type="number"
+                          min="0"
+                          value={g.entryCost ?? 0}
+                          onChange={(e) => updateTicketGame(key, { entryCost: Number(e.target.value) || 0 })}
+                          placeholder="Вход"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={g.rewardMin ?? 0}
+                          onChange={(e) => updateTicketGame(key, { rewardMin: Number(e.target.value) || 0 })}
+                          placeholder="Мин"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={g.rewardMax ?? 0}
+                          onChange={(e) => updateTicketGame(key, { rewardMax: Number(e.target.value) || 0 })}
+                          placeholder="Макс"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={g.lossPenalty ?? 0}
+                          onChange={(e) => updateTicketGame(key, { lossPenalty: Number(e.target.value) || 0 })}
+                          placeholder="Штраф"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={g.dailyLimit ?? 0}
+                          onChange={(e) => updateTicketGame(key, { dailyLimit: Number(e.target.value) || 0 })}
+                          placeholder="Лимит/день"
+                        />
+                      </div>
+                      <div className="settings-sub">Награда и штрафы задают диапазон билетов.</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="paper-note">
+                <div className="title">Магазин</div>
+                <div className="settings-grid" style={{ marginTop: 8 }}>
+                  {Object.entries(ticketRules.shop || {}).map(([key, item]) => (
+                    <div key={key} className="item settings-card">
+                      <div className="settings-head">
+                        <div style={{ fontWeight: 800 }}>{SHOP_LABELS[key] || key}</div>
+                        <label className="row" style={{ gap: 6 }}>
+                          <input
+                            type="checkbox"
+                            checked={item.enabled !== false}
+                            onChange={(e) => updateTicketShop(key, { enabled: e.target.checked })}
+                          />
+                          <span>Вкл</span>
+                        </label>
+                      </div>
+                      <div className="settings-fields">
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.price ?? 0}
+                          onChange={(e) => updateTicketShop(key, { price: Number(e.target.value) || 0 })}
+                          placeholder="Цена"
+                        />
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.dailyLimit ?? 0}
+                          onChange={(e) => updateTicketShop(key, { dailyLimit: Number(e.target.value) || 0 })}
+                          placeholder="Лимит/день"
+                        />
+                      </div>
+                      <div className="settings-sub">Лимит 0 = без ограничения.</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <button className="btn" onClick={saveTicketRules} disabled={ticketBusy}>Сохранить</button>
+                <button className="btn secondary" onClick={resetTicketRules} disabled={ticketBusy}>Сброс</button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="card taped">
           <div style={{ fontWeight: 800 }}>LAN / Windows Firewall</div>
           <div className="small">Проверьте доступность сервера с телефонов в той же сети.</div>
           <hr />
@@ -201,3 +426,20 @@ export default function DMSettings() {
   );
 }
 const inp = { width: "100%" };
+
+const GAME_LABELS = {
+  ttt: "Крестики-нолики",
+  guess: "Угадай карту",
+  match3: "Три в ряд",
+  uno: "Uno-мини",
+  scrabble: "Эрудит-блиц"
+};
+
+const SHOP_LABELS = {
+  stat: "+1 к характеристике",
+  feat: "Памятка-талант",
+  reroll: "Переброс кубика",
+  luck: "Печать удачи",
+  chest: "Сундук-сюрприз",
+  hint: "Тайная подсказка"
+};

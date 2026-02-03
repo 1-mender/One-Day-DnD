@@ -191,6 +191,15 @@ export const api = {
   dmInfoDelete: (id) => request(`/api/info-blocks/${id}`, { method: "DELETE" }),
   dmInfoUploadAsset: (file) => upload("/api/info-blocks/upload", file),
 
+  ticketsMe: () => request("/api/tickets/me", { method: "GET" }),
+  ticketsRules: () => request("/api/tickets/rules", { method: "GET" }),
+  ticketsPlay: (payload) => request("/api/tickets/play", { method: "POST", body: JSON.stringify(payload) }),
+  ticketsPurchase: (payload) => request("/api/tickets/purchase", { method: "POST", body: JSON.stringify(payload) }),
+  dmTicketsRules: () => request("/api/tickets/dm/rules", { method: "GET" }),
+  dmTicketsUpdateRules: (payload) => request("/api/tickets/dm/rules", { method: "PUT", body: JSON.stringify(payload) }),
+  dmTicketsList: () => request("/api/tickets/dm/list", { method: "GET" }),
+  dmTicketsAdjust: (payload) => request("/api/tickets/dm/adjust", { method: "POST", body: JSON.stringify(payload) }),
+
   exportZip: async () => requestBlob("/api/backup/export", ERROR_CODES.EXPORT_FAILED),
   importZip: async (file) => {
     const fd = new FormData();

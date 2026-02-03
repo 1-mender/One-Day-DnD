@@ -165,6 +165,8 @@ export default function PlayerLayout() {
     { to: "/app/profile", label: "Profile" },
     { to: "/app/inventory", label: "Inventory" },
     { to: "/app/notes", label: "Notes" },
+    { to: "/app/arcade", label: "Рыб" },
+    { to: "/app/shop", label: "Джо" },
   ];
   if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Bestiary" });
 

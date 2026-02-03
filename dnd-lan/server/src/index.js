@@ -26,6 +26,7 @@ import { backupRouter } from "./routes/backup.js";
 import { bestiaryImagesRouter } from "./routes/bestiaryImages.js";
 import { infoUploadsRouter } from "./routes/infoUploads.js";
 import { profileRouter } from "./routes/profile.js";
+import { ticketsRouter } from "./routes/tickets.js";
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -81,6 +82,7 @@ app.use("/api/info-blocks", infoBlocksRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api", profileRouter);
+app.use("/api/tickets", ticketsRouter);
 
 // Serve built client (prod)
 if (fs.existsSync(publicDir)) {

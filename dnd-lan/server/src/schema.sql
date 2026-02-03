@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS parties (
 CREATE TABLE IF NOT EXISTS party_settings (
   party_id INTEGER PRIMARY KEY,
   bestiary_enabled INTEGER NOT NULL DEFAULT 0,
+  tickets_enabled INTEGER NOT NULL DEFAULT 1,
+  tickets_rules TEXT NOT NULL DEFAULT '{}',
   FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );
 
@@ -156,6 +158,44 @@ CREATE TABLE IF NOT EXISTS profile_change_requests (
   FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS tickets (
+  player_id INTEGER PRIMARY KEY,
+  balance INTEGER NOT NULL DEFAULT 0,
+  streak INTEGER NOT NULL DEFAULT 0,
+  daily_earned INTEGER NOT NULL DEFAULT 0,
+  daily_spent INTEGER NOT NULL DEFAULT 0,
+  day_key INTEGER NOT NULL DEFAULT 0,
+  last_played_at INTEGER,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ticket_plays (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  game_key TEXT NOT NULL,
+  outcome TEXT NOT NULL,
+  entry_cost INTEGER NOT NULL DEFAULT 0,
+  reward INTEGER NOT NULL DEFAULT 0,
+  penalty INTEGER NOT NULL DEFAULT 0,
+  multiplier REAL NOT NULL DEFAULT 1,
+  streak_after INTEGER NOT NULL DEFAULT 0,
+  day_key INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS ticket_purchases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  item_key TEXT NOT NULL,
+  qty INTEGER NOT NULL DEFAULT 1,
+  cost INTEGER NOT NULL DEFAULT 0,
+  day_key INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
@@ -165,3 +205,6 @@ CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DE
 CREATE INDEX IF NOT EXISTS idx_profiles_player ON character_profiles(player_id);
 CREATE INDEX IF NOT EXISTS idx_profile_requests_status ON profile_change_requests(status);
 CREATE INDEX IF NOT EXISTS idx_profile_requests_player ON profile_change_requests(player_id);
+CREATE INDEX IF NOT EXISTS idx_tickets_player ON tickets(player_id);
+CREATE INDEX IF NOT EXISTS idx_ticket_plays_player_day ON ticket_plays(player_id, day_key);
+CREATE INDEX IF NOT EXISTS idx_ticket_purchases_player_day ON ticket_purchases(player_id, day_key);
