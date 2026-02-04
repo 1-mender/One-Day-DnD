@@ -1,9 +1,10 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { getDb, getParty } from "../db.js";
-import { randId, now } from "../util.js";
+import { randId, now, normalizeIp } from "../util.js";
 import { dmAuthMiddleware } from "../auth.js";
 import { logEvent } from "../events.js";
+import { LIMITS } from "../limits.js";
 
 export const partyRouter = express.Router();
 
@@ -20,18 +21,23 @@ partyRouter.post("/join-request", joinLimiter, (req, res) => {
   const { displayName, joinCode } = req.body || {};
   const name = String(displayName || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
+  if (name.length > LIMITS.playerName) return res.status(400).json({ error: "name_too_long" });
 
-  const ip = req.headers["x-forwarded-for"]?.toString().split(",")[0]?.trim() || req.socket.remoteAddress || "";
+  const joinCodeStr = String(joinCode || "");
+  if (joinCodeStr.length > LIMITS.joinCode) return res.status(400).json({ error: "join_code_too_long" });
+
+  const ip = normalizeIp(req.ip || req.socket.remoteAddress || "");
   const banned = db.prepare("SELECT 1 FROM banned_ips WHERE ip=?").get(ip);
   if (banned) return res.status(403).json({ error: "banned" });
 
   if (party.join_code) {
-    if (String(joinCode || "") !== String(party.join_code)) return res.status(403).json({ error: "bad_join_code" });
+    if (joinCodeStr !== String(party.join_code)) return res.status(403).json({ error: "bad_join_code" });
   }
 
   const id = randId(20);
+  const ua = String(req.headers["user-agent"] || "").slice(0, LIMITS.userAgent);
   db.prepare("INSERT INTO join_requests(id, party_id, display_name, ip, user_agent, created_at) VALUES(?,?,?,?,?,?)")
-    .run(id, party.id, name, ip, req.headers["user-agent"] || "", now());
+    .run(id, party.id, name, ip, ua, now());
 
   req.app.locals.io?.to("dm").emit("player:joinRequested", { id, displayName: name, ip, ua: req.headers["user-agent"] || "", createdAt: now() });
   return res.json({ ok: true, joinRequestId: id });
@@ -49,21 +55,23 @@ partyRouter.post("/approve", dmAuthMiddleware, (req, res) => {
   const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
   if (!jr) return res.status(404).json({ error: "not_found" });
 
-  // create player
   const t = now();
-  const playerId = db.prepare("INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)")
-    .run(jr.party_id, jr.display_name, "offline", t, 0, t).lastInsertRowid;
-
-  // create session token
   const ttlDays = Number(process.env.PLAYER_TOKEN_TTL_DAYS || 14);
   const expiresAt = t + ttlDays * 24 * 60 * 60 * 1000;
   const token = randId(48);
-  db.prepare(
-    "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,0,0,0)"
-  ).run(token, playerId, jr.party_id, t, expiresAt);
 
-  // delete join request
-  db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  let playerId;
+  const tx = db.transaction(() => {
+    playerId = db.prepare("INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)")
+      .run(jr.party_id, jr.display_name, "offline", t, 0, t).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,0,0,0)"
+    ).run(token, playerId, jr.party_id, t, expiresAt);
+
+    db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  });
+  tx();
 
   // notify waiting client
   req.app.locals.io?.to(`joinreq:${jr.id}`).emit("player:approved", { playerToken: token, playerId, partyId: jr.party_id, displayName: jr.display_name });
@@ -113,8 +121,12 @@ partyRouter.post("/ban", dmAuthMiddleware, (req, res) => {
   const { joinRequestId } = req.body || {};
   const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
   if (!jr) return res.status(404).json({ error: "not_found" });
-  if (jr.ip) db.prepare("INSERT OR IGNORE INTO banned_ips(ip, created_at) VALUES(?,?)").run(jr.ip, now());
-  db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  const t = now();
+  const tx = db.transaction(() => {
+    if (jr.ip) db.prepare("INSERT OR IGNORE INTO banned_ips(ip, created_at) VALUES(?,?)").run(jr.ip, t);
+    db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  });
+  tx();
   req.app.locals.io?.to(`joinreq:${jr.id}`).emit("player:rejected", { joinRequestId: jr.id, banned: true });
   req.app.locals.io?.to("dm").emit("player:banned", { ip: jr.ip, joinRequestId: jr.id });
   logEvent({
@@ -138,8 +150,12 @@ partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
 
   const p = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
-  db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
-  db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(now(), pid);
+  const t = now();
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
+    db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(t, pid);
+  });
+  tx();
 
   req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
   req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
@@ -169,7 +185,11 @@ partyRouter.get("/join-code", dmAuthMiddleware, (req, res) => {
 partyRouter.post("/join-code", dmAuthMiddleware, (req, res) => {
   const { joinCode } = req.body || {};
   const party = getParty();
-  getDb().prepare("UPDATE parties SET join_code=? WHERE id=?").run(joinCode ? String(joinCode) : null, party.id);
+  const joinCodeStr = joinCode ? String(joinCode) : "";
+  if (joinCodeStr && joinCodeStr.length > LIMITS.joinCode) {
+    return res.status(400).json({ error: "join_code_too_long" });
+  }
+  getDb().prepare("UPDATE parties SET join_code=? WHERE id=?").run(joinCodeStr || null, party.id);
   req.app.locals.io?.to("dm").emit("settings:updated");
   req.app.locals.io?.to(`party:${party.id}`).emit("settings:updated");
   res.json({ ok: true });

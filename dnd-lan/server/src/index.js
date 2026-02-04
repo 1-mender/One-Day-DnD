@@ -92,6 +92,17 @@ if (fs.existsSync(publicDir)) {
   });
 }
 
+// Error handler (JSON-only API)
+app.use((err, _req, res, _next) => {
+  if (!err) return res.status(500).json({ error: "server_error" });
+  if (err.type === "entity.too.large") return res.status(413).json({ error: "payload_too_large" });
+  if (err instanceof SyntaxError && err.status === 400) return res.status(400).json({ error: "invalid_json" });
+  const status = Number(err.status || err.statusCode) || 500;
+  const code = err.code && typeof err.code === "string" ? err.code : "server_error";
+  console.error("request error:", err);
+  return res.status(status).json({ error: code });
+});
+
 const httpServer = http.createServer(app);
 const io = createSocketServer(httpServer);
 app.locals.io = io;
@@ -133,6 +144,27 @@ setInterval(() => {
     console.error("idle sweep failed:", e);
   }
 }, SWEEP_EVERY_MS);
+
+const CLEANUP_EVERY_MS = Number(process.env.CLEANUP_EVERY_MS || 5 * 60 * 1000);
+const JOIN_REQUEST_TTL_MS = Number(process.env.JOIN_REQUEST_TTL_MS || 24 * 60 * 60 * 1000);
+
+if (CLEANUP_EVERY_MS > 0) {
+  setInterval(() => {
+    try {
+      const db = getDb();
+      const t = now();
+
+      db.prepare("DELETE FROM sessions WHERE revoked=1 OR expires_at<?").run(t);
+
+      if (JOIN_REQUEST_TTL_MS > 0) {
+        const cutoff = t - JOIN_REQUEST_TTL_MS;
+        db.prepare("DELETE FROM join_requests WHERE created_at<?").run(cutoff);
+      }
+    } catch (e) {
+      console.error("cleanup failed:", e);
+    }
+  }, CLEANUP_EVERY_MS);
+}
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`LAN server listening on 0.0.0.0:${PORT}`);

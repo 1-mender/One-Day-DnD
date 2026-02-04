@@ -3,6 +3,7 @@ import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getPartyId, getParty } from "../db.js";
 import { now } from "../util.js";
 import { logEvent } from "../events.js";
+import { LIMITS } from "../limits.js";
 
 export const playersRouter = express.Router();
 
@@ -89,6 +90,7 @@ playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {
 
   const name = String(req.body?.displayName || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
+  if (name.length > LIMITS.playerName) return res.status(400).json({ error: "name_too_long" });
 
   db.prepare("UPDATE players SET display_name=? WHERE id=?").run(name, pid);
 
@@ -118,9 +120,13 @@ playersRouter.delete("/dm/:id", dmAuthMiddleware, (req, res) => {
   const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
   if (!player) return res.status(404).json({ error: "not_found" });
 
-  db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
-  db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(now(), pid);
-  db.prepare("DELETE FROM players WHERE id=?").run(pid);
+  const t = now();
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
+    db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(t, pid);
+    db.prepare("DELETE FROM players WHERE id=?").run(pid);
+  });
+  tx();
 
   req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
   req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);

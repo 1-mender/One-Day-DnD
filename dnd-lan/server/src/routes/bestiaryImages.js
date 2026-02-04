@@ -110,11 +110,16 @@ bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => 
   const row = db.prepare("SELECT id, monster_id, filename FROM monster_images WHERE id=?").get(imageId);
   if (!row) return res.status(404).json({ error: "not_found" });
 
-  const filePath = path.join(UPLOAD_DIR, row.filename);
-  try {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-  } catch {
-    // best-effort
+  const paths = [
+    path.join(UPLOAD_DIR, row.filename),
+    path.join(uploadsDir, "monsters", row.filename)
+  ];
+  for (const p of paths) {
+    try {
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    } catch {
+      // best-effort
+    }
   }
 
   db.prepare("DELETE FROM monster_images WHERE id=?").run(imageId);

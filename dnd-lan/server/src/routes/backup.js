@@ -7,7 +7,7 @@ import multer from "multer";
 import { pipeline } from "node:stream/promises";
 import { dmAuthMiddleware } from "../auth.js";
 import { closeDb, reloadDb, DATA_DIR, DB_PATH } from "../db.js";
-import { wrapMulter } from "../util.js";
+import { asyncHandler, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
 
 export const backupRouter = express.Router();
@@ -69,7 +69,7 @@ backupRouter.get("/export", dmAuthMiddleware, (req, res) => {
   archive.finalize();
 });
 
-backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")), async (req, res) => {
+backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")), asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "file_required" });
 
   const tmpDir = path.join(DATA_DIR, "import_tmp");
@@ -123,4 +123,4 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
     fs.rmSync(req.file.path, { force: true });
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
-});
+}));

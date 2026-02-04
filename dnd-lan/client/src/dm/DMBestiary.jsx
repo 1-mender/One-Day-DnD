@@ -10,11 +10,13 @@ const empty = { name:"", type:"", habitat:"", cr:"", description:"", abilities:[
 export default function DMBestiary() {
   const [enabled, setEnabled] = useState(false);
   const [items, setItems] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
   const [images, setImages] = useState([]);
   const [err, setErr] = useState("");
+  const [loadingMore, setLoadingMore] = useState(false);
   const [portErr, setPortErr] = useState("");
   const [portMsg, setPortMsg] = useState("");
   const [portBusy, setPortBusy] = useState(false);
@@ -28,16 +30,47 @@ export default function DMBestiary() {
   const importRef = useRef(null);
   const { socket } = useSocket();
 
+  const attachImages = useCallback(async (list) => {
+    const ids = (list || []).map((m) => m.id).filter(Boolean);
+    if (!ids.length) return;
+    try {
+      const r = await api.bestiaryImagesBatch(ids, { limitPer: 1 });
+      const map = new Map((r.items || []).map((x) => [x.monsterId, x.images || []]));
+      setItems((prev) => prev.map((m) => (map.has(m.id) ? { ...m, images: map.get(m.id) } : m)));
+    } catch {
+      // ignore thumbnail errors
+    }
+  }, []);
+
   const load = useCallback(async () => {
     setErr("");
     try {
-      const r = await api.bestiary();
+      const r = await api.bestiaryPage({ limit: 200 });
       setEnabled(!!r.enabled);
       setItems(r.items || []);
+      setNextCursor(r.nextCursor || null);
+      await attachImages(r.items || []);
     } catch (e) {
       setErr(formatError(e));
     }
-  }, []);
+  }, [attachImages]);
+
+  const loadMore = useCallback(async () => {
+    if (!nextCursor) return;
+    setLoadingMore(true);
+    setErr("");
+    try {
+      const r = await api.bestiaryPage({ limit: 200, cursor: nextCursor });
+      setEnabled(!!r.enabled);
+      setItems((prev) => [...prev, ...(r.items || [])]);
+      setNextCursor(r.nextCursor || null);
+      await attachImages(r.items || []);
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [attachImages, nextCursor]);
 
   useEffect(() => {
     if (!socket) return () => {};
@@ -244,6 +277,13 @@ export default function DMBestiary() {
           <div className="list">
             {bestiaryRows}
           </div>
+          {nextCursor && (
+            <div className="row" style={{ marginTop: 10 }}>
+              <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "Загрузка..." : "Показать ещё"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

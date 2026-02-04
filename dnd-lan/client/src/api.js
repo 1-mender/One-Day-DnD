@@ -60,6 +60,17 @@ async function uploadForm(path, formData, fallbackError) {
   return body;
 }
 
+function bestiaryPageRequest({ limit, cursor, q, includeImages, imagesLimit } = {}) {
+  const sp = new URLSearchParams();
+  if (limit != null) sp.set("limit", String(limit));
+  if (cursor) sp.set("cursor", String(cursor));
+  if (q) sp.set("q", String(q));
+  if (includeImages) sp.set("includeImages", "1");
+  if (imagesLimit != null && Number(imagesLimit) > 0) sp.set("imagesLimit", String(imagesLimit));
+  const qs = sp.toString();
+  return request(`/api/bestiary${qs ? `?${qs}` : ""}`, { method: "GET" });
+}
+
 export const api = {
   serverInfo: () => request("/api/server/info", { method: "GET" }),
   dmSetup: (username, password) => request("/api/dm/setup", { method: "POST", body: JSON.stringify({ username, password }) }),
@@ -123,7 +134,16 @@ export const api = {
   invDmDeletePlayerItem: (playerId, itemId) =>
     request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "DELETE" }),
 
-  bestiary: () => request("/api/bestiary", { method: "GET" }),
+  bestiary: (opts) => bestiaryPageRequest(opts),
+  bestiaryPage: (opts) => bestiaryPageRequest(opts),
+  bestiaryImagesBatch: (ids, { limitPer = 0 } = {}) => {
+    const list = Array.isArray(ids) ? ids : [];
+    const sp = new URLSearchParams();
+    if (list.length) sp.set("ids", list.join(","));
+    if (limitPer) sp.set("limitPer", String(limitPer));
+    const qs = sp.toString();
+    return request(`/api/bestiary/images${qs ? `?${qs}` : ""}`, { method: "GET" });
+  },
   dmBestiaryCreate: (m) => request("/api/bestiary", { method: "POST", body: JSON.stringify(m) }),
   dmBestiaryUpdate: (id, m) => request(`/api/bestiary/${id}`, { method: "PUT", body: JSON.stringify(m) }),
   dmBestiaryDelete: (id) => request(`/api/bestiary/${id}`, { method: "DELETE" }),

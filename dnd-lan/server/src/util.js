@@ -8,6 +8,14 @@ export const jsonParse = (s, fallback) => {
   try { return JSON.parse(s); } catch { return fallback; }
 };
 export const ensureDir = (p) => fs.mkdirSync(p, { recursive: true });
+export const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+export const normalizeIp = (ip) => {
+  const raw = String(ip || "").trim();
+  if (!raw) return "";
+  if (raw.startsWith("::ffff:")) return raw.slice(7);
+  return raw;
+};
 
 export const randId = (len = 16) => {
   const chars = "abcdefghijklmnopqrstuvwxyz0123456789";

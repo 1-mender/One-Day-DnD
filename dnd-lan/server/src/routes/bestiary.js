@@ -47,15 +47,6 @@ const upload = multer({
   }
 });
 
-function authPlayer(req) {
-  const token = req.header("x-player-token");
-  if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
-  if (!sess) return null;
-  return sess;
-}
-
 function isDmRequest(req) {
   const token = req.cookies?.[getDmCookieName()];
   if (!token) return false;
@@ -67,41 +58,157 @@ function isDmRequest(req) {
   }
 }
 
+const DEFAULT_PAGE_LIMIT = Number(process.env.BESTIARY_PAGE_LIMIT || 200);
+const MAX_PAGE_LIMIT = 500;
+const MAX_IMAGE_IDS = 200;
+
+function decodeCursor(raw) {
+  if (!raw) return null;
+  try {
+    const txt = Buffer.from(String(raw), "base64url").toString("utf8");
+    const parsed = JSON.parse(txt);
+    const name = typeof parsed?.name === "string" ? parsed.name : "";
+    const id = Number(parsed?.id || 0);
+    if (!Number.isFinite(id) || id <= 0) return null;
+    return { name, id };
+  } catch {
+    return null;
+  }
+}
+
+function encodeCursor(row) {
+  const payload = { name: String(row?.name || ""), id: Number(row?.id || 0) };
+  return Buffer.from(JSON.stringify(payload)).toString("base64url");
+}
+
+function parseIdList(raw, max) {
+  const items = String(raw || "")
+    .split(",")
+    .map((v) => Number(String(v).trim()))
+    .filter((v) => Number.isFinite(v) && v > 0);
+  const uniq = [];
+  const seen = new Set();
+  for (const id of items) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    uniq.push(id);
+    if (uniq.length >= max) break;
+  }
+  return uniq;
+}
+
+function fetchImagesByMonsterIds(db, monsterIds, limitPer = 0) {
+  if (!monsterIds.length) return new Map();
+  const placeholders = monsterIds.map(() => "?").join(",");
+  const rows = db.prepare(
+    `SELECT id, monster_id, filename FROM monster_images WHERE monster_id IN (${placeholders}) ORDER BY monster_id, id`
+  ).all(...monsterIds);
+  const out = new Map();
+  for (const r of rows) {
+    const list = out.get(r.monster_id) || [];
+    if (limitPer > 0 && list.length >= limitPer) continue;
+    list.push({ id: r.id, url: imageUrl(r.filename) });
+    out.set(r.monster_id, list);
+  }
+  return out;
+}
+
 bestiaryRouter.get("/", (req, res) => {
   const db = getDb();
   const party = getParty();
   const settings = getPartySettings(party.id);
   const isDm = isDmRequest(req);
-  const sess = authPlayer(req);
 
-  if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [] });
+  if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [], nextCursor: null });
 
-  const monsters = db.prepare("SELECT * FROM monsters ORDER BY name").all();
-  const monsterIds = monsters.map((m) => m.id);
-  const imagesByMonster = new Map();
+  const q = String(req.query.q ?? "").trim();
+  const cursor = decodeCursor(req.query.cursor);
+  const limitRaw = Number(req.query.limit ?? DEFAULT_PAGE_LIMIT);
+  const limit = Math.max(1, Math.min(MAX_PAGE_LIMIT, Number.isFinite(limitRaw) ? limitRaw : DEFAULT_PAGE_LIMIT));
+  const includeImages = String(req.query.includeImages || "0") === "1";
+  const imagesLimitRaw = Number(req.query.imagesLimit ?? 0);
+  const imagesLimit = Math.max(0, Math.min(20, Number.isFinite(imagesLimitRaw) ? imagesLimitRaw : 0));
 
-  if (monsterIds.length) {
-    const placeholders = monsterIds.map(() => "?").join(",");
-    const imageRows = db.prepare(
-      `SELECT id, monster_id, filename FROM monster_images WHERE monster_id IN (${placeholders}) ORDER BY id`
-    ).all(...monsterIds);
-    for (const im of imageRows) {
-      const list = imagesByMonster.get(im.monster_id) || [];
-      list.push({ id: im.id, url: imageUrl(im.filename) });
-      imagesByMonster.set(im.monster_id, list);
+  const where = [];
+  const args = [];
+  if (!isDm) where.push("is_hidden=0");
+  if (q) {
+    where.push("name LIKE ? COLLATE NOCASE");
+    args.push(`%${q}%`);
+  }
+  if (cursor) {
+    where.push("(name COLLATE NOCASE > ? OR (name COLLATE NOCASE = ? AND id > ?))");
+    args.push(cursor.name, cursor.name, cursor.id);
+  }
+
+  const rows = db.prepare(
+    `
+    SELECT id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at
+    FROM monsters
+    ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+    ORDER BY name COLLATE NOCASE ASC, id ASC
+    LIMIT ?
+  `
+  ).all(...args, limit + 1);
+
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+
+  const items = pageRows.map((m) => ({
+    id: m.id,
+    name: m.name,
+    type: m.type,
+    habitat: m.habitat,
+    cr: m.cr,
+    stats: jsonParse(m.stats, {}),
+    abilities: jsonParse(m.abilities, []),
+    description: m.description,
+    is_hidden: m.is_hidden,
+    created_at: m.created_at,
+    updated_at: m.updated_at
+  }));
+
+  if (includeImages && items.length) {
+    const map = fetchImagesByMonsterIds(db, items.map((m) => m.id), imagesLimit);
+    for (const m of items) {
+      m.images = map.get(m.id) || [];
     }
   }
 
-  const rows = monsters.map((m) => ({
-    ...m,
-    stats: jsonParse(m.stats, {}),
-    abilities: jsonParse(m.abilities, []),
-    images: imagesByMonster.get(m.id) || []
+  const nextCursor = hasMore ? encodeCursor(pageRows[pageRows.length - 1]) : null;
+  res.json({ enabled: !!settings.bestiary_enabled, items, nextCursor });
+});
+
+bestiaryRouter.get("/images", (req, res) => {
+  const db = getDb();
+  const party = getParty();
+  const settings = getPartySettings(party.id);
+  const isDm = isDmRequest(req);
+  const ids = parseIdList(req.query.ids, MAX_IMAGE_IDS);
+
+  if (!isDm && !settings.bestiary_enabled) return res.json({ items: [] });
+  if (!ids.length) return res.json({ items: [] });
+
+  let allowedIds = ids;
+  if (!isDm) {
+    const placeholders = ids.map(() => "?").join(",");
+    allowedIds = db.prepare(
+      `SELECT id FROM monsters WHERE is_hidden=0 AND id IN (${placeholders})`
+    ).all(...ids).map((r) => r.id);
+  }
+
+  if (!allowedIds.length) return res.json({ items: [] });
+
+  const limitPerRaw = Number(req.query.limitPer ?? 0);
+  const limitPer = Math.max(0, Math.min(20, Number.isFinite(limitPerRaw) ? limitPerRaw : 0));
+
+  const map = fetchImagesByMonsterIds(db, allowedIds, limitPer);
+  const items = allowedIds.map((id) => ({
+    monsterId: id,
+    images: map.get(id) || []
   }));
 
-  // players: hide hidden monsters (optional)
-  const filtered = (isDm) ? rows : rows.filter((m) => !m.is_hidden);
-  res.json({ enabled: !!settings.bestiary_enabled, items: filtered });
+  res.json({ items });
 });
 
 bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
@@ -183,7 +290,25 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   const cur = db.prepare("SELECT name FROM monsters WHERE id=?").get(id);
-  db.prepare("DELETE FROM monsters WHERE id=?").run(id);
+  const imageRows = db.prepare("SELECT filename FROM monster_images WHERE monster_id=?").all(id);
+  const tx = db.transaction(() => {
+    db.prepare("DELETE FROM monster_images WHERE monster_id=?").run(id);
+    db.prepare("DELETE FROM monsters WHERE id=?").run(id);
+  });
+  tx();
+
+  for (const row of imageRows) {
+    const filename = row?.filename;
+    if (!filename) continue;
+    const paths = [path.join(BESTIARY_DIR, filename), path.join(MONSTERS_DIR, filename)];
+    for (const p of paths) {
+      try {
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      } catch {
+        // best-effort
+      }
+    }
+  }
   logEvent({
     partyId: getParty().id,
     type: "bestiary.deleted",

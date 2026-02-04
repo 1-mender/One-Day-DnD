@@ -71,6 +71,11 @@ function ensureMigrations(database) {
       database.exec("ALTER TABLE party_settings ADD COLUMN profile_presets_access TEXT NOT NULL DEFAULT '{}';");
     }
   }
+
+  // indexes for existing DBs
+  database.exec("CREATE INDEX IF NOT EXISTS idx_monster_images_monster ON monster_images(monster_id);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);");
 }
 
 export function initDb() {

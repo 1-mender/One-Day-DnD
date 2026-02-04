@@ -201,6 +201,9 @@ CREATE TABLE IF NOT EXISTS ticket_purchases (
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
+CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);
+CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);
+CREATE INDEX IF NOT EXISTS idx_monster_images_monster ON monster_images(monster_id);
 CREATE INDEX IF NOT EXISTS idx_info_blocks_title ON info_blocks(title);
 CREATE INDEX IF NOT EXISTS idx_events_party_created ON events(party_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DESC);
