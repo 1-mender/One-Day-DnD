@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
-import { connectSocket } from "../socket.js";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { formatError } from "../lib/formatError.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 const empty = { name:"", type:"", habitat:"", cr:"", description:"", abilities:[], stats:{}, is_hidden:false };
 
@@ -26,7 +26,7 @@ export default function DMBestiary() {
   const [portPlan, setPortPlan] = useState(null);
   const fileRef = useRef(null);
   const importRef = useRef(null);
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const load = useCallback(async () => {
     setErr("");
@@ -40,10 +40,16 @@ export default function DMBestiary() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("bestiary:updated", () => load().catch(() => {}));
-    socket.on("settings:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onUpdated = () => load().catch(() => {});
+    const onSettings = () => load().catch(() => {});
+    socket.on("bestiary:updated", onUpdated);
+    socket.on("settings:updated", onSettings);
+    return () => {
+      socket.off("bestiary:updated", onUpdated);
+      socket.off("settings:updated", onSettings);
+    };
   }, [load, socket]);
 
   const loadImages = useCallback(async (monsterId) => {

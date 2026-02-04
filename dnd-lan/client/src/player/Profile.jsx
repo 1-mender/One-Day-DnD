@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, storage } from "../api.js";
-import { connectSocket } from "../socket.js";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { RefreshCcw, Send, PencilLine, ImageUp } from "lucide-react";
@@ -11,6 +10,7 @@ import Skeleton from "../components/ui/Skeleton.jsx";
 import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 const emptyDraft = {
   characterName: "",
@@ -94,7 +94,7 @@ const PRESET_STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
 
 export default function Profile() {
   const toast = useToast();
-  const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const { socket } = useSocket();
 
   const [playerId, setPlayerId] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -188,6 +188,7 @@ export default function Profile() {
   }, [loadPresets]);
 
   useEffect(() => {
+    if (!socket) return () => {};
     loadRef.current?.().catch(() => {});
     loadPresetsRef.current?.().catch(() => {});
     const onUpdated = () => loadRef.current?.().catch(() => {});
@@ -197,7 +198,6 @@ export default function Profile() {
     return () => {
       socket.off("profile:updated", onUpdated);
       socket.off("settings:updated", onSettings);
-      socket.disconnect();
     };
   }, [socket]);
 
@@ -308,7 +308,7 @@ export default function Profile() {
     try {
       await api.playerProfileRequest(playerId, changes, requestReason);
       setRequestOpen(false);
-      await loadRequests(playerId);
+      await loadRequests(playerId, reqStatusRef.current);
       toast.success("Запрос отправлен");
     } catch (e) {
       const msg = formatError(e);

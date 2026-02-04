@@ -19,7 +19,7 @@ import {
   Trash2,
   Wand
 } from "lucide-react";
-import { getInventoryImageProps } from "../../lib/imageSizing.js";
+import { getIconKeyFromItem, getInventoryIcon, stripIconTags } from "../../lib/inventoryIcons.js";
 import { getRarityLabel } from "../../lib/inventoryRarity.js";
 import MarkdownView from "../markdown/MarkdownView.jsx";
 import RarityBadge from "./RarityBadge.jsx";
@@ -53,16 +53,34 @@ function pickFallbackText(tokens) {
 }
 
 function pickIcon(item) {
+  const iconKey = getIconKeyFromItem(item);
+  const CustomIcon = getInventoryIcon(iconKey);
+  if (CustomIcon) return { Icon: CustomIcon };
   const tokens = [
     item.name,
     item.type,
     item.category,
-    ...(Array.isArray(item.tags) ? item.tags : [])
+    ...stripIconTags(Array.isArray(item.tags) ? item.tags : [])
   ].filter(Boolean).map((t) => String(t).toLowerCase());
   const hay = tokens.join(" ");
   const rule = TAG_ICON_RULES.find((r) => r.match.some((m) => hay.includes(m)));
   if (rule?.icon) return { Icon: rule.icon };
   return { text: pickFallbackText(tokens) };
+}
+
+function toPlainText(value) {
+  return String(value || "")
+    .replace(/\[(.*?)\]\(.*?\)/g, "$1")
+    .replace(/[`*_>#~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function truncateText(value, max = 160) {
+  if (!value) return "";
+  if (value.length <= max) return value;
+  const end = Math.max(0, max - 3);
+  return `${value.slice(0, end).trim()}...`;
 }
 
 function InventoryItemCard({
@@ -71,25 +89,35 @@ function InventoryItemCard({
   onEdit,
   onDelete,
   onToggleVisibility,
-  actionsVariant = "stack"
+  actionsVariant = "stack",
+  lite = false,
+  selectable = false,
+  selected = false,
+  onSelectChange
 }) {
   const icon = pickIcon(item);
   const isHidden = item.visibility === "hidden";
   const vis = isHidden ? "Скрытый" : "Публичный";
-  const img = item.imageUrl || item.image_url || null;
-  const imageProps = getInventoryImageProps(img);
   const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility;
   const weight = Number(item.weight || 0);
   const rarityKey = String(item.rarity || "common").toLowerCase().replace(/\s+/g, "_");
   const rarityLabel = getRarityLabel(rarityKey);
-  const tags = Array.isArray(item.tags) ? item.tags.filter(Boolean) : [];
+  const tags = stripIconTags(Array.isArray(item.tags) ? item.tags.filter(Boolean) : []);
   const compact = actionsVariant === "compact";
-  const metaParts = [
-    `Вес: ${weight.toFixed(2)}`,
-    `Редкость: ${rarityLabel}`,
-    tags.length ? `Теги: ${tags.slice(0, 3).join(", ")}` : null,
-    item.updated_by === "dm" ? "изменено DM" : null
-  ].filter(Boolean);
+  const metaParts = (
+    lite
+      ? [
+        `Вес: ${weight.toFixed(2)}`,
+        `Редкость: ${rarityLabel}`
+      ]
+      : [
+        `Вес: ${weight.toFixed(2)}`,
+        `Редкость: ${rarityLabel}`,
+        tags.length ? `Теги: ${tags.slice(0, 3).join(", ")}` : null,
+        item.updated_by === "dm" ? "изменено DM" : null
+      ]
+  ).filter(Boolean);
+  const descText = lite ? truncateText(toPlainText(item.description), 180) : "";
 
   return (
     <div
@@ -97,21 +125,22 @@ function InventoryItemCard({
       data-rarity={rarityKey}
       data-visibility={item.visibility}
       data-variant={actionsVariant}
+      data-lite={lite ? "true" : "false"}
       style={{ contentVisibility: "auto", containIntrinsicSize: "180px" }}
     >
-      <div className="inv-hero" data-has-image={img ? "true" : "false"}>
-        {img ? (
-          <img
-            src={img}
-            alt={item.name}
-            loading="lazy"
-            decoding="async"
-            width={imageProps.width}
-            height={imageProps.height}
-            sizes={imageProps.sizes}
-            srcSet={imageProps.srcSet}
+      {selectable ? (
+        <label className="inv-select">
+          <input
+            type="checkbox"
+            checked={!!selected}
+            onChange={(e) => onSelectChange?.(e.target.checked)}
+            aria-label={"\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u043f\u0440\u0435\u0434\u043c\u0435\u0442"}
+            disabled={readOnly}
           />
-        ) : icon.Icon ? (
+        </label>
+      ) : null}
+      <div className="inv-hero" data-has-image="false">
+        {icon.Icon ? (
           <icon.Icon className="inv-icon" aria-hidden="true" />
         ) : (
           <div className="inv-fallback">{icon.text}</div>
@@ -139,9 +168,13 @@ function InventoryItemCard({
           </div>
         ) : null}
         {item.description ? (
-          <div className="inv-desc">
-            <MarkdownView source={item.description} />
-          </div>
+          lite ? (
+            <div className="inv-desc inv-desc-lite">{descText}</div>
+          ) : (
+            <div className="inv-desc">
+              <MarkdownView source={item.description} />
+            </div>
+          )
         ) : null}
       </div>
 
@@ -190,4 +223,10 @@ function InventoryItemCard({
 }
 
 export default memo(InventoryItemCard);
+
+
+
+
+
+
 

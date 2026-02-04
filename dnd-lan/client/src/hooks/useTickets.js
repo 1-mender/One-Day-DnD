@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, storage } from "../api.js";
 import { formatError } from "../lib/formatError.js";
-import { connectSocket } from "../socket.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export function useTickets() {
   const [state, setState] = useState(null);
@@ -32,13 +32,19 @@ export function useTickets() {
     }
   }, [applyPayload]);
 
-  const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const { socket } = useSocket();
 
   useEffect(() => {
+    if (!socket) return () => {};
     refresh().catch(() => {});
-    socket.on("tickets:updated", () => refresh().catch(() => {}));
-    socket.on("settings:updated", () => refresh().catch(() => {}));
-    return () => socket.disconnect();
+    const onUpdated = () => refresh().catch(() => {});
+    const onSettings = () => refresh().catch(() => {});
+    socket.on("tickets:updated", onUpdated);
+    socket.on("settings:updated", onSettings);
+    return () => {
+      socket.off("tickets:updated", onUpdated);
+      socket.off("settings:updated", onSettings);
+    };
   }, [refresh, socket]);
 
   const play = useCallback(async (payload) => {

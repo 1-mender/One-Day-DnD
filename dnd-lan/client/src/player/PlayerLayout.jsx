@@ -1,55 +1,73 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav.jsx";
 import OfflineBanner from "../components/OfflineBanner.jsx";
 import { api, storage } from "../api.js";
-import { connectSocket } from "../socket.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function PlayerLayout() {
   const nav = useNavigate();
   const location = useLocation();
-
-  const sp = new URLSearchParams(window.location.search);
-  const imp = sp.get("imp") === "1";
-  const token = sp.get("token");
-  if (imp && token) {
-    storage.setPlayerToken(token, "session");
-    storage.setImpersonating(true);
-    storage.setImpMode("ro");
-    window.history.replaceState({}, "", window.location.pathname);
-  }
+  const impHandledRef = useRef({ token: null, applied: false });
 
   const [showOffline, setShowOffline] = useState(false);
   const offlineTimerRef = useRef(null);
   const hasConnectedRef = useRef(false);
   const closingRef = useRef(false);
   const [bestiaryEnabled, setBestiaryEnabled] = useState(false);
-  const [impersonating] = useState(storage.isImpersonating());
+  const [impersonating, setImpersonating] = useState(storage.isImpersonating());
   const [impMode, setImpMode] = useState(storage.getImpMode());
   const [me, setMe] = useState(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [netErr, setNetErr] = useState("");
 
-  const socket = useMemo(() => connectSocket({ role: "player" }), []);
-  const OFFLINE_BANNER_DELAY_MS = 2500;
+  const { socket, refreshAuth } = useSocket();
+  const OFFLINE_BANNER_DELAY_MS = 2000;
 
   useEffect(() => {
+    const sp = new URLSearchParams(location.search);
+    const imp = sp.get("imp") === "1";
+    const token = sp.get("token");
+    if (!imp || !token) return;
+    if (impHandledRef.current.token !== token) {
+      impHandledRef.current = { token, applied: false };
+    }
+    if (!impHandledRef.current.applied) {
+      storage.setPlayerToken(token, "session");
+      storage.setImpersonating(true);
+      storage.setImpMode("ro");
+      setImpersonating(true);
+      setImpMode("ro");
+      window.history.replaceState({}, "", window.location.pathname);
+      impHandledRef.current.applied = true;
+    }
+    if (socket) refreshAuth();
+  }, [location.search, refreshAuth, socket]);
+
+  useEffect(() => {
+    if (!socket) return () => {};
     if (!storage.getPlayerToken()) nav("/", { replace: true });
 
     closingRef.current = false;
+    hasConnectedRef.current = false;
     const clearOfflineTimer = () => {
       if (offlineTimerRef.current) {
         clearTimeout(offlineTimerRef.current);
         offlineTimerRef.current = null;
       }
     };
+    const showOfflineNow = () => {
+      clearOfflineTimer();
+      setShowOffline(true);
+    };
     const scheduleOffline = () => {
       clearOfflineTimer();
       offlineTimerRef.current = setTimeout(() => {
+        if (socket.connected) return;
         setShowOffline(true);
       }, OFFLINE_BANNER_DELAY_MS);
     };
@@ -61,37 +79,41 @@ export default function PlayerLayout() {
     };
     const onDisconnect = () => {
       if (closingRef.current) return;
-      if (!hasConnectedRef.current) return;
       scheduleOffline();
     };
     const onConnectError = () => {
       if (closingRef.current) return;
-      if (hasConnectedRef.current) {
-        scheduleOffline();
+      if (!hasConnectedRef.current) {
+        showOfflineNow();
+        return;
       }
+      scheduleOffline();
     };
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("connect_error", onConnectError);
-    socket.on("player:kicked", () => {
+    const onKicked = () => {
       storage.clearPlayerToken();
       storage.clearImpersonating();
       storage.clearImpMode();
       nav("/", { replace: true });
-    });
-    socket.on("player:sessionInvalid", () => {
+    };
+    const onSessionInvalid = () => {
       storage.clearPlayerToken();
       storage.clearImpersonating();
       storage.clearImpMode();
       nav("/", { replace: true });
-    });
-    socket.on("settings:updated", async () => {
+    };
+    const onSettingsUpdated = async () => {
       const inf = await api.serverInfo().catch((e) => {
         setNetErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
         return null;
       });
       if (inf) setBestiaryEnabled(!!inf.settings?.bestiaryEnabled);
-    });
+    };
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect_error", onConnectError);
+    socket.on("player:kicked", onKicked);
+    socket.on("player:sessionInvalid", onSessionInvalid);
+    socket.on("settings:updated", onSettingsUpdated);
 
     api.serverInfo()
       .then((inf) => setBestiaryEnabled(!!inf.settings?.bestiaryEnabled))
@@ -113,6 +135,11 @@ export default function PlayerLayout() {
     };
 
     emitActivity();
+    if (socket.connected) {
+      onConnect();
+    } else {
+      scheduleOffline();
+    }
 
     const onVis = () => {
       if (document.visibilityState === "visible") emitActivity();
@@ -131,7 +158,9 @@ export default function PlayerLayout() {
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
-      socket.disconnect();
+      socket.off("player:kicked", onKicked);
+      socket.off("player:sessionInvalid", onSessionInvalid);
+      socket.off("settings:updated", onSettingsUpdated);
       window.removeEventListener("pointerdown", emitActivity);
       window.removeEventListener("keydown", emitActivity);
       window.removeEventListener("touchstart", emitActivity);
@@ -150,6 +179,7 @@ export default function PlayerLayout() {
       storage.setPlayerToken(r.playerToken, "session");
       storage.setImpMode(nextMode);
       setImpMode(nextMode);
+      refreshAuth();
     } catch (e) {
       setErr(formatError(e));
     } finally {

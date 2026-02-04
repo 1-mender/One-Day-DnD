@@ -3,28 +3,34 @@ import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import InventoryItemCard from "../components/vintage/InventoryItemCard.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale } from "lucide-react";
+import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale, Trash2 } from "lucide-react";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
 import { formatError } from "../lib/formatError.js";
+import {
+  INVENTORY_ICON_SECTIONS,
+  applyIconTag,
+  getIconKeyFromItem,
+  getInventoryIcon,
+  stripIconTags
+} from "../lib/inventoryIcons.js";
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", imageUrl:"" };
+const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 
 export default function DMInventory() {
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(0);
   const [items, setItems] = useState([]);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const fileRef = useRef(null);
   const [q, setQ] = useState("");
   const [vis, setVis] = useState("");
   const [rarity, setRarity] = useState("");
@@ -73,6 +79,20 @@ export default function DMInventory() {
     if (selectedId) loadInv(selectedId).catch(()=>{});
   }, [selectedId]);
 
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [selectedId]);
+
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      if (!prev.size) return prev;
+      const existing = new Set(items.map((it) => it.id));
+      const next = new Set();
+      for (const id of prev) if (existing.has(id)) next.add(id);
+      return next;
+    });
+  }, [items]);
+
   function startAdd() {
     setEdit(null);
     setForm(empty);
@@ -81,14 +101,40 @@ export default function DMInventory() {
 
   function startEdit(item) {
     setEdit(item);
-    setForm({ ...item, imageUrl: item.imageUrl || item.image_url || "", tags: item.tags || [] });
+    const rest = { ...(item || {}) };
+    delete rest.imageUrl;
+    delete rest.image_url;
+    setForm({
+      ...rest,
+      tags: stripIconTags(item.tags || []),
+      iconKey: getIconKeyFromItem(item)
+    });
     setOpen(true);
   }
+
+  const toggleSelect = useCallback((id, checked) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+  }, []);
 
   async function save() {
     setErr("");
     try {
-      const payload = { ...form, qty: Number(form.qty), weight: Number(form.weight), tags: (form.tags || []).filter(Boolean) };
+      const { iconKey, ...rest } = form;
+      const payload = {
+        ...rest,
+        qty: Number(rest.qty),
+        weight: Number(rest.weight),
+        tags: applyIconTag((rest.tags || []).filter(Boolean), iconKey)
+      };
       if (edit) {
         await api.invDmUpdatePlayerItem(selectedId, edit.id, payload);
       } else {
@@ -126,25 +172,46 @@ export default function DMInventory() {
     }
   }
 
-  async function onPickImage(ev) {
-    const f = ev.target.files?.[0];
-    if (!f) return;
+  async function bulkHideSelected() {
+    if (!selectedId || selectedIds.size === 0) return;
+    const targets = selectedItems.filter((it) => it.visibility !== "hidden");
+    if (!targets.length) return;
     setErr("");
-    setUploading(true);
     try {
-      const r = await api.uploadAsset(f);
-      setForm((prev) => ({ ...prev, imageUrl: r.url || "" }));
+      for (const it of targets) {
+        await api.invDmUpdatePlayerItem(selectedId, it.id, { ...it, visibility: "hidden", tags: it.tags || [] });
+      }
+      await loadInv(selectedId);
+      clearSelection();
     } catch (e) {
       setErr(formatError(e));
-    } finally {
-      setUploading(false);
-      ev.target.value = "";
     }
   }
+
+  async function bulkDeleteSelected() {
+    if (!selectedId || selectedIds.size === 0) return;
+    const targets = selectedItems;
+    if (!targets.length) return;
+    if (!window.confirm(`\u0423\u0434\u0430\u043b\u0438\u0442\u044c ${targets.length} \u043f\u0440\u0435\u0434\u043c\u0435\u0442(\u043e\u0432)?`)) return;
+    setErr("");
+    try {
+      for (const it of targets) {
+        await api.invDmDeletePlayerItem(selectedId, it.id);
+      }
+      await loadInv(selectedId);
+      clearSelection();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
 
   const filtered = useMemo(() => filterInventory(items, { q: debouncedQ, vis, rarity }), [items, debouncedQ, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
   const hasAny = items.length > 0;
+  const selectedCount = selectedIds.size;
+  const selectedItems = useMemo(() => items.filter((it) => selectedIds.has(it.id)), [items, selectedIds]);
+  const SelectedIcon = getInventoryIcon(form.iconKey);
   const listRef = useRef(null);
   const rowVirtualizer = useVirtualizer({
     count: filtered.length,
@@ -187,6 +254,31 @@ export default function DMInventory() {
         <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
           <RefreshCcw className="icon" aria-hidden="true" />Обновить
         </button>
+        <span className="badge secondary">{"\u0412\u044b\u0431\u0440\u0430\u043d\u043e: "}{selectedCount}</span>
+        <button
+          className="btn secondary"
+          onClick={bulkHideSelected}
+          disabled={!selectedId || selectedCount === 0}
+          title={"Скрыть выбранные"}
+        >
+          <EyeOff className="icon" aria-hidden="true" />
+          {"Скрыть"}
+        </button>
+        <button
+          className="btn danger"
+          onClick={bulkDeleteSelected}
+          disabled={!selectedId || selectedCount === 0}
+          title={"Удалить выбранные"}
+        >
+          <Trash2 className="icon" aria-hidden="true" />
+          {"Удалить"}
+        </button>
+        {selectedCount > 0 ? (
+          <button className="btn secondary" onClick={clearSelection}>
+            {"Снять выбор"}
+          </button>
+        ) : null}
+
       </div>
       <div className="small" style={{ marginTop: 10 }}>
         <div className="row" style={{ flexWrap: "wrap" }}>
@@ -236,6 +328,9 @@ export default function DMInventory() {
                     onEdit={() => startEdit(it)}
                     onDelete={() => delItem(it)}
                     onToggleVisibility={() => toggleVisibility(it)}
+                    selectable
+                    selected={selectedIds.has(it.id)}
+                    onSelectChange={(checked) => toggleSelect(it.id, checked)}
                   />
                 </div>
               );
@@ -251,6 +346,9 @@ export default function DMInventory() {
               onEdit={() => startEdit(it)}
               onDelete={() => delItem(it)}
               onToggleVisibility={() => toggleVisibility(it)}
+              selectable
+              selected={selectedIds.has(it.id)}
+              onSelectChange={(checked) => toggleSelect(it.id, checked)}
             />
           ))
         )}
@@ -275,17 +373,29 @@ export default function DMInventory() {
               <option value="hidden">Hidden</option>
             </select>
           </div>
+
           <div className="row" style={{ alignItems: "center" }}>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickImage} />
-            <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={uploading}>
-              {uploading ? "Загрузка..." : "Загрузить изображение"}
-            </button>
-            <input
-              value={form.imageUrl || ""}
-              onChange={(e)=>setForm({ ...form, imageUrl: e.target.value })}
-              placeholder="URL изображения"
+            <select
+              value={form.iconKey || ""}
+              onChange={(e)=>setForm({ ...form, iconKey: e.target.value })}
               style={inp}
-            />
+            >
+              <option value="">{"\u0418\u043a\u043e\u043d\u043a\u0430: \u043d\u0435\u0442"}</option>
+              {INVENTORY_ICON_SECTIONS.map((section) => (
+                <optgroup key={section.key} label={section.label}>
+                  {section.items.map((icon) => (
+                    <option key={icon.key} value={icon.key}>{icon.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <div className="badge secondary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {SelectedIcon ? (
+                <SelectedIcon className="inv-icon" aria-hidden="true" style={{ width: 28, height: 28 }} />
+              ) : (
+                <span className="small">{"\u0411\u0435\u0437 \u0438\u043a\u043e\u043d\u043a\u0438"}</span>
+              )}
+            </div>
           </div>
           <input
             value={(form.tags || []).join(", ")}

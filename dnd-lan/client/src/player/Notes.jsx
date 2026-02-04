@@ -1,16 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
-import { connectSocket } from "../socket.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function Notes() {
   const [items, setItems] = useState([]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [cur, setCur] = useState(null);
-  const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const { socket } = useSocket();
   const debouncedQ = useDebouncedValue(q, 200);
 
   const load = useCallback(async () => {
@@ -19,9 +19,13 @@ export default function Notes() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("infoBlocks:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onUpdated = () => load().catch(() => {});
+    socket.on("infoBlocks:updated", onUpdated);
+    return () => {
+      socket.off("infoBlocks:updated", onUpdated);
+    };
   }, [load, socket]);
 
   const filtered = useMemo(() => {

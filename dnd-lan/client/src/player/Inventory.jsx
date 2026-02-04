@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api, storage } from "../api.js";
 import Modal from "../components/Modal.jsx";
-import { connectSocket } from "../socket.js";
 import InventoryItemCard from "../components/vintage/InventoryItemCard.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
@@ -11,9 +10,18 @@ import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
 import { formatError } from "../lib/formatError.js";
+import { useLiteMode } from "../hooks/useLiteMode.js";
+import {
+  INVENTORY_ICON_SECTIONS,
+  applyIconTag,
+  getIconKeyFromItem,
+  getInventoryIcon,
+  stripIconTags
+} from "../lib/inventoryIcons.js";
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
-const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", imageUrl:"" };
+const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 
 export default function Inventory() {
   const toast = useToast();
@@ -28,10 +36,12 @@ export default function Inventory() {
   const [form, setForm] = useState(empty);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
-  const socket = useMemo(() => connectSocket({ role: "player" }), []);
-  const [listRef] = useAutoAnimate({ duration: 200 });
+  const { socket } = useSocket();
+  const lite = useLiteMode();
+  const [listRef] = useAutoAnimate({ duration: lite ? 0 : 200 });
 
   const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
+  const actionsVariant = lite || view === "grid" ? "compact" : "stack";
 
   const load = useCallback(async () => {
     setErr("");
@@ -47,14 +57,19 @@ export default function Inventory() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("inventory:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onUpdated = () => load().catch(() => {});
+    socket.on("inventory:updated", onUpdated);
+    return () => {
+      socket.off("inventory:updated", onUpdated);
+    };
   }, [load, socket]);
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
   const hasAny = items.length > 0;
+  const SelectedIcon = getInventoryIcon(form.iconKey);
 
   function startAdd() {
     if (readOnly) return;
@@ -65,7 +80,14 @@ export default function Inventory() {
   function startEdit(it) {
     if (readOnly) return;
     setEdit(it);
-    setForm({ ...it, imageUrl: it.imageUrl || it.image_url || "", tags: it.tags || [] });
+    const rest = { ...(it || {}) };
+    delete rest.imageUrl;
+    delete rest.image_url;
+    setForm({
+      ...rest,
+      tags: stripIconTags(it.tags || []),
+      iconKey: getIconKeyFromItem(it)
+    });
     setOpen(true);
   }
 
@@ -74,7 +96,13 @@ export default function Inventory() {
     setErr("");
     try {
       if (!form.name.trim()) return;
-      const payload = { ...form, qty: Number(form.qty), weight: Number(form.weight), tags: (form.tags||[]).filter(Boolean) };
+      const { iconKey, ...rest } = form;
+      const payload = {
+        ...rest,
+        qty: Number(rest.qty),
+        weight: Number(rest.weight),
+        tags: applyIconTag((rest.tags || []).filter(Boolean), iconKey)
+      };
       if (edit) await api.invUpdateMine(edit.id, payload);
       else await api.invAddMine(payload);
       setOpen(false);
@@ -113,7 +141,7 @@ export default function Inventory() {
   }
 
   return (
-    <div className="card taped">
+    <div className={`card taped inventory-shell${lite ? " page-lite" : ""}`.trim()}>
       <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
         <div>
       <div style={{ fontWeight: 800, fontSize: 18 }}>Инвентарь</div>
@@ -122,14 +150,14 @@ export default function Inventory() {
         <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
       </div>
       <hr />
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(520px, 100%)" }} />
-        <select value={vis} onChange={(e)=>setVis(e.target.value)} style={{ width: 200 }}>
+      <div className="inv-toolbar">
+        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." />
+        <select value={vis} onChange={(e)=>setVis(e.target.value)}>
           <option value="">Видимость: все</option>
           <option value="public">Публичные</option>
           <option value="hidden">Скрытые</option>
         </select>
-        <select value={rarity} onChange={(e)=>setRarity(e.target.value)} style={{ width: 200 }}>
+        <select value={rarity} onChange={(e)=>setRarity(e.target.value)}>
           <option value="">Редкость: все</option>
           {RARITY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -169,13 +197,14 @@ export default function Inventory() {
             hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
           />
         ) : (
-          <div className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`} ref={listRef}>
+          <div className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`} ref={lite ? null : listRef}>
             {filtered.map((it) => (
               <InventoryItemCard
                 key={it.id}
                 item={it}
                 readOnly={readOnly}
-                actionsVariant={view === "grid" ? "compact" : "stack"}
+                actionsVariant={actionsVariant}
+                lite={lite}
                 onEdit={() => startEdit(it)}
                 onDelete={() => del(it.id)}
                 onToggleVisibility={() => toggleVisibility(it)}
@@ -204,12 +233,28 @@ export default function Inventory() {
               <option value="hidden">Hidden</option>
             </select>
           </div>
-          <input
-            value={form.imageUrl || ""}
-            onChange={(e)=>setForm({ ...form, imageUrl: e.target.value })}
-            placeholder="URL изображения"
-            style={inp}
-          />
+          <div className="row" style={{ alignItems: "center" }}>
+            <select
+              value={form.iconKey || ""}
+              onChange={(e)=>setForm({ ...form, iconKey: e.target.value })}
+              style={inp}>
+              <option value="">{"\u0418\u043a\u043e\u043d\u043a\u0430: \u043d\u0435\u0442"}</option>
+              {INVENTORY_ICON_SECTIONS.map((section) => (
+                <optgroup key={section.key} label={section.label}>
+                  {section.items.map((icon) => (
+                    <option key={icon.key} value={icon.key}>{icon.label}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <div className="badge secondary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {SelectedIcon ? (
+                <SelectedIcon className="inv-icon" aria-hidden="true" style={{ width: 28, height: 28 }} />
+              ) : (
+                <span className="small">{"\u0411\u0435\u0437 \u0438\u043a\u043e\u043d\u043a\u0438"}</span>
+              )}
+            </div>
+          </div>
           <input
             value={(form.tags || []).join(", ")}
             onChange={(e)=>setForm({ ...form, tags: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) })}
@@ -246,4 +291,7 @@ function summarizeInventory(list) {
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
 }
+
+
+
 

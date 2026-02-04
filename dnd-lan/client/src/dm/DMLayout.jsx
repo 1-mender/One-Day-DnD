@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import OfflineBanner from "../components/OfflineBanner.jsx";
-import { connectSocket } from "../socket.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import DMTabBar from "./DMTabBar.jsx";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function DMLayout() {
   const nav = useNavigate();
@@ -13,25 +13,32 @@ export default function DMLayout() {
   const offlineTimerRef = useRef(null);
   const hasConnectedRef = useRef(false);
   const closingRef = useRef(false);
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
-  const OFFLINE_BANNER_DELAY_MS = 2500;
+  const { socket } = useSocket();
+  const OFFLINE_BANNER_DELAY_MS = 2000;
 
   useEffect(() => {
+    if (!socket) return () => {};
     api.dmMe().then((r) => {
       if (r.needsSetup) nav("/dm/setup", { replace: true });
       if (!r.authenticated) nav("/dm", { replace: true });
     }).catch(() => nav("/dm", { replace: true }));
 
     closingRef.current = false;
+    hasConnectedRef.current = false;
     const clearOfflineTimer = () => {
       if (offlineTimerRef.current) {
         clearTimeout(offlineTimerRef.current);
         offlineTimerRef.current = null;
       }
     };
+    const showOfflineNow = () => {
+      clearOfflineTimer();
+      setShowOffline(true);
+    };
     const scheduleOffline = () => {
       clearOfflineTimer();
       offlineTimerRef.current = setTimeout(() => {
+        if (socket.connected) return;
         setShowOffline(true);
       }, OFFLINE_BANNER_DELAY_MS);
     };
@@ -43,25 +50,30 @@ export default function DMLayout() {
     };
     const onDisconnect = () => {
       if (closingRef.current) return;
-      if (!hasConnectedRef.current) return;
       scheduleOffline();
     };
     const onConnectError = () => {
       if (closingRef.current) return;
-      if (hasConnectedRef.current) {
-        scheduleOffline();
+      if (!hasConnectedRef.current) {
+        showOfflineNow();
+        return;
       }
+      scheduleOffline();
     };
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
+    if (socket.connected) {
+      onConnect();
+    } else {
+      scheduleOffline();
+    }
     return () => {
       closingRef.current = true;
       clearOfflineTimer();
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
-      socket.disconnect();
     };
   }, [nav, socket]);
 

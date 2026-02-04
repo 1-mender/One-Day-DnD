@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
-import { connectSocket } from "../socket.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import Modal from "../components/Modal.jsx";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import { formatError } from "../lib/formatError.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -20,7 +20,7 @@ export default function DMPlayers() {
   const [ticketSet, setTicketSet] = useState("");
   const [ticketReason, setTicketReason] = useState("");
   const nav = useNavigate();
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const load = useCallback(async () => {
     setErr("");
@@ -36,11 +36,19 @@ export default function DMPlayers() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("players:updated", () => load().catch(() => {}));
-    socket.on("player:statusChanged", () => load().catch(() => {}));
-    socket.on("tickets:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onPlayers = () => load().catch(() => {});
+    const onStatus = () => load().catch(() => {});
+    const onTickets = () => load().catch(() => {});
+    socket.on("players:updated", onPlayers);
+    socket.on("player:statusChanged", onStatus);
+    socket.on("tickets:updated", onTickets);
+    return () => {
+      socket.off("players:updated", onPlayers);
+      socket.off("player:statusChanged", onStatus);
+      socket.off("tickets:updated", onTickets);
+    };
   }, [load, socket]);
 
   async function viewAs(playerId) {

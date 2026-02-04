@@ -39,6 +39,15 @@
   overflow-x: hidden;
 }
 
+@supports (height: 100svh){
+  :root[data-ui="v2"] .dm-root .vintage-page{
+    max-height: calc(100svh - 190px);
+  }
+  :root[data-ui="v3"] .dm-root .vintage-page{
+    max-height: calc(100svh - 160px);
+  }
+}
+
 .dm-root .vintage-page::-webkit-scrollbar{ width: 10px; }
 .dm-root .vintage-page::-webkit-scrollbar-thumb{
   background: rgba(60,45,25,.25);

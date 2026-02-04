@@ -1,12 +1,12 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
-import { connectSocket } from "../socket.js";
 import { formatError } from "../lib/formatError.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function DMLobby() {
   const [items, setItems] = useState([]);
   const [err, setErr] = useState("");
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const load = useCallback(async () => {
     const r = await api.dmRequests();
@@ -14,9 +14,13 @@ export default function DMLobby() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("player:joinRequested", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onJoin = () => load().catch(() => {});
+    socket.on("player:joinRequested", onJoin);
+    return () => {
+      socket.off("player:joinRequested", onJoin);
+    };
   }, [load, socket]);
 
   async function approve(id) {

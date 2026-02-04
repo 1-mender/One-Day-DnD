@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
-import { connectSocket } from "../socket.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function DMSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -19,6 +19,8 @@ export default function DMSettings() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [ticketRules, setTicketRules] = useState(null);
+  const [ticketRulesBase, setTicketRulesBase] = useState(null);
+  const [showOnlyChanged, setShowOnlyChanged] = useState(false);
   const [ticketBusy, setTicketBusy] = useState(false);
   const [ticketMsg, setTicketMsg] = useState("");
   const [ticketErr, setTicketErr] = useState("");
@@ -28,7 +30,7 @@ export default function DMSettings() {
   const [presetMsg, setPresetMsg] = useState("");
   const [presetErr, setPresetErr] = useState("");
 
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const load = useCallback(async () => {
     setErr("");
@@ -43,6 +45,7 @@ export default function DMSettings() {
       setJoinCode(jc.joinCode || "");
       setInfo(si);
       setTicketRules(tr?.rules || null);
+      setTicketRulesBase(tr?.rules || null);
       setProfilePresets(Array.isArray(presets?.presets) ? presets.presets : []);
       setPresetAccess({
         enabled: presets?.access?.enabled !== false,
@@ -56,130 +59,167 @@ export default function DMSettings() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch((e) => setErr(formatError(e)));
-    socket.on("settings:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onUpdated = () => load().catch(() => {});
+    socket.on("settings:updated", onUpdated);
+    return () => {
+      socket.off("settings:updated", onUpdated);
+    };
   }, [load, socket]);
+
+  const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");
+  const ticketDirty = useMemo(() => {
+    if (!ticketRules || !ticketRulesBase) return false;
+    return JSON.stringify(ticketRules) !== JSON.stringify(ticketRulesBase);
+  }, [ticketRules, ticketRulesBase]);
+  const ticketBase = ticketRulesBase || {};
+  const ticketCur = ticketRules || {};
+  const generalChanges = {
+    enabled: (ticketCur.enabled ?? true) !== (ticketBase.enabled ?? true),
+    dailyEarnCap: (ticketCur.dailyEarnCap ?? 0) !== (ticketBase.dailyEarnCap ?? 0),
+    streakMax: (ticketCur.streak?.max ?? 0) !== (ticketBase.streak?.max ?? 0),
+    streakStep: (ticketCur.streak?.step ?? 0) !== (ticketBase.streak?.step ?? 0),
+    streakFlatBonus: (ticketCur.streak?.flatBonus ?? 0) !== (ticketBase.streak?.flatBonus ?? 0)
+  };
+  const showGeneralBlock = !showOnlyChanged || Object.values(generalChanges).some(Boolean);
+  const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
+
+  function isGameChanged(key, g) {
+    const base = ticketBase.games?.[key] || {};
+    return (
+      (g.enabled ?? true) !== (base.enabled ?? true) ||
+      (g.entryCost ?? 0) !== (base.entryCost ?? 0) ||
+      (g.rewardMin ?? 0) !== (base.rewardMin ?? 0) ||
+      (g.rewardMax ?? 0) !== (base.rewardMax ?? 0) ||
+      (g.lossPenalty ?? 0) !== (base.lossPenalty ?? 0) ||
+      (g.dailyLimit ?? 0) !== (base.dailyLimit ?? 0)
+    );
+  }
+
+  function isShopChanged(key, item) {
+    const base = ticketBase.shop?.[key] || {};
+    return (
+      (item.enabled ?? true) !== (base.enabled ?? true) ||
+      (item.price ?? 0) !== (base.price ?? 0) ||
+      (item.dailyLimit ?? 0) !== (base.dailyLimit ?? 0)
+    );
+  }
+
+  const gameEntries = Object.entries(ticketCur.games || {});
+  const shopEntries = Object.entries(ticketCur.shop || {});
+  const filteredGames = showOnlyChanged ? gameEntries.filter(([key, g]) => isGameChanged(key, g)) : gameEntries;
+  const filteredShop = showOnlyChanged ? shopEntries.filter(([key, item]) => isShopChanged(key, item)) : shopEntries;
 
   async function saveJoinCode() {
     setMsg("");
     setErr("");
     try {
-      if (!joinEnabled) {
-        await api.dmSetJoinCode("");
-        setMsg("Код партии отключён.");
-        return;
-      }
-      const code = joinCode.trim();
-      if (!code) {
-        setErr("Введите код или отключите переключатель.");
-        return;
-      }
-      await api.dmSetJoinCode(code);
+      const nextCode = joinEnabled ? String(joinCode || "").trim() : "";
+      await api.dmSetJoinCode(nextCode);
       setMsg("Код партии сохранён.");
+      await load();
     } catch (e) {
-      setErr(formatError(e));
+      setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
     }
   }
 
   async function changePassword() {
     setMsg("");
     setErr("");
+    const pass = String(newPass || "");
+    if (!pass) {
+      setErr("Введите новый пароль.");
+      return;
+    }
+    if (pass !== String(newPass2 || "")) {
+      setErr("Пароли не совпадают.");
+      return;
+    }
     try {
-      const p1 = newPass.trim();
-      const p2 = newPass2.trim();
-      if (p1.length < 6) return setErr("Пароль должен быть минимум 6 символов.");
-      if (p1 !== p2) return setErr("Пароли не совпадают.");
-      await api.dmChangePassword(p1);
+      await api.dmChangePassword(pass);
+      setMsg("Пароль изменён.");
       setNewPass("");
       setNewPass2("");
-      setMsg("Пароль DM успешно изменён.");
+      setShowPass(false);
     } catch (e) {
       setErr(formatError(e));
     }
   }
 
-  async function exportZip() {
-    setMsg("");
-    setErr("");
-    try {
-      const blob = await api.exportZip();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "dnd-lan-backup.zip";
-      a.click();
-      URL.revokeObjectURL(url);
-      setMsg("Экспорт готов.");
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.EXPORT_FAILED));
-    }
-  }
-
-  async function importZip(e) {
-    setMsg("");
-    setErr("");
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      await api.importZip(file);
-      setMsg("Импорт выполнен. Клиентам обновить страницу (если нужно).");
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.IMPORT_FAILED));
-    } finally {
-      e.target.value = "";
-    }
-  }
-
   function updateTicketRules(patch) {
-    setTicketRules((cur) => {
-      if (!cur) return cur;
-      return { ...cur, ...patch };
+    setTicketRules((prev) => {
+      const next = { ...(prev || {}) };
+      if (patch?.streak && typeof patch.streak === "object") {
+        next.streak = { ...(next.streak || {}), ...patch.streak };
+        const rest = { ...patch };
+        delete rest.streak;
+        return { ...next, ...rest };
+      }
+      return { ...next, ...(patch || {}) };
     });
   }
 
-  function updateTicketGame(gameKey, patch) {
-    setTicketRules((cur) => {
-      if (!cur) return cur;
-      return {
-        ...cur,
-        games: {
-          ...(cur.games || {}),
-          [gameKey]: { ...(cur.games?.[gameKey] || {}), ...patch }
-        }
-      };
+  function updateTicketGame(key, patch) {
+    setTicketRules((prev) => {
+      const next = { ...(prev || {}) };
+      const games = { ...(next.games || {}) };
+      games[key] = { ...(games[key] || {}), ...(patch || {}) };
+      next.games = games;
+      return next;
     });
   }
 
-  function updateTicketShop(itemKey, patch) {
-    setTicketRules((cur) => {
-      if (!cur) return cur;
-      return {
-        ...cur,
-        shop: {
-          ...(cur.shop || {}),
-          [itemKey]: { ...(cur.shop?.[itemKey] || {}), ...patch }
-        }
-      };
+  function updateTicketShop(key, patch) {
+    setTicketRules((prev) => {
+      const next = { ...(prev || {}) };
+      const shop = { ...(next.shop || {}) };
+      shop[key] = { ...(shop[key] || {}), ...(patch || {}) };
+      next.shop = shop;
+      return next;
     });
   }
 
-  function updatePreset(idx, patch) {
-    setProfilePresets((cur) => cur.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+  async function saveTicketRules() {
+    if (!ticketRules) return;
+    setTicketErr("");
+    setTicketMsg("");
+    setTicketBusy(true);
+    try {
+      const r = await api.dmTicketsUpdateRules({
+        enabled: ticketRules.enabled ?? true,
+        rules: ticketRules
+      });
+      setTicketRules(r.rules || null);
+      setTicketRulesBase(r.rules || null);
+      setTicketMsg("Правила сохранены.");
+    } catch (e) {
+      setTicketErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
+    } finally {
+      setTicketBusy(false);
+    }
   }
 
-  function updatePresetData(idx, patch) {
-    setProfilePresets((cur) => cur.map((p, i) => (
-      i === idx ? { ...p, data: { ...(p.data || {}), ...patch } } : p
-    )));
+  async function resetTicketRules() {
+    setTicketErr("");
+    setTicketMsg("");
+    setTicketBusy(true);
+    try {
+      const r = await api.dmTicketsUpdateRules({ reset: true });
+      setTicketRules(r.rules || null);
+      setTicketRulesBase(r.rules || null);
+      setTicketMsg("Правила сброшены к дефолту.");
+    } catch (e) {
+      setTicketErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
+    } finally {
+      setTicketBusy(false);
+    }
   }
 
   function addPreset() {
-    const id = `preset_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
-    setProfilePresets((cur) => [
-      ...cur,
+    setProfilePresets((prev) => ([
+      ...(prev || []),
       {
-        id,
         title: "Новый пресет",
         subtitle: "",
         data: {
@@ -191,20 +231,35 @@ export default function DMSettings() {
           avatarUrl: ""
         }
       }
-    ]);
+    ]));
   }
 
   function removePreset(idx) {
-    setProfilePresets((cur) => cur.filter((_, i) => i !== idx));
+    setProfilePresets((prev) => (prev || []).filter((_, i) => i !== idx));
+  }
+
+  function updatePreset(idx, patch) {
+    setProfilePresets((prev) => (prev || []).map((p, i) => (i === idx ? { ...p, ...(patch || {}) } : p)));
+  }
+
+  function updatePresetData(idx, patch) {
+    setProfilePresets((prev) => (prev || []).map((p, i) => (
+      i === idx
+        ? { ...p, data: { ...(p.data || {}), ...(patch || {}) } }
+        : p
+    )));
   }
 
   async function saveProfilePresets() {
-    setPresetMsg("");
     setPresetErr("");
+    setPresetMsg("");
     setPresetBusy(true);
     try {
-      const r = await api.dmProfilePresetsUpdate({ presets: profilePresets, access: presetAccess });
-      setProfilePresets(Array.isArray(r?.presets) ? r.presets : profilePresets);
+      const r = await api.dmProfilePresetsUpdate({
+        presets: profilePresets || [],
+        access: presetAccess || {}
+      });
+      setProfilePresets(Array.isArray(r?.presets) ? r.presets : []);
       setPresetAccess(r?.access || presetAccess);
       setPresetMsg("Пресеты сохранены.");
     } catch (e) {
@@ -214,259 +269,78 @@ export default function DMSettings() {
     }
   }
 
-  async function saveTicketRules() {
-    if (!ticketRules) return;
-    setTicketMsg("");
-    setTicketErr("");
-    setTicketBusy(true);
+  async function exportZip() {
+    setMsg("");
+    setErr("");
     try {
-      const r = await api.dmTicketsUpdateRules({ rules: ticketRules });
-      setTicketRules(r?.rules || ticketRules);
-      setTicketMsg("Настройки игр сохранены.");
+      const blob = await api.exportZip();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `backup_${new Date().toISOString().slice(0, 10)}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMsg("Экспорт готов.");
     } catch (e) {
-      setTicketErr(formatError(e));
-    } finally {
-      setTicketBusy(false);
+      setErr(formatError(e, ERROR_CODES.EXPORT_FAILED));
     }
   }
 
-  async function resetTicketRules() {
-    setTicketMsg("");
-    setTicketErr("");
-    setTicketBusy(true);
+  async function importZip(e) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setMsg("");
+    setErr("");
     try {
-      const r = await api.dmTicketsUpdateRules({ reset: true });
-      setTicketRules(r?.rules || ticketRules);
-      setTicketMsg("Сброшено до значений по умолчанию.");
-    } catch (e) {
-      setTicketErr(formatError(e));
-    } finally {
-      setTicketBusy(false);
+      await api.importZip(file);
+      setMsg("Импорт выполнен.");
+    } catch (err2) {
+      setErr(formatError(err2, ERROR_CODES.IMPORT_FAILED));
     }
   }
-
-  const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");
 
   return (
     <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Settings</div>
-      <div className="small">Код партии, безопасность, подсказки LAN/Firewall</div>
+      <div className="small">{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438, \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c, \u044d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430, LAN/Firewall."}</div>
       <hr />
-      {err && <div className="badge off">Ошибка: {err}</div>}
+      {err && <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{err}</div>}
       {msg && <div className="badge ok">{msg}</div>}
 
       <div className="list">
+        <div className="title" style={{ marginTop: 6 }}>{"\u0418\u0433\u0440\u043e\u043a"}</div>
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Код партии (join-code)</div>
-          <div className="small">Если включён — игроки должны ввести код на экране подключения.</div>
+          <div style={{ fontWeight: 800 }}>{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438 (join-code)"}</div>
+          <div className="small">{"\u0415\u0441\u043b\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d \u2014 \u0438\u0433\u0440\u043e\u043a\u0438 \u0432\u0432\u043e\u0434\u044f\u0442 \u043a\u043e\u0434 \u043f\u0440\u0438 \u0432\u0445\u043e\u0434\u0435."}</div>
           <hr />
           <label className="row" style={{ gap: 10, alignItems: "center" }}>
             <input type="checkbox" checked={joinEnabled} onChange={(e) => setJoinEnabled(e.target.checked)} />
-            <span>Включить код партии</span>
+            <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438"}</span>
           </label>
           <div className="row" style={{ gap: 8, marginTop: 10, alignItems: "center" }}>
             <input
               type={showJoin ? "text" : "password"}
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
-              placeholder="Например: 1234"
+              placeholder={"\u041d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: 1234"}
               style={inp}
               disabled={!joinEnabled}
             />
             <button className="btn secondary" onClick={() => setShowJoin((v) => !v)} disabled={!joinEnabled}>
-              {showJoin ? "Скрыть" : "Показать"}
+              {showJoin ? "\u0421\u043a\u0440\u044b\u0442\u044c" : "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c"}
             </button>
-            <button className="btn" onClick={saveJoinCode}>Сохранить</button>
+            <button className="btn" onClick={saveJoinCode}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
           </div>
         </div>
 
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Смена пароля DM</div>
-          <div className="small">Рекомендуется сменить пароль сразу после первого запуска.</div>
+          <div style={{ fontWeight: 800 }}>{"\u041f\u0440\u0435\u0441\u0435\u0442\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f"}</div>
+          <div className="small">{"\u0428\u0430\u0431\u043b\u043e\u043d\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432."}</div>
           <hr />
-          <div className="row" style={{ gap: 8, alignItems: "center" }}>
-            <input
-              type={showPass ? "text" : "password"}
-              value={newPass}
-              onChange={(e) => setNewPass(e.target.value)}
-              placeholder="Новый пароль"
-              style={inp}
-            />
-            <input
-              type={showPass ? "text" : "password"}
-              value={newPass2}
-              onChange={(e) => setNewPass2(e.target.value)}
-              placeholder="Повторите пароль"
-              style={inp}
-            />
-            <button className="btn secondary" onClick={() => setShowPass((v) => !v)}>
-              {showPass ? "Скрыть" : "Показать"}
-            </button>
-            <button className="btn" onClick={changePassword}>Сменить</button>
-          </div>
-        </div>
-
-        <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Аркада и билеты</div>
-          <div className="small">Настройка игр, лимитов и цен. Сохраняется для всей партии.</div>
-          <hr />
-          {ticketErr ? <div className="badge off">Ошибка: {ticketErr}</div> : null}
-          {ticketMsg ? <div className="badge ok">{ticketMsg}</div> : null}
-          {!ticketRules ? (
-            <div className="badge warn">Загрузка настроек...</div>
-          ) : (
-            <div className="list">
-              <label className="row" style={{ gap: 10, alignItems: "center" }}>
-                <input
-                  type="checkbox"
-                  checked={ticketRules.enabled !== false}
-                  onChange={(e) => updateTicketRules({ enabled: e.target.checked })}
-                />
-                <span>Включить аркаду и билеты</span>
-              </label>
-
-              <div className="settings-fields">
-                <input
-                  type="number"
-                  min="0"
-                  value={ticketRules.dailyEarnCap ?? 0}
-                  onChange={(e) => updateTicketRules({ dailyEarnCap: Number(e.target.value) || 0 })}
-                  placeholder="Дневной лимит"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  value={ticketRules.streak?.max ?? 0}
-                  onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), max: Number(e.target.value) || 0 } })}
-                  placeholder="Серия max"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={ticketRules.streak?.step ?? 0}
-                  onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), step: Number(e.target.value) || 0 } })}
-                  placeholder="Серия шаг"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  value={ticketRules.streak?.flatBonus ?? 0}
-                  onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), flatBonus: Number(e.target.value) || 0 } })}
-                  placeholder="Бонус серии"
-                />
-              </div>
-
-              <div className="paper-note">
-                <div className="title">Игры</div>
-                <div className="settings-grid" style={{ marginTop: 8 }}>
-                  {Object.entries(ticketRules.games || {}).map(([key, g]) => (
-                    <div key={key} className="item settings-card">
-                      <div className="settings-head">
-                        <div style={{ fontWeight: 800 }}>{GAME_LABELS[key] || key}</div>
-                        <label className="row" style={{ gap: 6 }}>
-                          <input
-                            type="checkbox"
-                            checked={g.enabled !== false}
-                            onChange={(e) => updateTicketGame(key, { enabled: e.target.checked })}
-                          />
-                          <span>Вкл</span>
-                        </label>
-                      </div>
-                      <div className="settings-fields">
-                        <input
-                          type="number"
-                          min="0"
-                          value={g.entryCost ?? 0}
-                          onChange={(e) => updateTicketGame(key, { entryCost: Number(e.target.value) || 0 })}
-                          placeholder="Вход"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          value={g.rewardMin ?? 0}
-                          onChange={(e) => updateTicketGame(key, { rewardMin: Number(e.target.value) || 0 })}
-                          placeholder="Мин"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          value={g.rewardMax ?? 0}
-                          onChange={(e) => updateTicketGame(key, { rewardMax: Number(e.target.value) || 0 })}
-                          placeholder="Макс"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          value={g.lossPenalty ?? 0}
-                          onChange={(e) => updateTicketGame(key, { lossPenalty: Number(e.target.value) || 0 })}
-                          placeholder="Штраф"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          value={g.dailyLimit ?? 0}
-                          onChange={(e) => updateTicketGame(key, { dailyLimit: Number(e.target.value) || 0 })}
-                          placeholder="Лимит/день"
-                        />
-                      </div>
-                      <div className="settings-sub">Награда и штрафы задают диапазон билетов.</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="paper-note">
-                <div className="title">Магазин</div>
-                <div className="settings-grid" style={{ marginTop: 8 }}>
-                  {Object.entries(ticketRules.shop || {}).map(([key, item]) => (
-                    <div key={key} className="item settings-card">
-                      <div className="settings-head">
-                        <div style={{ fontWeight: 800 }}>{SHOP_LABELS[key] || key}</div>
-                        <label className="row" style={{ gap: 6 }}>
-                          <input
-                            type="checkbox"
-                            checked={item.enabled !== false}
-                            onChange={(e) => updateTicketShop(key, { enabled: e.target.checked })}
-                          />
-                          <span>Вкл</span>
-                        </label>
-                      </div>
-                      <div className="settings-fields">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.price ?? 0}
-                          onChange={(e) => updateTicketShop(key, { price: Number(e.target.value) || 0 })}
-                          placeholder="Цена"
-                        />
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.dailyLimit ?? 0}
-                          onChange={(e) => updateTicketShop(key, { dailyLimit: Number(e.target.value) || 0 })}
-                          placeholder="Лимит/день"
-                        />
-                      </div>
-                      <div className="settings-sub">Лимит 0 = без ограничения.</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                <button className="btn" onClick={saveTicketRules} disabled={ticketBusy}>Сохранить</button>
-                <button className="btn secondary" onClick={resetTicketRules} disabled={ticketBusy}>Сброс</button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Пресеты профиля</div>
-          <div className="small">Глобальные шаблоны для игроков: можно включать/выключать и давать доступ.</div>
-          <hr />
-          {presetErr ? <div className="badge off">Ошибка: {presetErr}</div> : null}
+          {presetErr ? <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{presetErr}</div> : null}
           {presetMsg ? <div className="badge ok">{presetMsg}</div> : null}
           <div className="list">
             <label className="row" style={{ gap: 10, alignItems: "center" }}>
@@ -475,7 +349,7 @@ export default function DMSettings() {
                 checked={presetAccess.enabled !== false}
                 onChange={(e) => setPresetAccess({ ...presetAccess, enabled: e.target.checked })}
               />
-              <span>Включить пресеты для игроков</span>
+              <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442\u044b \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432"}</span>
             </label>
             <label className="row" style={{ gap: 10, alignItems: "center" }}>
               <input
@@ -483,7 +357,7 @@ export default function DMSettings() {
                 checked={presetAccess.playerEdit !== false}
                 onChange={(e) => setPresetAccess({ ...presetAccess, playerEdit: e.target.checked })}
               />
-              <span>Разрешить применение в прямом редактировании</span>
+              <span>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0432 \u043f\u0440\u044f\u043c\u043e\u043c \u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0438"}</span>
             </label>
             <label className="row" style={{ gap: 10, alignItems: "center" }}>
               <input
@@ -491,7 +365,7 @@ export default function DMSettings() {
                 checked={presetAccess.playerRequest !== false}
                 onChange={(e) => setPresetAccess({ ...presetAccess, playerRequest: e.target.checked })}
               />
-              <span>Разрешить применение в запросах</span>
+              <span>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0432 \u0437\u0430\u043f\u0440\u043e\u0441\u0430\u0445"}</span>
             </label>
             <label className="row" style={{ gap: 10, alignItems: "center" }}>
               <input
@@ -499,36 +373,36 @@ export default function DMSettings() {
                 checked={!!presetAccess.hideLocal}
                 onChange={(e) => setPresetAccess({ ...presetAccess, hideLocal: e.target.checked })}
               />
-              <span>Скрыть локальные пресеты (только DM)</span>
+              <span>{"\u0421\u043a\u0440\u044b\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u0440\u0435\u0441\u0435\u0442\u044b (\u0442\u043e\u043b\u044c\u043a\u043e DM)"}</span>
             </label>
 
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className="btn secondary" onClick={addPreset}>+ Добавить пресет</button>
-              <button className="btn" onClick={saveProfilePresets} disabled={presetBusy}>Сохранить</button>
+              <button className="btn secondary" onClick={addPreset}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442"}</button>
+              <button className="btn" onClick={saveProfilePresets} disabled={presetBusy}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
             </div>
 
             {profilePresets.length === 0 ? (
-              <div className="badge warn">Пресетов пока нет.</div>
+              <div className="badge warn">{"\u041f\u0440\u0435\u0441\u0435\u0442\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442."}</div>
             ) : (
               <div className="list">
                 {profilePresets.map((preset, idx) => (
                   <div key={preset.id || `${preset.title}-${idx}`} className="paper-note">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-                      <div className="title">Пресет #{idx + 1}</div>
-                      <button className="btn danger" onClick={() => removePreset(idx)}>Удалить</button>
+                      <div className="title">{"\u041f\u0440\u0435\u0441\u0435\u0442 #"}{idx + 1}</div>
+                      <button className="btn danger" onClick={() => removePreset(idx)}>{"\u0423\u0434\u0430\u043b\u0438\u0442\u044c"}</button>
                     </div>
                     <div className="list" style={{ marginTop: 10 }}>
                       <input
                         value={preset.title || ""}
                         onChange={(e) => updatePreset(idx, { title: e.target.value })}
-                        placeholder="Название пресета"
+                        placeholder={"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u0435\u0441\u0435\u0442\u0430"}
                         maxLength={80}
                         style={inp}
                       />
                       <input
                         value={preset.subtitle || ""}
                         onChange={(e) => updatePreset(idx, { subtitle: e.target.value })}
-                        placeholder="Подзаголовок/описание"
+                        placeholder={"\u041f\u043e\u0434\u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a / \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"}
                         maxLength={160}
                         style={inp}
                       />
@@ -536,30 +410,30 @@ export default function DMSettings() {
                         <input
                           value={preset.data?.characterName || ""}
                           onChange={(e) => updatePresetData(idx, { characterName: e.target.value })}
-                          placeholder="Имя персонажа"
+                          placeholder={"\u0418\u043c\u044f \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u0436\u0430"}
                           maxLength={80}
                           style={{ ...inp, minWidth: 220 }}
                         />
                         <input
                           value={preset.data?.classRole || ""}
                           onChange={(e) => updatePresetData(idx, { classRole: e.target.value })}
-                          placeholder="Класс / роль"
+                          placeholder={"\u041a\u043b\u0430\u0441\u0441 / \u0440\u043e\u043b\u044c"}
                           maxLength={80}
                           style={{ ...inp, minWidth: 220 }}
                         />
                         <input
                           value={preset.data?.level ?? ""}
                           onChange={(e) => updatePresetData(idx, { level: e.target.value })}
-                          placeholder="Уровень"
+                          placeholder={"\u0423\u0440\u043e\u0432\u0435\u043d\u044c"}
                           style={{ ...inp, minWidth: 140 }}
                         />
                       </div>
                       <div className="kv">
-                        <div className="title">Статы</div>
+                        <div className="title">{"\u0421\u0442\u0430\u0442\u044b"}</div>
                         <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} />
                       </div>
                       <div className="paper-note" style={{ marginTop: 8 }}>
-                        <div className="title">Превью</div>
+                        <div className="title">{"\u041f\u0440\u0435\u0432\u044c\u044e"}</div>
                         <div className="row" style={{ alignItems: "flex-start", marginTop: 10 }}>
                           <PolaroidFrame
                             className="sm"
@@ -568,9 +442,9 @@ export default function DMSettings() {
                             fallback={(preset.data?.characterName || preset.title || "?").slice(0, 1)}
                           />
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 900 }}>{preset.data?.characterName || "Без имени"}</div>
+                            <div style={{ fontWeight: 900 }}>{preset.data?.characterName || "\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438"}</div>
                             <div className="small" style={{ marginTop: 4 }}>
-                              {preset.data?.classRole || "Класс/роль"} • lvl {preset.data?.level || "?"}
+                              {preset.data?.classRole || "\u041a\u043b\u0430\u0441\u0441/\u0440\u043e\u043b\u044c"} • lvl {preset.data?.level || "?"}
                             </div>
                           </div>
                         </div>
@@ -578,7 +452,7 @@ export default function DMSettings() {
                           <StatsView stats={preset.data?.stats || {}} />
                         </div>
                         <div className="small bio-text" style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
-                          {preset.data?.bio || "Биография не заполнена"}
+                          {preset.data?.bio || "\u0411\u0438\u043e\u0433\u0440\u0430\u0444\u0438\u044f \u043d\u0435 \u0437\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0430"}
                         </div>
                       </div>
                       <textarea
@@ -586,13 +460,13 @@ export default function DMSettings() {
                         onChange={(e) => updatePresetData(idx, { bio: e.target.value })}
                         rows={5}
                         maxLength={2000}
-                        placeholder="Биография"
+                        placeholder={"\u0411\u0438\u043e\u0433\u0440\u0430\u0444\u0438\u044f"}
                         style={inp}
                       />
                       <input
                         value={preset.data?.avatarUrl || ""}
                         onChange={(e) => updatePresetData(idx, { avatarUrl: e.target.value })}
-                        placeholder="URL аватара"
+                        placeholder={"URL \u0430\u0432\u0430\u0442\u0430\u0440\u0430"}
                         maxLength={512}
                         style={inp}
                       />
@@ -604,33 +478,270 @@ export default function DMSettings() {
           </div>
         </div>
 
+        <div className="title" style={{ marginTop: 10 }}>{"\u0414\u041c"}</div>
+        <div className="card taped">
+          <div style={{ fontWeight: 800 }}>{"\u0421\u043c\u0435\u043d\u0430 \u043f\u0430\u0440\u043e\u043b\u044f DM"}</div>
+          <div className="small">{"\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u0442\u0441\u044f \u0441\u043c\u0435\u043d\u0438\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c \u043f\u043e\u0441\u043b\u0435 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u0437\u0430\u043f\u0443\u0441\u043a\u0430."}</div>
+          <hr />
+          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+            <input
+              type={showPass ? "text" : "password"}
+              value={newPass}
+              onChange={(e) => setNewPass(e.target.value)}
+              placeholder={"\u041d\u043e\u0432\u044b\u0439 \u043f\u0430\u0440\u043e\u043b\u044c"}
+              style={inp}
+            />
+            <input
+              type={showPass ? "text" : "password"}
+              value={newPass2}
+              onChange={(e) => setNewPass2(e.target.value)}
+              placeholder={"\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c"}
+              style={inp}
+            />
+            <button className="btn secondary" onClick={() => setShowPass((v) => !v)}>
+              {showPass ? "\u0421\u043a\u0440\u044b\u0442\u044c" : "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c"}
+            </button>
+            <button className="btn" onClick={changePassword}>{"\u0421\u043c\u0435\u043d\u0438\u0442\u044c"}</button>
+          </div>
+        </div>
+
         <div className="card taped">
           <div style={{ fontWeight: 800 }}>LAN / Windows Firewall</div>
-          <div className="small">Проверьте доступность сервера с телефонов в той же сети.</div>
+          <div className="small">{"\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0441 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u043e\u0432 \u0432 \u0442\u043e\u0439 \u0436\u0435 \u0441\u0435\u0442\u0438."}</div>
           <hr />
           <div className="paper-note" style={{ marginBottom: 10 }}>
-            <div className="title">LAN подсказка</div>
-            <div className="small">Убедитесь, что все устройства в одной Wi‑Fi сети (LAN) и открывают адрес сервера по IP.</div>
+            <div className="title">LAN</div>
+            <div className="small">{"\u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044c, \u0447\u0442\u043e \u0432\u0441\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0432 \u043e\u0434\u043d\u043e\u0439 Wi-Fi \u0441\u0435\u0442\u0438 \u0438 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e\u0442 IP \u0441\u0435\u0440\u0432\u0435\u0440\u0430."}</div>
           </div>
           <div className="small" style={{ lineHeight: 1.5 }}>
-            <b>Ссылка для игроков:</b> {lanUrl || "—"}<br />
-            <b>Если телефоны не заходят:</b>
+            <b>{"\u0421\u0441\u044b\u043b\u043a\u0430 \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432:"}</b> {lanUrl || "\u2014"}<br />
+            <b>{"\u0415\u0441\u043b\u0438 \u043d\u0435 \u0437\u0430\u0445\u043e\u0434\u0438\u0442:"}</b>
             <ul style={{ marginTop: 6 }}>
-              <li>Проверьте, что сервер слушает <b>0.0.0.0</b> (а не только localhost).</li>
-              <li>Windows 11: при первом запуске разрешите доступ в <b>Firewall</b> для <b>Private networks</b>.</li>
-              <li>Проверьте порт (по умолчанию 3000) и что устройства в одной сети.</li>
+              <li>{"\u0421\u0435\u0440\u0432\u0435\u0440 \u0434\u043e\u043b\u0436\u0435\u043d \u0441\u043b\u0443\u0448\u0430\u0442\u044c 0.0.0.0, \u0430 \u043d\u0435 \u0442\u043e\u043b\u044c\u043a\u043e localhost."}</li>
+              <li>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f \u0432 Firewall \u0434\u043b\u044f Private networks."}</li>
+              <li>{"\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u043e\u0440\u0442 \u0438 \u0447\u0442\u043e \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0432 \u043e\u0434\u043d\u043e\u0439 \u0441\u0435\u0442\u0438."}</li>
             </ul>
           </div>
         </div>
 
         <div className="card taped">
           <div style={{ fontWeight: 800 }}>Backup</div>
-          <div className="small">Экспорт/импорт: app.db + uploads/ (zip)</div>
+          <div className="small">{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442/\u0438\u043c\u043f\u043e\u0440\u0442: app.db + uploads/ (zip)"}</div>
           <hr />
-          <button className="btn secondary" onClick={exportZip}>Экспорт (zip)</button>
+          <button className="btn secondary" onClick={exportZip}>{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442 (zip)"}</button>
           <div style={{ marginTop: 10 }}>
             <input type="file" accept=".zip" onChange={importZip} />
           </div>
+        </div>
+
+        <div className="title" style={{ marginTop: 10 }}>{"\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430"}</div>
+        <div className="card taped">
+          <div style={{ fontWeight: 800 }}>{"\u0410\u0440\u043a\u0430\u0434\u0430 \u0438 \u0431\u0438\u043b\u0435\u0442\u044b"}</div>
+          <div className="small">{"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0438\u0433\u0440, \u043b\u0438\u043c\u0438\u0442\u043e\u0432 \u0438 \u0446\u0435\u043d."}</div>
+          <hr />
+          <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <label className="row" style={{ gap: 6 }} title={RULE_TIPS.showOnlyChanged}>
+              <input
+                type="checkbox"
+                checked={showOnlyChanged}
+                onChange={(e) => setShowOnlyChanged(e.target.checked)}
+              />
+              <span>{"\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c \u0442\u043e\u043b\u044c\u043a\u043e \u0438\u0437\u043c\u0435\u043d\u0451\u043d\u043d\u044b\u0435"}</span>
+            </label>
+            {ticketDirty ? (
+              <span className="badge warn">{"\u0415\u0441\u0442\u044c \u043d\u0435\u0441\u043e\u0445\u0440\u0430\u043d\u0451\u043d\u043d\u044b\u0435 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f"}</span>
+            ) : (
+              <span className="badge ok">{"\u0418\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439 \u043d\u0435\u0442"}</span>
+            )}
+            <button className="btn" onClick={saveTicketRules} disabled={ticketBusy || !ticketDirty}>
+              {"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}
+            </button>
+            <button className="btn secondary" onClick={resetTicketRules} disabled={ticketBusy}>
+              {"\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043a \u0434\u0435\u0444\u043e\u043b\u0442\u0443"}
+            </button>
+          </div>
+          {ticketErr ? <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{ticketErr}</div> : null}
+          {ticketMsg ? <div className="badge ok">{ticketMsg}</div> : null}
+          {!ticketRules ? (
+            <div className="badge warn">{"\u0417\u0430\u0433\u0440\u0443\u0437\u043a\u0430 \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043a..."}</div>
+          ) : (
+            <div className="list">
+              {showGeneralBlock ? (
+                <>
+                  {!showOnlyChanged || generalChanges.enabled ? (
+                    <label className="row" style={{ gap: 10, alignItems: "center" }} title={RULE_TIPS.arcadeEnabled}>
+                      <input
+                        type="checkbox"
+                        checked={ticketRules.enabled !== false}
+                        onChange={(e) => updateTicketRules({ enabled: e.target.checked })}
+                      />
+                      <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0430\u0440\u043a\u0430\u0434\u0443 \u0438 \u0431\u0438\u043b\u0435\u0442\u044b"}</span>
+                    </label>
+                  ) : null}
+
+                  {showGeneralInputs ? (
+                    <div className="settings-fields">
+                      {!showOnlyChanged || generalChanges.dailyEarnCap ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={ticketRules.dailyEarnCap ?? 0}
+                          onChange={(e) => updateTicketRules({ dailyEarnCap: Number(e.target.value) || 0 })}
+                          placeholder={"\u0414\u043d\u0435\u0432\u043d\u043e\u0439 \u043b\u0438\u043c\u0438\u0442"}
+                          title={RULE_TIPS.dailyEarnCap}
+                        />
+                      ) : null}
+                      {!showOnlyChanged || generalChanges.streakMax ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={ticketRules.streak?.max ?? 0}
+                          onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), max: Number(e.target.value) || 0 } })}
+                          placeholder={"\u0421\u0435\u0440\u0438\u044f max"}
+                          title={RULE_TIPS.streakMax}
+                        />
+                      ) : null}
+                      {!showOnlyChanged || generalChanges.streakStep ? (
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={ticketRules.streak?.step ?? 0}
+                          onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), step: Number(e.target.value) || 0 } })}
+                          placeholder={"\u0421\u0435\u0440\u0438\u044f \u0448\u0430\u0433"}
+                          title={RULE_TIPS.streakStep}
+                        />
+                      ) : null}
+                      {!showOnlyChanged || generalChanges.streakFlatBonus ? (
+                        <input
+                          type="number"
+                          min="0"
+                          value={ticketRules.streak?.flatBonus ?? 0}
+                          onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), flatBonus: Number(e.target.value) || 0 } })}
+                          placeholder={"\u0411\u043e\u043d\u0443\u0441 \u0441\u0435\u0440\u0438\u0438"}
+                          title={RULE_TIPS.streakFlatBonus}
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="badge warn">{"\u041d\u0435\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043d\u044b\u0445 \u043e\u0431\u0449\u0438\u0445 \u043f\u0440\u0430\u0432\u0438\u043b."}</div>
+              )}
+
+              <div className="paper-note">
+                <div className="title">{"\u0418\u0433\u0440\u044b"}</div>
+                <div className="settings-grid" style={{ marginTop: 8 }}>
+                  {showOnlyChanged && filteredGames.length === 0 ? (
+                    <div className="badge warn">{"\u041d\u0435\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043d\u044b\u0445 \u043f\u0440\u0430\u0432\u0438\u043b \u0434\u043b\u044f \u0438\u0433\u0440."}</div>
+                  ) : (
+                    filteredGames.map(([key, g]) => (
+                      <div key={key} className="item settings-card">
+                        <div className="settings-head">
+                          <div style={{ fontWeight: 800 }}>{GAME_LABELS[key] || key}</div>
+                          <label className="row" style={{ gap: 6 }} title={RULE_TIPS.gameEnabled}>
+                            <input
+                              type="checkbox"
+                              checked={g.enabled !== false}
+                              onChange={(e) => updateTicketGame(key, { enabled: e.target.checked })}
+                            />
+                            <span>{"\u0412\u043a\u043b"}</span>
+                          </label>
+                        </div>
+                        <div className="settings-fields">
+                          <input
+                            type="number"
+                            min="0"
+                            value={g.entryCost ?? 0}
+                            onChange={(e) => updateTicketGame(key, { entryCost: Number(e.target.value) || 0 })}
+                            placeholder={"\u0412\u0445\u043e\u0434"}
+                            title={RULE_TIPS.entryCost}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={g.rewardMin ?? 0}
+                            onChange={(e) => updateTicketGame(key, { rewardMin: Number(e.target.value) || 0 })}
+                            placeholder={"\u041c\u0438\u043d"}
+                            title={RULE_TIPS.rewardMin}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={g.rewardMax ?? 0}
+                            onChange={(e) => updateTicketGame(key, { rewardMax: Number(e.target.value) || 0 })}
+                            placeholder={"\u041c\u0430\u043a\u0441"}
+                            title={RULE_TIPS.rewardMax}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={g.lossPenalty ?? 0}
+                            onChange={(e) => updateTicketGame(key, { lossPenalty: Number(e.target.value) || 0 })}
+                            placeholder={"\u0428\u0442\u0440\u0430\u0444"}
+                            title={RULE_TIPS.lossPenalty}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={g.dailyLimit ?? 0}
+                            onChange={(e) => updateTicketGame(key, { dailyLimit: Number(e.target.value) || 0 })}
+                            placeholder={"\u041b\u0438\u043c\u0438\u0442/\u0434\u0435\u043d\u044c"}
+                            title={RULE_TIPS.dailyLimit}
+                          />
+                        </div>
+                        <div className="settings-sub">{"\u041d\u0430\u0433\u0440\u0430\u0434\u0430 \u0438 \u0448\u0442\u0440\u0430\u0444\u044b \u0437\u0430\u0434\u0430\u044e\u0442 \u0434\u0438\u0430\u043f\u0430\u0437\u043e\u043d \u0431\u0438\u043b\u0435\u0442\u043e\u0432."}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="paper-note">
+                <div className="title">{"\u0418\u043d\u0432\u0435\u043d\u0442\u0430\u0440\u044c (\u043c\u0430\u0433\u0430\u0437\u0438\u043d)"}</div>
+                <div className="settings-grid" style={{ marginTop: 8 }}>
+                  {showOnlyChanged && filteredShop.length === 0 ? (
+                    <div className="badge warn">{"\u041d\u0435\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043d\u044b\u0445 \u043f\u0440\u0430\u0432\u0438\u043b \u0434\u043b\u044f \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430."}</div>
+                  ) : (
+                    filteredShop.map(([key, item]) => (
+                      <div key={key} className="item settings-card">
+                        <div className="settings-head">
+                          <div style={{ fontWeight: 800 }}>{SHOP_LABELS[key] || key}</div>
+                          <label className="row" style={{ gap: 6 }} title={RULE_TIPS.shopEnabled}>
+                            <input
+                              type="checkbox"
+                              checked={item.enabled !== false}
+                              onChange={(e) => updateTicketShop(key, { enabled: e.target.checked })}
+                            />
+                            <span>{"\u0412\u043a\u043b"}</span>
+                          </label>
+                        </div>
+                        <div className="settings-fields">
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.price ?? 0}
+                            onChange={(e) => updateTicketShop(key, { price: Number(e.target.value) || 0 })}
+                            placeholder={"\u0426\u0435\u043d\u0430"}
+                            title={RULE_TIPS.shopPrice}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.dailyLimit ?? 0}
+                            onChange={(e) => updateTicketShop(key, { dailyLimit: Number(e.target.value) || 0 })}
+                            placeholder={"\u041b\u0438\u043c\u0438\u0442/\u0434\u0435\u043d\u044c"}
+                            title={RULE_TIPS.shopDailyLimit}
+                          />
+                        </div>
+                        <div className="settings-sub">{"\u041b\u0438\u043c\u0438\u0442 0 = \u0431\u0435\u0437 \u043e\u0433\u0440\u0430\u043d\u0438\u0447\u0435\u043d\u0438\u044f."}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -654,3 +765,22 @@ const SHOP_LABELS = {
   chest: "Сундук-сюрприз",
   hint: "Тайная подсказка"
 };
+
+const RULE_TIPS = {
+  showOnlyChanged: "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c \u0442\u043e\u043b\u044c\u043a\u043e \u0442\u043e, \u0447\u0442\u043e \u043e\u0442\u043b\u0438\u0447\u0430\u0435\u0442\u0441\u044f \u043e\u0442 \u0434\u0435\u0444\u043e\u043b\u0442\u0430.",
+  arcadeEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0430\u0440\u043a\u0430\u0434\u0443 \u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0443 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
+  dailyEarnCap: "\u0414\u043d\u0435\u0432\u043d\u043e\u0439 \u043b\u0438\u043c\u0438\u0442 \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u043d\u0430 \u0438\u0433\u0440\u043e\u043a\u0430.",
+  streakMax: "\u041c\u0430\u043a\u0441\u0438\u043c\u0443\u043c \u0441\u0435\u0440\u0438\u0438 \u043f\u043e\u0434\u0440\u044f\u0434.",
+  streakStep: "\u0428\u0430\u0433 \u0431\u043e\u043d\u0443\u0441\u0430 \u0437\u0430 \u0441\u0435\u0440\u0438\u044e.",
+  streakFlatBonus: "\u041f\u043b\u043e\u0441\u043a\u0438\u0439 \u0431\u043e\u043d\u0443\u0441 \u0437\u0430 \u0441\u0435\u0440\u0438\u044e.",
+  gameEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0438\u0433\u0440\u0443 \u0432 \u0430\u0440\u043a\u0430\u0434\u0435.",
+  entryCost: "\u0426\u0435\u043d\u0430 \u0432\u0445\u043e\u0434\u0430 \u0432 \u0438\u0433\u0440\u0443.",
+  rewardMin: "\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u0430\u0433\u0440\u0430\u0434\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
+  rewardMax: "\u041c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u0430\u0433\u0440\u0430\u0434\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
+  lossPenalty: "\u0428\u0442\u0440\u0430\u0444 \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u043f\u0440\u0438 \u043f\u0440\u043e\u0438\u0433\u0440\u044b\u0448\u0435.",
+  dailyLimit: "\u041b\u0438\u043c\u0438\u0442 \u0438\u0433\u0440 \u0432 \u0434\u0435\u043d\u044c.",
+  shopEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0442\u043e\u0432\u0430\u0440 \u0432 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0435.",
+  shopPrice: "\u0426\u0435\u043d\u0430 \u0442\u043e\u0432\u0430\u0440\u0430 \u0432 \u0431\u0438\u043b\u0435\u0442\u0430\u0445.",
+  shopDailyLimit: "\u041b\u0438\u043c\u0438\u0442 \u043f\u043e\u043a\u0443\u043f\u043e\u043a \u0432 \u0434\u0435\u043d\u044c (0 = \u0431\u0435\u0437 \u043b\u0438\u043c\u0438\u0442\u0430)."
+};
+

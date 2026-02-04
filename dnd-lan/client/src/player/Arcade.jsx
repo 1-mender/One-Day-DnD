@@ -5,6 +5,7 @@ import GuessCardGame from "./games/GuessCard.jsx";
 import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
+import { useLiteMode } from "../hooks/useLiteMode.js";
 
 const games = [
   {
@@ -87,6 +88,7 @@ const games = [
 export default function Arcade() {
   const toast = useToast();
   const { state, rules, usage, loading, err, play, readOnly } = useTickets();
+  const lite = useLiteMode();
   const [activeGameKey, setActiveGameKey] = useState("");
   const [outcome, setOutcome] = useState("win");
   const [performance, setPerformance] = useState("");
@@ -219,7 +221,7 @@ export default function Arcade() {
   }
 
   return (
-    <div className="card taped arcade-shell">
+    <div className={`card taped arcade-shell${lite ? " page-lite arcade-lite" : ""}`.trim()}>
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div className="arcade-title">Fish • Зал мини-игр</div>
@@ -249,65 +251,74 @@ export default function Arcade() {
       <hr />
 
       <div className="arcade-grid">
-        {games.map((g) => (
-          rules?.games?.[g.key]?.enabled === false ? (
+        {games.map((g) => {
+          const rulesToShow = lite ? g.rules.slice(0, 2) : g.rules;
+          const hasMoreRules = lite && g.rules.length > rulesToShow.length;
+          return rules?.games?.[g.key]?.enabled === false ? (
             <div key={g.key} className="item taped arcade-card disabled-card">
               <div className="arcade-head">
                 <div className="arcade-card-title">{g.title}</div>
-                <span className="badge off">Закрыто</span>
+                <span className="badge off">??????????????</span>
               </div>
               <div className="small arcade-blurb">{g.blurb}</div>
               <div className="rule-list">
-                {g.rules.map((rule, idx) => (
+                {rulesToShow.map((rule, idx) => (
                   <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
                 ))}
+                {hasMoreRules ? (
+                  <div className="rule-more small">+ ?????? {g.rules.length - rulesToShow.length}</div>
+                ) : null}
               </div>
               <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
                 <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
-                <button className="btn secondary" disabled>Играть</button>
+                <button className="btn secondary" disabled>????????????</button>
               </div>
             </div>
           ) : (
-          <div key={g.key} className="item taped arcade-card">
-            <div className="arcade-head">
-              <div className="arcade-card-title">{g.title}</div>
-              <span className={`badge badge-impact ${impactClass(g.difficulty)}`}>{g.difficulty}</span>
+            <div key={g.key} className="item taped arcade-card">
+              <div className="arcade-head">
+                <div className="arcade-card-title">{g.title}</div>
+                <span className={`badge badge-impact ${impactClass(g.difficulty)}`}>{g.difficulty}</span>
+              </div>
+              <div className="small arcade-blurb">{g.blurb}</div>
+              <div className="arcade-meta">
+                <span className="meta-chip">??????????: {g.time}</span>
+                <span className="meta-chip">????????: {g.risk}</span>
+                <span className="meta-chip">{formatEntryValue(g.key, g.entry)}</span>
+                {rules?.games?.[g.key]?.dailyLimit ? (
+                  <span className="meta-chip">??????????: {usage?.playsToday?.[g.key] || 0}/{rules.games[g.key].dailyLimit}</span>
+                ) : null}
+              </div>
+              <div className="rule-list">
+                {rulesToShow.map((rule, idx) => (
+                  <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
+                ))}
+                {hasMoreRules ? (
+                  <div className="rule-more small">+ ?????? {g.rules.length - rulesToShow.length}</div>
+                ) : null}
+              </div>
+              <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
+                <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
+                <button
+                  className="btn secondary"
+                  disabled={
+                    readOnly ||
+                    err ||
+                    !rules ||
+                    !ticketsEnabled ||
+                    balance < Number(rules?.games?.[g.key]?.entryCost || 0) ||
+                    isGameLimitReached(g.key, rules, usage)
+                  }
+                  onClick={() => openGame(g.key)}
+                >
+                  ????????????
+                </button>
+              </div>
             </div>
-            <div className="small arcade-blurb">{g.blurb}</div>
-            <div className="arcade-meta">
-              <span className="meta-chip">Время: {g.time}</span>
-              <span className="meta-chip">Риск: {g.risk}</span>
-              <span className="meta-chip">{formatEntryValue(g.key, g.entry)}</span>
-              {rules?.games?.[g.key]?.dailyLimit ? (
-                <span className="meta-chip">Лимит: {usage?.playsToday?.[g.key] || 0}/{rules.games[g.key].dailyLimit}</span>
-              ) : null}
-            </div>
-            <div className="rule-list">
-              {g.rules.map((rule, idx) => (
-                <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
-              ))}
-            </div>
-            <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
-              <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
-              <button
-                className="btn secondary"
-                disabled={
-                  readOnly ||
-                  err ||
-                  !rules ||
-                  !ticketsEnabled ||
-                  balance < Number(rules?.games?.[g.key]?.entryCost || 0) ||
-                  isGameLimitReached(g.key, rules, usage)
-                }
-                onClick={() => openGame(g.key)}
-              >
-                Играть
-              </button>
-            </div>
-          </div>
-          )
-        ))}
+          );
+        })}
       </div>
+
 
       <div className="paper-note arcade-note" style={{ marginTop: 12 }}>
         <div className="title">Правила билетов</div>

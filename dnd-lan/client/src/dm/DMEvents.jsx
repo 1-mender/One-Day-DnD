@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
-import { connectSocket } from "../socket.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { useSocket } from "../context/SocketContext.jsx";
 
 const scopes = [
   { key: "", label: "All", prefix: "" },
@@ -27,7 +27,7 @@ export default function DMEvents() {
   const toast = useToast();
   const [cleanupDays, setCleanupDays] = useState(30);
 
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const limit = 200;
   const debouncedQ = useDebouncedValue(q, 250);
@@ -80,11 +80,11 @@ export default function DMEvents() {
   }, [load]);
 
   useEffect(() => {
+    if (!socket) return () => {};
     const onUpdated = () => loadRef.current?.(true).catch(() => {});
     socket.on("events:updated", onUpdated);
     return () => {
       socket.off("events:updated", onUpdated);
-      socket.disconnect();
     };
   }, [socket]);
 

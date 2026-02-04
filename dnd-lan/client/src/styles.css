@@ -1,8 +1,11 @@
 :root { color-scheme: light; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 * { box-sizing: border-box; }
 body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; background: #f6ead1; color: #2b2216; }
 a { color: #5a3e1b; text-decoration: none; }
 input, button, select, textarea { font: inherit; }
+img, svg, video, canvas { max-width: 100%; height: auto; }
+button, a { touch-action: manipulation; }
 :focus-visible { outline: 2px solid rgba(40,85,160,.5); outline-offset: 2px; }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { box-shadow: 0 0 0 3px rgba(40,85,160,.2); }
 .container { max-width: 980px; margin: 0 auto; padding: 16px; }
@@ -30,3 +33,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .bottomnav a { padding:8px 10px; border-radius:12px; border:1px solid #c9b087; background:#f3e3c4; }
 .padBottom { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
 hr { border:0; border-top:1px solid #c9b087; margin: 12px 0; }
+
+@media (max-width: 640px) {
+  .container { padding: 12px; }
+  .card { padding: 12px; }
+  .item { padding: 10px; }
+}

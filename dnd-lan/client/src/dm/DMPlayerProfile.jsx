@@ -1,7 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api.js";
-import { connectSocket } from "../socket.js";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
@@ -11,6 +10,7 @@ import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { RefreshCcw, Save, ImageUp, Copy } from "lucide-react";
+import { useSocket } from "../context/SocketContext.jsx";
 
 const editableOptions = [
   { key: "characterName", label: "Имя персонажа" },
@@ -52,7 +52,7 @@ export default function DMPlayerProfile() {
   const playerId = Number(id);
   const nav = useNavigate();
   const toast = useToast();
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const [player, setPlayer] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -145,6 +145,7 @@ export default function DMPlayerProfile() {
   }, [loadPresets]);
 
   useEffect(() => {
+    if (!socket) return () => {};
     const onCreated = () => loadRequestsRef.current?.().catch(() => {});
     const onUpdated = () => loadRequestsRef.current?.().catch(() => {});
     const onSettings = () => loadPresetsRef.current?.().catch(() => {});
@@ -155,7 +156,6 @@ export default function DMPlayerProfile() {
       socket.off("profile:requestCreated", onCreated);
       socket.off("profile:requestsUpdated", onUpdated);
       socket.off("settings:updated", onSettings);
-      socket.disconnect();
     };
   }, [socket]);
 

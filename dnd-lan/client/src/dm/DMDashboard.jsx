@@ -1,13 +1,13 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
-import { connectSocket } from "../socket.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function DMDashboard() {
   const [info, setInfo] = useState(null);
   const [players, setPlayers] = useState([]);
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
 
   const load = useCallback(async () => {
     const i = await api.serverInfo();
@@ -17,11 +17,19 @@ export default function DMDashboard() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("players:updated", () => load().catch(() => {}));
-    socket.on("player:approved", () => load().catch(() => {}));
-    socket.on("settings:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onPlayers = () => load().catch(() => {});
+    const onApproved = () => load().catch(() => {});
+    const onSettings = () => load().catch(() => {});
+    socket.on("players:updated", onPlayers);
+    socket.on("player:approved", onApproved);
+    socket.on("settings:updated", onSettings);
+    return () => {
+      socket.off("players:updated", onPlayers);
+      socket.off("player:approved", onApproved);
+      socket.off("settings:updated", onSettings);
+    };
   }, [load, socket]);
 
   const url = (info?.urls?.[0] || "http://<LAN-IP>:3000");

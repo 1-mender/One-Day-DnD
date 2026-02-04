@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
-import { connectSocket } from "../socket.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 const empty = { title:"", content:"", category:"note", access:"dm", selectedPlayerIds:[], tags:[] };
 
@@ -17,7 +17,7 @@ export default function DMInfoBlocks() {
   const [err, setErr] = useState("");
   const fileRef = useRef(null);
   const taRef = useRef(null);
-  const socket = useMemo(() => connectSocket({ role: "dm" }), []);
+  const { socket } = useSocket();
   const debouncedQ = useDebouncedValue(q, 200);
 
   const load = useCallback(async () => {
@@ -32,9 +32,13 @@ export default function DMInfoBlocks() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("infoBlocks:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onUpdated = () => load().catch(() => {});
+    socket.on("infoBlocks:updated", onUpdated);
+    return () => {
+      socket.off("infoBlocks:updated", onUpdated);
+    };
   }, [load, socket]);
 
   const filtered = useMemo(() => {

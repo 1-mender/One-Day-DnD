@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
-import { connectSocket } from "../socket.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
@@ -10,13 +9,14 @@ import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
 import { formatError } from "../lib/formatError.js";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function Players() {
   const [q, setQ] = useQueryState("q", "");
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
-  const socket = useMemo(() => connectSocket({ role: "player" }), []);
+  const { socket } = useSocket();
   const [listRef] = useAutoAnimate({ duration: 200 });
 
   const load = useCallback(async () => {
@@ -33,10 +33,16 @@ export default function Players() {
   }, []);
 
   useEffect(() => {
+    if (!socket) return () => {};
     load().catch(() => {});
-    socket.on("player:statusChanged", () => load().catch(() => {}));
-    socket.on("players:updated", () => load().catch(() => {}));
-    return () => socket.disconnect();
+    const onStatus = () => load().catch(() => {});
+    const onUpdated = () => load().catch(() => {});
+    socket.on("player:statusChanged", onStatus);
+    socket.on("players:updated", onUpdated);
+    return () => {
+      socket.off("player:statusChanged", onStatus);
+      socket.off("players:updated", onUpdated);
+    };
   }, [load, socket]);
 
   const filtered = useMemo(() => {

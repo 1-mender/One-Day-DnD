@@ -1,28 +1,34 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { storage } from "../api.js";
-import { connectSocket } from "../socket.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
+import { useSocket } from "../context/SocketContext.jsx";
 
 export default function Waiting() {
   const nav = useNavigate();
   const [status, setStatus] = useState("waiting"); // waiting/approved/rejected
   const [msg, setMsg] = useState("");
-  const socket = useMemo(() => connectSocket({ role: "waiting" }), []);
+  const { socket } = useSocket();
 
   useEffect(() => {
-    socket.on("player:approved", (p) => {
+    if (!socket) return () => {};
+    const onApproved = (p) => {
       storage.setPlayerToken(p.playerToken);
       storage.clearJoinRequestId();
       setStatus("approved");
       nav("/app", { replace: true });
-    });
-    socket.on("player:rejected", (p) => {
+    };
+    const onRejected = (p) => {
       setStatus("rejected");
       storage.clearJoinRequestId();
       setMsg(p?.banned ? "Заявка отклонена. Вы заблокированы." : "Заявка отклонена.");
-    });
-    return () => socket.disconnect();
+    };
+    socket.on("player:approved", onApproved);
+    socket.on("player:rejected", onRejected);
+    return () => {
+      socket.off("player:approved", onApproved);
+      socket.off("player:rejected", onRejected);
+    };
   }, [nav, socket]);
 
   return (
