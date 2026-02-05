@@ -167,7 +167,7 @@ export default function UnoMiniGame({
           <div className="hud-card key">
             <div className="hud-label">Карты</div>
             <div className="hud-value">{playerHand.length}</div>
-            <span className="hud-badge">????</span>
+            <span className="hud-badge">Ключ</span>
           </div>
           <div className="hud-card">
             <div className="hud-label">ИИ</div>
@@ -208,7 +208,7 @@ export default function UnoMiniGame({
 
         {aiLog.length ? (
           <div className="uno-log">
-            <div className="uno-log-title">???? ??</div>
+            <div className="uno-log-title">Ходы ИИ</div>
             {aiLog.map((entry) => (
               <div key={entry.id} className="uno-log-line">{entry.text}</div>
             ))}

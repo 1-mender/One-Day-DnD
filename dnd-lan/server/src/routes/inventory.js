@@ -1,6 +1,7 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
+import { LIMITS } from "../limits.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 
@@ -23,6 +24,29 @@ function authPlayer(req) {
 function ensureWritable(sess, res) {
   if (sess.impersonated && !sess.impersonated_write) {
     res.status(403).json({ error: "read_only_impersonation" });
+    return false;
+  }
+  return true;
+}
+
+function getInventoryTotalWeight(db, playerId, excludeItemId = null) {
+  const row = excludeItemId
+    ? db.prepare("SELECT SUM(weight * qty) AS total FROM inventory_items WHERE player_id=? AND id<>?").get(playerId, excludeItemId)
+    : db.prepare("SELECT SUM(weight * qty) AS total FROM inventory_items WHERE player_id=?").get(playerId);
+  const total = Number(row?.total ?? 0);
+  return Number.isFinite(total) ? total : 0;
+}
+
+function checkWeightLimit(db, playerId, nextQty, nextWeight, res, excludeItemId = null, currentTotal = null) {
+  const limit = Number(LIMITS.inventoryWeight || 0);
+  if (!Number.isFinite(limit) || limit <= 0) return true;
+  const base = getInventoryTotalWeight(db, playerId, excludeItemId);
+  const projected = base + (Number(nextQty || 0) * Number(nextWeight || 0));
+  const totalNow = Number.isFinite(currentTotal)
+    ? Number(currentTotal)
+    : (excludeItemId == null ? base : getInventoryTotalWeight(db, playerId));
+  if (projected > limit && projected > totalNow) {
+    res.status(400).json({ error: "weight_limit_exceeded", limit, projected });
     return false;
   }
   return true;
@@ -65,6 +89,7 @@ inventoryRouter.post("/mine", (req, res) => {
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : [];
   const desc = String(b.description || "");
   const imageUrl = String(b.imageUrl || b.image_url || "");
+  if (!checkWeightLimit(db, sess.player_id, qty, weight, res)) return;
 
   const t = now();
   const id = db.prepare(
@@ -121,6 +146,7 @@ inventoryRouter.put("/mine/:id", (req, res) => {
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(existing.tags, []);
   const desc = String(b.description ?? existing.description ?? "");
   const imageUrl = String(b.imageUrl ?? b.image_url ?? existing.image_url ?? "");
+  if (!checkWeightLimit(db, sess.player_id, qty, weight, res, itemId)) return;
 
   db.prepare("UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, updated_at=?, updated_by=? WHERE id=?")
     .run(name, desc, imageUrl || null, qty, weight, rarity, JSON.stringify(tags), visibility, now(), sess.impersonated ? "dm" : "player", itemId);
@@ -185,6 +211,7 @@ inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : [];
   const desc = String(b.description || "");
   const imageUrl = String(b.imageUrl || b.image_url || "");
+  if (!checkWeightLimit(db, pid, qty, weight, res)) return;
 
   const ins2 = db.prepare(
     "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
@@ -229,6 +256,7 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(existing.tags, []);
   const desc = String(b.description ?? existing.description ?? "");
   const imageUrl = String(b.imageUrl ?? b.image_url ?? existing.image_url ?? "");
+  if (!checkWeightLimit(db, pid, qty, weight, res, itemId)) return;
 
   db.prepare("UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, updated_at=?, updated_by=? WHERE id=?")
     .run(name, desc, imageUrl || null, qty, weight, rarity, JSON.stringify(tags), visibility, now(), "dm", itemId);

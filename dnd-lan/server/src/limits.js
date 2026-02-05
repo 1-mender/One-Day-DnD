@@ -6,5 +6,6 @@ function numEnv(name, fallback) {
 export const LIMITS = {
   playerName: numEnv("PLAYER_NAME_MAX_LEN", 40),
   joinCode: numEnv("JOIN_CODE_MAX_LEN", 32),
-  userAgent: numEnv("USER_AGENT_MAX_LEN", 256)
+  userAgent: numEnv("USER_AGENT_MAX_LEN", 256),
+  inventoryWeight: numEnv("INVENTORY_WEIGHT_LIMIT", 0)
 };

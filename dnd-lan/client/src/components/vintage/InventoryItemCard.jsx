@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useMemo, useState } from "react";
 import {
   Axe,
   Backpack,
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { getIconKeyFromItem, getInventoryIcon, stripIconTags } from "../../lib/inventoryIcons.js";
 import { getRarityLabel } from "../../lib/inventoryRarity.js";
+import { getInventoryImageProps } from "../../lib/imageSizing.js";
 import MarkdownView from "../markdown/MarkdownView.jsx";
 import RarityBadge from "./RarityBadge.jsx";
 
@@ -83,6 +84,23 @@ function truncateText(value, max = 160) {
   return `${value.slice(0, end).trim()}...`;
 }
 
+
+function formatUpdatedAt(value) {
+  const ts = Number(value || 0);
+  if (!Number.isFinite(ts) || ts <= 0) return "";
+  const d = new Date(ts);
+  if (!Number.isFinite(d.getTime())) return "";
+  return d.toLocaleString();
+}
+
+function formatUpdatedBy(value) {
+  const v = String(value || "").toLowerCase();
+  if (!v) return "";
+  if (v === "dm") return "DM";
+  if (v === "player") return "Игрок";
+  return value;
+}
+
 function InventoryItemCard({
   item,
   readOnly,
@@ -95,6 +113,7 @@ function InventoryItemCard({
   selected = false,
   onSelectChange
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
   const icon = pickIcon(item);
   const isHidden = item.visibility === "hidden";
   const vis = isHidden ? "Скрытый" : "Публичный";
@@ -103,18 +122,23 @@ function InventoryItemCard({
   const rarityKey = String(item.rarity || "common").toLowerCase().replace(/\s+/g, "_");
   const rarityLabel = getRarityLabel(rarityKey);
   const tags = stripIconTags(Array.isArray(item.tags) ? item.tags.filter(Boolean) : []);
+  const imageUrl = String(item.imageUrl || item.image_url || "");
+  const hasImage = !!imageUrl && !imageFailed;
+  const imageProps = useMemo(() => (hasImage ? getInventoryImageProps(imageUrl) : null), [hasImage, imageUrl]);
+  const updatedAt = formatUpdatedAt(item.updated_at || item.updatedAt);
+  const updatedBy = formatUpdatedBy(item.updated_by || item.updatedBy);
   const compact = actionsVariant === "compact";
   const metaParts = (
     lite
       ? [
-        `Вес: ${weight.toFixed(2)}`,
-        `Редкость: ${rarityLabel}`
+        { label: "Вес", value: weight.toFixed(2) },
+        { label: "Редкость", value: rarityLabel }
       ]
       : [
-        `Вес: ${weight.toFixed(2)}`,
-        `Редкость: ${rarityLabel}`,
-        tags.length ? `Теги: ${tags.slice(0, 3).join(", ")}` : null,
-        item.updated_by === "dm" ? "изменено DM" : null
+        { label: "Вес", value: weight.toFixed(2) },
+        { label: "Редкость", value: rarityLabel },
+        updatedAt ? { label: "Обновлено", value: updatedAt } : null,
+        updatedBy ? { label: "Кем", value: updatedBy } : null
       ]
   ).filter(Boolean);
   const descText = lite ? truncateText(toPlainText(item.description), 180) : "";
@@ -139,8 +163,17 @@ function InventoryItemCard({
           />
         </label>
       ) : null}
-      <div className="inv-hero" data-has-image="false">
-        {icon.Icon ? (
+      <div className="inv-hero" data-has-image={hasImage ? "true" : "false"}>
+        {hasImage ? (
+          <img
+            src={imageUrl}
+            alt={item.name}
+            loading="lazy"
+            decoding="async"
+            onError={() => setImageFailed(true)}
+            {...(imageProps || {})}
+          />
+        ) : icon.Icon ? (
           <icon.Icon className="inv-icon" aria-hidden="true" />
         ) : (
           <div className="inv-fallback">{icon.text}</div>
@@ -161,9 +194,16 @@ function InventoryItemCard({
         {metaParts.length ? (
           <div className="inv-meta-line small">
             {metaParts.map((part, idx) => (
-              <span key={`${part}-${idx}`} className="inv-meta-item">
-                {idx > 0 ? "• " : ""}{part}
+              <span key={`${part.label}-${idx}`} className="inv-meta-item">
+                <span className="inv-meta-label">{part.label}:</span> {part.value}
               </span>
+            ))}
+          </div>
+        ) : null}
+        {tags.length ? (
+          <div className="inv-tags">
+            {tags.map((tag) => (
+              <span key={tag} className="inv-tag-chip">{tag}</span>
             ))}
           </div>
         ) : null}

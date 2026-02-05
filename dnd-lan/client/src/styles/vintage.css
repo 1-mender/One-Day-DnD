@@ -914,7 +914,11 @@ a:hover{ color: #000; }
 }
 
 /* responsive stacking */
+
 @media (max-width: 640px){
+  .arcade-card{
+    padding: 10px;
+  }
   .row{
     flex-wrap: wrap;
   }
@@ -1467,11 +1471,15 @@ a:hover{ color: #000; }
     gap: 10px;
     padding: 14px 16px;
     border: 1px solid var(--rarity-frame, rgba(90,70,40,.22));
+    border-left-width: 4px;
     background:
       var(--rarity-engrave, repeating-linear-gradient(135deg, rgba(0,0,0,.02) 0 8px, rgba(255,255,255,.05) 8px 16px)),
       var(--paper-grain),
       linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.25));
-    box-shadow: 0 8px 16px rgba(0,0,0,.16);
+    box-shadow:
+      0 8px 16px rgba(0,0,0,.16),
+      0 0 0 1px var(--rarity-frame, rgba(90,70,40,.22)),
+      0 0 18px var(--rarity-glow, rgba(0,0,0,0));
   }
   .inv-card::before{ display:none; }
 .inv-card::after{
@@ -1532,30 +1540,35 @@ a:hover{ color: #000; }
     --rarity-engrave: repeating-linear-gradient(135deg, rgba(45,100,70,.08) 0 6px, rgba(255,255,255,.05) 6px 12px);
     --rarity-emblem: #d6f2dc;
     --rarity-emblem-border: rgba(60,120,80,.6);
+    --rarity-glow: rgba(70,140,95,.22);
   }
   .inv-card[data-rarity="rare"]{
     --rarity-frame: rgba(50,90,150,.5);
     --rarity-engrave: repeating-linear-gradient(135deg, rgba(60,100,160,.1) 0 6px, rgba(255,255,255,.06) 6px 12px);
     --rarity-emblem: #d6e6fb;
     --rarity-emblem-border: rgba(50,90,150,.6);
+    --rarity-glow: rgba(70,120,180,.22);
   }
   .inv-card[data-rarity="very_rare"]{
     --rarity-frame: rgba(110,70,150,.55);
     --rarity-engrave: repeating-linear-gradient(135deg, rgba(120,80,160,.12) 0 6px, rgba(255,255,255,.06) 6px 12px);
     --rarity-emblem: #ead9ff;
     --rarity-emblem-border: rgba(110,70,150,.65);
+    --rarity-glow: rgba(140,90,190,.22);
   }
   .inv-card[data-rarity="legendary"]{
     --rarity-frame: rgba(165,120,40,.55);
     --rarity-engrave: repeating-linear-gradient(135deg, rgba(170,120,45,.14) 0 6px, rgba(255,255,255,.08) 6px 12px);
     --rarity-emblem: #fde9b5;
     --rarity-emblem-border: rgba(165,120,40,.7);
+    --rarity-glow: rgba(190,140,55,.22);
   }
   .inv-card[data-rarity="custom"]{
     --rarity-frame: rgba(120,80,60,.5);
     --rarity-engrave: repeating-linear-gradient(135deg, rgba(120,80,60,.12) 0 6px, rgba(255,255,255,.05) 6px 12px);
     --rarity-emblem: #ecd8bf;
     --rarity-emblem-border: rgba(120,80,60,.6);
+    --rarity-glow: rgba(140,95,70,.2);
   }
 .inv-toolbar{
   display:flex;
@@ -1580,6 +1593,21 @@ a:hover{ color: #000; }
 .inv-toolbar select{
   padding: 8px !important;
   border-radius: 10px !important;
+}
+.inv-bulk{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px dashed rgba(90,70,40,.25);
+  background: rgba(255,255,255,.2);
+}
+.inv-bulk input,
+.inv-bulk select{
+  flex: 1 1 160px;
+  min-width: 140px;
 }
 .inv-hero{
   border-radius: 14px;
@@ -1712,6 +1740,35 @@ a:hover{ color: #000; }
   color: var(--inkSoft);
   font-size: 12px;
 }
+.inv-meta-item{
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.inv-meta-item + .inv-meta-item::before{
+  content:"•";
+  margin-right: 6px;
+  opacity: .6;
+}
+.inv-meta-label{
+  font-weight: 800;
+  opacity: .85;
+}
+.inv-tags{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.inv-tag-chip{
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(80,55,25,.35);
+  background: rgba(255,255,255,.5);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .2px;
+}
 .inv-actions{ display:flex; flex-wrap:wrap; gap:8px; }
 .inv-actions.compact{
   flex-direction: row;
@@ -1733,6 +1790,32 @@ a:hover{ color: #000; }
 }
 .inv-shelf{
   perspective: none;
+}
+.inv-stack-group{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inv-stack-toggle{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(90,70,40,.28);
+  background: rgba(255,255,255,.35);
+}
+.inv-stack-items{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: 16px;
+  padding-left: 12px;
+  border-left: 2px dashed rgba(90,70,40,.25);
+}
+.inv-shelf .inv-stack-items .inv-card{
+  box-shadow: 0 6px 12px rgba(0,0,0,.1);
 }
 .inv-shelf .inv-card{
   transform: none;
@@ -1788,6 +1871,35 @@ a:hover{ color: #000; }
   }
 }
 
+
+@media (max-width: 520px){
+  .game-head{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .game-sub{
+    line-height: 1.3;
+  }
+  .game-icon{
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+  .game-hud{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hud-card{
+    min-height: 62px;
+  }
+  .hud-value{
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 420px){
+  .game-hud{
+    grid-template-columns: 1fr;
+  }
+}
 @media (prefers-reduced-motion: reduce){
   .inv-shelf .inv-card{
     transition: none;
@@ -1920,6 +2032,11 @@ a:hover{ color: #000; }
   font-weight: 900;
   font-size: 20px;
   letter-spacing: .4px;
+}
+
+.arcade-top{
+  gap: 14px;
+  flex-wrap: wrap;
 }
 
 .ticket-bank{
@@ -2709,6 +2826,13 @@ a:hover{ color: #000; }
 }
 
 @media (max-width: 700px){
+  .arcade-top{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arcade-title{
+    font-size: 18px;
+  }
   .ticket-bank{
     align-items: flex-start;
     width: 100%;
@@ -2720,6 +2844,26 @@ a:hover{ color: #000; }
   .shop-card{
     transform: none;
     box-shadow: none;
+  }
+  .arcade-actions{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+  .arcade-actions .btn{
+    width: 100%;
+  }
+  .arcade-actions .ticket-pill{
+    align-self: flex-start;
+  }
+  .arcade-meta{
+    gap: 4px;
+  }
+  .meta-chip{
+    font-size: 10px;
+  }
+  .arcade-modes{
+    padding: 4px;
   }
   .character-hero{
     grid-template-columns: 1fr;

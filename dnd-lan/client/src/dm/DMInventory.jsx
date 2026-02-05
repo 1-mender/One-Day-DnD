@@ -23,9 +23,13 @@ const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:
 
 export default function DMInventory() {
   const [players, setPlayers] = useState([]);
+  const [playerQuery, setPlayerQuery] = useState("");
   const [selectedId, setSelectedId] = useState(0);
   const [items, setItems] = useState([]);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [bulkRarity, setBulkRarity] = useState("");
+  const [bulkVisibility, setBulkVisibility] = useState("");
+  const [bulkWeight, setBulkWeight] = useState("");
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
@@ -37,6 +41,19 @@ export default function DMInventory() {
   const [view, setView] = useState("list");
   const [autoAnimateRef] = useAutoAnimate({ duration: 200 });
   const debouncedQ = useDebouncedValue(q, 200);
+
+  const filteredPlayers = useMemo(() => {
+    const qq = String(playerQuery || "").toLowerCase().trim();
+    if (!qq) return players;
+    const list = players.filter((p) => {
+      const name = String(p.displayName || "").toLowerCase();
+      const id = String(p.id || "");
+      return name.includes(qq) || id.includes(qq);
+    });
+    const selected = players.find((p) => p.id === selectedId);
+    if (selected && !list.some((p) => p.id === selected.id)) return [selected, ...list];
+    return list;
+  }, [players, playerQuery, selectedId]);
 
   const loadPlayers = useCallback(async () => {
     setErr("");
@@ -145,7 +162,7 @@ export default function DMInventory() {
       setEdit(null);
       await loadInv(selectedId);
     } catch (e) {
-      setErr(formatError(e));
+      setErr(formatInventoryError(e));
     }
   }
 
@@ -157,7 +174,7 @@ export default function DMInventory() {
       await api.invDmDeletePlayerItem(selectedId, item.id);
       await loadInv(selectedId);
     } catch (e) {
-      setErr(formatError(e));
+      setErr(formatInventoryError(e));
     }
   }
 
@@ -168,7 +185,7 @@ export default function DMInventory() {
       await api.invDmUpdatePlayerItem(selectedId, item.id, { ...item, visibility: next, tags: item.tags || [] });
       await loadInv(selectedId);
     } catch (e) {
-      setErr(formatError(e));
+      setErr(formatInventoryError(e));
     }
   }
 
@@ -183,6 +200,32 @@ export default function DMInventory() {
       }
       await loadInv(selectedId);
       clearSelection();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
+
+  async function bulkApplySelected() {
+    if (!selectedId || selectedIds.size === 0) return;
+    const patch = {};
+    if (bulkRarity) patch.rarity = bulkRarity;
+    if (bulkVisibility) patch.visibility = bulkVisibility;
+    if (bulkWeight !== "") {
+      const n = Number(bulkWeight);
+      if (Number.isFinite(n) && n >= 0) patch.weight = n;
+    }
+    if (!Object.keys(patch).length) return;
+    setErr("");
+    try {
+      for (const it of selectedItems) {
+        await api.invDmUpdatePlayerItem(selectedId, it.id, { ...it, ...patch, tags: it.tags || [] });
+      }
+      await loadInv(selectedId);
+      clearSelection();
+      setBulkRarity("");
+      setBulkVisibility("");
+      setBulkWeight("");
     } catch (e) {
       setErr(formatError(e));
     }
@@ -229,8 +272,9 @@ export default function DMInventory() {
       <hr />
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />
       <div className="inv-toolbar">
+        <input value={playerQuery} onChange={(e)=>setPlayerQuery(e.target.value)} placeholder="Поиск игрока..." style={{ width: "min(220px, 100%)" }} />
         <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
-          {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
+          {filteredPlayers.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
         </select>
         <button className="btn" onClick={startAdd} disabled={!selectedId}><Plus className="icon" aria-hidden="true" />Выдать</button>
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(360px, 100%)" }} />
@@ -278,6 +322,33 @@ export default function DMInventory() {
             {"Снять выбор"}
           </button>
         ) : null}
+
+
+        <div className="inv-bulk">
+          <select value={bulkRarity} onChange={(e)=>setBulkRarity(e.target.value)} style={{ width: 180 }}>
+            <option value="">{`Редкость: не менять`}</option>
+            {RARITY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <select value={bulkVisibility} onChange={(e)=>setBulkVisibility(e.target.value)} style={{ width: 180 }}>
+            <option value="">{`Видимость: не менять`}</option>
+            <option value="public">Public</option>
+            <option value="hidden">Hidden</option>
+          </select>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={bulkWeight}
+            onChange={(e)=>setBulkWeight(e.target.value)}
+            placeholder={"\u0412\u0435\u0441: \u043d\u0435 \u043c\u0435\u043d\u044f\u0442\u044c"}
+            style={{ width: 160 }}
+          />
+          <button className="btn secondary" onClick={bulkApplySelected} disabled={!selectedId || selectedCount === 0}>
+            {"\u041f\u0440\u0438\u043c\u0435\u043d\u0438\u0442\u044c"}
+          </button>
+        </div>
 
       </div>
       <div className="small" style={{ marginTop: 10 }}>
@@ -431,5 +502,17 @@ function summarizeInventory(list) {
     else acc.publicCount += 1;
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
+}
+
+function formatInventoryError(err) {
+  const code = err?.body?.error || err?.error || err?.message;
+  if (code === "weight_limit_exceeded") {
+    const limit = Number(err?.body?.limit);
+    if (Number.isFinite(limit) && limit > 0) {
+      return `\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d \u043b\u0438\u043c\u0438\u0442 \u0432\u0435\u0441\u0430 (${limit}).`;
+    }
+    return "\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d \u043b\u0438\u043c\u0438\u0442 \u0432\u0435\u0441\u0430.";
+  }
+  return formatError(err);
 }
 

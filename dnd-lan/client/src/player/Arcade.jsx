@@ -323,7 +323,7 @@ export default function Arcade() {
 
   return (
     <div className={`card taped arcade-shell${lite ? " page-lite arcade-lite" : ""}`.trim()}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="row arcade-top" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div className="arcade-title">Fish • Зал мини-игр</div>
           <div className="small">Fish — аркада мини‑игр с билетами и наградами.</div>
@@ -639,18 +639,18 @@ function impactClass(label) {
 function describeMode(mode) {
   if (!mode) return "";
   const bits = [];
-  if (mode.roundsToWin) bits.push(`?? ${mode.roundsToWin} ?????`);
-  if (mode.handSize) bits.push(`????: ${mode.handSize}`);
-  if (mode.timeLimit) bits.push(`?????: ${mode.timeLimit}?`);
-  if (mode.rackSize) bits.push(`????: ${mode.rackSize}`);
-  if (mode.moves) bits.push(`?????: ${mode.moves}`);
-  if (mode.size) bits.push(`????: ${mode.size}x${mode.size}`);
-  if (typeof mode.blocks === "number" && mode.blocks > 0) bits.push(`?????: ${mode.blocks}`);
-  if (mode.maxAttempts) bits.push(`???????: ${mode.maxAttempts}`);
-  if (mode.hintCount) bits.push(`?????????: ${mode.hintCount}`);
-  if (Array.isArray(mode.ranks)) bits.push(`?????: ${mode.ranks.length}`);
-  if (bits.length) return bits.join(" ? ");
-  return mode.label ? `?????: ${mode.label}` : "?????";
+  if (mode.roundsToWin) bits.push(`До ${mode.roundsToWin} побед`);
+  if (mode.handSize) bits.push(`Рука: ${mode.handSize}`);
+  if (mode.timeLimit) bits.push(`Время: ${mode.timeLimit}с`);
+  if (mode.rackSize) bits.push(`Букв: ${mode.rackSize}`);
+  if (mode.moves) bits.push(`Ходов: ${mode.moves}`);
+  if (mode.size) bits.push(`Поле: ${mode.size}x${mode.size}`);
+  if (typeof mode.blocks === "number" && mode.blocks > 0) bits.push(`Блоки: ${mode.blocks}`);
+  if (mode.maxAttempts) bits.push(`Попыток: ${mode.maxAttempts}`);
+  if (mode.hintCount) bits.push(`Подсказок: ${mode.hintCount}`);
+  if (Array.isArray(mode.ranks)) bits.push(`Ранги: ${mode.ranks.length}`);
+  if (bits.length) return bits.join(" • ");
+  return mode.label ? `Режим: ${mode.label}` : "Режим";
 }
 
 function formatEntry(entry) {

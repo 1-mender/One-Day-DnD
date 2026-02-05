@@ -139,7 +139,7 @@ export default function ScrabbleBlitzGame({
           <div className="hud-card key">
             <div className="hud-label">Время</div>
             <div className="hud-value">{Math.ceil(timeLeft)}с</div>
-            <span className="hud-badge">????</span>
+            <span className="hud-badge">Ключ</span>
           </div>
           <div className="hud-card">
             <div className="hud-label">Буквы</div>
@@ -161,7 +161,7 @@ export default function ScrabbleBlitzGame({
 
         {status === "playing" && wordCheck.reason === "missing" ? (
           <div className="scrabble-hint">
-            ?????? ?????: <span className="scrabble-hint-letter">{wordCheck.letter}</span>
+            Лишняя буква: <span className="scrabble-hint-letter">{wordCheck.letter}</span>
           </div>
         ) : null}
 
@@ -186,7 +186,7 @@ export default function ScrabbleBlitzGame({
           <div className={`scrabble-result ${status}`}>
             <div className="scrabble-result-title">{status === "win" ? "Победа!" : "Поражение"}</div>
             {status === "loss" && invalidLetter ? (
-              <div className="badge warn">?????? ?????: {invalidLetter}</div>
+              <div className="badge warn">Лишняя буква: {invalidLetter}</div>
             ) : null}
             {settling ? <div className="badge warn">Начисляю билеты...</div> : null}
             {apiErr ? (

@@ -228,7 +228,7 @@ export default function TicTacToeGame({
           <div className="hud-card key">
             <div className="hud-label">Ты</div>
             <div className="hud-value">{playerWins}</div>
-            <span className="hud-badge">????</span>
+            <span className="hud-badge">Ключ</span>
           </div>
           <div className="hud-card">
             <div className="hud-label">ИИ</div>

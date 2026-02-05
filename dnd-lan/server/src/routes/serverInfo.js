@@ -1,6 +1,7 @@
 import express from "express";
 import { getLanIPv4 } from "../ip.js";
 import { dbHasDm, getParty, getPartySettings } from "../db.js";
+import { LIMITS } from "../limits.js";
 
 export const serverInfoRouter = express.Router();
 
@@ -17,7 +18,8 @@ serverInfoRouter.get("/info", (req, res) => {
     party: { id: party.id, name: party.name, joinCodeEnabled: !!party.join_code },
     settings: {
       bestiaryEnabled: !!settings.bestiary_enabled,
-      ticketsEnabled: settings.tickets_enabled == null ? true : !!settings.tickets_enabled
+      ticketsEnabled: settings.tickets_enabled == null ? true : !!settings.tickets_enabled,
+      inventoryWeightLimit: LIMITS.inventoryWeight || 0
     }
   });
 });

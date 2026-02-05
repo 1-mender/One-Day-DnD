@@ -59,6 +59,7 @@ npm --prefix server run cleanup:uploads -- --apply
 - `DND_LAN_DATA_DIR` (куда складывать базу)
 - `DND_LAN_UPLOADS_DIR` (куда складывать uploads)
 - `BESTIARY_PAGE_LIMIT`
+- `INVENTORY_WEIGHT_LIMIT` (0 = без лимита)
 
 ## Горячие клавиши
 - `Ctrl+Shift+U` — переключение вариантов UI (`v1`/`v2`/`v3`)
