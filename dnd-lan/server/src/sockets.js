@@ -133,6 +133,10 @@ export function createSocketServer(httpServer) {
 
   io.on("connection", (socket) => {
     const db = getDb();
+    const degradedState = getDegradedState();
+    if (degradedState.degraded) {
+      socket.emit("system:degraded", { ok: false, reason: degradedState.reason || "not_ready", since: degradedState.since });
+    }
 
     if (socket.data.role === "dm") {
       socket.join("dm");

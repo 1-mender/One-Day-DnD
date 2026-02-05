@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, storage } from "../api.js";
+import { api } from "../api.js";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { RefreshCcw, Send, PencilLine, ImageUp } from "lucide-react";
@@ -11,6 +11,7 @@ import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 const emptyDraft = {
   characterName: "",
@@ -213,7 +214,7 @@ export default function Profile() {
   const [globalPresets, setGlobalPresets] = useState([]);
   const [presetAccess, setPresetAccess] = useState({ enabled: false, playerEdit: false, playerRequest: false, hideLocal: false });
 
-  const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
+  const readOnly = useReadOnly();
 
   useEffect(() => {
     reqStatusRef.current = reqStatus;
@@ -655,7 +656,7 @@ export default function Profile() {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
-              <StatsEditor value={draft.stats} onChange={(stats) => setDraft({ ...draft, stats })} />
+              <StatsEditor value={draft.stats} onChange={(stats) => setDraft({ ...draft, stats })} readOnly={readOnly} />
             </>
           ) : null}
 
@@ -763,7 +764,7 @@ export default function Profile() {
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
-          <StatsEditor value={requestDraft.stats} onChange={(stats) => setRequestDraft({ ...requestDraft, stats })} />
+          <StatsEditor value={requestDraft.stats} onChange={(stats) => setRequestDraft({ ...requestDraft, stats })} readOnly={readOnly} />
           <textarea
             value={requestDraft.bio}
             onChange={(e) => setRequestDraft({ ...requestDraft, bio: e.target.value })}

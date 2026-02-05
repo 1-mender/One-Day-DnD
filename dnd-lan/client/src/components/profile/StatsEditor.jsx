@@ -54,7 +54,7 @@ export function StatsView({ stats }) {
   );
 }
 
-export function StatsEditor({ value, onChange }) {
+export function StatsEditor({ value, onChange, readOnly = false }) {
   const [rows, setRows] = useState(() => buildRows(value));
   const lastEmitted = useRef("");
 
@@ -65,6 +65,7 @@ export function StatsEditor({ value, onChange }) {
   }, [value]);
 
   function updateRow(idx, patch) {
+    if (readOnly) return;
     const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
     setRows(next);
     const nextStats = rowsToStats(next);
@@ -73,12 +74,14 @@ export function StatsEditor({ value, onChange }) {
   }
 
   function addRow() {
+    if (readOnly) return;
     if (rows.length >= MAX_STATS) return;
     const next = [...rows, { id: genRowId(), key: "", value: "", fixed: false }];
     setRows(next);
   }
 
   function removeRow(idx) {
+    if (readOnly) return;
     const next = rows.filter((_, i) => i !== idx);
     setRows(next);
     const nextStats = rowsToStats(next);
@@ -100,6 +103,7 @@ export function StatsEditor({ value, onChange }) {
               onChange={(e) => updateRow(idx, { key: e.target.value })}
               placeholder="ключ"
               maxLength={KEY_MAX}
+              disabled={readOnly}
               style={{ width: 120 }}
             />
           )}
@@ -108,14 +112,15 @@ export function StatsEditor({ value, onChange }) {
             onChange={(e) => updateRow(idx, { value: e.target.value })}
             placeholder="значение"
             maxLength={VALUE_MAX}
+            disabled={readOnly}
             style={{ flex: 1 }}
           />
           {!row.fixed ? (
-            <button className="btn secondary" onClick={() => removeRow(idx)}>Удалить</button>
+            <button className="btn secondary" onClick={() => removeRow(idx)} disabled={readOnly}>Удалить</button>
           ) : null}
         </div>
       ))}
-      <button className="btn secondary" onClick={addRow} disabled={rows.length >= MAX_STATS}>
+      <button className="btn secondary" onClick={addRow} disabled={readOnly || rows.length >= MAX_STATS}>
         + Добавить стат
       </button>
       <div className="small">Максимум статов: {MAX_STATS}</div>

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { api, storage } from "../api.js";
+import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import InventoryItemCard, { pickInventoryIcon } from "../components/vintage/InventoryItemCard.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
@@ -20,6 +20,7 @@ import {
 } from "../lib/inventoryIcons.js";
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 const FAVORITE_TAG = "favorite";
@@ -55,7 +56,7 @@ export default function Inventory() {
   const lite = useLiteMode();
   const [listRef] = useAutoAnimate({ duration: lite ? 0 : 200 });
 
-  const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
+  const readOnly = useReadOnly();
   const actionsVariant = lite || view === "grid" ? "compact" : "stack";
 
   const load = useCallback(async () => {

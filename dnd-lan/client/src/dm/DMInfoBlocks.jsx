@@ -4,6 +4,7 @@ import Modal from "../components/Modal.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 const empty = { title:"", content:"", category:"note", access:"dm", selectedPlayerIds:[], tags:[] };
 
@@ -18,6 +19,7 @@ export default function DMInfoBlocks() {
   const fileRef = useRef(null);
   const taRef = useRef(null);
   const { socket } = useSocket();
+  const readOnly = useReadOnly();
   const debouncedQ = useDebouncedValue(q, 200);
 
   const load = useCallback(async () => {
@@ -48,12 +50,14 @@ export default function DMInfoBlocks() {
   }, [items, debouncedQ]);
 
   function startNew() {
+    if (readOnly) return;
     setErr("");
     setEdit(null);
     setForm(empty);
     setOpen(true);
   }
   function startEdit(b) {
+    if (readOnly) return;
     setErr("");
     setEdit(b);
     setForm({ ...b });
@@ -61,6 +65,7 @@ export default function DMInfoBlocks() {
   }
 
   async function save() {
+    if (readOnly) return;
     setErr("");
     const payload = {
       ...form,
@@ -78,6 +83,7 @@ export default function DMInfoBlocks() {
     }
   }
   async function del(id) {
+    if (readOnly) return;
     setErr("");
     try {
       await api.dmInfoDelete(id);
@@ -105,6 +111,7 @@ export default function DMInfoBlocks() {
   }
 
   async function onPickFile(ev) {
+    if (readOnly) return;
     const f = ev.target.files?.[0];
     if (!f) return;
     setErr("");
@@ -127,9 +134,10 @@ export default function DMInfoBlocks() {
               <div style={{ fontWeight: 900, fontSize: 20 }}>Info Blocks (DM)</div>
               <div className="small">Доступ: DM-only / All / Selected players</div>
             </div>
-            <button className="btn" onClick={startNew}>+ Добавить</button>
+            <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
           </div>
           <hr />
+          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
           {err && <div className="badge off">Ошибка: {err}</div>}
           <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск…" style={inp} />
           <div className="list" style={{ marginTop: 12 }}>
@@ -143,8 +151,8 @@ export default function DMInfoBlocks() {
                   </div>
                 </div>
                 <div className="row">
-                  <button className="btn secondary" onClick={() => startEdit(b)}>Ред.</button>
-                  <button className="btn danger" onClick={() => del(b.id)}>Удал.</button>
+                  <button className="btn secondary" onClick={() => startEdit(b)} disabled={readOnly}>Ред.</button>
+                  <button className="btn danger" onClick={() => del(b.id)} disabled={readOnly}>Удал.</button>
                 </div>
               </div>
             ))}
@@ -229,7 +237,7 @@ export default function DMInfoBlocks() {
 
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
             <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onPickFile} />
-            <button className="btn secondary" onClick={() => fileRef.current?.click()}>Загрузить файл</button>
+            <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
             <div className="small">Вставит markdown для картинки/файла</div>
           </div>
 
@@ -247,7 +255,7 @@ export default function DMInfoBlocks() {
             placeholder="Теги (через запятую)"
             style={inp}
           />
-          <button className="btn" onClick={save}>Сохранить</button>
+          <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
         </div>
       </Modal>
     </div>

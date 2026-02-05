@@ -37,7 +37,9 @@ export function SocketProvider({ role, children }) {
     reconnecting: false,
     lastError: null,
     lastReconnectMs: null,
-    sampleCount: 0
+    sampleCount: 0,
+    degraded: false,
+    degradedReason: null
   });
 
   useEffect(() => {
@@ -53,7 +55,9 @@ export function SocketProvider({ role, children }) {
       reconnecting: false,
       lastError: null,
       lastReconnectMs: null,
-      sampleCount: 0
+      sampleCount: 0,
+      degraded: false,
+      degradedReason: null
     });
     return () => {
       s.disconnect();
@@ -117,11 +121,22 @@ export function SocketProvider({ role, children }) {
     socket.on("connect_error", onConnectError);
     if (socket.connected) onConnect();
 
+    const onDegraded = (payload) => {
+      const ok = payload?.ok !== false;
+      setNetState((prev) => ({
+        ...prev,
+        degraded: !ok,
+        degradedReason: ok ? null : String(payload?.reason || "not_ready")
+      }));
+    };
+    socket.on("system:degraded", onDegraded);
+
     return () => {
       closed = true;
       socket.off("connect", onConnect);
       socket.off("disconnect", onDisconnect);
       socket.off("connect_error", onConnectError);
+      socket.off("system:degraded", onDegraded);
     };
   }, [socket]);
 
@@ -155,7 +170,14 @@ export function useSocket() {
     return {
       socket: null,
       refreshAuth: () => {},
-      netState: { reconnecting: false, lastError: null, lastReconnectMs: null, sampleCount: 0 },
+      netState: {
+        reconnecting: false,
+        lastError: null,
+        lastReconnectMs: null,
+        sampleCount: 0,
+        degraded: false,
+        degradedReason: null
+      },
       getReconnectSamples: () => []
     };
   }

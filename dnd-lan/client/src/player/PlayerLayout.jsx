@@ -28,10 +28,14 @@ export default function PlayerLayout() {
   const { socket, refreshAuth, netState } = useSocket();
   const OFFLINE_BANNER_DELAY_MS = 2000;
   const socketErr = netState?.lastError;
+  const degradedReason = netState?.degradedReason;
   const offlineDetails =
     socketErr && socketErr !== "connect_error"
       ? `Socket error: ${socketErr}`
       : "";
+  const degradedDetails = netState?.degraded
+    ? `Read-only mode: ${degradedReason || "not_ready"}`
+    : "";
 
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
@@ -205,6 +209,7 @@ export default function PlayerLayout() {
   return (
     <div>
       <OfflineBanner online={!showOffline} details={offlineDetails} />
+      {netState?.degraded ? <OfflineBanner online={false} details={degradedDetails} tone="readonly" /> : null}
       {impersonating && (
         <div style={{ padding: 10, background: "#2a220f", borderBottom: "1px solid #6a5622" }}>
           <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>

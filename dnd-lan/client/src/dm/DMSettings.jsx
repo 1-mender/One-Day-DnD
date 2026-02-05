@@ -5,6 +5,7 @@ import { ERROR_CODES } from "../lib/errorCodes.js";
 import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 export default function DMSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -31,6 +32,7 @@ export default function DMSettings() {
   const [presetErr, setPresetErr] = useState("");
 
   const { socket } = useSocket();
+  const readOnly = useReadOnly();
 
   const load = useCallback(async () => {
     setErr("");
@@ -119,6 +121,7 @@ export default function DMSettings() {
   const filteredShop = showOnlyChanged ? shopEntries.filter(([key, item]) => isShopChanged(key, item)) : shopEntries;
 
   async function saveJoinCode() {
+    if (readOnly) return;
     setMsg("");
     setErr("");
     try {
@@ -132,6 +135,7 @@ export default function DMSettings() {
   }
 
   async function changePassword() {
+    if (readOnly) return;
     setMsg("");
     setErr("");
     const pass = String(newPass || "");
@@ -203,6 +207,7 @@ export default function DMSettings() {
   }
 
   async function resetDailyQuestToday() {
+    if (readOnly) return;
     const activeKey = ticketRules?.dailyQuest?.activeKey || "";
     if (!activeKey) {
       setTicketErr("Нет активного daily‑quest.");
@@ -224,6 +229,7 @@ export default function DMSettings() {
   }
 
   async function reassignDailyQuestToday() {
+    if (readOnly) return;
     const activeKey = ticketRules?.dailyQuest?.activeKey || "";
     if (!activeKey) {
       setTicketErr("Нет активного daily‑quest.");
@@ -276,6 +282,7 @@ export default function DMSettings() {
   }
 
   async function saveTicketRules() {
+    if (readOnly) return;
     if (!ticketRules) return;
     setTicketErr("");
     setTicketMsg("");
@@ -296,6 +303,7 @@ export default function DMSettings() {
   }
 
   async function resetTicketRules() {
+    if (readOnly) return;
     setTicketErr("");
     setTicketMsg("");
     setTicketBusy(true);
@@ -346,6 +354,7 @@ export default function DMSettings() {
   }
 
   async function saveProfilePresets() {
+    if (readOnly) return;
     setPresetErr("");
     setPresetMsg("");
     setPresetBusy(true);
@@ -384,6 +393,7 @@ export default function DMSettings() {
   }
 
   async function importZip(e) {
+    if (readOnly) return;
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
@@ -402,6 +412,7 @@ export default function DMSettings() {
       <div style={{ fontWeight: 900, fontSize: 20 }}>Settings</div>
       <div className="small">{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438, \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c, \u044d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430, LAN/Firewall."}</div>
       <hr />
+      {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
       {err && <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{err}</div>}
       {msg && <div className="badge ok">{msg}</div>}
 
@@ -412,7 +423,7 @@ export default function DMSettings() {
           <div className="small">{"\u0415\u0441\u043b\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d \u2014 \u0438\u0433\u0440\u043e\u043a\u0438 \u0432\u0432\u043e\u0434\u044f\u0442 \u043a\u043e\u0434 \u043f\u0440\u0438 \u0432\u0445\u043e\u0434\u0435."}</div>
           <hr />
           <label className="row" style={{ gap: 10, alignItems: "center" }}>
-            <input type="checkbox" checked={joinEnabled} onChange={(e) => setJoinEnabled(e.target.checked)} />
+            <input type="checkbox" checked={joinEnabled} onChange={(e) => setJoinEnabled(e.target.checked)} disabled={readOnly} />
             <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438"}</span>
           </label>
           <div className="row" style={{ gap: 8, marginTop: 10, alignItems: "center" }}>
@@ -427,7 +438,7 @@ export default function DMSettings() {
             <button className="btn secondary" onClick={() => setShowJoin((v) => !v)} disabled={!joinEnabled}>
               {showJoin ? "\u0421\u043a\u0440\u044b\u0442\u044c" : "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c"}
             </button>
-            <button className="btn" onClick={saveJoinCode}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
+            <button className="btn" onClick={saveJoinCode} disabled={readOnly}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
           </div>
         </div>
 
@@ -472,8 +483,8 @@ export default function DMSettings() {
             </label>
 
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className="btn secondary" onClick={addPreset}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442"}</button>
-              <button className="btn" onClick={saveProfilePresets} disabled={presetBusy}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
+              <button className="btn secondary" onClick={addPreset} disabled={readOnly}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442"}</button>
+              <button className="btn" onClick={saveProfilePresets} disabled={readOnly || presetBusy}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
             </div>
 
             {profilePresets.length === 0 ? (
@@ -484,7 +495,7 @@ export default function DMSettings() {
                   <div key={preset.id || `${preset.title}-${idx}`} className="paper-note">
                     <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
                       <div className="title">{"\u041f\u0440\u0435\u0441\u0435\u0442 #"}{idx + 1}</div>
-                      <button className="btn danger" onClick={() => removePreset(idx)}>{"\u0423\u0434\u0430\u043b\u0438\u0442\u044c"}</button>
+                      <button className="btn danger" onClick={() => removePreset(idx)} disabled={readOnly}>{"\u0423\u0434\u0430\u043b\u0438\u0442\u044c"}</button>
                     </div>
                     <div className="list" style={{ marginTop: 10 }}>
                       <input
@@ -525,7 +536,7 @@ export default function DMSettings() {
                       </div>
                       <div className="kv">
                         <div className="title">{"\u0421\u0442\u0430\u0442\u044b"}</div>
-                        <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} />
+                        <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} readOnly={readOnly} />
                       </div>
                       <div className="paper-note" style={{ marginTop: 8 }}>
                         <div className="title">{"\u041f\u0440\u0435\u0432\u044c\u044e"}</div>
@@ -596,7 +607,7 @@ export default function DMSettings() {
             <button className="btn secondary" onClick={() => setShowPass((v) => !v)}>
               {showPass ? "\u0421\u043a\u0440\u044b\u0442\u044c" : "\u041f\u043e\u043a\u0430\u0437\u0430\u0442\u044c"}
             </button>
-            <button className="btn" onClick={changePassword}>{"\u0421\u043c\u0435\u043d\u0438\u0442\u044c"}</button>
+            <button className="btn" onClick={changePassword} disabled={readOnly}>{"\u0421\u043c\u0435\u043d\u0438\u0442\u044c"}</button>
           </div>
         </div>
 
@@ -625,7 +636,7 @@ export default function DMSettings() {
           <hr />
           <button className="btn secondary" onClick={exportZip}>{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442 (zip)"}</button>
           <div style={{ marginTop: 10 }}>
-            <input type="file" accept=".zip" onChange={importZip} />
+            <input type="file" accept=".zip" onChange={importZip} disabled={readOnly} />
           </div>
         </div>
 
@@ -648,10 +659,10 @@ export default function DMSettings() {
             ) : (
               <span className="badge ok">{"\u0418\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439 \u043d\u0435\u0442"}</span>
             )}
-            <button className="btn" onClick={saveTicketRules} disabled={ticketBusy || !ticketDirty}>
+            <button className="btn" onClick={saveTicketRules} disabled={readOnly || ticketBusy || !ticketDirty}>
               {"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}
             </button>
-            <button className="btn secondary" onClick={resetTicketRules} disabled={ticketBusy}>
+            <button className="btn secondary" onClick={resetTicketRules} disabled={readOnly || ticketBusy}>
               {"\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043a \u0434\u0435\u0444\u043e\u043b\u0442\u0443"}
             </button>
           </div>
@@ -737,10 +748,10 @@ export default function DMSettings() {
                       <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c Daily quest"}</span>
                     </label>
                     <button className="btn secondary" onClick={addDailyQuest}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c"}</button>
-                    <button className="btn secondary" onClick={resetDailyQuestToday} disabled={ticketBusy}>
+                    <button className="btn secondary" onClick={resetDailyQuestToday} disabled={readOnly || ticketBusy}>
                       {"\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043d\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f"}
                     </button>
-                    <button className="btn secondary" onClick={reassignDailyQuestToday} disabled={ticketBusy}>
+                    <button className="btn secondary" onClick={reassignDailyQuestToday} disabled={readOnly || ticketBusy}>
                       {"\u041f\u0435\u0440\u0435\u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u0441\u0435\u0433\u043e\u0434\u043d\u044f"}
                     </button>
                   </div>

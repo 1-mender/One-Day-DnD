@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { api, storage } from "../api.js";
+import { api } from "../api.js";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "./useReadOnly.js";
 
 export function useTickets() {
   const [state, setState] = useState(null);
@@ -13,7 +14,7 @@ export function useTickets() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
-  const readOnly = storage.isImpersonating() && storage.getImpMode() === "ro";
+  const readOnly = useReadOnly();
 
   const applyPayload = useCallback((payload) => {
     if (!payload) return;

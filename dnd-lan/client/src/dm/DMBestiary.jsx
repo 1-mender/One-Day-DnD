@@ -4,6 +4,7 @@ import Modal from "../components/Modal.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 const empty = { name:"", type:"", habitat:"", cr:"", description:"", abilities:[], stats:{}, is_hidden:false };
 
@@ -29,6 +30,7 @@ export default function DMBestiary() {
   const fileRef = useRef(null);
   const importRef = useRef(null);
   const { socket } = useSocket();
+  const readOnly = useReadOnly();
 
   const attachImages = useCallback(async (list) => {
     const ids = (list || []).map((m) => m.id).filter(Boolean);
@@ -96,6 +98,7 @@ export default function DMBestiary() {
   }, []);
 
   function startNew() {
+    if (readOnly) return;
     setErr("");
     setEdit(null);
     setForm(empty);
@@ -115,6 +118,7 @@ export default function DMBestiary() {
   }, [loadImages]);
 
   async function save() {
+    if (readOnly) return;
     setErr("");
     const payload = { ...form, abilities: (form.abilitiesText || "").split("\n").map(s=>s.trim()).filter(Boolean) };
     delete payload.abilitiesText;
@@ -153,6 +157,7 @@ export default function DMBestiary() {
   }
 
   async function delImage(imageId) {
+    if (readOnly) return;
     if (!edit) return;
     setErr("");
     try {
@@ -164,6 +169,7 @@ export default function DMBestiary() {
   }
 
   async function toggleEnabled() {
+    if (readOnly) return;
     setErr("");
     try {
       await api.dmBestiaryToggle(!enabled);
@@ -196,6 +202,7 @@ export default function DMBestiary() {
   }
 
   async function runDryRun(file) {
+    if (readOnly) return;
     setPortErr("");
     setPortMsg("");
     setPortBusy(true);
@@ -218,6 +225,7 @@ export default function DMBestiary() {
   }
 
   async function applyImport() {
+    if (readOnly) return;
     if (!portPendingFile) return;
     if (portMode === "replace") {
       const ok = window.confirm(
@@ -293,10 +301,10 @@ export default function DMBestiary() {
           <div className="small">Экспорт / импорт / глобальная видимость</div>
           <hr />
           <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <button className="btn secondary" onClick={toggleEnabled}>
+            <button className="btn secondary" onClick={toggleEnabled} disabled={readOnly}>
               {enabled ? "Выключить для игроков" : "Включить для игроков"}
             </button>
-            <button className="btn" onClick={startNew}>+ Добавить</button>
+            <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
           </div>
 
           <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
@@ -308,7 +316,7 @@ export default function DMBestiary() {
               style={{ display: "none" }}
               onChange={onPickImport}
             />
-            <button className="btn" onClick={() => importRef.current?.click()} disabled={portBusy}>Import JSON (dry-run)</button>
+            <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Import JSON (dry-run)</button>
             <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
               <option value="merge">merge</option>
               <option value="replace">replace</option>
@@ -344,8 +352,8 @@ export default function DMBestiary() {
                 </div>
               )}
               <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button className="btn" onClick={applyImport} disabled={portBusy || !portPendingFile}>Применить</button>
-                <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={portBusy || !portPendingFile}>Пересчитать</button>
+                <button className="btn" onClick={applyImport} disabled={readOnly || portBusy || !portPendingFile}>Применить</button>
+                <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={readOnly || portBusy || !portPendingFile}>Пересчитать</button>
                 <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
               </div>
               <div className="small" style={{ marginTop: 8 }}>
@@ -378,7 +386,7 @@ export default function DMBestiary() {
           <label className="small">
             <input type="checkbox" checked={!!form.is_hidden} onChange={(e)=>setForm({ ...form, is_hidden: e.target.checked })} /> Скрыть для игроков (опц.)
           </label>
-          <button className="btn" onClick={save}>Сохранить</button>
+          <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
 
           <div style={{ marginTop: 10, fontWeight: 800 }}>Изображения</div>
           <div className="small">PNG/JPG/WEBP/GIF до 5MB</div>
@@ -386,14 +394,14 @@ export default function DMBestiary() {
 
           <div className="row" style={{ gap: 8, marginTop: 10 }}>
             <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickFile} />
-            <button className="btn" onClick={() => fileRef.current?.click()} disabled={!edit}>+ Загрузить</button>
+            <button className="btn" onClick={() => fileRef.current?.click()} disabled={readOnly || !edit}>+ Загрузить</button>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12, marginTop: 12 }}>
             {images.map((img) => (
               <div key={img.id} className="item taped" style={{ flexDirection: "column", alignItems: "center" }}>
                 <PolaroidFrame src={img.url} alt={img.originalName || "image"} fallback="IMG" className="lg" />
-                <button className="btn danger" style={{ width: "100%", marginTop: 8 }} onClick={() => delImage(img.id)}>
+                <button className="btn danger" style={{ width: "100%", marginTop: 8 }} onClick={() => delImage(img.id)} disabled={readOnly}>
                   Удалить
                 </button>
               </div>

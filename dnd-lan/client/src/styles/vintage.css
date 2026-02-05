@@ -359,6 +359,12 @@ a:hover{ color: #000; }
   z-index: 950;
   padding: 10px 12px;
 }
+.offline-ribbon.readonly .inner{
+  border: 1px solid rgba(90,70,30,.45);
+  background:
+    var(--noise),
+    linear-gradient(180deg, #f3e2b9, #e2c77f);
+}
 .offline-ribbon .inner{
   max-width: 980px;
   margin: 0 auto;

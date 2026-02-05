@@ -6,6 +6,7 @@ import Modal from "../components/Modal.jsx";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -21,6 +22,7 @@ export default function DMPlayers() {
   const [ticketReason, setTicketReason] = useState("");
   const nav = useNavigate();
   const { socket } = useSocket();
+  const readOnly = useReadOnly();
 
   const loadPlayers = useCallback(async () => {
     setErr("");
@@ -68,6 +70,7 @@ export default function DMPlayers() {
   }, [loadAll, loadPlayers, loadTickets, socket]);
 
   async function viewAs(playerId) {
+    if (readOnly) return;
     setErr("");
     try {
       const r = await api.dmImpersonate(playerId, "ro");
@@ -89,6 +92,7 @@ export default function DMPlayers() {
   }
 
   async function saveEdit() {
+    if (readOnly) return;
     if (!editPlayer) return;
     const name = String(editName || "").trim();
     if (!name) return;
@@ -104,6 +108,7 @@ export default function DMPlayers() {
   }
 
   async function removePlayer(player) {
+    if (readOnly) return;
     if (!player) return;
     if (!window.confirm(`Удалить игрока "${player.displayName}"? Это удалит его инвентарь и профиль.`)) return;
     setErr("");
@@ -116,6 +121,7 @@ export default function DMPlayers() {
   }
 
   async function kickPlayer(playerId) {
+    if (readOnly) return;
     setErr("");
     try {
       await api.dmKick(playerId);
@@ -134,6 +140,7 @@ export default function DMPlayers() {
   }
 
   async function applyTickets() {
+    if (readOnly) return;
     if (!ticketPlayer) return;
     const delta = Number(ticketDelta || 0);
     const setVal = ticketSet === "" ? null : Number(ticketSet);
@@ -170,6 +177,7 @@ export default function DMPlayers() {
       <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
       <div className="small">“Как игрок” открывается в режиме read-only</div>
       <hr />
+      {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
       <ErrorBanner message={err} onRetry={loadAll} />
       <div className="list">
         {playersWithTickets.map((p) => (
@@ -181,11 +189,11 @@ export default function DMPlayers() {
             rightActions={(
               <>
                 <button className="btn" onClick={() => openProfile(p.id)}>Профиль персонажа</button>
-                <button className="btn secondary" onClick={() => openTickets(p)}>Билеты</button>
-                <button className="btn secondary" onClick={() => startEdit(p)}>Редактировать игрока</button>
-                <button className="btn secondary" onClick={() => viewAs(p.id)}>Как игрок</button>
-                <button className="btn danger" onClick={() => kickPlayer(p.id)}>Kick</button>
-                <button className="btn danger" onClick={() => removePlayer(p)}>Удалить</button>
+                <button className="btn secondary" onClick={() => openTickets(p)} disabled={readOnly}>Билеты</button>
+                <button className="btn secondary" onClick={() => startEdit(p)} disabled={readOnly}>Редактировать игрока</button>
+                <button className="btn secondary" onClick={() => viewAs(p.id)} disabled={readOnly}>Как игрок</button>
+                <button className="btn danger" onClick={() => kickPlayer(p.id)} disabled={readOnly}>Kick</button>
+                <button className="btn danger" onClick={() => removePlayer(p)} disabled={readOnly}>Удалить</button>
               </>
             )}
           />
@@ -201,7 +209,7 @@ export default function DMPlayers() {
             style={{ width: "100%" }}
             maxLength={80}
           />
-          <button className="btn" onClick={saveEdit}>Сохранить</button>
+          <button className="btn" onClick={saveEdit} disabled={readOnly}>Сохранить</button>
         </div>
       </Modal>
 
@@ -213,10 +221,10 @@ export default function DMPlayers() {
           <div className="badge">Баланс: {ticketPlayer ? (tickets[ticketPlayer.id]?.balance ?? 0) : 0}</div>
           <div className="small">Серия побед: {ticketPlayer ? (tickets[ticketPlayer.id]?.streak ?? 0) : 0}</div>
           <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-            <button className="btn secondary" onClick={() => setTicketDelta("1")}>+1</button>
-            <button className="btn secondary" onClick={() => setTicketDelta("3")}>+3</button>
-            <button className="btn secondary" onClick={() => setTicketDelta("-1")}>-1</button>
-            <button className="btn secondary" onClick={() => setTicketDelta("-3")}>-3</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("1")} disabled={readOnly}>+1</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("3")} disabled={readOnly}>+3</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("-1")} disabled={readOnly}>-1</button>
+            <button className="btn secondary" onClick={() => setTicketDelta("-3")} disabled={readOnly}>-3</button>
           </div>
           <input
             value={ticketDelta}
@@ -237,7 +245,7 @@ export default function DMPlayers() {
             style={{ width: "100%" }}
             maxLength={120}
           />
-          <button className="btn" onClick={applyTickets}>Применить</button>
+          <button className="btn" onClick={applyTickets} disabled={readOnly}>Применить</button>
         </div>
       </Modal>
     </div>

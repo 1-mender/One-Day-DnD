@@ -4,6 +4,7 @@ import { api, storage } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 export default function Join() {
   const nav = useNavigate();
@@ -11,6 +12,7 @@ export default function Join() {
   const [joinCode, setJoinCode] = useState("");
   const [info, setInfo] = useState(null);
   const [err, setErr] = useState("");
+  const readOnly = useReadOnly();
 
   useEffect(() => {
     api.serverInfo().then(setInfo).catch((e) => setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
@@ -21,6 +23,10 @@ export default function Join() {
   async function submit(e) {
     e.preventDefault();
     setErr("");
+    if (readOnly) {
+      setErr("read_only");
+      return;
+    }
     try {
       const r = await api.joinRequest(displayName, joinCode);
       storage.setJoinRequestId(r.joinRequestId);
@@ -52,8 +58,9 @@ export default function Join() {
                     <input value={joinCode} onChange={(e)=>setJoinCode(e.target.value)} placeholder="Если включён DM" style={{ width: "100%" }} />
                   </div>
                 )}
+                {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
                 {err && <div className="badge off">Ошибка: {err}</div>}
-                <button className="btn" type="submit">Отправить заявку</button>
+                <button className="btn" type="submit" disabled={readOnly}>Отправить заявку</button>
               </form>
             </div>
           </div>

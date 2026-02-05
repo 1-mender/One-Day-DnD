@@ -85,6 +85,16 @@ npm --prefix server run cleanup:uploads -- --apply
 - `PLAYER_TOKEN_TTL_DAYS`
 - `DND_LAN_DATA_DIR` (куда складывать базу)
 - `DND_LAN_UPLOADS_DIR` (куда складывать uploads)
+- `DND_LAN_BACKUP_DIR` (куда складывать авто-бэкапы)
+- `BACKUP_EVERY_MS` (интервал авто-бэкапов, по умолчанию 10 мин)
+- `BACKUP_RETAIN` (сколько последних бэкапов хранить, по умолчанию 20)
+- `READINESS_CHECK_EVERY_MS` (частота проверки readiness, по умолчанию 10 сек)
+- `PRESENCE_GRACE_MS` (grace-offline для сокетов, по умолчанию 4000)
+- `INFO_UPLOAD_MAX_BYTES` (лимит загрузки в infoUploads, по умолчанию 5 MB)
+- `INFO_UPLOAD_ALLOWED_MIMES` (список MIME через запятую)
+- `INFO_ASSET_MAX_BYTES` (лимит upload для infoBlocks, по умолчанию 5 MB)
+- `INFO_ASSET_ALLOWED_MIMES` (список MIME через запятую)
+- `BESTIARY_IMAGE_MAX_COUNT` (лимит изображений на монстра, по умолчанию 20)
 - `BESTIARY_PAGE_LIMIT`
 - `INVENTORY_WEIGHT_LIMIT` (базовый лимит веса; если не задан — 50, если `<= 0` — лимит отключён)
 

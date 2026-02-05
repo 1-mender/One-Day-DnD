@@ -6,6 +6,7 @@ import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 const scopes = [
   { key: "", label: "All", prefix: "" },
@@ -26,6 +27,7 @@ export default function DMEvents() {
   const [err, setErr] = useState("");
   const toast = useToast();
   const [cleanupDays, setCleanupDays] = useState(30);
+  const readOnly = useReadOnly();
 
   const { socket } = useSocket();
 
@@ -122,6 +124,7 @@ export default function DMEvents() {
   }
 
   async function cleanupAll() {
+    if (readOnly) return;
     const first = window.confirm("Удалить ВСЕ события журнала? Это действие нельзя отменить.");
     if (!first) return;
 
@@ -147,6 +150,7 @@ export default function DMEvents() {
   }
 
   async function cleanupOlder() {
+    if (readOnly) return;
     const days = Math.max(1, Math.min(3650, Math.floor(Number(cleanupDays || 30))));
     const ok = window.confirm(`Удалить события старше ${days} дней?`);
     if (!ok) return;
@@ -176,6 +180,7 @@ export default function DMEvents() {
         <div className="row" style={{ gap: 8 }}>
           <button className="btn secondary" onClick={() => load(true)} disabled={busy}>Refresh</button>
           <button className="btn" onClick={exportJson} disabled={busy}>Export JSON</button>
+          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
         </div>
       </div>
 
@@ -190,7 +195,7 @@ export default function DMEvents() {
         </select>
       </div>
       <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
-        <button className="btn danger" onClick={cleanupAll} disabled={busy}>
+        <button className="btn danger" onClick={cleanupAll} disabled={busy || readOnly}>
           Очистить всё
         </button>
         <div className="row" style={{ gap: 8, alignItems: "center" }}>
@@ -201,8 +206,9 @@ export default function DMEvents() {
             value={cleanupDays}
             onChange={(e) => setCleanupDays(e.target.value)}
             style={{ padding: 10, borderRadius: 12, width: 120 }}
+            disabled={readOnly}
           />
-          <button className="btn secondary" onClick={cleanupOlder} disabled={busy}>
+          <button className="btn secondary" onClick={cleanupOlder} disabled={busy || readOnly}>
             Удалить старше X дней
           </button>
         </div>

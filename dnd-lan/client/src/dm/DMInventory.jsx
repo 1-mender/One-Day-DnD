@@ -8,6 +8,7 @@ import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 import { formatError } from "../lib/formatError.js";
 import {
   INVENTORY_ICON_SECTIONS,
@@ -25,6 +26,7 @@ const TRANSFER_REFRESH_MS = 30_000;
 
 export default function DMInventory() {
   const toast = useToast();
+  const readOnly = useReadOnly();
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(0);
   const [items, setItems] = useState([]);
@@ -123,12 +125,14 @@ export default function DMInventory() {
   }, [items]);
 
   function startAdd() {
+    if (readOnly) return;
     setEdit(null);
     setForm(empty);
     setOpen(true);
   }
 
   function startEdit(item) {
+    if (readOnly) return;
     setEdit(item);
     const rest = { ...(item || {}) };
     delete rest.imageUrl;
@@ -157,6 +161,7 @@ export default function DMInventory() {
   }, []);
 
   async function save() {
+    if (readOnly) return;
     setErr("");
     try {
       const { iconKey, ...rest } = form;
@@ -181,6 +186,7 @@ export default function DMInventory() {
   }
 
   async function delItem(item) {
+    if (readOnly) return;
     if (!item) return;
     if (!window.confirm(`Удалить предмет "${item.name}"?`)) return;
     setErr("");
@@ -193,6 +199,7 @@ export default function DMInventory() {
   }
 
   async function toggleVisibility(item) {
+    if (readOnly) return;
     if (!item) return;
     const next = item.visibility === "hidden" ? "public" : "hidden";
     try {
@@ -204,6 +211,7 @@ export default function DMInventory() {
   }
 
   async function bulkHideSelected() {
+    if (readOnly) return;
     if (!selectedId || selectedIds.size === 0) return;
     const targets = selectedItems.filter((it) => it.visibility !== "hidden");
     if (!targets.length) return;
@@ -220,6 +228,7 @@ export default function DMInventory() {
   }
 
   async function bulkDeleteSelected() {
+    if (readOnly) return;
     if (!selectedId || selectedIds.size === 0) return;
     const targets = selectedItems;
     if (!targets.length) return;
@@ -237,6 +246,7 @@ export default function DMInventory() {
   }
 
   async function cancelTransfer(tr) {
+    if (readOnly) return;
     if (!tr?.id) return;
     setErr("");
     try {
@@ -277,11 +287,12 @@ export default function DMInventory() {
       </div>
       <hr />
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />
+      {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
       <div className="inv-toolbar">
         <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
           {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
         </select>
-        <button className="btn" onClick={startAdd} disabled={!selectedId}><Plus className="icon" aria-hidden="true" />Выдать</button>
+        <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />Выдать</button>
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(360px, 100%)" }} />
         <select value={vis} onChange={(e)=>setVis(e.target.value)} style={{ width: 180 }}>
           <option value="">Видимость: все</option>
@@ -307,7 +318,7 @@ export default function DMInventory() {
         <button
           className="btn secondary"
           onClick={bulkHideSelected}
-          disabled={!selectedId || selectedCount === 0}
+          disabled={readOnly || !selectedId || selectedCount === 0}
           title={"Скрыть выбранные"}
         >
           <EyeOff className="icon" aria-hidden="true" />
@@ -316,7 +327,7 @@ export default function DMInventory() {
         <button
           className="btn danger"
           onClick={bulkDeleteSelected}
-          disabled={!selectedId || selectedCount === 0}
+          disabled={readOnly || !selectedId || selectedCount === 0}
           title={"Удалить выбранные"}
         >
           <Trash2 className="icon" aria-hidden="true" />
@@ -383,7 +394,7 @@ export default function DMInventory() {
                     ) : null}
                   </div>
                   <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <button className="btn danger" onClick={() => cancelTransfer(tr)}>
+                    <button className="btn danger" onClick={() => cancelTransfer(tr)} disabled={readOnly}>
                       Отменить
                     </button>
                   </div>
@@ -428,7 +439,7 @@ export default function DMInventory() {
                 >
                   <InventoryItemCard
                     item={it}
-                    readOnly={false}
+                    readOnly={readOnly}
                     actionsVariant="stack"
                     onEdit={() => startEdit(it)}
                     onDelete={() => delItem(it)}
@@ -446,7 +457,7 @@ export default function DMInventory() {
             <InventoryItemCard
               key={it.id}
               item={it}
-              readOnly={false}
+              readOnly={readOnly}
               actionsVariant="compact"
               onEdit={() => startEdit(it)}
               onDelete={() => delItem(it)}
@@ -537,7 +548,7 @@ export default function DMInventory() {
             placeholder="Теги (через запятую)"
             style={inp}
           />
-          <button className="btn" onClick={save}>{edit ? "Сохранить" : "Выдать"}</button>
+          <button className="btn" onClick={save} disabled={readOnly}>{edit ? "Сохранить" : "Выдать"}</button>
         </div>
       </Modal>
     </div>

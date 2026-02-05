@@ -11,6 +11,7 @@ import { formatError } from "../lib/formatError.js";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { RefreshCcw, Save, ImageUp, Copy } from "lucide-react";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 const editableOptions = [
   { key: "characterName", label: "Имя персонажа" },
@@ -82,6 +83,7 @@ export default function DMPlayerProfile() {
   const nav = useNavigate();
   const toast = useToast();
   const { socket } = useSocket();
+  const readOnly = useReadOnly();
 
   const [player, setPlayer] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -195,6 +197,7 @@ export default function DMPlayerProfile() {
   }, [load, loadRequests, loadPresets]);
 
   async function save() {
+    if (readOnly) return;
     if (!playerId) return;
     setErr("");
     try {
@@ -271,6 +274,10 @@ export default function DMPlayerProfile() {
   }
 
   async function handleAvatarFileChange(e) {
+    if (readOnly) {
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -287,11 +294,13 @@ export default function DMPlayerProfile() {
   }
 
   function resetForm() {
+    if (readOnly) return;
     if (profile) applyProfile(profile);
     else setForm(emptyForm);
   }
 
   function toggleEditable(key) {
+    if (readOnly) return;
     const set = new Set(form.editableFields || []);
     if (set.has(key)) set.delete(key);
     else set.add(key);
@@ -299,6 +308,7 @@ export default function DMPlayerProfile() {
   }
 
   async function approve(id) {
+    if (readOnly) return;
     try {
       const note = requestNotes[id] || "";
       await api.dmApproveProfileRequest(id, note);
@@ -312,6 +322,7 @@ export default function DMPlayerProfile() {
   }
 
   async function reject(id) {
+    if (readOnly) return;
     try {
       const note = requestNotes[id] || "";
       await api.dmRejectProfileRequest(id, note);
@@ -330,7 +341,7 @@ export default function DMPlayerProfile() {
   const showRequestsTab = form.allowRequests || playerRequestsAll.length > 0;
   const updatedLabel = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "-";
   const dirty = hasUnsavedChanges(form, profile);
-  const canSave = dirty || (notCreated && hasAnyData(form));
+  const canSave = !readOnly && (dirty || (notCreated && hasAnyData(form)));
 
   return (
     <div className="card taped no-stamp">
@@ -345,6 +356,7 @@ export default function DMPlayerProfile() {
         <div className="row">
           <button className="btn secondary" onClick={() => nav("/dm/app/players")}>Назад</button>
           <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" aria-hidden="true" />Сохранить</button>
+          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
         </div>
       </div>
       <hr />
@@ -417,19 +429,20 @@ export default function DMPlayerProfile() {
                       </div>
                     </div>
                     <div style={{ minWidth: 160, display: "flex", flexDirection: "column", gap: 8 }}>
-                      <button className="btn secondary" onClick={() => applyFromRequest(r)}><Copy className="icon" aria-hidden="true" />Скопировать в форму</button>
+                      <button className="btn secondary" onClick={() => applyFromRequest(r)} disabled={readOnly}><Copy className="icon" aria-hidden="true" />Скопировать в форму</button>
                       {r.status === "pending" ? (
                         <>
                           <textarea
                             value={requestNotes[r.id] || ""}
                             onChange={(e) => setRequestNotes((prev) => ({ ...prev, [r.id]: e.target.value }))}
                             rows={3}
+                            disabled={readOnly}
                             maxLength={500}
                             placeholder="Ответ DM (опционально)"
                             style={{ width: "100%" }}
                           />
-                          <button className="btn" onClick={() => approve(r.id)}>Одобрить</button>
-                          <button className="btn secondary" onClick={() => reject(r.id)}>Отклонить</button>
+                          <button className="btn" onClick={() => approve(r.id)} disabled={readOnly}>Одобрить</button>
+                          <button className="btn secondary" onClick={() => reject(r.id)} disabled={readOnly}>Отклонить</button>
                         </>
                       ) : null}
                     </div>
@@ -458,7 +471,7 @@ export default function DMPlayerProfile() {
                             key={preset.id || preset.title}
                             type="button"
                             className="preset-card"
-                            onClick={() => applyProfilePreset(preset)}
+                            onClick={() => applyProfilePreset(preset)} disabled={readOnly}
                           >
                             <div className="preset-title">{preset.title}</div>
                             <div className="small">{preset.subtitle}</div>
@@ -468,18 +481,19 @@ export default function DMPlayerProfile() {
                     </div>
                   ) : null}
                   <div className="list" style={{ marginTop: 10 }}>
-                    <input value={form.characterName} onChange={(e) => setForm({ ...form, characterName: e.target.value })} placeholder="Имя персонажа" maxLength={80} style={inp} />
-                    <input value={form.classRole} onChange={(e) => setForm({ ...form, classRole: e.target.value })} placeholder="Класс / роль" maxLength={80} style={inp} />
-                    <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} placeholder="Уровень" style={inp} />
-                  <input value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} placeholder="URL аватара" maxLength={512} style={inp} />
+                    <input value={form.characterName} onChange={(e) => setForm({ ...form, characterName: e.target.value })} placeholder="Имя персонажа" maxLength={80} disabled={readOnly} style={inp} />
+                    <input value={form.classRole} onChange={(e) => setForm({ ...form, classRole: e.target.value })} placeholder="Класс / роль" maxLength={80} disabled={readOnly} style={inp} />
+                    <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} placeholder="Уровень" disabled={readOnly} style={inp} />
+                  <input value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} placeholder="URL аватара" maxLength={512} disabled={readOnly} style={inp} />
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleAvatarFileChange}
+                    disabled={readOnly}
                     style={{ display: "none" }}
                   />
-                  <button className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+                  <button className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading || readOnly}>
                     <ImageUp className="icon" aria-hidden="true" />{uploading ? "Загрузка..." : "Загрузить аватар"}
                   </button>
                     <div className="small note-hint">Можно вставить URL или загрузить файл (до 10MB).</div>
@@ -487,7 +501,7 @@ export default function DMPlayerProfile() {
                       <div className="title"><span className="section-icon stat" aria-hidden="true" />Статы</div>
                       <div className="row" style={{ flexWrap: "wrap" }}>
                         {statPresets.map((p) => (
-                          <button key={p.key} className="btn secondary" onClick={() => applyPreset(p)}>
+                          <button key={p.key} className="btn secondary" onClick={() => applyPreset(p)} disabled={readOnly}>
                             {p.label}
                           </button>
                         ))}
@@ -496,17 +510,18 @@ export default function DMPlayerProfile() {
                       <select
                         value={getRaceValue(form.stats)}
                         onChange={(e) => setForm({ ...form, stats: setRaceInStats(form.stats, e.target.value) })}
+                        disabled={readOnly}
                         style={inp}
                       >
                         {RACE_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
-                      <StatsEditor value={form.stats} onChange={(stats) => setForm({ ...form, stats })} />
+                      <StatsEditor value={form.stats} onChange={(stats) => setForm({ ...form, stats })} readOnly={readOnly} />
                     </div>
                     <div className="kv">
                       <div className="title"><span className="section-icon bio" aria-hidden="true" />Биография</div>
-                    <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={6} maxLength={2000} placeholder="Биография (до 2000 символов)" style={inp} />
+                    <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={6} maxLength={2000} placeholder="Биография (до 2000 символов)" disabled={readOnly} style={inp} />
                     <div className="small">{String(form.bio || "").length}/2000</div>
                   </div>
                 </div>
@@ -541,6 +556,7 @@ export default function DMPlayerProfile() {
                           type="checkbox"
                           checked={(form.editableFields || []).includes(opt.key)}
                           onChange={() => toggleEditable(opt.key)}
+                          disabled={readOnly}
                           style={{ width: 18, height: 18 }}
                         />
                         <span>{opt.label}</span>
@@ -551,6 +567,7 @@ export default function DMPlayerProfile() {
                         type="checkbox"
                         checked={!!form.allowRequests}
                         onChange={() => setForm({ ...form, allowRequests: !form.allowRequests })}
+                        disabled={readOnly}
                         style={{ width: 18, height: 18 }}
                       />
                       <span>Разрешить запросы на изменение</span>
@@ -560,7 +577,7 @@ export default function DMPlayerProfile() {
                     Игрок сможет менять только отмеченные поля. Запросы — альтернатива для остальных правок.
                   </div>
                   <div className="row" style={{ marginTop: 12, gap: 8 }}>
-                    <button className="btn secondary" onClick={resetForm}>Сбросить</button>
+                    <button className="btn secondary" onClick={resetForm} disabled={readOnly}>Сбросить</button>
                     <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" aria-hidden="true" />Сохранить</button>
                   </div>
                 </div>

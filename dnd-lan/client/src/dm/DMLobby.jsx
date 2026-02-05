@@ -2,11 +2,13 @@ import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
 
 export default function DMLobby() {
   const [items, setItems] = useState([]);
   const [err, setErr] = useState("");
   const { socket } = useSocket();
+  const readOnly = useReadOnly();
 
   const load = useCallback(async () => {
     const r = await api.dmRequests();
@@ -24,14 +26,17 @@ export default function DMLobby() {
   }, [load, socket]);
 
   async function approve(id) {
+    if (readOnly) return;
     setErr("");
     try { await api.dmApprove(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
   async function reject(id) {
+    if (readOnly) return;
     setErr("");
     try { await api.dmReject(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
   async function ban(id) {
+    if (readOnly) return;
     setErr("");
     try { await api.dmBan(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
@@ -43,6 +48,7 @@ export default function DMLobby() {
           <div style={{ fontWeight: 900, fontSize: 20 }}>Лобби / Подключения</div>
           <div className="small">Заявки на вход: принять / отклонить / заблокировать IP</div>
           <hr />
+          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
           {err && <div className="badge off">Ошибка: {err}</div>}
           <div className="list">
             {items.length === 0 && <div className="badge warn">Нет заявок</div>}
@@ -54,9 +60,9 @@ export default function DMLobby() {
                   <div className="small">{(r.user_agent || "").slice(0, 80)}</div>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
-                  <button className="btn" onClick={() => approve(r.id)}>Принять</button>
-                  <button className="btn secondary" onClick={() => reject(r.id)}>Отклонить</button>
-                  <button className="btn danger" onClick={() => ban(r.id)}>Заблок.</button>
+                  <button className="btn" onClick={() => approve(r.id)} disabled={readOnly}>Принять</button>
+                  <button className="btn secondary" onClick={() => reject(r.id)} disabled={readOnly}>Отклонить</button>
+                  <button className="btn danger" onClick={() => ban(r.id)} disabled={readOnly}>Заблок.</button>
                 </div>
               </div>
             ))}
