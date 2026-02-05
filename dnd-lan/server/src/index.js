@@ -3,7 +3,6 @@ import http from "node:http";
 import path from "node:path";
 import fs from "node:fs";
 import helmet from "helmet";
-import morgan from "morgan";
 import cookieParser from "cookie-parser";
 
 import { closeDb, getDb, initDb } from "./db.js";
@@ -16,6 +15,7 @@ import { registerHealthRoutes } from "./health.js";
 import { checkReadiness } from "./readiness.js";
 import { setDegraded, clearDegraded } from "./degraded.js";
 import { assertWritable } from "./writeGate.js";
+import { httpLogger, logger } from "./logger.js";
 
 import { serverInfoRouter } from "./routes/serverInfo.js";
 import { setupRouter } from "./routes/setup.js";
@@ -42,7 +42,7 @@ startAutoBackups();
 
 const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(morgan("dev"));
+app.use(httpLogger);
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 registerHealthRoutes(app, { getDb, uploadsDir });
@@ -78,7 +78,7 @@ app.use((req, res, next) => {
     if (allow) {
       res.setHeader("Access-Control-Allow-Origin", origin);
       res.setHeader("Access-Control-Allow-Credentials", "true");
-      res.setHeader("Access-Control-Allow-Headers", "content-type, x-player-token");
+      res.setHeader("Access-Control-Allow-Headers", "content-type, x-player-token, x-request-id");
       res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
       if (req.method === "OPTIONS") return res.sendStatus(204);
     }
@@ -116,13 +116,13 @@ if (fs.existsSync(publicDir)) {
 }
 
 // Error handler (JSON-only API)
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   if (!err) return res.status(500).json({ error: "server_error" });
   if (err.type === "entity.too.large") return res.status(413).json({ error: "payload_too_large" });
   if (err instanceof SyntaxError && err.status === 400) return res.status(400).json({ error: "invalid_json" });
   const status = Number(err.status || err.statusCode) || 500;
   const code = err.code && typeof err.code === "string" ? err.code : "server_error";
-  console.error("request error:", err);
+  req?.log?.error({ err }, "request error");
   return res.status(status).json({ error: code });
 });
 
@@ -164,7 +164,7 @@ const idleSweepInterval = setInterval(() => {
       }
     }
   } catch (e) {
-    console.error("idle sweep failed:", e);
+    logger.error({ err: e }, "idle sweep failed");
   }
 }, SWEEP_EVERY_MS);
 
@@ -210,7 +210,7 @@ if (TRANSFER_CLEANUP_EVERY_MS > 0) {
 
       cleanupExpiredTransfers();
     } catch (e) {
-      console.error("cleanup failed:", e);
+      logger.error({ err: e }, "cleanup failed");
     }
   }, TRANSFER_CLEANUP_EVERY_MS);
 
@@ -218,8 +218,8 @@ if (TRANSFER_CLEANUP_EVERY_MS > 0) {
 }
 
 httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log(`LAN server listening on 0.0.0.0:${PORT}`);
-  console.log(`DM: http://localhost:${PORT}/dm`);
+  logger.info({ port: PORT }, "LAN server listening on 0.0.0.0");
+  logger.info({ port: PORT, url: `http://localhost:${PORT}/dm` }, "DM available");
 });
 
 let shuttingDown = false;
@@ -228,7 +228,7 @@ const SHUTDOWN_TIMEOUT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10_000);
 function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
-  console.log(`Received ${signal}, shutting down...`);
+  logger.info({ signal }, "shutdown started");
 
   clearInterval(idleSweepInterval);
   if (app.locals.cleanupInterval) clearInterval(app.locals.cleanupInterval);
@@ -236,7 +236,7 @@ function shutdown(signal) {
   stopAutoBackups();
 
   const forceExitTimer = setTimeout(() => {
-    console.error("Forced shutdown after timeout");
+    logger.error({ timeoutMs: SHUTDOWN_TIMEOUT_MS }, "forced shutdown after timeout");
     process.exit(1);
   }, SHUTDOWN_TIMEOUT_MS);
 
@@ -246,7 +246,7 @@ function shutdown(signal) {
       try {
         closeDb();
       } catch (error) {
-        console.error("Failed to close DB:", error);
+        logger.error({ err: error }, "failed to close DB");
       }
       process.exit(0);
     });

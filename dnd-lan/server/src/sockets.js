@@ -9,6 +9,7 @@ import { getDegradedState } from "./degraded.js";
 const GRACE_MS = Number(process.env.PRESENCE_GRACE_MS || 4000);
 const activeSocketsByPlayerId = new Map();
 const offlineTimersByPlayerId = new Map();
+let shuttingDown = false;
 
 function getActiveCount(playerId) {
   return activeSocketsByPlayerId.get(playerId) || 0;
@@ -69,6 +70,7 @@ function trackPlayerConnect({ db, io, partyId, playerId, playerName }) {
 }
 
 function trackPlayerDisconnect({ db, io, partyId, playerId, playerName }) {
+  if (shuttingDown) return;
   const prev = getActiveCount(playerId);
   const next = Math.max(0, prev - 1);
 
@@ -97,6 +99,16 @@ export function createSocketServer(httpServer) {
     pingInterval: 10000,
     pingTimeout: 30000
   });
+  const originalClose = io.close.bind(io);
+  io.close = (...args) => {
+    shuttingDown = true;
+    for (const timer of offlineTimersByPlayerId.values()) {
+      clearTimeout(timer);
+    }
+    offlineTimersByPlayerId.clear();
+    activeSocketsByPlayerId.clear();
+    return originalClose(...args);
+  };
 
   io.use((socket, next) => {
     // DM via cookie
