@@ -47,6 +47,35 @@ const statPresets = [
   { key: "hero", label: "16‑14‑13‑12‑10‑8", stats: { str: 16, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } }
 ];
 
+const RACE_OPTIONS = [
+  { value: "human", label: "Человек" },
+  { value: "elf", label: "Эльф" },
+  { value: "half_elf", label: "Полуэльф" },
+  { value: "dwarf", label: "Дворф" },
+  { value: "halfling", label: "Полурослик" },
+  { value: "gnome", label: "Гном" },
+  { value: "orc", label: "Орк" },
+  { value: "half_orc", label: "Полуорк" },
+  { value: "dragonborn", label: "Драконорожденный" },
+  { value: "tiefling", label: "Тифлинг" },
+  { value: "goliath", label: "Голиаф" }
+];
+
+function getRaceValue(stats) {
+  const raw = String(stats?.race || "").trim();
+  return raw || "human";
+}
+
+function setRaceInStats(stats, race) {
+  const next = { ...(stats || {}) };
+  if (!race) {
+    delete next.race;
+    return next;
+  }
+  next.race = race;
+  return next;
+}
+
 export default function DMPlayerProfile() {
   const { id } = useParams();
   const playerId = Number(id);
@@ -188,7 +217,10 @@ export default function DMPlayerProfile() {
   }
 
   function applyPreset(preset) {
-    setForm((prev) => ({ ...prev, stats: { ...preset.stats } }));
+    setForm((prev) => ({
+      ...prev,
+      stats: { ...preset.stats, race: prev?.stats?.race ?? preset?.stats?.race }
+    }));
   }
 
   function applyProfilePreset(preset) {
@@ -198,7 +230,9 @@ export default function DMPlayerProfile() {
       ...prev,
       ...data,
       level: Number.isFinite(nextLevel) ? nextLevel : prev.level,
-      stats: data.stats ? { ...(data.stats || {}) } : prev.stats
+      stats: data.stats
+        ? { ...(data.stats || {}), race: prev?.stats?.race ?? data?.stats?.race }
+        : prev.stats
     }));
   }
 
@@ -459,6 +493,15 @@ export default function DMPlayerProfile() {
                         ))}
                       </div>
                       <div className="small note-hint">Пресет перезапишет текущие статы.</div>
+                      <select
+                        value={getRaceValue(form.stats)}
+                        onChange={(e) => setForm({ ...form, stats: setRaceInStats(form.stats, e.target.value) })}
+                        style={inp}
+                      >
+                        {RACE_OPTIONS.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                       <StatsEditor value={form.stats} onChange={(stats) => setForm({ ...form, stats })} />
                     </div>
                     <div className="kv">

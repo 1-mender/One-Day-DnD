@@ -12,6 +12,11 @@ function StatusStamp({ status }) {
 export default function PlayerDossierCard({ player, rightActions = null, ticketBalance = null, ticketStreak = null }) {
   const initial = (player.displayName || "?").slice(0, 1).toUpperCase();
   const avatar = player.avatarUrl || null;
+  const weight = Number(player.inventoryWeight || 0);
+  const limit = Number(player.inventoryLimit || 0);
+  const weightLabel = Number.isFinite(limit) && limit > 0
+    ? `${weight.toFixed(2)} / ${limit}`
+    : `${weight.toFixed(2)} / ∞`;
 
   return (
     <div className="item taped dossier-card" style={{ alignItems: "stretch" }}>
@@ -45,8 +50,8 @@ export default function PlayerDossierCard({ player, rightActions = null, ticketB
           {player.inventoryOverLimit ? (
             <span
               className="dossier-overweight"
-              title="Перегруз"
-              aria-label="Перегруз"
+              title={`Перегруз • Вес: ${weightLabel}`}
+              aria-label={`Перегруз • Вес: ${weightLabel}`}
             >
               <Scale className="icon" aria-hidden="true" />
             </span>

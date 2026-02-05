@@ -389,6 +389,7 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
 
   const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
+  req.app.locals.io?.to("dm").emit("players:updated");
   res.json({ ok: true, profile: mapProfile(row) });
 });
 
@@ -434,6 +435,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   db.prepare(`UPDATE character_profiles SET ${sets.join(", ")} WHERE player_id=?`).run(...args);
 
   req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
+  req.app.locals.io?.to("dm").emit("players:updated");
   const updated = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   res.json({ ok: true, profile: mapProfile(updated) });
 });
@@ -623,6 +625,7 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
   }
 
   req.app.locals.io?.to(`player:${reqRow.player_id}`).emit("profile:updated");
+  req.app.locals.io?.to("dm").emit("players:updated");
   req.app.locals.io?.to("dm").emit("profile:requestsUpdated");
   res.json({ ok: true });
 });

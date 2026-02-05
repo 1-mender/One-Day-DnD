@@ -92,6 +92,62 @@ const PROFILE_PRESETS = [
 const PRESET_HINT = "Шаблон заполнит имя, класс, уровень, статы и био. Можно потом поправить.";
 const PRESET_STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
 
+const RACE_OPTIONS = [
+  { value: "human", label: "Человек" },
+  { value: "elf", label: "Эльф" },
+  { value: "half_elf", label: "Полуэльф" },
+  { value: "dwarf", label: "Дворф" },
+  { value: "halfling", label: "Полурослик" },
+  { value: "gnome", label: "Гном" },
+  { value: "orc", label: "Орк" },
+  { value: "half_orc", label: "Полуорк" },
+  { value: "dragonborn", label: "Драконорожденный" },
+  { value: "tiefling", label: "Тифлинг" },
+  { value: "goliath", label: "Голиаф" }
+];
+
+const RACE_BONUS = {
+  human: 0,
+  elf: 0,
+  half_elf: 0,
+  dwarf: 5,
+  halfling: -5,
+  gnome: -5,
+  orc: 5,
+  half_orc: 5,
+  dragonborn: 5,
+  tiefling: 0,
+  goliath: 10
+};
+
+function getRaceValue(stats) {
+  const raw = String(stats?.race || "").trim();
+  return raw || "human";
+}
+
+function getRaceLabel(race) {
+  return RACE_OPTIONS.find((opt) => opt.value === race)?.label || "Человек";
+}
+
+function getRaceBonus(race) {
+  return Number(RACE_BONUS[race] ?? 0);
+}
+
+function formatRaceBonus(bonus) {
+  const value = Number(bonus) || 0;
+  return value > 0 ? `+${value}` : String(value);
+}
+
+function setRaceInStats(stats, race) {
+  const next = { ...(stats || {}) };
+  if (!race) {
+    delete next.race;
+    return next;
+  }
+  next.race = race;
+  return next;
+}
+
 export default function Profile() {
   const toast = useToast();
   const { socket } = useSocket();
@@ -318,6 +374,11 @@ export default function Profile() {
   }
 
   const updatedLabel = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "-";
+  const raceValue = getRaceValue(profile?.stats);
+  const raceLabel = getRaceLabel(raceValue);
+  const raceBonus = getRaceBonus(raceValue);
+  const raceBonusLabel = formatRaceBonus(raceBonus);
+  const raceHint = `Бонус лимита веса: ${raceBonusLabel}`;
   const allowGlobalEdit = !!presetAccess?.enabled && !!presetAccess?.playerEdit;
   const allowGlobalRequest = !!presetAccess?.enabled && !!presetAccess?.playerRequest;
   const editPresets = useMemo(
@@ -376,6 +437,11 @@ export default function Profile() {
                   <div className="character-nameplate">{profile.characterName || "Без имени"}</div>
                   <div className="small character-sub">
                     Разрешено редактировать: {editableFields.length ? editableFields.join(", ") : "нет"}
+                  </div>
+                  <div className="small character-race" title={raceHint} aria-label={raceHint}>
+                    <span className="character-race-label">Раса:</span>
+                    <span className="character-race-value">{raceLabel}</span>
+                    <span className={`badge ${raceBonus > 0 ? "ok" : raceBonus < 0 ? "off" : "secondary"}`}>{raceBonusLabel}</span>
                   </div>
                   {canEditBasic ? (
                     <button className="btn secondary" style={{ marginTop: 10 }} onClick={() => openEdit("basic")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
@@ -539,7 +605,19 @@ export default function Profile() {
           ) : null}
 
           {editMode === "stats" ? (
-            <StatsEditor value={draft.stats} onChange={(stats) => setDraft({ ...draft, stats })} />
+            <>
+              <div className="small note-hint">Раса влияет на лимит веса инвентаря.</div>
+              <select
+                value={getRaceValue(draft.stats)}
+                onChange={(e) => setDraft({ ...draft, stats: setRaceInStats(draft.stats, e.target.value) })}
+                style={inp}
+              >
+                {RACE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+              <StatsEditor value={draft.stats} onChange={(stats) => setDraft({ ...draft, stats })} />
+            </>
           ) : null}
 
           {editMode === "bio" ? (
@@ -637,6 +715,15 @@ export default function Profile() {
             placeholder="Уровень"
             style={inp}
           />
+          <select
+            value={getRaceValue(requestDraft.stats)}
+            onChange={(e) => setRequestDraft({ ...requestDraft, stats: setRaceInStats(requestDraft.stats, e.target.value) })}
+            style={inp}
+          >
+            {RACE_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
           <StatsEditor value={requestDraft.stats} onChange={(stats) => setRequestDraft({ ...requestDraft, stats })} />
           <textarea
             value={requestDraft.bio}
@@ -666,7 +753,7 @@ function mergePreset(prev, preset) {
   return {
     ...prev,
     ...data,
-    stats: { ...(data.stats || {}) }
+    stats: { ...(data.stats || {}), race: data?.stats?.race ?? prev?.stats?.race }
   };
 }
 

@@ -67,9 +67,12 @@ export default function Inventory() {
     if (!socket) return () => {};
     load().catch(() => {});
     const onUpdated = () => load().catch(() => {});
+    const onProfile = () => load().catch(() => {});
     socket.on("inventory:updated", onUpdated);
+    socket.on("profile:updated", onProfile);
     return () => {
       socket.off("inventory:updated", onUpdated);
+      socket.off("profile:updated", onProfile);
     };
   }, [load, socket]);
 
@@ -325,6 +328,35 @@ export default function Inventory() {
               )}
             </div>
           </div>
+          <details className="inv-icon-picker" open>
+            <summary>Список доступных иконок</summary>
+            <div className="inv-icon-grid">
+              {INVENTORY_ICON_SECTIONS.map((section) => (
+                <div key={section.key} className="inv-icon-section">
+                  <div className="inv-icon-section-title">{section.label}</div>
+                  <div className="inv-icon-section-grid">
+                    {section.items.map((icon) => {
+                      const Icon = icon.Icon;
+                      const active = form.iconKey === icon.key;
+                      return (
+                        <button
+                          key={icon.key}
+                          type="button"
+                          className={`inv-icon-tile${active ? " active" : ""}`}
+                          onClick={() => setForm({ ...form, iconKey: icon.key })}
+                          title={icon.label}
+                          aria-pressed={active}
+                        >
+                          <Icon className="inv-icon" aria-hidden="true" />
+                          <span>{icon.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
           <input
             value={(form.tags || []).join(", ")}
             onChange={(e)=>setForm({ ...form, tags: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) })}

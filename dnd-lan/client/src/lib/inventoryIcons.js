@@ -1,12 +1,24 @@
-import {
+﻿import {
   GiAxeSwing,
   GiBowieKnife,
   GiBowArrow,
   GiBroadsword,
+  GiCrossbow,
+  GiFlail,
+  GiHalberd,
+  GiHammerNails,
+  GiKatana,
   GiMaceHead,
   GiShield,
   GiSpears,
+  GiWarAxe,
+  GiBreastplate,
+  GiHelmet,
+  GiShoulderArmor,
+  GiGauntlet,
+  GiBoots,
   GiBackpack,
+  GiShoulderBag,
   GiBookCover,
   GiBookAura,
   GiBookPile,
@@ -16,6 +28,9 @@ import {
   GiLockedChest,
   GiCrown,
   GiGems,
+  GiCoins,
+  GiGoldStack,
+  GiTreasureMap,
   GiKey,
   GiKeyring,
   GiLockpicks,
@@ -76,11 +91,28 @@ export const INVENTORY_ICON_SECTIONS = [
     items: [
       { key: "gi_broadsword", label: "Меч", Icon: GiBroadsword },
       { key: "gi_bow_arrow", label: "Лук", Icon: GiBowArrow },
+      { key: "gi_crossbow", label: "Арбалет", Icon: GiCrossbow },
       { key: "gi_bowie_knife", label: "Кинжал", Icon: GiBowieKnife },
       { key: "gi_axe_swing", label: "Топор", Icon: GiAxeSwing },
+      { key: "gi_war_axe", label: "Боевой топор", Icon: GiWarAxe },
+      { key: "gi_hammer_nails", label: "Молот", Icon: GiHammerNails },
       { key: "gi_mace_head", label: "Булава", Icon: GiMaceHead },
+      { key: "gi_flail", label: "Цеп", Icon: GiFlail },
+      { key: "gi_halberd", label: "Алебарда", Icon: GiHalberd },
+      { key: "gi_katana", label: "Катана", Icon: GiKatana },
       { key: "gi_spears", label: "Копьё", Icon: GiSpears },
       { key: "gi_shield", label: "Щит", Icon: GiShield }
+    ]
+  },
+  {
+    key: "armor",
+    label: "Броня",
+    items: [
+      { key: "gi_helmet", label: "Шлем", Icon: GiHelmet },
+      { key: "gi_breastplate", label: "Кираса", Icon: GiBreastplate },
+      { key: "gi_shoulder_armor", label: "Наплечник", Icon: GiShoulderArmor },
+      { key: "gi_gauntlet", label: "Латная перчатка", Icon: GiGauntlet },
+      { key: "gi_boots", label: "Ботинки", Icon: GiBoots }
     ]
   },
   {
@@ -144,6 +176,7 @@ export const INVENTORY_ICON_SECTIONS = [
     label: "Снаряжение",
     items: [
       { key: "gi_backpack", label: "Рюкзак", Icon: GiBackpack },
+      { key: "gi_shoulder_bag", label: "Сумка через плечо", Icon: GiShoulderBag },
       { key: "gi_key", label: "Ключ", Icon: GiKey },
       { key: "gi_keyring", label: "Связка ключей", Icon: GiKeyring },
       { key: "gi_lockpicks", label: "Отмычки", Icon: GiLockpicks },
@@ -156,6 +189,15 @@ export const INVENTORY_ICON_SECTIONS = [
       { key: "gi_compass", label: "Компас", Icon: GiCompass },
       { key: "gi_gems", label: "Драгоценности", Icon: GiGems },
       { key: "gi_ring", label: "Кольцо", Icon: GiRing }
+    ]
+  },
+  {
+    key: "treasure",
+    label: "Сокровища",
+    items: [
+      { key: "gi_coins", label: "Монеты", Icon: GiCoins },
+      { key: "gi_gold_stack", label: "Золото", Icon: GiGoldStack },
+      { key: "gi_treasure_map", label: "Карта сокровищ", Icon: GiTreasureMap }
     ]
   },
   {
