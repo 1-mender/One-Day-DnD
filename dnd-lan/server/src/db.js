@@ -76,6 +76,20 @@ function ensureMigrations(database) {
   database.exec("CREATE INDEX IF NOT EXISTS idx_monster_images_monster ON monster_images(monster_id);");
   database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);");
   database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);");
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS ticket_quests(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      player_id INTEGER NOT NULL,
+      quest_key TEXT NOT NULL,
+      day_key INTEGER NOT NULL,
+      reward_granted INTEGER NOT NULL DEFAULT 0,
+      rewarded_at INTEGER,
+      created_at INTEGER NOT NULL,
+      UNIQUE(player_id, quest_key, day_key),
+      FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+    );`
+  );
+  database.exec("CREATE INDEX IF NOT EXISTS idx_ticket_quests_player_day ON ticket_quests(player_id, day_key);");
 }
 
 export function initDb() {

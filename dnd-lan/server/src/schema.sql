@@ -187,6 +187,18 @@ CREATE TABLE IF NOT EXISTS ticket_plays (
   FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS ticket_quests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  quest_key TEXT NOT NULL,
+  day_key INTEGER NOT NULL,
+  reward_granted INTEGER NOT NULL DEFAULT 0,
+  rewarded_at INTEGER,
+  created_at INTEGER NOT NULL,
+  UNIQUE(player_id, quest_key, day_key),
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS ticket_purchases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id INTEGER NOT NULL,
@@ -213,3 +225,4 @@ CREATE INDEX IF NOT EXISTS idx_profile_requests_player ON profile_change_request
 CREATE INDEX IF NOT EXISTS idx_tickets_player ON tickets(player_id);
 CREATE INDEX IF NOT EXISTS idx_ticket_plays_player_day ON ticket_plays(player_id, day_key);
 CREATE INDEX IF NOT EXISTS idx_ticket_purchases_player_day ON ticket_purchases(player_id, day_key);
+CREATE INDEX IF NOT EXISTS idx_ticket_quests_player_day ON ticket_quests(player_id, day_key);

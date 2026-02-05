@@ -82,18 +82,25 @@ export default function DMSettings() {
     streakStep: (ticketCur.streak?.step ?? 0) !== (ticketBase.streak?.step ?? 0),
     streakFlatBonus: (ticketCur.streak?.flatBonus ?? 0) !== (ticketBase.streak?.flatBonus ?? 0)
   };
+  const dailyQuestChanged = JSON.stringify(ticketCur.dailyQuest || {}) !== JSON.stringify(ticketBase.dailyQuest || {});
   const showGeneralBlock = !showOnlyChanged || Object.values(generalChanges).some(Boolean);
   const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
+  const showDailyQuestBlock = !showOnlyChanged || dailyQuestChanged;
 
   function isGameChanged(key, g) {
     const base = ticketBase.games?.[key] || {};
+    const ui = g.ui || {};
+    const baseUi = base.ui || {};
     return (
       (g.enabled ?? true) !== (base.enabled ?? true) ||
       (g.entryCost ?? 0) !== (base.entryCost ?? 0) ||
       (g.rewardMin ?? 0) !== (base.rewardMin ?? 0) ||
       (g.rewardMax ?? 0) !== (base.rewardMax ?? 0) ||
       (g.lossPenalty ?? 0) !== (base.lossPenalty ?? 0) ||
-      (g.dailyLimit ?? 0) !== (base.dailyLimit ?? 0)
+      (g.dailyLimit ?? 0) !== (base.dailyLimit ?? 0) ||
+      String(ui.difficulty ?? "") !== String(baseUi.difficulty ?? "") ||
+      String(ui.risk ?? "") !== String(baseUi.risk ?? "") ||
+      String(ui.time ?? "") !== String(baseUi.time ?? "")
     );
   }
 
@@ -156,15 +163,79 @@ export default function DMSettings() {
         delete rest.streak;
         return { ...next, ...rest };
       }
+      if (patch?.dailyQuest && typeof patch.dailyQuest === "object") {
+        next.dailyQuest = { ...(next.dailyQuest || {}), ...patch.dailyQuest };
+        const rest = { ...patch };
+        delete rest.dailyQuest;
+        return { ...next, ...rest };
+      }
       return { ...next, ...(patch || {}) };
     });
+  }
+
+  function addDailyQuest() {
+    const key = `dq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
+    pool.push({ key, enabled: true, title: "Новый квест", description: "", goal: 2, reward: 2 });
+    const activeKey = ticketRules?.dailyQuest?.activeKey || key;
+    updateTicketRules({ dailyQuest: { pool, activeKey } });
+  }
+
+  function updateDailyQuest(idx, patch) {
+    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
+    if (!pool[idx]) return;
+    pool[idx] = { ...pool[idx], ...(patch || {}) };
+    updateTicketRules({ dailyQuest: { pool } });
+  }
+
+  function removeDailyQuest(idx) {
+    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
+    const removed = pool.splice(idx, 1)[0];
+    let activeKey = ticketRules?.dailyQuest?.activeKey || "";
+    if (removed?.key && removed.key === activeKey) {
+      activeKey = pool.find((q) => q.enabled !== false)?.key || pool[0]?.key || "";
+    }
+    updateTicketRules({ dailyQuest: { pool, activeKey } });
+  }
+
+  function setActiveDailyQuest(key) {
+    updateTicketRules({ dailyQuest: { activeKey: key } });
+  }
+
+  async function resetDailyQuestToday() {
+    const activeKey = ticketRules?.dailyQuest?.activeKey || "";
+    if (!activeKey) {
+      setTicketErr("Нет активного daily‑quest.");
+      return;
+    }
+    const ok = window.confirm("Сбросить прогресс daily‑quest на сегодня для всех игроков?");
+    if (!ok) return;
+    setTicketErr("");
+    setTicketMsg("");
+    setTicketBusy(true);
+    try {
+      await api.dmTicketsResetQuest(activeKey);
+      setTicketMsg("Daily‑quest сброшен на сегодня.");
+    } catch (e) {
+      setTicketErr(formatError(e));
+    } finally {
+      setTicketBusy(false);
+    }
   }
 
   function updateTicketGame(key, patch) {
     setTicketRules((prev) => {
       const next = { ...(prev || {}) };
       const games = { ...(next.games || {}) };
-      games[key] = { ...(games[key] || {}), ...(patch || {}) };
+      const current = { ...(games[key] || {}) };
+      if (patch?.ui && typeof patch.ui === "object") {
+        current.ui = { ...(current.ui || {}), ...patch.ui };
+        const rest = { ...(patch || {}) };
+        delete rest.ui;
+        games[key] = { ...current, ...rest };
+      } else {
+        games[key] = { ...current, ...(patch || {}) };
+      }
       next.games = games;
       return next;
     });
@@ -629,6 +700,97 @@ export default function DMSettings() {
                 <div className="badge warn">{"\u041d\u0435\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043d\u044b\u0445 \u043e\u0431\u0449\u0438\u0445 \u043f\u0440\u0430\u0432\u0438\u043b."}</div>
               )}
 
+              {showDailyQuestBlock ? (
+                <div className="paper-note">
+                  <div className="title">{"Daily quest"}</div>
+                  <div className="settings-fields" style={{ marginTop: 8 }}>
+                    <label className="row" style={{ gap: 10, alignItems: "center" }} title={RULE_TIPS.dailyQuestEnabled}>
+                      <input
+                        type="checkbox"
+                        checked={ticketRules?.dailyQuest?.enabled !== false}
+                        onChange={(e) => updateTicketRules({ dailyQuest: { enabled: e.target.checked } })}
+                      />
+                      <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c Daily quest"}</span>
+                    </label>
+                    <button className="btn secondary" onClick={addDailyQuest}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c"}</button>
+                    <button className="btn secondary" onClick={resetDailyQuestToday} disabled={ticketBusy}>
+                      {"\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043d\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f"}
+                    </button>
+                  </div>
+
+                  <div className="settings-fields" style={{ marginTop: 6 }}>
+                    <select
+                      value={ticketRules?.dailyQuest?.activeKey || ""}
+                      onChange={(e) => setActiveDailyQuest(e.target.value)}
+                      title={RULE_TIPS.dailyQuestTitle}
+                    >
+                      {(ticketRules?.dailyQuest?.pool || []).map((q) => (
+                        <option key={q.key} value={q.key}>
+                          {q.title || q.key}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="settings-grid" style={{ marginTop: 8 }}>
+                    {(ticketRules?.dailyQuest?.pool || []).map((q, idx) => (
+                      <div key={q.key || idx} className="item settings-card">
+                        <div className="settings-head">
+                          <div style={{ fontWeight: 800 }}>
+                            {q.title || `Quest #${idx + 1}`}
+                            {ticketRules?.dailyQuest?.activeKey === q.key ? <span className="badge ok" style={{ marginLeft: 8 }}>active</span> : null}
+                          </div>
+                          <div className="row" style={{ gap: 8 }}>
+                            <label className="row" style={{ gap: 6 }} title={RULE_TIPS.dailyQuestEnabled}>
+                              <input
+                                type="checkbox"
+                                checked={q.enabled !== false}
+                                onChange={(e) => updateDailyQuest(idx, { enabled: e.target.checked })}
+                              />
+                              <span>{"\u0412\u043a\u043b"}</span>
+                            </label>
+                            <button className="btn danger" onClick={() => removeDailyQuest(idx)}>{"\u0423\u0434\u0430\u043b\u0438\u0442\u044c"}</button>
+                          </div>
+                        </div>
+                        <div className="settings-fields">
+                          <input
+                            value={q.title || ""}
+                            onChange={(e) => updateDailyQuest(idx, { title: e.target.value })}
+                            placeholder={"\u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a"}
+                            maxLength={80}
+                            title={RULE_TIPS.dailyQuestTitle}
+                          />
+                          <input
+                            value={q.description || ""}
+                            onChange={(e) => updateDailyQuest(idx, { description: e.target.value })}
+                            placeholder={"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"}
+                            maxLength={160}
+                            title={RULE_TIPS.dailyQuestDescription}
+                          />
+                          <input
+                            type="number"
+                            min="1"
+                            value={q.goal ?? 2}
+                            onChange={(e) => updateDailyQuest(idx, { goal: Number(e.target.value) || 1 })}
+                            placeholder={"\u0426\u0435\u043b\u044c"}
+                            title={RULE_TIPS.dailyQuestGoal}
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={q.reward ?? 0}
+                            onChange={(e) => updateDailyQuest(idx, { reward: Number(e.target.value) || 0 })}
+                            placeholder={"\u041d\u0430\u0433\u0440\u0430\u0434\u0430"}
+                            title={RULE_TIPS.dailyQuestReward}
+                          />
+                        </div>
+                        <div className="settings-sub">key: {q.key || "—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
               <div className="paper-note">
                 <div className="title">{"\u0418\u0433\u0440\u044b"}</div>
                 <div className="settings-grid" style={{ marginTop: 8 }}>
@@ -688,6 +850,29 @@ export default function DMSettings() {
                             onChange={(e) => updateTicketGame(key, { dailyLimit: Number(e.target.value) || 0 })}
                             placeholder={"\u041b\u0438\u043c\u0438\u0442/\u0434\u0435\u043d\u044c"}
                             title={RULE_TIPS.dailyLimit}
+                          />
+                        </div>
+                        <div className="settings-fields">
+                          <input
+                            value={g.ui?.difficulty ?? ""}
+                            onChange={(e) => updateTicketGame(key, { ui: { difficulty: e.target.value } })}
+                            placeholder={"\u0421\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u044c"}
+                            maxLength={40}
+                            title={RULE_TIPS.uiDifficulty}
+                          />
+                          <input
+                            value={g.ui?.risk ?? ""}
+                            onChange={(e) => updateTicketGame(key, { ui: { risk: e.target.value } })}
+                            placeholder={"\u0420\u0438\u0441\u043a"}
+                            maxLength={40}
+                            title={RULE_TIPS.uiRisk}
+                          />
+                          <input
+                            value={g.ui?.time ?? ""}
+                            onChange={(e) => updateTicketGame(key, { ui: { time: e.target.value } })}
+                            placeholder={"\u0412\u0440\u0435\u043c\u044f"}
+                            maxLength={40}
+                            title={RULE_TIPS.uiTime}
                           />
                         </div>
                         <div className="settings-sub">{"\u041d\u0430\u0433\u0440\u0430\u0434\u0430 \u0438 \u0448\u0442\u0440\u0430\u0444\u044b \u0437\u0430\u0434\u0430\u044e\u0442 \u0434\u0438\u0430\u043f\u0430\u0437\u043e\u043d \u0431\u0438\u043b\u0435\u0442\u043e\u0432."}</div>
@@ -773,12 +958,20 @@ const RULE_TIPS = {
   streakMax: "\u041c\u0430\u043a\u0441\u0438\u043c\u0443\u043c \u0441\u0435\u0440\u0438\u0438 \u043f\u043e\u0434\u0440\u044f\u0434.",
   streakStep: "\u0428\u0430\u0433 \u0431\u043e\u043d\u0443\u0441\u0430 \u0437\u0430 \u0441\u0435\u0440\u0438\u044e.",
   streakFlatBonus: "\u041f\u043b\u043e\u0441\u043a\u0438\u0439 \u0431\u043e\u043d\u0443\u0441 \u0437\u0430 \u0441\u0435\u0440\u0438\u044e.",
+  dailyQuestEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0435\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u043e\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u0435.",
+  dailyQuestTitle: "\u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a \u0435\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u043e\u0433\u043e \u0437\u0430\u0434\u0430\u043d\u0438\u044f.",
+  dailyQuestDescription: "\u041a\u043e\u0440\u043e\u0442\u043a\u043e\u0435 \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0437\u0430\u0434\u0430\u0447\u0438.",
+  dailyQuestGoal: "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0440\u0430\u0437\u043d\u044b\u0445 \u0438\u0433\u0440 \u043d\u0443\u0436\u043d\u043e \u0441\u044b\u0433\u0440\u0430\u0442\u044c \u0437\u0430 \u0434\u0435\u043d\u044c.",
+  dailyQuestReward: "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u0432\u044b\u0434\u0430\u0442\u044c \u0437\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435.",
   gameEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0438\u0433\u0440\u0443 \u0432 \u0430\u0440\u043a\u0430\u0434\u0435.",
   entryCost: "\u0426\u0435\u043d\u0430 \u0432\u0445\u043e\u0434\u0430 \u0432 \u0438\u0433\u0440\u0443.",
   rewardMin: "\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u0430\u0433\u0440\u0430\u0434\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
   rewardMax: "\u041c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u0430\u0433\u0440\u0430\u0434\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
   lossPenalty: "\u0428\u0442\u0440\u0430\u0444 \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u043f\u0440\u0438 \u043f\u0440\u043e\u0438\u0433\u0440\u044b\u0448\u0435.",
   dailyLimit: "\u041b\u0438\u043c\u0438\u0442 \u0438\u0433\u0440 \u0432 \u0434\u0435\u043d\u044c.",
+  uiDifficulty: "\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0435\u043c\u0430\u044f \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0438\u0433\u0440\u044b.",
+  uiRisk: "\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0435\u043c\u044b\u0439 \u0443\u0440\u043e\u0432\u0435\u043d\u044c \u0440\u0438\u0441\u043a\u0430.",
+  uiTime: "\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0435\u043c\u043e\u0435 \u0432\u0440\u0435\u043c\u044f \u0438\u0433\u0440\u044b.",
   shopEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0442\u043e\u0432\u0430\u0440 \u0432 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0435.",
   shopPrice: "\u0426\u0435\u043d\u0430 \u0442\u043e\u0432\u0430\u0440\u0430 \u0432 \u0431\u0438\u043b\u0435\u0442\u0430\u0445.",
   shopDailyLimit: "\u041b\u0438\u043c\u0438\u0442 \u043f\u043e\u043a\u0443\u043f\u043e\u043a \u0432 \u0434\u0435\u043d\u044c (0 = \u0431\u0435\u0437 \u043b\u0438\u043c\u0438\u0442\u0430)."

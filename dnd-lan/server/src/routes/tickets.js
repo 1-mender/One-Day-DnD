@@ -8,6 +8,15 @@ export const ticketsRouter = express.Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const DEFAULT_DAILY_QUEST = {
+  enabled: true,
+  key: "daily_mix",
+  title: "Микс игр",
+  description: "Сыграй в 2 разные игры за день",
+  goal: 2,
+  reward: 2
+};
+
 const DEFAULT_TICKET_RULES = {
   enabled: true,
   dailyEarnCap: 14,
@@ -25,6 +34,11 @@ const DEFAULT_TICKET_RULES = {
       rewardMax: 3,
       lossPenalty: 0,
       dailyLimit: 10,
+      ui: {
+        difficulty: "Легкая",
+        risk: "Низкий",
+        time: "2-4 мин"
+      },
       performance: {
         normal: { label: "Победа", multiplier: 1 },
         sweep: { label: "Победа 2-0", multiplier: 1.15 }
@@ -37,6 +51,11 @@ const DEFAULT_TICKET_RULES = {
       rewardMax: 4,
       lossPenalty: 1,
       dailyLimit: 8,
+      ui: {
+        difficulty: "Средняя",
+        risk: "Средний",
+        time: "3-5 мин"
+      },
       performance: {
         first: { label: "Угадал с 1-й попытки", multiplier: 1.2 },
         second: { label: "Со 2-й попытки", multiplier: 1.05 },
@@ -50,6 +69,11 @@ const DEFAULT_TICKET_RULES = {
       rewardMax: 5,
       lossPenalty: 1,
       dailyLimit: 6,
+      ui: {
+        difficulty: "Средняя",
+        risk: "Средний",
+        time: "4-6 мин"
+      },
       performance: {
         normal: { label: "Комбо 3", multiplier: 1 },
         combo4: { label: "Комбо 4+", multiplier: 1.1 },
@@ -63,6 +87,11 @@ const DEFAULT_TICKET_RULES = {
       rewardMax: 5,
       lossPenalty: 1,
       dailyLimit: 5,
+      ui: {
+        difficulty: "Средняя",
+        risk: "Средний",
+        time: "5-7 мин"
+      },
       performance: {
         normal: { label: "Победа", multiplier: 1 },
         clean: { label: "Без штрафных", multiplier: 1.15 }
@@ -75,6 +104,11 @@ const DEFAULT_TICKET_RULES = {
       rewardMax: 6,
       lossPenalty: 2,
       dailyLimit: 5,
+      ui: {
+        difficulty: "Сложная",
+        risk: "Высокий",
+        time: "2-3 мин"
+      },
       performance: {
         normal: { label: "Слово собрано", multiplier: 1 },
         long: { label: "6+ букв", multiplier: 1.2 },
@@ -89,6 +123,11 @@ const DEFAULT_TICKET_RULES = {
     luck: { enabled: true, price: 3, dailyLimit: 3 },
     chest: { enabled: true, price: 7, dailyLimit: 1 },
     hint: { enabled: true, price: 5, dailyLimit: 2 }
+  },
+  dailyQuest: {
+    enabled: true,
+    activeKey: DEFAULT_DAILY_QUEST.key,
+    pool: [DEFAULT_DAILY_QUEST]
   }
 };
 
@@ -168,6 +207,12 @@ function normalizeRules(rules) {
     const cur = g || {};
     const rewardMin = clampInt(cur.rewardMin, 0, 999);
     const rewardMax = clampInt(cur.rewardMax, rewardMin, 999);
+    const uiRaw = cur.ui && typeof cur.ui === "object" ? cur.ui : {};
+    const ui = {
+      difficulty: typeof uiRaw.difficulty === "string" ? uiRaw.difficulty.slice(0, 40) : "",
+      risk: typeof uiRaw.risk === "string" ? uiRaw.risk.slice(0, 40) : "",
+      time: typeof uiRaw.time === "string" ? uiRaw.time.slice(0, 40) : ""
+    };
     games[key] = {
       ...cur,
       enabled: cur.enabled !== false,
@@ -175,7 +220,8 @@ function normalizeRules(rules) {
       rewardMin,
       rewardMax,
       lossPenalty: clampInt(cur.lossPenalty, 0, 999),
-      dailyLimit: clampInt(cur.dailyLimit, 0, 999)
+      dailyLimit: clampInt(cur.dailyLimit, 0, 999),
+      ui
     };
   }
   out.games = games;
@@ -192,7 +238,124 @@ function normalizeRules(rules) {
   }
   out.shop = shop;
 
+  const dqRaw = out.dailyQuest && typeof out.dailyQuest === "object" ? out.dailyQuest : {};
+  const poolRaw = Array.isArray(dqRaw.pool) && dqRaw.pool.length ? dqRaw.pool : DEFAULT_TICKET_RULES.dailyQuest.pool;
+  const pool = [];
+  const seen = new Set();
+  const maxPool = 10;
+
+  function sanitizeKey(value, fallback) {
+    const raw = String(value || "").toLowerCase().replace(/[^a-z0-9_-]/g, "_").slice(0, 40);
+    return raw || fallback;
+  }
+
+  for (let i = 0; i < poolRaw.length && pool.length < maxPool; i++) {
+    const q = poolRaw[i] || {};
+    const baseKey = sanitizeKey(q.key, `dq_${i + 1}`);
+    let key = baseKey;
+    let n = 1;
+    while (seen.has(key)) {
+      n += 1;
+      key = sanitizeKey(`${baseKey}_${n}`, `dq_${i + 1}_${n}`);
+    }
+    seen.add(key);
+    pool.push({
+      key,
+      enabled: q.enabled !== false,
+      title: typeof q.title === "string" ? q.title.slice(0, 80) : DEFAULT_DAILY_QUEST.title,
+      description: typeof q.description === "string" ? q.description.slice(0, 160) : DEFAULT_DAILY_QUEST.description,
+      goal: clampInt(q.goal ?? DEFAULT_DAILY_QUEST.goal, 1, 10),
+      reward: clampInt(q.reward ?? DEFAULT_DAILY_QUEST.reward, 0, 50)
+    });
+  }
+
+  const activeKeyRaw = sanitizeKey(dqRaw.activeKey, "");
+  const enabledPool = pool.filter((q) => q.enabled !== false);
+  const activeKey = enabledPool.find((q) => q.key === activeKeyRaw)?.key
+    || enabledPool[0]?.key
+    || "";
+
+  out.dailyQuest = {
+    enabled: dqRaw.enabled !== false,
+    activeKey,
+    pool
+  };
+
   return out;
+}
+
+function getQuestProgress(db, playerId, dayKey) {
+  const row = db
+    .prepare("SELECT COUNT(DISTINCT game_key) AS c FROM ticket_plays WHERE player_id=? AND day_key=?")
+    .get(playerId, dayKey);
+  return Number(row?.c || 0);
+}
+
+function getActiveQuest(rules) {
+  const dq = rules?.dailyQuest;
+  if (!dq || dq.enabled === false) return null;
+  const pool = Array.isArray(dq.pool) ? dq.pool : [];
+  let q = pool.find((x) => x.key === dq.activeKey && x.enabled !== false);
+  if (!q) q = pool.find((x) => x.enabled !== false) || null;
+  return q;
+}
+
+function getQuestStates(db, playerId, dayKey, rules) {
+  const q = getActiveQuest(rules);
+  if (!q) return [];
+  const distinctGames = getQuestProgress(db, playerId, dayKey);
+  const row = db.prepare(
+    "SELECT reward_granted, rewarded_at FROM ticket_quests WHERE player_id=? AND quest_key=? AND day_key=?"
+  ).get(playerId, q.key, dayKey);
+  const completed = distinctGames >= q.goal;
+  return [{
+    key: q.key,
+    title: q.title,
+    description: q.description,
+    goal: q.goal,
+    progress: distinctGames,
+    reward: q.reward,
+    completed,
+    rewarded: !!row,
+    rewardGranted: row?.reward_granted ?? 0,
+    rewardedAt: row?.rewarded_at ?? null
+  }];
+}
+
+function maybeGrantDailyQuest(db, playerId, dayKey, rules) {
+  const q = getActiveQuest(rules);
+  if (!q) return null;
+  const distinctGames = getQuestProgress(db, playerId, dayKey);
+  if (distinctGames < q.goal) return null;
+
+  const existing = db.prepare(
+    "SELECT 1 FROM ticket_quests WHERE player_id=? AND quest_key=? AND day_key=?"
+  ).get(playerId, q.key, dayKey);
+  if (existing) return null;
+
+  const row = db.prepare("SELECT balance, daily_earned FROM tickets WHERE player_id=?").get(playerId);
+  const currentEarned = Number(row?.daily_earned || 0);
+  const currentBalance = Number(row?.balance || 0);
+
+  let reward = Number(q.reward || 0);
+  const cap = Number(rules?.dailyEarnCap || 0);
+  if (cap > 0) {
+    reward = Math.max(0, Math.min(reward, cap - currentEarned));
+  }
+
+  const t = now();
+  const tx = db.transaction(() => {
+    db.prepare(
+      "INSERT INTO ticket_quests(player_id, quest_key, day_key, reward_granted, rewarded_at, created_at) VALUES(?,?,?,?,?,?)"
+    ).run(playerId, q.key, dayKey, reward, t, t);
+    if (reward > 0) {
+      db.prepare("UPDATE tickets SET balance=?, daily_earned=?, updated_at=? WHERE player_id=?")
+        .run(currentBalance + reward, currentEarned + reward, t, playerId);
+    }
+  });
+  tx();
+
+  return { questKey: q.key, rewardGranted: reward };
 }
 
 function getEffectiveRules(partyId) {
@@ -266,7 +429,8 @@ function buildPayload(db, playerId, dayKey, rules) {
   return {
     state: mapState(row),
     rules,
-    usage: getUsage(db, playerId, dayKey)
+    usage: getUsage(db, playerId, dayKey),
+    quests: getQuestStates(db, playerId, dayKey, rules)
   };
 }
 
@@ -378,6 +542,12 @@ ticketsRouter.post("/play", (req, res) => {
   db.prepare(
     "INSERT INTO ticket_plays(player_id, game_key, outcome, entry_cost, reward, penalty, multiplier, streak_after, day_key, created_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
   ).run(me.player.id, gameKey, outcome, entryCost, reward, penalty, multiplier, streakAfter, dayKey, t);
+
+  try {
+    maybeGrantDailyQuest(db, me.player.id, dayKey, rules);
+  } catch (e) {
+    console.error("daily quest reward failed:", e);
+  }
 
   req.app.locals.io?.to(`player:${me.player.id}`).emit("tickets:updated");
   req.app.locals.io?.to("dm").emit("tickets:updated");
@@ -506,6 +676,23 @@ ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
 
   const rules = getEffectiveRules(party.id);
   res.json({ rules });
+});
+
+ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
+  const party = getParty();
+  const rules = getEffectiveRules(party.id);
+  const q = getActiveQuest(rules);
+
+  const dayKey = Number(req.body?.dayKey ?? getDayKey());
+  const questKey = String(req.body?.questKey || q?.key || "").trim();
+  if (!questKey) return res.status(400).json({ error: "quest_key_required" });
+  if (!Number.isFinite(dayKey) || dayKey <= 0) return res.status(400).json({ error: "invalid_day_key" });
+
+  const db = getDb();
+  const r = db.prepare("DELETE FROM ticket_quests WHERE quest_key=? AND day_key=?").run(questKey, dayKey);
+
+  req.app.locals.io?.to("dm").emit("tickets:updated");
+  res.json({ ok: true, questKey, dayKey, deleted: r.changes || 0 });
 });
 
 ticketsRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {

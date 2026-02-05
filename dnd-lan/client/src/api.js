@@ -221,6 +221,8 @@ export const api = {
   ticketsPurchase: (payload) => request("/api/tickets/purchase", { method: "POST", body: JSON.stringify(payload) }),
   dmTicketsRules: () => request("/api/tickets/dm/rules", { method: "GET" }),
   dmTicketsUpdateRules: (payload) => request("/api/tickets/dm/rules", { method: "PUT", body: JSON.stringify(payload) }),
+  dmTicketsResetQuest: (questKey, dayKey = null) =>
+    request("/api/tickets/dm/quest/reset", { method: "POST", body: JSON.stringify({ questKey, dayKey }) }),
   dmTicketsList: () => request("/api/tickets/dm/list", { method: "GET" }),
   dmTicketsAdjust: (payload) => request("/api/tickets/dm/adjust", { method: "POST", body: JSON.stringify(payload) }),
 

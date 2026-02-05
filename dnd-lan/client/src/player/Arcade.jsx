@@ -87,13 +87,17 @@ const games = [
 
 export default function Arcade() {
   const toast = useToast();
-  const { state, rules, usage, loading, err, play, readOnly } = useTickets();
+  const { state, rules, usage, quests, loading, err, play, readOnly } = useTickets();
   const lite = useLiteMode();
   const [activeGameKey, setActiveGameKey] = useState("");
   const [outcome, setOutcome] = useState("win");
   const [performance, setPerformance] = useState("");
   const [busy, setBusy] = useState(false);
   const [playErr, setPlayErr] = useState("");
+  const [lastGameKey, setLastGameKey] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return localStorage.getItem("fish_last_game") || "";
+  });
 
   const activeGame = useMemo(() => games.find((g) => g.key === activeGameKey) || null, [activeGameKey]);
   const activeRules = activeGameKey ? rules?.games?.[activeGameKey] : null;
@@ -117,6 +121,10 @@ export default function Arcade() {
   const dailyEarned = Number(state?.dailyEarned || 0);
   const dailySpent = Number(state?.dailySpent || 0);
   const dailyCap = Number(rules?.dailyEarnCap || 0);
+  const dailyQuest = Array.isArray(quests) && quests.length ? quests[0] : null;
+  const lastGameTitle = lastGameKey ? (games.find((g) => g.key === lastGameKey)?.title || lastGameKey) : "";
+  const lastGameReason = lastGameKey ? getDisabledReason(lastGameKey) : "";
+  const showLastGame = lastGameKey && rules?.games?.[lastGameKey]?.enabled !== false;
 
   function openGame(gameKey) {
     setActiveGameKey(gameKey);
@@ -124,6 +132,10 @@ export default function Arcade() {
     const firstPerf = Object.keys(rules?.games?.[gameKey]?.performance || {})[0] || "normal";
     setPerformance(firstPerf);
     setPlayErr("");
+    if (typeof window !== "undefined") {
+      localStorage.setItem("fish_last_game", gameKey);
+      setLastGameKey(gameKey);
+    }
   }
 
   function closeGame() {
@@ -142,6 +154,31 @@ export default function Arcade() {
     const g = rules?.games?.[gameKey];
     if (!g) return fallback;
     return `${g.rewardMin}-${g.rewardMax} билетов`;
+  }
+
+  function getUiText(gameKey, field, fallback) {
+    const v = rules?.games?.[gameKey]?.ui?.[field];
+    if (typeof v === "string" && v.trim()) return v.trim();
+    return fallback;
+  }
+
+  function getDisabledReason(gameKey) {
+    if (readOnly) return "Режим read-only: действия отключены";
+    if (err) return "Ошибка загрузки правил";
+    if (!rules || !ticketsEnabled) return "Аркада закрыта DM";
+    if (rules?.games?.[gameKey]?.enabled === false) return "Игра отключена DM";
+    const entry = Number(rules?.games?.[gameKey]?.entryCost || 0);
+    if (balance < entry) return "Недостаточно билетов для входа";
+    if (isGameLimitReached(gameKey, rules, usage)) return "Достигнут дневной лимит попыток";
+    return "";
+  }
+
+  function getGameRemaining(gameKey) {
+    const lim = rules?.games?.[gameKey]?.dailyLimit;
+    if (!lim) return null;
+    const used = usage?.playsToday?.[gameKey] || 0;
+    const left = Math.max(0, lim - used);
+    return { used, lim, left };
   }
 
   async function handlePlay() {
@@ -225,6 +262,7 @@ export default function Arcade() {
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div className="arcade-title">Fish • Зал мини-игр</div>
+          <div className="small">Fish — аркада мини‑игр с билетами и наградами.</div>
           <div className="small">Сыграй, собери серию и обменяй билеты у DJO.</div>
         </div>
         <div className="ticket-bank">
@@ -244,21 +282,56 @@ export default function Arcade() {
           билеты.
         </div>
       </div>
+      {dailyQuest ? (
+        <div className="paper-note arcade-note" style={{ marginTop: 10 }}>
+          <div className="title">Daily quest</div>
+          <div className="small" style={{ marginTop: 6 }}>
+            {dailyQuest.title}: {dailyQuest.description}
+          </div>
+          <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+            <span className="badge">
+              Прогресс: {dailyQuest.progress}/{dailyQuest.goal}
+            </span>
+            <span className="badge secondary">
+              Награда: {dailyQuest.reward} билета
+            </span>
+            {dailyQuest.completed ? (
+              <span className={`badge ${dailyQuest.rewarded ? "ok" : "warn"}`}>
+                {dailyQuest.rewarded ? "Выполнено" : "Готово к награде"}
+              </span>
+            ) : null}
+          </div>
+          {dailyQuest.rewarded && dailyQuest.rewardGranted != null ? (
+            <div className="small" style={{ marginTop: 6 }}>
+              Получено: {dailyQuest.rewardGranted}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {!ticketsEnabled ? (
         <div className="badge off" style={{ marginTop: 8 }}>Аркада закрыта DM</div>
       ) : null}
       {err ? <div className="badge off" style={{ marginTop: 8 }}>Ошибка билетов: {err}</div> : null}
+      {dailyQuest && dailyQuest.completed && !dailyQuest.rewarded ? (
+        <div className="badge ok" style={{ marginTop: 8 }}>Daily quest: готово к награде</div>
+      ) : null}
       <hr />
 
       <div className="arcade-grid">
         {games.map((g) => {
           const rulesToShow = lite ? g.rules.slice(0, 2) : g.rules;
           const hasMoreRules = lite && g.rules.length > rulesToShow.length;
+          const remaining = getGameRemaining(g.key);
+          const disabledReason = getDisabledReason(g.key);
+          const canPlay = !disabledReason;
+          const difficultyLabel = getUiText(g.key, "difficulty", g.difficulty);
+          const riskLabel = getUiText(g.key, "risk", g.risk);
+          const timeLabel = getUiText(g.key, "time", g.time);
           return rules?.games?.[g.key]?.enabled === false ? (
             <div key={g.key} className="item taped arcade-card disabled-card">
               <div className="arcade-head">
                 <div className="arcade-card-title">{g.title}</div>
-                <span className="badge off">??????????????</span>
+                <span className="badge off">Недоступно</span>
               </div>
               <div className="small arcade-blurb">{g.blurb}</div>
               <div className="rule-list">
@@ -266,27 +339,35 @@ export default function Arcade() {
                   <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
                 ))}
                 {hasMoreRules ? (
-                  <div className="rule-more small">+ ?????? {g.rules.length - rulesToShow.length}</div>
+                  <div className="rule-more small">+ ещё {g.rules.length - rulesToShow.length}</div>
                 ) : null}
               </div>
               <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
                 <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
-                <button className="btn secondary" disabled>????????????</button>
+                <button className="btn secondary" disabled>Недоступно</button>
               </div>
             </div>
           ) : (
             <div key={g.key} className="item taped arcade-card">
               <div className="arcade-head">
                 <div className="arcade-card-title">{g.title}</div>
-                <span className={`badge badge-impact ${impactClass(g.difficulty)}`}>{g.difficulty}</span>
+                <span
+                  className={`badge badge-impact ${impactClass(difficultyLabel)}`}
+                  title={`Сложность: ${difficultyLabel}`}
+                >
+                  {difficultyLabel}
+                </span>
               </div>
               <div className="small arcade-blurb">{g.blurb}</div>
               <div className="arcade-meta">
-                <span className="meta-chip">??????????: {g.time}</span>
-                <span className="meta-chip">????????: {g.risk}</span>
+                <span className="meta-chip" title={`Время: ${timeLabel}`}>Время: {timeLabel}</span>
+                <span className="meta-chip" title={`Риск: ${riskLabel}`}>Риск: {riskLabel}</span>
                 <span className="meta-chip">{formatEntryValue(g.key, g.entry)}</span>
-                {rules?.games?.[g.key]?.dailyLimit ? (
-                  <span className="meta-chip">??????????: {usage?.playsToday?.[g.key] || 0}/{rules.games[g.key].dailyLimit}</span>
+                {remaining ? (
+                  <span className="meta-chip">Попытки: {remaining.used}/{remaining.lim}</span>
+                ) : null}
+                {remaining ? (
+                  <span className="meta-chip">Осталось: {remaining.left}</span>
                 ) : null}
               </div>
               <div className="rule-list">
@@ -294,30 +375,39 @@ export default function Arcade() {
                   <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
                 ))}
                 {hasMoreRules ? (
-                  <div className="rule-more small">+ ?????? {g.rules.length - rulesToShow.length}</div>
+                  <div className="rule-more small">+ ещё {g.rules.length - rulesToShow.length}</div>
                 ) : null}
               </div>
               <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
                 <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
                 <button
                   className="btn secondary"
-                  disabled={
-                    readOnly ||
-                    err ||
-                    !rules ||
-                    !ticketsEnabled ||
-                    balance < Number(rules?.games?.[g.key]?.entryCost || 0) ||
-                    isGameLimitReached(g.key, rules, usage)
-                  }
+                  disabled={!canPlay}
                   onClick={() => openGame(g.key)}
                 >
-                  ????????????
+                  Играть
                 </button>
               </div>
+              {!canPlay && disabledReason ? (
+                <div className="small" style={{ marginTop: 6 }}>{disabledReason}</div>
+              ) : null}
             </div>
           );
         })}
       </div>
+
+      {showLastGame ? (
+        <div className="row" style={{ marginTop: 10 }}>
+          <button
+            className="btn secondary"
+            onClick={() => openGame(lastGameKey)}
+            disabled={!!lastGameReason}
+            title={lastGameReason || ""}
+          >
+            Последняя игра: {lastGameTitle}
+          </button>
+        </div>
+      ) : null}
 
 
       <div className="paper-note arcade-note" style={{ marginTop: 12 }}>
@@ -403,8 +493,9 @@ export default function Arcade() {
 
 function impactClass(label) {
   const v = String(label || "").toLowerCase();
-  if (v.includes("слож")) return "impact-high";
-  if (v.includes("сред")) return "impact-mid";
+  if (v.includes("слож") || v.includes("hard") || v.includes("high") || v.includes("высок")) return "impact-high";
+  if (v.includes("сред") || v.includes("mid") || v.includes("medium")) return "impact-mid";
+  if (v.includes("лег") || v.includes("easy") || v.includes("низ")) return "impact-low";
   return "impact-low";
 }
 
