@@ -1,16 +1,16 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../components/Modal.jsx";
-import Match3Game from "./games/Match3.jsx";
-import GuessCardGame from "./games/GuessCard.jsx";
-import TicTacToeGame from "./games/TicTacToe.jsx";
-import UnoMiniGame from "./games/UnoMini.jsx";
-import ScrabbleBlitzGame from "./games/ScrabbleBlitz.jsx";
 import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useLiteMode } from "../hooks/useLiteMode.js";
 
 const fallbackGames = [];
+const Match3Game = lazy(() => import("./games/Match3.jsx"));
+const GuessCardGame = lazy(() => import("./games/GuessCard.jsx"));
+const TicTacToeGame = lazy(() => import("./games/TicTacToe.jsx"));
+const UnoMiniGame = lazy(() => import("./games/UnoMini.jsx"));
+const ScrabbleBlitzGame = lazy(() => import("./games/ScrabbleBlitz.jsx"));
 
 export default function Arcade() {
   const toast = useToast();
@@ -508,97 +508,107 @@ export default function Arcade() {
       </div>
 
       {activeGame?.key === "match3" ? (
-        <Match3Game
-          open={!!activeGame}
-          onClose={closeGame}
-          onSubmitResult={handleMatch3Submit}
-          disabled={!ticketsEnabled || rules?.games?.match3?.enabled === false}
-          entryCost={Number(rules?.games?.match3?.entryCost || 0)}
-          rewardRange={
-            rules?.games?.match3
-              ? `${rules.games.match3.rewardMin}-${rules.games.match3.rewardMax} билетов`
-              : "—"
-          }
-          mode={activeMode}
-          readOnly={readOnly}
-        />
+        <Suspense fallback={renderGameFallback(activeGame?.title || "Match3", closeGame)}>
+          <Match3Game
+            open={!!activeGame}
+            onClose={closeGame}
+            onSubmitResult={handleMatch3Submit}
+            disabled={!ticketsEnabled || rules?.games?.match3?.enabled === false}
+            entryCost={Number(rules?.games?.match3?.entryCost || 0)}
+            rewardRange={
+              rules?.games?.match3
+                ? `${rules.games.match3.rewardMin}-${rules.games.match3.rewardMax} ??????????????`
+                : "-"
+            }
+            mode={activeMode}
+            readOnly={readOnly}
+          />
+        </Suspense>
       ) : activeGame?.key === "guess" ? (
-        <GuessCardGame
-          open={!!activeGame}
-          onClose={closeGame}
-          onSubmitResult={handleGuessSubmit}
-          disabled={!ticketsEnabled || rules?.games?.guess?.enabled === false}
-          entryCost={Number(rules?.games?.guess?.entryCost || 0)}
-          rewardRange={
-            rules?.games?.guess
-              ? `${rules.games.guess.rewardMin}-${rules.games.guess.rewardMax} билетов`
-              : "—"
-          }
-          mode={activeMode}
-          readOnly={readOnly}
-        />
+        <Suspense fallback={renderGameFallback(activeGame?.title || "Guess", closeGame)}>
+          <GuessCardGame
+            open={!!activeGame}
+            onClose={closeGame}
+            onSubmitResult={handleGuessSubmit}
+            disabled={!ticketsEnabled || rules?.games?.guess?.enabled === false}
+            entryCost={Number(rules?.games?.guess?.entryCost || 0)}
+            rewardRange={
+              rules?.games?.guess
+                ? `${rules.games.guess.rewardMin}-${rules.games.guess.rewardMax} ??????????????`
+                : "-"
+            }
+            mode={activeMode}
+            readOnly={readOnly}
+          />
+        </Suspense>
       ) : activeGame?.key === "ttt" ? (
-        <TicTacToeGame
-          open={!!activeGame}
-          onClose={closeGame}
-          onSubmitResult={handleTttSubmit}
-          disabled={!ticketsEnabled || rules?.games?.ttt?.enabled === false}
-          entryCost={Number(rules?.games?.ttt?.entryCost || 0)}
-          rewardRange={
-            rules?.games?.ttt
-              ? `${rules.games.ttt.rewardMin}-${rules.games.ttt.rewardMax} билетов`
-              : "—"
-          }
-          mode={activeMode}
-          readOnly={readOnly}
-        />
+        <Suspense fallback={renderGameFallback(activeGame?.title || "TicTacToe", closeGame)}>
+          <TicTacToeGame
+            open={!!activeGame}
+            onClose={closeGame}
+            onSubmitResult={handleTttSubmit}
+            disabled={!ticketsEnabled || rules?.games?.ttt?.enabled === false}
+            entryCost={Number(rules?.games?.ttt?.entryCost || 0)}
+            rewardRange={
+              rules?.games?.ttt
+                ? `${rules.games.ttt.rewardMin}-${rules.games.ttt.rewardMax} ??????????????`
+                : "-"
+            }
+            mode={activeMode}
+            readOnly={readOnly}
+          />
+        </Suspense>
       ) : activeGame?.key === "uno" ? (
-        <UnoMiniGame
-          open={!!activeGame}
-          onClose={closeGame}
-          onSubmitResult={handleUnoSubmit}
-          disabled={!ticketsEnabled || rules?.games?.uno?.enabled === false}
-          entryCost={Number(rules?.games?.uno?.entryCost || 0)}
-          rewardRange={
-            rules?.games?.uno
-              ? `${rules.games.uno.rewardMin}-${rules.games.uno.rewardMax} билетов`
-              : "—"
-          }
-          mode={activeMode}
-          readOnly={readOnly}
-        />
+        <Suspense fallback={renderGameFallback(activeGame?.title || "Uno", closeGame)}>
+          <UnoMiniGame
+            open={!!activeGame}
+            onClose={closeGame}
+            onSubmitResult={handleUnoSubmit}
+            disabled={!ticketsEnabled || rules?.games?.uno?.enabled === false}
+            entryCost={Number(rules?.games?.uno?.entryCost || 0)}
+            rewardRange={
+              rules?.games?.uno
+                ? `${rules.games.uno.rewardMin}-${rules.games.uno.rewardMax} ??????????????`
+                : "-"
+            }
+            mode={activeMode}
+            readOnly={readOnly}
+          />
+        </Suspense>
       ) : activeGame?.key === "scrabble" ? (
-        <ScrabbleBlitzGame
-          open={!!activeGame}
-          onClose={closeGame}
-          onSubmitResult={handleScrabbleSubmit}
-          disabled={!ticketsEnabled || rules?.games?.scrabble?.enabled === false}
-          entryCost={Number(rules?.games?.scrabble?.entryCost || 0)}
-          rewardRange={
-            rules?.games?.scrabble
-              ? `${rules.games.scrabble.rewardMin}-${rules.games.scrabble.rewardMax} билетов`
-              : "—"
-          }
-          mode={activeMode}
-          readOnly={readOnly}
-        />
+        <Suspense fallback={renderGameFallback(activeGame?.title || "Scrabble", closeGame)}>
+          <ScrabbleBlitzGame
+            open={!!activeGame}
+            onClose={closeGame}
+            onSubmitResult={handleScrabbleSubmit}
+            disabled={!ticketsEnabled || rules?.games?.scrabble?.enabled === false}
+            entryCost={Number(rules?.games?.scrabble?.entryCost || 0)}
+            rewardRange={
+              rules?.games?.scrabble
+                ? `${rules.games.scrabble.rewardMin}-${rules.games.scrabble.rewardMax} ??????????????`
+                : "-"
+            }
+            mode={activeMode}
+            readOnly={readOnly}
+          />
+        </Suspense>
       ) : (
         <Modal
           open={!!activeGame}
-          title={activeGame ? `Игра: ${activeGame.title}` : ""}
+          title={activeGame ? `????: ${activeGame.title}` : ""}
           onClose={closeGame}
         >
           <div className="list">
             <div className="small note-hint">
-              {activeRules ? `Вход: ${formatEntry(activeRules.entryCost)} • Награда: ${activeRules.rewardMin}-${activeRules.rewardMax}` : "Правила загружаются…"}
+              {activeRules ? `????: ${formatEntry(activeRules.entryCost)} ? ???????: ${activeRules.rewardMin}-${activeRules.rewardMax}` : "??????? ????????????"}
             </div>
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>Победа</button>
-              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>Поражение</button>
+              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>??????</button>
+              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>?????????</button>
             </div>
             {outcome === "win" ? (
               <div className="list">
-                <div className="small">Бонус выполнения</div>
+                <div className="small">????? ??????????</div>
                 <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                   {perfOptions.map((opt) => (
                     <button
@@ -612,17 +622,25 @@ export default function Arcade() {
                 </div>
               </div>
             ) : (
-              <div className="small">Штраф за поражение зависит от игры.</div>
+              <div className="small">????? ?? ????????? ??????? ?? ????.</div>
             )}
-            {playErr ? <div className="badge off">Ошибка: {playErr}</div> : null}
+            {playErr ? <div className="badge off">??????: {playErr}</div> : null}
             <button className="btn" disabled={busy || readOnly} onClick={handlePlay}>
-              {busy ? "Рассчитать..." : "Завершить раунд"}
+              {busy ? "??????????..." : "????????? ?????"}
             </button>
-            {readOnly ? <div className="small">Режим read-only: действия отключены.</div> : null}
+            {readOnly ? <div className="small">????? read-only: ???????? ?????????.</div> : null}
           </div>
         </Modal>
       )}
     </div>
+  );
+}
+
+function renderGameFallback(title, onClose) {
+  return (
+    <Modal open title={title ? `Game: ${title}` : "Game"} onClose={onClose}>
+      <div className="small">Loading game...</div>
+    </Modal>
   );
 }
 

@@ -35,6 +35,8 @@ npm run start
 - `npm run lint` — линт client-кода
 - `npm run verify` — быстрая проверка качества (`lint + test + build`)
 - `npm run preflight` — быстрая проверка перед сессией (health/readyz/диск/минимальная запись)
+- `npm run e2e` - e2e smoke: temp server + DM setup/login + join/approve + inventory write/read
+- `npm run images:opt` - convert UI textures to webp/avif (local)
 
 ## Health / Readiness
 - `GET /healthz` — liveness (процесс запущен)
@@ -60,6 +62,20 @@ npm run preflight
 - `PREFLIGHT_JOIN_CODE`
 - `PREFLIGHT_TIMEOUT_MS` (по умолчанию 3000)
 
+## E2E smoke
+```powershell
+npm run e2e
+```
+Scenario: readyz p95, DM setup/login, join/approve, inventory create/read.
+
+Env:
+- `E2E_READY_TIMEOUT_MS` (default 15000)
+- `E2E_READY_SAMPLES` (default 20)
+- `E2E_READY_P95_MS` (default 300)
+- `E2E_REQUEST_TIMEOUT_MS` (default 5000)
+- `E2E_PORT` (optional fixed port)
+
+
 ## Очистка uploads (безопасный dry-run)
 По умолчанию ничего не удаляет. Показывает кандидатов на удаление и причины.
 ```powershell
@@ -76,6 +92,16 @@ npm --prefix server run cleanup:uploads -- --apply
 - `--allow-subdirs=assets,bestiary,monsters`
 - `--allow-exts=.png,.jpg,.webp`
 - `--uploads-dir=...`
+
+## Backup / Restore (ops)
+Auto backups go to `DND_LAN_BACKUP_DIR` (default `<data_dir>/backups`).
+
+Export/Import (DM auth):
+- `GET /api/backup/export` - zip with `app.db` + `uploads/`
+- `POST /api/backup/import` (multipart `zip`) - restore DB and uploads
+
+Secret rotation:
+- changing `JWT_SECRET` invalidates DM sessions (re-login required).
 
 ## Переменные окружения
 См. `server/.env.example`. Важные:
@@ -168,4 +194,3 @@ npm run verify  # lint + test + build
 
 По умолчанию сервер на http://localhost:3000
 Клиент Vite на http://localhost:5173
-
