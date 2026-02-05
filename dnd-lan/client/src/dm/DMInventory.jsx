@@ -7,6 +7,7 @@ import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale, Trash2
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
+import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import {
   INVENTORY_ICON_SECTIONS,
@@ -20,8 +21,10 @@ import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
+const TRANSFER_REFRESH_MS = 30_000;
 
 export default function DMInventory() {
+  const toast = useToast();
   const [players, setPlayers] = useState([]);
   const [selectedId, setSelectedId] = useState(0);
   const [items, setItems] = useState([]);
@@ -92,6 +95,13 @@ export default function DMInventory() {
 
   useEffect(() => {
     loadTransfers().catch(() => {});
+  }, [loadTransfers]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      loadTransfers().catch(() => {});
+    }, TRANSFER_REFRESH_MS);
+    return () => clearInterval(id);
   }, [loadTransfers]);
 
   useEffect(() => {
@@ -230,7 +240,12 @@ export default function DMInventory() {
     if (!tr?.id) return;
     setErr("");
     try {
-      await api.invTransferDmCancel(tr.id);
+      const r = await api.invTransferDmCancel(tr.id);
+      if (r?.status === "expired") {
+        await loadTransfers();
+        toast.warn("Передача истекла");
+        return;
+      }
       await loadTransfers();
     } catch (e) {
       setErr(formatError(e));
@@ -350,6 +365,9 @@ export default function DMInventory() {
                 <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
+                        <span className="badge secondary">Истекла</span>
+                      ) : null}
                       <span className="badge secondary">от {tr.fromName || `#${tr.fromPlayerId}`}</span>
                       <span className="badge secondary">кому {tr.toName || `#${tr.toPlayerId}`}</span>
                       <span className="badge">x{tr.qty}</span>

@@ -86,21 +86,48 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
 
     const dstDb = DB_PATH;
     const dstUploads = uploadsDir;
+    const dbBackupPath = dstDb + ".bak";
+    const uploadsBackupPath = dstUploads + "_bak";
+    const hadDstDb = fs.existsSync(dstDb);
+    const hadDstUploads = fs.existsSync(dstUploads);
     fs.mkdirSync(DATA_DIR, { recursive: true });
 
     // close DB before replace
     closeDb();
 
-    // backup old
-    if (fs.existsSync(dstDb)) fs.copyFileSync(dstDb, dstDb + ".bak");
-    fs.copyFileSync(srcDb, dstDb);
+    // backup old state
+    if (hadDstDb) {
+      fs.rmSync(dbBackupPath, { force: true });
+      fs.copyFileSync(dstDb, dbBackupPath);
+    }
+    fs.rmSync(uploadsBackupPath, { recursive: true, force: true });
+    if (hadDstUploads) {
+      fs.cpSync(dstUploads, uploadsBackupPath, { recursive: true });
+    }
 
-    // replace uploads
-    fs.rmSync(dstUploads, { recursive: true, force: true });
-    if (fs.existsSync(srcUploads)) {
-      fs.cpSync(srcUploads, dstUploads, { recursive: true });
-    } else {
-      fs.mkdirSync(dstUploads, { recursive: true });
+    try {
+      fs.copyFileSync(srcDb, dstDb);
+
+      fs.rmSync(dstUploads, { recursive: true, force: true });
+      if (fs.existsSync(srcUploads)) {
+        fs.cpSync(srcUploads, dstUploads, { recursive: true });
+      } else {
+        fs.mkdirSync(dstUploads, { recursive: true });
+      }
+    } catch (replaceError) {
+      if (hadDstDb && fs.existsSync(dbBackupPath)) {
+        fs.copyFileSync(dbBackupPath, dstDb);
+      } else {
+        fs.rmSync(dstDb, { force: true });
+      }
+      fs.rmSync(dstUploads, { recursive: true, force: true });
+      if (hadDstUploads && fs.existsSync(uploadsBackupPath)) {
+        fs.cpSync(uploadsBackupPath, dstUploads, { recursive: true });
+      }
+      throw replaceError;
+    } finally {
+      fs.rmSync(uploadsBackupPath, { recursive: true, force: true });
+      fs.rmSync(dbBackupPath, { force: true });
     }
 
     // reload db

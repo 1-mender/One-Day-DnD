@@ -64,6 +64,17 @@ function transferError(code, status = 400, extra = null) {
   throw err;
 }
 
+function expireTransfer(db, tr, t = now()) {
+  const item = db.prepare("SELECT id, reserved_qty FROM inventory_items WHERE id=? AND player_id=?")
+    .get(tr.item_id, tr.from_player_id);
+  if (item) {
+    const reservedQty = Number(item.reserved_qty || 0);
+    const nextReserved = Math.max(0, reservedQty - Number(tr.qty || 0));
+    db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, t, item.id);
+  }
+  db.prepare("UPDATE item_transfers SET status='expired' WHERE id=?").run(tr.id);
+}
+
 function parseTransferQty(value) {
   const qty = Math.floor(toFiniteNumber(value, NaN));
   if (!Number.isFinite(qty)) return NaN;
@@ -507,9 +518,15 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
     const tr = db.prepare("SELECT * FROM item_transfers WHERE id=?").get(transferId);
     if (!tr) transferError("transfer_not_found", 404);
     if (tr.to_player_id !== sess.player_id) transferError("forbidden", 403);
+    const t = now();
     if (tr.status !== "pending") {
       if (tr.status === "accepted") return { status: tr.status, idempotent: true };
+      if (tr.status === "expired") return { status: "expired", expiredAt: tr.expires_at };
       transferError("already_finalized", 400);
+    }
+    if (tr.expires_at <= t) {
+      expireTransfer(db, tr, t);
+      return { status: "expired", expiredAt: tr.expires_at };
     }
 
     const item = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(tr.item_id, tr.from_player_id);
@@ -528,7 +545,6 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
       }
     }
 
-    const t = now();
     const newReserved = reservedQty - tr.qty;
     const newQty = totalQty - tr.qty;
     if (newQty <= 0) {
@@ -561,6 +577,10 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
 
   try {
     const result = tx();
+
+    if (result.status === "expired") {
+      return res.json({ ok: true, status: "expired", expiredAt: result.expiredAt });
+    }
 
     logEvent({
       partyId: sess.party_id,
@@ -600,16 +620,22 @@ inventoryRouter.post("/transfers/:id/reject", (req, res) => {
     const tr = db.prepare("SELECT * FROM item_transfers WHERE id=?").get(transferId);
     if (!tr) transferError("transfer_not_found", 404);
     if (tr.to_player_id !== sess.player_id) transferError("forbidden", 403);
+    const t = now();
     if (tr.status !== "pending") {
       if (tr.status === "rejected") return { status: tr.status, idempotent: true, fromPlayerId: tr.from_player_id };
+      if (tr.status === "expired") return { status: "expired", expiredAt: tr.expires_at, fromPlayerId: tr.from_player_id };
       transferError("already_finalized", 400);
+    }
+    if (tr.expires_at <= t) {
+      expireTransfer(db, tr, t);
+      return { status: "expired", expiredAt: tr.expires_at, fromPlayerId: tr.from_player_id };
     }
 
     const item = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(tr.item_id, tr.from_player_id);
     if (item) {
       const reservedQty = Number(item.reserved_qty || 0);
       const nextReserved = Math.max(0, reservedQty - Number(tr.qty || 0));
-      db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, now(), item.id);
+      db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, t, item.id);
     }
 
     db.prepare("UPDATE item_transfers SET status=? WHERE id=?").run("rejected", tr.id);
@@ -618,6 +644,10 @@ inventoryRouter.post("/transfers/:id/reject", (req, res) => {
 
   try {
     const result = tx();
+
+    if (result.status === "expired") {
+      return res.json({ ok: true, status: "expired", expiredAt: result.expiredAt });
+    }
 
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("inventory:updated");
@@ -645,16 +675,22 @@ inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
     const tr = db.prepare("SELECT * FROM item_transfers WHERE id=?").get(transferId);
     if (!tr) transferError("transfer_not_found", 404);
     if (tr.from_player_id !== sess.player_id) transferError("forbidden", 403);
+    const t = now();
     if (tr.status !== "pending") {
       if (tr.status === "canceled") return { status: tr.status, idempotent: true, toPlayerId: tr.to_player_id };
+      if (tr.status === "expired") return { status: "expired", expiredAt: tr.expires_at, toPlayerId: tr.to_player_id };
       transferError("already_finalized", 400);
+    }
+    if (tr.expires_at <= t) {
+      expireTransfer(db, tr, t);
+      return { status: "expired", expiredAt: tr.expires_at, toPlayerId: tr.to_player_id };
     }
 
     const item = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(tr.item_id, tr.from_player_id);
     if (item) {
       const reservedQty = Number(item.reserved_qty || 0);
       const nextReserved = Math.max(0, reservedQty - Number(tr.qty || 0));
-      db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, now(), item.id);
+      db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, t, item.id);
     }
 
     db.prepare("UPDATE item_transfers SET status=? WHERE id=?").run("canceled", tr.id);
@@ -663,6 +699,9 @@ inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
 
   try {
     const result = tx();
+    if (result.status === "expired") {
+      return res.json({ ok: true, status: "expired", expiredAt: result.expiredAt });
+    }
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
     if (result.toPlayerId) req.app.locals.io?.to(`player:${result.toPlayerId}`).emit("transfers:updated");
@@ -719,16 +758,22 @@ inventoryRouter.post("/transfers/:id/dm/cancel", dmAuthMiddleware, (req, res) =>
   const tx = db.transaction(() => {
     const tr = db.prepare("SELECT * FROM item_transfers WHERE id=?").get(transferId);
     if (!tr) transferError("transfer_not_found", 404);
+    const t = now();
     if (tr.status !== "pending") {
       if (tr.status === "canceled") return { status: tr.status, idempotent: true, fromPlayerId: tr.from_player_id, toPlayerId: tr.to_player_id };
+      if (tr.status === "expired") return { status: "expired", expiredAt: tr.expires_at, fromPlayerId: tr.from_player_id, toPlayerId: tr.to_player_id };
       transferError("already_finalized", 400);
+    }
+    if (tr.expires_at <= t) {
+      expireTransfer(db, tr, t);
+      return { status: "expired", expiredAt: tr.expires_at, fromPlayerId: tr.from_player_id, toPlayerId: tr.to_player_id };
     }
 
     const item = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(tr.item_id, tr.from_player_id);
     if (item) {
       const reservedQty = Number(item.reserved_qty || 0);
       const nextReserved = Math.max(0, reservedQty - Number(tr.qty || 0));
-      db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, now(), item.id);
+      db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, t, item.id);
     }
 
     db.prepare("UPDATE item_transfers SET status=? WHERE id=?").run("canceled", tr.id);
@@ -737,6 +782,9 @@ inventoryRouter.post("/transfers/:id/dm/cancel", dmAuthMiddleware, (req, res) =>
 
   try {
     const result = tx();
+    if (result.status === "expired") {
+      return res.json({ ok: true, status: "expired", expiredAt: result.expiredAt });
+    }
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${result.toPlayerId}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("transfers:updated");

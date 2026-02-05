@@ -240,7 +240,7 @@ export const api = {
   dmTicketsRules: () => request("/api/tickets/dm/rules", { method: "GET" }),
   dmTicketsUpdateRules: (payload) => request("/api/tickets/dm/rules", { method: "PUT", body: JSON.stringify(payload) }),
   dmTicketsSetActiveQuest: (questKey) =>
-    request("/api/tickets/dm/quest/assign", { method: "POST", body: JSON.stringify({ questKey }) }),
+    request("/api/tickets/dm/quest/active", { method: "POST", body: JSON.stringify({ questKey }) }),
   dmTicketsResetQuest: (questKey, dayKey = null) =>
     request("/api/tickets/dm/quest/reset", { method: "POST", body: JSON.stringify({ questKey, dayKey }) }),
   dmTicketsList: () => request("/api/tickets/dm/list", { method: "GET" }),

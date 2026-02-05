@@ -1,10 +1,9 @@
 import express from "express";
-import multer from "multer";
 import path from "node:path";
 import fs from "node:fs";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
-import { now, jsonParse, wrapMulter } from "../util.js";
+import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 
@@ -15,37 +14,11 @@ const BESTIARY_DIR = path.join(uploadsDir, "bestiary");
 fs.mkdirSync(MONSTERS_DIR, { recursive: true });
 fs.mkdirSync(BESTIARY_DIR, { recursive: true });
 
-const UPLOAD_DIR = MONSTERS_DIR;
-
 function imageUrl(filename) {
   const bestiaryPath = path.join(BESTIARY_DIR, filename);
   if (fs.existsSync(bestiaryPath)) return `/uploads/bestiary/${filename}`;
   return `/uploads/monsters/${filename}`;
 }
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
-    const safe = `${Date.now()}_${Math.random().toString(16).slice(2)}_${file.originalname}`.replace(/[^\w.\-]/g, "_");
-    cb(null, safe);
-  }
-});
-const BESTIARY_IMAGE_MAX_BYTES = Number(process.env.BESTIARY_IMAGE_MAX_BYTES || 5 * 1024 * 1024);
-const BESTIARY_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-function isAllowedBestiaryImage(mime) {
-  return BESTIARY_IMAGE_MIMES.has(String(mime || "").toLowerCase());
-}
-const upload = multer({
-  storage,
-  limits: { fileSize: BESTIARY_IMAGE_MAX_BYTES },
-  fileFilter: (req, file, cb) => {
-    if (!isAllowedBestiaryImage(file.mimetype)) {
-      req.fileValidationError = "unsupported_file_type";
-      return cb(null, false);
-    }
-    cb(null, true);
-  }
-});
 
 function isDmRequest(req) {
   const token = req.cookies?.[getDmCookieName()];
@@ -321,21 +294,6 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   });
   req.app.locals.io?.emit("bestiary:updated");
   res.json({ ok: true });
-});
-
-bestiaryRouter.post("/:id/image", dmAuthMiddleware, wrapMulter(upload.single("image")), (req, res) => {
-  const db = getDb();
-  const id = Number(req.params.id);
-  const cur = db.prepare("SELECT * FROM monsters WHERE id=?").get(id);
-  if (!cur) return res.status(404).json({ error: "not_found" });
-  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
-  if (!req.file) return res.status(400).json({ error: "file_required" });
-
-  db.prepare("INSERT INTO monster_images(monster_id, filename, original_name, mime, created_at) VALUES(?,?,?,?,?)")
-    .run(id, req.file.filename, req.file.originalname, req.file.mimetype, now());
-
-  req.app.locals.io?.emit("bestiary:updated");
-  res.json({ ok: true, url: `/uploads/monsters/${req.file.filename}` });
 });
 
 bestiaryRouter.post("/settings/toggle", dmAuthMiddleware, (req, res) => {

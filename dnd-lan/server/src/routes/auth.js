@@ -42,7 +42,12 @@ authRouter.post("/login", loginLimiter, (req, res) => {
 });
 
 authRouter.post("/logout", (req, res) => {
-  res.clearCookie(getDmCookieName());
+  const secure = process.env.NODE_ENV === "production";
+  res.clearCookie(getDmCookieName(), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure
+  });
   res.json({ ok: true });
 });
 

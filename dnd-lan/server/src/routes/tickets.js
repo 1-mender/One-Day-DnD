@@ -918,7 +918,7 @@ ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
   res.json({ rules });
 });
 
-ticketsRouter.post("/dm/quest/active", dmAuthMiddleware, (req, res) => {
+function handleSetActiveQuest(req, res) {
   const party = getParty();
   const questKey = String(req.body?.questKey || "").trim();
   if (!questKey) return res.status(400).json({ error: "quest_key_required" });
@@ -950,7 +950,10 @@ ticketsRouter.post("/dm/quest/active", dmAuthMiddleware, (req, res) => {
 
   req.app.locals.io?.emit("tickets:updated");
   res.json({ ok: true, activeKey: questKey });
-});
+}
+
+ticketsRouter.post("/dm/quest/active", dmAuthMiddleware, (req, res) => handleSetActiveQuest(req, res));
+ticketsRouter.post("/dm/quest/assign", dmAuthMiddleware, (req, res) => handleSetActiveQuest(req, res));
 
 ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
   const party = getParty();

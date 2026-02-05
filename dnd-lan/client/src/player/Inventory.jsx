@@ -24,6 +24,7 @@ import { useSocket } from "../context/SocketContext.jsx";
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 const FAVORITE_TAG = "favorite";
 const ENV_MAX_WEIGHT = Number(import.meta.env.VITE_INVENTORY_WEIGHT_LIMIT || 0);
+const TRANSFER_REFRESH_MS = 30_000;
 
 export default function Inventory() {
   const toast = useToast();
@@ -137,6 +138,14 @@ export default function Inventory() {
   useEffect(() => {
     loadOutbox().catch(() => {});
   }, [loadOutbox]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      loadTransfers().catch(() => {});
+      loadOutbox().catch(() => {});
+    }, TRANSFER_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [loadTransfers, loadOutbox]);
 
   useEffect(() => {
     if (transferOpen && !transferTo && players.length) {
@@ -270,7 +279,14 @@ export default function Inventory() {
     if (readOnly) return;
     setErr("");
     try {
-      await api.invTransferAccept(tr.id);
+      const r = await api.invTransferAccept(tr.id);
+      if (r?.status === "expired") {
+        await loadTransfers();
+        await loadOutbox();
+        await load();
+        toast.warn("Передача истекла");
+        return;
+      }
       await loadTransfers();
       await loadOutbox();
       await load();
@@ -286,7 +302,14 @@ export default function Inventory() {
     if (readOnly) return;
     setErr("");
     try {
-      await api.invTransferReject(tr.id);
+      const r = await api.invTransferReject(tr.id);
+      if (r?.status === "expired") {
+        await loadTransfers();
+        await loadOutbox();
+        await load();
+        toast.warn("Передача истекла");
+        return;
+      }
       await loadTransfers();
       await loadOutbox();
       await load();
@@ -302,7 +325,14 @@ export default function Inventory() {
     if (readOnly) return;
     setErr("");
     try {
-      await api.invTransferCancel(tr.id);
+      const r = await api.invTransferCancel(tr.id);
+      if (r?.status === "expired") {
+        await loadTransfers();
+        await loadOutbox();
+        await load();
+        toast.warn("Передача истекла");
+        return;
+      }
       await loadOutbox();
       await load();
       toast.success("Передача отменена");
@@ -445,6 +475,9 @@ export default function Inventory() {
                 <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
+                        <span className="badge secondary">Истекла</span>
+                      ) : null}
                       <span className="badge secondary">от {tr.fromName || `#${tr.fromPlayerId}`}</span>
                       <span className="badge">x{tr.qty}</span>
                       <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
@@ -500,6 +533,9 @@ export default function Inventory() {
                 <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
+                        <span className="badge secondary">Истекла</span>
+                      ) : null}
                       <span className="badge secondary">кому {tr.toName || `#${tr.toPlayerId}`}</span>
                       <span className="badge">x{tr.qty}</span>
                       <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>

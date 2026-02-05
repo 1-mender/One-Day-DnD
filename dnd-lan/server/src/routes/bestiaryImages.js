@@ -38,27 +38,7 @@ const upload = multer({
   }
 });
 
-bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
-  const db = getDb();
-  const monsterId = Number(req.params.monsterId);
-  if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
-
-  const rows = db
-    .prepare("SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images WHERE monster_id=? ORDER BY id DESC")
-    .all(monsterId)
-    .map((r) => ({
-      id: r.id,
-      monsterId: r.monster_id,
-      url: `/uploads/bestiary/${r.filename}`,
-      originalName: r.original_name,
-      mime: r.mime,
-      createdAt: r.created_at
-    }));
-
-  res.json({ items: rows });
-});
-
-bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
+function handleUpload(req, res) {
   const db = getDb();
   const monsterId = Number(req.params.monsterId);
   if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
@@ -100,6 +80,35 @@ bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upl
   req.app.locals.io?.to("dm").emit("bestiary:updated", { monsterId, images: true });
 
   res.json({ ok: true, image });
+}
+
+bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const monsterId = Number(req.params.monsterId);
+  if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
+
+  const rows = db
+    .prepare("SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images WHERE monster_id=? ORDER BY id DESC")
+    .all(monsterId)
+    .map((r) => ({
+      id: r.id,
+      monsterId: r.monster_id,
+      url: `/uploads/bestiary/${r.filename}`,
+      originalName: r.original_name,
+      mime: r.mime,
+      createdAt: r.created_at
+    }));
+
+  res.json({ items: rows });
+});
+
+bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
+  return handleUpload(req, res);
+});
+
+// legacy alias: accepts field "image"
+bestiaryImagesRouter.post("/:monsterId/image", dmAuthMiddleware, wrapMulter(upload.single("image")), (req, res) => {
+  return handleUpload(req, res);
 });
 
 bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => {

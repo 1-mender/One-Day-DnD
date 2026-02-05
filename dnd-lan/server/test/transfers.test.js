@@ -169,3 +169,101 @@ test("Transfer reject returns reservation and is idempotent", async () => {
   assert.equal(acceptAfter.res.status, 400);
   assert.equal(acceptAfter.data.error, "already_finalized");
 });
+
+test("Expired transfer accept returns status expired and releases reservation", async () => {
+  const playerA = createPlayer("Sender3");
+  const playerB = createPlayer("Receiver3");
+  const tokenA = createSession(playerA);
+  const tokenB = createSession(playerB);
+  const itemId = createItem(playerA, { qty: 5 });
+
+  const createRes = await api("/api/inventory/transfers", {
+    method: "POST",
+    headers: { "x-player-token": tokenA },
+    body: { to_player_id: playerB, item_id: itemId, qty: 2 }
+  });
+  assert.equal(createRes.res.status, 200);
+
+  const db = getDb();
+  db.prepare("UPDATE item_transfers SET expires_at=? WHERE id=?").run(now() - 1000, createRes.data.id);
+
+  const acceptRes = await api(`/api/inventory/transfers/${createRes.data.id}/accept`, {
+    method: "POST",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(acceptRes.res.status, 200);
+  assert.equal(acceptRes.data.status, "expired");
+
+  const senderItem = db.prepare("SELECT qty, reserved_qty FROM inventory_items WHERE id=?").get(itemId);
+  assert.equal(senderItem.qty, 5);
+  assert.equal(senderItem.reserved_qty, 0);
+
+  const receiverItem = db.prepare("SELECT COUNT(*) as c FROM inventory_items WHERE player_id=?").get(playerB);
+  assert.equal(receiverItem.c, 0);
+
+  const transferRow = db.prepare("SELECT status FROM item_transfers WHERE id=?").get(createRes.data.id);
+  assert.equal(transferRow.status, "expired");
+});
+
+test("Expired transfer cancel returns status expired and releases reservation", async () => {
+  const playerA = createPlayer("Sender4");
+  const playerB = createPlayer("Receiver4");
+  const tokenA = createSession(playerA);
+  const itemId = createItem(playerA, { qty: 3 });
+
+  const createRes = await api("/api/inventory/transfers", {
+    method: "POST",
+    headers: { "x-player-token": tokenA },
+    body: { to_player_id: playerB, item_id: itemId, qty: 1 }
+  });
+  assert.equal(createRes.res.status, 200);
+
+  const db = getDb();
+  db.prepare("UPDATE item_transfers SET expires_at=? WHERE id=?").run(now() - 1000, createRes.data.id);
+
+  const cancelRes = await api(`/api/inventory/transfers/${createRes.data.id}/cancel`, {
+    method: "POST",
+    headers: { "x-player-token": tokenA }
+  });
+  assert.equal(cancelRes.res.status, 200);
+  assert.equal(cancelRes.data.status, "expired");
+
+  const senderItem = db.prepare("SELECT qty, reserved_qty FROM inventory_items WHERE id=?").get(itemId);
+  assert.equal(senderItem.qty, 3);
+  assert.equal(senderItem.reserved_qty, 0);
+
+  const transferRow = db.prepare("SELECT status FROM item_transfers WHERE id=?").get(createRes.data.id);
+  assert.equal(transferRow.status, "expired");
+});
+
+test("Expired transfer reject returns status expired and releases reservation", async () => {
+  const playerA = createPlayer("Sender5");
+  const playerB = createPlayer("Receiver5");
+  const tokenA = createSession(playerA);
+  const tokenB = createSession(playerB);
+  const itemId = createItem(playerA, { qty: 2 });
+
+  const createRes = await api("/api/inventory/transfers", {
+    method: "POST",
+    headers: { "x-player-token": tokenA },
+    body: { to_player_id: playerB, item_id: itemId, qty: 1 }
+  });
+  assert.equal(createRes.res.status, 200);
+
+  const db = getDb();
+  db.prepare("UPDATE item_transfers SET expires_at=? WHERE id=?").run(now() - 1000, createRes.data.id);
+
+  const rejectRes = await api(`/api/inventory/transfers/${createRes.data.id}/reject`, {
+    method: "POST",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(rejectRes.res.status, 200);
+  assert.equal(rejectRes.data.status, "expired");
+
+  const senderItem = db.prepare("SELECT qty, reserved_qty FROM inventory_items WHERE id=?").get(itemId);
+  assert.equal(senderItem.qty, 2);
+  assert.equal(senderItem.reserved_qty, 0);
+
+  const transferRow = db.prepare("SELECT status FROM item_transfers WHERE id=?").get(createRes.data.id);
+  assert.equal(transferRow.status, "expired");
+});
