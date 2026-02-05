@@ -3,10 +3,15 @@ import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
+import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
 
 export const ticketsRouter = express.Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const SEED_TTL_MS = 10 * 60 * 1000;
+const issuedSeeds = new Map();
+
+validateGameCatalog();
 
 const DEFAULT_DAILY_QUEST = {
   enabled: true,
@@ -124,6 +129,14 @@ const DEFAULT_TICKET_RULES = {
     chest: { enabled: true, price: 7, dailyLimit: 1 },
     hint: { enabled: true, price: 5, dailyLimit: 2 }
   },
+  autoBalance: {
+    enabled: false,
+    windowDays: 7,
+    targetWinRate: 0.55,
+    rewardStep: 1,
+    penaltyStep: 1,
+    minPlays: 20
+  },
   dailyQuest: {
     enabled: true,
     activeKey: DEFAULT_DAILY_QUEST.key,
@@ -133,6 +146,117 @@ const DEFAULT_TICKET_RULES = {
 
 function getDayKey(t = now()) {
   return Math.floor(Number(t) / DAY_MS);
+}
+
+function makeSeed() {
+  return Math.random().toString(36).slice(2, 12);
+}
+
+function seedKey(playerId, gameKey) {
+  return `${playerId}:${gameKey}`;
+}
+
+function issueSeed(playerId, gameKey) {
+  const seed = makeSeed();
+  issuedSeeds.set(seedKey(playerId, gameKey), { seed, expiresAt: now() + SEED_TTL_MS });
+  return seed;
+}
+
+function takeSeed(playerId, gameKey, seed) {
+  const key = seedKey(playerId, gameKey);
+  const entry = issuedSeeds.get(key);
+  if (!entry) return false;
+  if (entry.seed !== seed) return false;
+  if (entry.expiresAt < now()) {
+    issuedSeeds.delete(key);
+    return false;
+  }
+  issuedSeeds.delete(key);
+  return true;
+}
+
+function makeRng(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return () => {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return (h & 0xfffffff) / 0xfffffff;
+  };
+}
+
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    h = (h * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
+function makeProof(seed, payload) {
+  const body = `${seed || ""}:${JSON.stringify(payload || {})}`;
+  return simpleHash(body);
+}
+
+function shuffleWithSeed(list, seed) {
+  const rng = makeRng(seed);
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function validateGuessPayload(payload, seed) {
+  if (!payload?.picks || !Array.isArray(payload.picks)) return false;
+  if (!payload.picks.every((p) => p && typeof p.suit === "string" && typeof p.rank === "string")) return false;
+  const suits = ["hearts", "diamonds", "clubs", "spades"];
+  const ranks = Array.isArray(payload.ranks) ? payload.ranks : ["A", "K", "Q"];
+  const deck = [];
+  for (const suit of suits) {
+    for (const rank of ranks) deck.push({ suit, rank });
+  }
+  const shuffled = shuffleWithSeed(deck, seed);
+  const targetIndex = Math.floor(makeRng(`${seed}-target`)() * shuffled.length);
+  const target = shuffled[targetIndex];
+  const maxAttempts = Number(payload.maxAttempts || 3);
+  const picks = payload.picks.slice(0, maxAttempts).map((p) => `${p.suit}:${p.rank}`);
+  const targetKey = `${target.suit}:${target.rank}`;
+  const winAttempt = picks.findIndex((p) => p === targetKey) + 1;
+  if (payload.outcome === "win") return winAttempt > 0;
+  return winAttempt === 0;
+}
+
+function validateTttPayload(payload) {
+  const moves = Array.isArray(payload?.moves) ? payload.moves : [];
+  if (moves.length === 0) return false;
+  const board = new Array(9).fill(null);
+  const playerSymbol = payload?.playerSymbol === "O" ? "O" : "X";
+  let player = "X";
+  for (const move of moves) {
+    if (!Number.isInteger(move) || move < 0 || move > 8) return false;
+    if (board[move]) return false;
+    board[move] = player;
+    player = player === "X" ? "O" : "X";
+  }
+  const lines = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+  ];
+  const winner = lines.find((line) => line.every((idx) => board[idx] && board[idx] === board[line[0]]));
+  const hasWinner = !!winner;
+  const winnerSymbol = hasWinner ? board[winner[0]] : null;
+  if (payload.outcome === "win") return winnerSymbol === playerSymbol;
+  if (payload.outcome === "loss") return hasWinner && winnerSymbol !== playerSymbol;
+  return false;
 }
 
 function randInt(min, max) {
@@ -238,6 +362,16 @@ function normalizeRules(rules) {
   }
   out.shop = shop;
 
+  const autoBalance = out.autoBalance || {};
+  out.autoBalance = {
+    enabled: autoBalance.enabled === true,
+    windowDays: clampInt(autoBalance.windowDays, 1, 30),
+    targetWinRate: clampFloat(autoBalance.targetWinRate, 0.2, 0.8),
+    rewardStep: clampInt(autoBalance.rewardStep, 0, 5),
+    penaltyStep: clampInt(autoBalance.penaltyStep, 0, 5),
+    minPlays: clampInt(autoBalance.minPlays, 10, 200)
+  };
+
   const dqRaw = out.dailyQuest && typeof out.dailyQuest === "object" ? out.dailyQuest : {};
   const poolRaw = Array.isArray(dqRaw.pool) && dqRaw.pool.length ? dqRaw.pool : DEFAULT_TICKET_RULES.dailyQuest.pool;
   const pool = [];
@@ -282,6 +416,45 @@ function normalizeRules(rules) {
   };
 
   return out;
+}
+
+function applyAutoBalance(db, partyId, rules) {
+  if (!rules.autoBalance?.enabled) return rules;
+  const dayKey = getDayKey();
+  const windowDays = Number(rules.autoBalance.windowDays || 7);
+  const minDay = dayKey - windowDays + 1;
+  const stats = db.prepare(
+    `SELECT tp.game_key as gameKey,
+            SUM(CASE WHEN tp.outcome='win' THEN 1 ELSE 0 END) as wins,
+            COUNT(*) as total
+       FROM ticket_plays tp
+       JOIN players p ON p.id = tp.player_id
+      WHERE p.party_id = ? AND tp.day_key >= ?
+      GROUP BY tp.game_key`
+  ).all(partyId, minDay);
+  const statsMap = new Map(stats.map((row) => [row.gameKey, row]));
+  const nextRules = { ...rules, games: { ...rules.games } };
+  for (const [key, game] of Object.entries(rules.games || {})) {
+    const row = statsMap.get(key);
+    if (!row || Number(row.total || 0) < rules.autoBalance.minPlays) {
+      nextRules.games[key] = { ...game };
+      continue;
+    }
+    const winRate = Number(row.wins || 0) / Number(row.total || 1);
+    const tweak = winRate - rules.autoBalance.targetWinRate;
+    const rewardStep = Number(rules.autoBalance.rewardStep || 0);
+    const penaltyStep = Number(rules.autoBalance.penaltyStep || 0);
+    const next = { ...game };
+    if (tweak > 0.08) {
+      next.rewardMax = Math.max(next.rewardMin, next.rewardMax - rewardStep);
+      next.lossPenalty = Math.min(999, next.lossPenalty + penaltyStep);
+    } else if (tweak < -0.08) {
+      next.rewardMax = Math.min(999, next.rewardMax + rewardStep);
+      next.lossPenalty = Math.max(0, next.lossPenalty - penaltyStep);
+    }
+    nextRules.games[key] = next;
+  }
+  return nextRules;
 }
 
 function getQuestProgress(db, playerId, dayKey) {
@@ -378,7 +551,8 @@ function getEffectiveRules(partyId) {
   const overrides = jsonParse(settings?.tickets_rules, {});
   const merged = mergeRules(DEFAULT_TICKET_RULES, overrides);
   merged.enabled = settings?.tickets_enabled == null ? true : !!settings.tickets_enabled;
-  return normalizeRules(merged);
+  const normalized = normalizeRules(merged);
+  return applyAutoBalance(getDb(), partyId, normalized);
 }
 
 function saveRulesOverride(partyId, enabled, rules) {
@@ -445,6 +619,7 @@ function buildPayload(db, playerId, dayKey, rules) {
   return {
     state: mapState(row),
     rules,
+    catalog: GAME_CATALOG,
     usage: getUsage(db, playerId, dayKey),
     quests: getQuestStates(db, playerId, dayKey, rules),
     questHistory: getQuestHistory(db, playerId, dayKey, rules, historyDays)
@@ -472,6 +647,21 @@ ticketsRouter.get("/me", (req, res) => {
   res.json(buildPayload(db, me.player.id, dayKey, rules));
 });
 
+ticketsRouter.get("/catalog", (req, res) => {
+  res.json({ catalog: GAME_CATALOG });
+});
+
+ticketsRouter.get("/seed", (req, res) => {
+  const me = getPlayerFromToken(req);
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const gameKey = String(req.query?.gameKey || "").trim();
+  if (!gameKey || !GAME_CATALOG.find((g) => g.key === gameKey)) {
+    return res.status(400).json({ error: "invalid_game" });
+  }
+  const seed = issueSeed(me.player.id, gameKey);
+  res.json({ seed, gameKey });
+});
+
 ticketsRouter.post("/play", (req, res) => {
   const me = getPlayerFromToken(req);
   if (!me) return res.status(401).json({ error: "not_authenticated" });
@@ -479,6 +669,9 @@ ticketsRouter.post("/play", (req, res) => {
   const gameKey = String(req.body?.gameKey || "").trim();
   const outcome = String(req.body?.outcome || "win").trim();
   const performanceKey = String(req.body?.performance || "normal").trim();
+  const seed = req.body?.seed ? String(req.body.seed) : "";
+  const payload = req.body?.payload || null;
+  const proof = req.body?.proof ? String(req.body.proof) : "";
 
   const rules = getEffectiveRules(me.player.party_id);
   if (!rules.enabled) return res.status(400).json({ error: "tickets_disabled" });
@@ -486,6 +679,20 @@ ticketsRouter.post("/play", (req, res) => {
   if (!game) return res.status(400).json({ error: "invalid_game" });
   if (game.enabled === false) return res.status(400).json({ error: "game_disabled" });
   if (!["win", "loss"].includes(outcome)) return res.status(400).json({ error: "invalid_outcome" });
+  if (payload) {
+    if (proof && makeProof(seed, payload) !== proof) {
+      return res.status(400).json({ error: "invalid_proof" });
+    }
+    if (seed && !takeSeed(me.player.id, gameKey, seed)) {
+      return res.status(400).json({ error: "invalid_seed" });
+    }
+    if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "")) {
+      return res.status(400).json({ error: "invalid_proof" });
+    }
+    if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome })) {
+      return res.status(400).json({ error: "invalid_proof" });
+    }
+  }
 
   const db = getDb();
   let row = ensureTicketRow(db, me.player.id);

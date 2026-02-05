@@ -217,6 +217,8 @@ export const api = {
 
   ticketsMe: () => request("/api/tickets/me", { method: "GET" }),
   ticketsRules: () => request("/api/tickets/rules", { method: "GET" }),
+  ticketsCatalog: () => request("/api/tickets/catalog", { method: "GET" }),
+  ticketsSeed: (gameKey) => request(`/api/tickets/seed?gameKey=${encodeURIComponent(gameKey)}`, { method: "GET" }),
   ticketsPlay: (payload) => request("/api/tickets/play", { method: "POST", body: JSON.stringify(payload) }),
   ticketsPurchase: (payload) => request("/api/tickets/purchase", { method: "POST", body: JSON.stringify(payload) }),
   dmTicketsRules: () => request("/api/tickets/dm/rules", { method: "GET" }),

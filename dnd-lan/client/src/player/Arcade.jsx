@@ -2,94 +2,22 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../components/Modal.jsx";
 import Match3Game from "./games/Match3.jsx";
 import GuessCardGame from "./games/GuessCard.jsx";
+import TicTacToeGame from "./games/TicTacToe.jsx";
+import UnoMiniGame from "./games/UnoMini.jsx";
+import ScrabbleBlitzGame from "./games/ScrabbleBlitz.jsx";
 import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useLiteMode } from "../hooks/useLiteMode.js";
 
-const games = [
-  {
-    key: "ttt",
-    title: "Крестики-нолики: дуэль умов",
-    blurb: "Лучший из 3. Победа 2-0 дает бонусные билеты.",
-    reward: "1-3 билета",
-    difficulty: "Легкая",
-    time: "2-4 мин",
-    risk: "Низкий",
-    entry: "0",
-    rules: [
-      "Best of 3: нужно выиграть 2 раунда",
-      "Ничья = мгновенный рематч",
-      "Победа 2-0: +2 билета к награде"
-    ]
-  },
-  {
-    key: "guess",
-    title: "Угадай карту: разум и память",
-    blurb: "Ты получаешь 3 подсказки. Чем раньше угадаешь, тем выше множитель.",
-    reward: "2-4 билета",
-    difficulty: "Средняя",
-    time: "3-5 мин",
-    risk: "Средний",
-    entry: "1",
-    rules: [
-      "3 подсказки, выбор из колоды",
-      "Угадал с 1-й попытки: x2 к награде",
-      "Каждый промах снижает награду на 1"
-    ]
-  },
-  {
-    key: "match3",
-    title: "Три в ряд: цепные комбо",
-    blurb: "Ограниченное число ходов. Серии комбо усиливают награду.",
-    reward: "2-5 билетов",
-    difficulty: "Средняя",
-    time: "4-6 мин",
-    risk: "Средний",
-    entry: "1",
-    rules: [
-      "20 ходов на выполнение цели",
-      "Комбо 4+ дают +1 билет",
-      "Комбо 5+ дают x1.5 к финалу"
-    ]
-  },
-  {
-    key: "uno",
-    title: "Uno-мини: быстрый матч",
-    blurb: "Один раунд до 50 очков. Ставки растут на финале.",
-    reward: "2-5 билетов",
-    difficulty: "Средняя",
-    time: "5-7 мин",
-    risk: "Средний",
-    entry: "1",
-    rules: [
-      "Раунд до 50 очков",
-      "Победа без штрафных карт: +3 билета",
-      "Последняя карта = контрольная ставка"
-    ]
-  },
-  {
-    key: "scrabble",
-    title: "Эрудит-блиц: слово за минуту",
-    blurb: "Собери слово из 5-7 букв за 60 секунд, редкие буквы дают бонус.",
-    reward: "3-6 билетов",
-    difficulty: "Сложная",
-    time: "2-3 мин",
-    risk: "Высокий",
-    entry: "1",
-    rules: [
-      "60 секунд на сбор слова",
-      "Слово 6+ букв: +3 билета",
-      "Редкая буква: +2 билета"
-    ]
-  }
-];
+const fallbackGames = [];
 
 export default function Arcade() {
   const toast = useToast();
-  const { state, rules, usage, quests, questHistory, loading, err, play, readOnly } = useTickets();
+  const { state, rules, catalog, usage, quests, questHistory, loading, err, play, readOnly } = useTickets();
   const lite = useLiteMode();
   const [activeGameKey, setActiveGameKey] = useState("");
+  const [activeModeKey, setActiveModeKey] = useState("");
   const [outcome, setOutcome] = useState("win");
   const [performance, setPerformance] = useState("");
   const [busy, setBusy] = useState(false);
@@ -98,13 +26,32 @@ export default function Arcade() {
   const questUpdatedTimer = useRef(null);
   const prevQuestKey = useRef(null);
   const questInit = useRef(false);
+  const [selectedModes, setSelectedModes] = useState({});
   const [lastGameKey, setLastGameKey] = useState(() => {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("fish_last_game") || "";
   });
 
-  const activeGame = useMemo(() => games.find((g) => g.key === activeGameKey) || null, [activeGameKey]);
+  const games = useMemo(() => (catalog?.length ? catalog : fallbackGames), [catalog]);
+  const activeGame = useMemo(() => games.find((g) => g.key === activeGameKey) || null, [activeGameKey, games]);
   const activeRules = activeGameKey ? rules?.games?.[activeGameKey] : null;
+  const activeMode = useMemo(
+    () => activeGame?.modes?.find((mode) => mode.key === activeModeKey) || activeGame?.modes?.[0] || null,
+    [activeGame, activeModeKey]
+  );
+
+  useEffect(() => {
+    if (!games.length) return;
+    setSelectedModes((prev) => {
+      const next = { ...prev };
+      for (const g of games) {
+        if (!next[g.key] && Array.isArray(g.modes) && g.modes.length > 0) {
+          next[g.key] = g.modes[0].key;
+        }
+      }
+      return next;
+    });
+  }, [games]);
 
   const perfOptions = useMemo(() => {
     const list = [];
@@ -155,6 +102,7 @@ export default function Arcade() {
 
   function openGame(gameKey) {
     setActiveGameKey(gameKey);
+    setActiveModeKey(selectedModes[gameKey] || "");
     setOutcome("win");
     const firstPerf = Object.keys(rules?.games?.[gameKey]?.performance || {})[0] || "normal";
     setPerformance(firstPerf);
@@ -168,6 +116,7 @@ export default function Arcade() {
   function closeGame() {
     if (busy) return;
     setActiveGameKey("");
+    setActiveModeKey("");
     setPlayErr("");
   }
 
@@ -208,6 +157,10 @@ export default function Arcade() {
     return { used, lim, left };
   }
 
+  function setMode(gameKey, modeKey) {
+    setSelectedModes((prev) => ({ ...prev, [gameKey]: modeKey }));
+  }
+
   async function handlePlay() {
     if (!activeGameKey || busy) return;
     if (!ticketsEnabled) {
@@ -238,7 +191,7 @@ export default function Arcade() {
     }
   }
 
-  async function handleMatch3Submit({ outcome: finalOutcome, performance: perf }) {
+  async function handleMatch3Submit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
     if (!ticketsEnabled) {
       throw new Error("Аркада закрыта DM.");
     }
@@ -246,7 +199,10 @@ export default function Arcade() {
       const res = await play({
         gameKey: "match3",
         outcome: finalOutcome,
-        performance: perf || "normal"
+        performance: perf || "normal",
+        payload,
+        seed,
+        proof
       });
       const result = res?.result;
       if (result?.outcome === "win") {
@@ -261,7 +217,7 @@ export default function Arcade() {
     }
   }
 
-  async function handleGuessSubmit({ outcome: finalOutcome, performance: perf }) {
+  async function handleGuessSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
     if (!ticketsEnabled) {
       throw new Error("Аркада закрыта DM.");
     }
@@ -269,7 +225,88 @@ export default function Arcade() {
       const res = await play({
         gameKey: "guess",
         outcome: finalOutcome,
-        performance: perf || "normal"
+        performance: perf || "normal",
+        payload,
+        seed,
+        proof
+      });
+      const result = res?.result;
+      if (result?.outcome === "win") {
+        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
+      } else {
+        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
+      }
+      return result;
+    } catch (e) {
+      const msg = formatTicketError(formatError(e));
+      throw new Error(msg);
+    }
+  }
+
+  async function handleTttSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
+    if (!ticketsEnabled) {
+      throw new Error("Аркада закрыта DM.");
+    }
+    try {
+      const res = await play({
+        gameKey: "ttt",
+        outcome: finalOutcome,
+        performance: perf || "normal",
+        payload,
+        seed,
+        proof
+      });
+      const result = res?.result;
+      if (result?.outcome === "win") {
+        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
+      } else {
+        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
+      }
+      return result;
+    } catch (e) {
+      const msg = formatTicketError(formatError(e));
+      throw new Error(msg);
+    }
+  }
+
+  async function handleUnoSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
+    if (!ticketsEnabled) {
+      throw new Error("Аркада закрыта DM.");
+    }
+    try {
+      const res = await play({
+        gameKey: "uno",
+        outcome: finalOutcome,
+        performance: perf || "normal",
+        payload,
+        seed,
+        proof
+      });
+      const result = res?.result;
+      if (result?.outcome === "win") {
+        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
+      } else {
+        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
+      }
+      return result;
+    } catch (e) {
+      const msg = formatTicketError(formatError(e));
+      throw new Error(msg);
+    }
+  }
+
+  async function handleScrabbleSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
+    if (!ticketsEnabled) {
+      throw new Error("Аркада закрыта DM.");
+    }
+    try {
+      const res = await play({
+        gameKey: "scrabble",
+        outcome: finalOutcome,
+        performance: perf || "normal",
+        payload,
+        seed,
+        proof
       });
       const result = res?.result;
       if (result?.outcome === "win") {
@@ -362,6 +399,8 @@ export default function Arcade() {
           const difficultyLabel = getUiText(g.key, "difficulty", g.difficulty);
           const riskLabel = getUiText(g.key, "risk", g.risk);
           const timeLabel = getUiText(g.key, "time", g.time);
+          const modes = Array.isArray(g.modes) ? g.modes : [];
+          const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
           return rules?.games?.[g.key]?.enabled === false ? (
             <div key={g.key} className="item taped arcade-card disabled-card">
               <div className="arcade-head">
@@ -378,7 +417,7 @@ export default function Arcade() {
                 ) : null}
               </div>
               <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
-                <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
+                <span className="ticket-pill">{formatRewardValue(g.key, "—")}</span>
                 <button className="btn secondary" disabled>Недоступно</button>
               </div>
             </div>
@@ -397,7 +436,7 @@ export default function Arcade() {
               <div className="arcade-meta">
                 <span className="meta-chip" title={`Время: ${timeLabel}`}>Время: {timeLabel}</span>
                 <span className="meta-chip" title={`Риск: ${riskLabel}`}>Риск: {riskLabel}</span>
-                <span className="meta-chip">{formatEntryValue(g.key, g.entry)}</span>
+                <span className="meta-chip">{formatEntryValue(g.key, 0)}</span>
                 {remaining ? (
                   <span className="meta-chip">Попытки: {remaining.used}/{remaining.lim}</span>
                 ) : null}
@@ -405,6 +444,20 @@ export default function Arcade() {
                   <span className="meta-chip">Осталось: {remaining.left}</span>
                 ) : null}
               </div>
+              {modes.length > 1 ? (
+                <div className="arcade-modes">
+                  {modes.map((mode) => (
+                    <button
+                      key={`${g.key}_${mode.key}`}
+                      type="button"
+                      className={`mode-chip${selectedModeKey === mode.key ? " active" : ""}`}
+                      onClick={() => setMode(g.key, mode.key)}
+                    >
+                      {mode.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
               <div className="rule-list">
                 {rulesToShow.map((rule, idx) => (
                   <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
@@ -414,7 +467,7 @@ export default function Arcade() {
                 ) : null}
               </div>
               <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
-                <span className="ticket-pill">{formatRewardValue(g.key, g.reward)}</span>
+                <span className="ticket-pill">{formatRewardValue(g.key, "—")}</span>
                 <button
                   className="btn secondary"
                   disabled={!canPlay}
@@ -466,6 +519,7 @@ export default function Arcade() {
               ? `${rules.games.match3.rewardMin}-${rules.games.match3.rewardMax} билетов`
               : "—"
           }
+          mode={activeMode}
           readOnly={readOnly}
         />
       ) : activeGame?.key === "guess" ? (
@@ -480,6 +534,52 @@ export default function Arcade() {
               ? `${rules.games.guess.rewardMin}-${rules.games.guess.rewardMax} билетов`
               : "—"
           }
+          mode={activeMode}
+          readOnly={readOnly}
+        />
+      ) : activeGame?.key === "ttt" ? (
+        <TicTacToeGame
+          open={!!activeGame}
+          onClose={closeGame}
+          onSubmitResult={handleTttSubmit}
+          disabled={!ticketsEnabled || rules?.games?.ttt?.enabled === false}
+          entryCost={Number(rules?.games?.ttt?.entryCost || 0)}
+          rewardRange={
+            rules?.games?.ttt
+              ? `${rules.games.ttt.rewardMin}-${rules.games.ttt.rewardMax} билетов`
+              : "—"
+          }
+          mode={activeMode}
+          readOnly={readOnly}
+        />
+      ) : activeGame?.key === "uno" ? (
+        <UnoMiniGame
+          open={!!activeGame}
+          onClose={closeGame}
+          onSubmitResult={handleUnoSubmit}
+          disabled={!ticketsEnabled || rules?.games?.uno?.enabled === false}
+          entryCost={Number(rules?.games?.uno?.entryCost || 0)}
+          rewardRange={
+            rules?.games?.uno
+              ? `${rules.games.uno.rewardMin}-${rules.games.uno.rewardMax} билетов`
+              : "—"
+          }
+          mode={activeMode}
+          readOnly={readOnly}
+        />
+      ) : activeGame?.key === "scrabble" ? (
+        <ScrabbleBlitzGame
+          open={!!activeGame}
+          onClose={closeGame}
+          onSubmitResult={handleScrabbleSubmit}
+          disabled={!ticketsEnabled || rules?.games?.scrabble?.enabled === false}
+          entryCost={Number(rules?.games?.scrabble?.entryCost || 0)}
+          rewardRange={
+            rules?.games?.scrabble
+              ? `${rules.games.scrabble.rewardMin}-${rules.games.scrabble.rewardMax} билетов`
+              : "—"
+          }
+          mode={activeMode}
           readOnly={readOnly}
         />
       ) : (
@@ -558,6 +658,8 @@ function formatTicketError(code) {
   if (c === "daily_game_limit") return "Достигнут дневной лимит попыток.";
   if (c === "daily_spend_cap") return "Достигнут дневной лимит трат.";
   if (c === "invalid_performance") return "Неверный бонус выполнения.";
+  if (c === "invalid_seed") return "Сессия игры устарела. Откройте игру снова.";
+  if (c === "invalid_proof") return "Результат игры не прошел проверку.";
   if (c === "invalid_game") return "Эта игра недоступна.";
   return c || "Ошибка";
 }

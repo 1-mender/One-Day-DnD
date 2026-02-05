@@ -6,6 +6,7 @@ import { useSocket } from "../context/SocketContext.jsx";
 export function useTickets() {
   const [state, setState] = useState(null);
   const [rules, setRules] = useState(null);
+  const [catalog, setCatalog] = useState([]);
   const [usage, setUsage] = useState({ playsToday: {}, purchasesToday: {} });
   const [quests, setQuests] = useState([]);
   const [questHistory, setQuestHistory] = useState([]);
@@ -18,6 +19,7 @@ export function useTickets() {
     if (!payload) return;
     if (payload.state) setState(payload.state);
     if (payload.rules) setRules(payload.rules);
+    if (payload.catalog) setCatalog(Array.isArray(payload.catalog) ? payload.catalog : []);
     if (payload.usage) setUsage(payload.usage);
     if (payload.quests) setQuests(Array.isArray(payload.quests) ? payload.quests : []);
     if (payload.questHistory) setQuestHistory(Array.isArray(payload.questHistory) ? payload.questHistory : []);
@@ -66,6 +68,7 @@ export function useTickets() {
   return {
     state,
     rules,
+    catalog,
     usage,
     quests,
     questHistory,
