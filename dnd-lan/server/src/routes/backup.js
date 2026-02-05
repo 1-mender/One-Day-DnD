@@ -88,18 +88,20 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
     const dstUploads = uploadsDir;
     const dbBackupPath = dstDb + ".bak";
     const uploadsBackupPath = dstUploads + "_bak";
+    const hadDstDb = fs.existsSync(dstDb);
+    const hadDstUploads = fs.existsSync(dstUploads);
     fs.mkdirSync(DATA_DIR, { recursive: true });
 
     // close DB before replace
     closeDb();
 
     // backup old state
-    if (fs.existsSync(dstDb)) {
+    if (hadDstDb) {
       fs.rmSync(dbBackupPath, { force: true });
       fs.copyFileSync(dstDb, dbBackupPath);
     }
     fs.rmSync(uploadsBackupPath, { recursive: true, force: true });
-    if (fs.existsSync(dstUploads)) {
+    if (hadDstUploads) {
       fs.cpSync(dstUploads, uploadsBackupPath, { recursive: true });
     }
 
@@ -113,16 +115,19 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
         fs.mkdirSync(dstUploads, { recursive: true });
       }
     } catch (replaceError) {
-      if (fs.existsSync(dbBackupPath)) {
+      if (hadDstDb && fs.existsSync(dbBackupPath)) {
         fs.copyFileSync(dbBackupPath, dstDb);
+      } else {
+        fs.rmSync(dstDb, { force: true });
       }
       fs.rmSync(dstUploads, { recursive: true, force: true });
-      if (fs.existsSync(uploadsBackupPath)) {
+      if (hadDstUploads && fs.existsSync(uploadsBackupPath)) {
         fs.cpSync(uploadsBackupPath, dstUploads, { recursive: true });
       }
       throw replaceError;
     } finally {
       fs.rmSync(uploadsBackupPath, { recursive: true, force: true });
+      fs.rmSync(dbBackupPath, { force: true });
     }
 
     // reload db
