@@ -35,6 +35,7 @@ npm run start
 - `npm run lint` — линт client-кода
 - `npm run verify` — быстрая проверка качества (`lint + test + build`)
 - `npm run preflight` — быстрая проверка перед сессией (health/readyz/диск/минимальная запись)
+- `npm --prefix server run chaos:presence` - presence chaos test (reconnect p95 + false-offline)
 - `npm run e2e` - e2e smoke: temp server + DM setup/login + join/approve + inventory write/read
 - `npm run images:opt` - convert UI textures to webp/avif (local)
 

@@ -9,7 +9,8 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "test": "node --test",
-    "cleanup:uploads": "node src/cleanupUploads.js"
+    "cleanup:uploads": "node src/cleanupUploads.js",
+    "chaos:presence": "node scripts/presence-chaos.mjs"
   },
   "dependencies": {
     "archiver": "^6.0.2",
