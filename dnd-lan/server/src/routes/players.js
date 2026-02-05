@@ -1,9 +1,10 @@
 import express from "express";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getPartyId, getParty } from "../db.js";
-import { now } from "../util.js";
+import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { LIMITS } from "../limits.js";
+import { getInventoryLimitFromStats } from "../inventoryLimit.js";
 
 export const playersRouter = express.Router();
 
@@ -63,7 +64,6 @@ playersRouter.get("/me", (req, res) => {
 playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getPartyId();
-  const limit = Number(LIMITS.inventoryWeight || 0);
   const rows = db.prepare(
     `
     SELECT p.id,
@@ -71,24 +71,26 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
            p.status,
            p.last_seen as lastSeen,
            p.created_at as createdAt,
-           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated,
-           COALESCE((
-             SELECT SUM(i.weight * i.qty)
-             FROM inventory_items i
-             WHERE i.player_id = p.id
-           ), 0) as inventoryWeight
+           MAX(CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END) as profileCreated,
+           MAX(cp.stats) as profileStats,
+           COALESCE(SUM(i.weight * i.qty), 0) as inventoryWeight
     FROM players p
     LEFT JOIN character_profiles cp ON cp.player_id = p.id
+    LEFT JOIN inventory_items i ON i.player_id = p.id
     WHERE p.party_id=?
+    GROUP BY p.id, p.display_name, p.status, p.last_seen, p.created_at
     ORDER BY p.id
   `
   ).all(partyId);
   const items = rows.map((row) => {
     const total = Number(row.inventoryWeight || 0);
+    const stats = jsonParse(row.profileStats, {});
+    const limitInfo = getInventoryLimitFromStats(stats);
     return {
       ...row,
       inventoryWeight: Number.isFinite(total) ? total : 0,
-      inventoryOverLimit: limit > 0 && Number.isFinite(total) && total > limit
+      inventoryLimit: limitInfo.limit,
+      inventoryOverLimit: limitInfo.limit > 0 && Number.isFinite(total) && total > limitInfo.limit
     };
   });
   res.json({ items });

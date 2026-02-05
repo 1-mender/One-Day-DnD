@@ -52,6 +52,10 @@ export default function Inventory() {
     try {
       const r = await api.invMine();
       setItems(r.items || []);
+      const limit = Number(r?.weightLimit);
+      if (Number.isFinite(limit)) {
+        setMaxWeight((prev) => (prev === limit ? prev : limit));
+      }
     } catch (e) {
       setErr(formatError(e));
     } finally {
@@ -69,21 +73,6 @@ export default function Inventory() {
     };
   }, [load, socket]);
 
-  useEffect(() => {
-    let active = true;
-    api.serverInfo()
-      .then((info) => {
-        if (!active) return;
-        const limit = Number(info?.settings?.inventoryWeightLimit);
-        if (Number.isFinite(limit)) {
-          setMaxWeight((prev) => (prev === limit ? prev : limit));
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);

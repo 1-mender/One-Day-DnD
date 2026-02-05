@@ -22,11 +22,20 @@ export default function DMPlayers() {
   const nav = useNavigate();
   const { socket } = useSocket();
 
-  const load = useCallback(async () => {
+  const loadPlayers = useCallback(async () => {
     setErr("");
     try {
-      const [r, t] = await Promise.all([api.dmPlayers(), api.dmTicketsList()]);
+      const r = await api.dmPlayers();
       setPlayers(r.items || []);
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }, []);
+
+  const loadTickets = useCallback(async () => {
+    setErr("");
+    try {
+      const t = await api.dmTicketsList();
       const map = {};
       for (const row of t.items || []) map[row.playerId] = row;
       setTickets(map);
@@ -35,13 +44,17 @@ export default function DMPlayers() {
     }
   }, []);
 
+  const loadAll = useCallback(async () => {
+    await Promise.all([loadPlayers(), loadTickets()]);
+  }, [loadPlayers, loadTickets]);
+
   useEffect(() => {
     if (!socket) return () => {};
-    load().catch(() => {});
-    const onPlayers = () => load().catch(() => {});
-    const onStatus = () => load().catch(() => {});
-    const onTickets = () => load().catch(() => {});
-    const onInventory = () => load().catch(() => {});
+    loadAll().catch(() => {});
+    const onPlayers = () => loadPlayers().catch(() => {});
+    const onStatus = () => loadPlayers().catch(() => {});
+    const onTickets = () => loadTickets().catch(() => {});
+    const onInventory = () => loadPlayers().catch(() => {});
     socket.on("players:updated", onPlayers);
     socket.on("player:statusChanged", onStatus);
     socket.on("tickets:updated", onTickets);
@@ -52,7 +65,7 @@ export default function DMPlayers() {
       socket.off("tickets:updated", onTickets);
       socket.off("inventory:updated", onInventory);
     };
-  }, [load, socket]);
+  }, [loadAll, loadPlayers, loadTickets, socket]);
 
   async function viewAs(playerId) {
     setErr("");
@@ -84,7 +97,7 @@ export default function DMPlayers() {
       await api.dmUpdatePlayer(editPlayer.id, { displayName: name });
       setEditOpen(false);
       setEditPlayer(null);
-      await load();
+      await loadPlayers();
     } catch (e) {
       setErr(formatError(e));
     }
@@ -96,7 +109,7 @@ export default function DMPlayers() {
     setErr("");
     try {
       await api.dmDeletePlayer(player.id);
-      await load();
+      await loadPlayers();
     } catch (e) {
       setErr(formatError(e));
     }
@@ -106,7 +119,7 @@ export default function DMPlayers() {
     setErr("");
     try {
       await api.dmKick(playerId);
-      await load();
+      await loadPlayers();
     } catch (e) {
       setErr(formatError(e));
     }
@@ -139,7 +152,7 @@ export default function DMPlayers() {
       });
       setTicketOpen(false);
       setTicketPlayer(null);
-      await load();
+      await loadAll();
     } catch (e) {
       setErr(formatError(e));
     }
@@ -157,7 +170,7 @@ export default function DMPlayers() {
       <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
       <div className="small">“Как игрок” открывается в режиме read-only</div>
       <hr />
-      <ErrorBanner message={err} onRetry={load} />
+      <ErrorBanner message={err} onRetry={loadAll} />
       <div className="list">
         {playersWithTickets.map((p) => (
           <PlayerDossierCard
