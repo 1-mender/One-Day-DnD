@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api, storage } from "../api.js";
 import Modal from "../components/Modal.jsx";
-import InventoryItemCard from "../components/vintage/InventoryItemCard.jsx";
+import InventoryItemCard, { pickInventoryIcon } from "../components/vintage/InventoryItemCard.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
@@ -23,7 +23,7 @@ import { useSocket } from "../context/SocketContext.jsx";
 
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 const FAVORITE_TAG = "favorite";
-const MAX_WEIGHT = 100;
+const ENV_MAX_WEIGHT = Number(import.meta.env.VITE_INVENTORY_WEIGHT_LIMIT || 0);
 
 export default function Inventory() {
   const toast = useToast();
@@ -33,6 +33,7 @@ export default function Inventory() {
   const [rarity, setRarity] = useQueryState("rarity", "");
   const [view, setView] = useQueryState("view", "list");
   const [items, setItems] = useState([]);
+  const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
@@ -67,6 +68,22 @@ export default function Inventory() {
       socket.off("inventory:updated", onUpdated);
     };
   }, [load, socket]);
+
+  useEffect(() => {
+    let active = true;
+    api.serverInfo()
+      .then((info) => {
+        if (!active) return;
+        const limit = Number(info?.settings?.inventoryWeightLimit);
+        if (Number.isFinite(limit)) {
+          setMaxWeight((prev) => (prev === limit ? prev : limit));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
@@ -162,13 +179,14 @@ export default function Inventory() {
     }
   }
 
-  const weightRatio = MAX_WEIGHT ? totalWeightAll / MAX_WEIGHT : 0;
-  const weightStatus = weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok";
+  const hasWeightLimit = Number.isFinite(maxWeight) && maxWeight > 0;
+  const weightRatio = hasWeightLimit ? totalWeightAll / maxWeight : 0;
+  const weightStatus = hasWeightLimit ? (weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok") : "secondary";
 
   return (
     <div className={`card taped inventory-shell${lite ? " page-lite" : ""}`.trim()}>
-      <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
-        <div>
+      <div className="inv-head">
+        <div className="inv-head-main">
       <div style={{ fontWeight: 800, fontSize: 18 }}>Инвентарь</div>
       <div className="small">Вес (по фильтру): {totalWeight.toFixed(2)} {readOnly ? "• read-only" : ""}</div>
         </div>
@@ -177,27 +195,36 @@ export default function Inventory() {
       <hr />
 
       {favorites.length ? (
-        <div className="inv-quick">
-          <div className="inv-quick-title">Быстрые слоты</div>
-          <div className="inv-quick-grid">
-            {favorites.map((it) => (
-              <InventoryItemCard
-                key={`fav_${it.id}`}
-                item={it}
-                readOnly={readOnly}
-                actionsVariant="compact"
-                lite
-                onEdit={() => startEdit(it)}
-                onDelete={() => del(it.id)}
-                onToggleVisibility={() => toggleVisibility(it)}
-                onToggleFavorite={() => toggleFavorite(it)}
-              />
-            ))}
+        <div className="inv-quick-bar">
+          <div className="inv-quick-title">??????? ?????</div>
+          <div className="inv-quick-list">
+            {favorites.map((it) => {
+              const icon = pickInventoryIcon(it);
+              const qty = Number(it.qty) || 1;
+              return (
+                <button
+                  key={`fav_${it.id}`}
+                  type="button"
+                  className="inv-quick-item"
+                  onClick={() => startEdit(it)}
+                  disabled={readOnly}
+                  title={`${it.name || ""} x${qty}`}
+                  aria-label={`${it.name || "Item"} x${qty}`}
+                >
+                  {icon.Icon ? (
+                    <icon.Icon className="inv-quick-icon" aria-hidden="true" />
+                  ) : (
+                    <span className="inv-quick-fallback">{icon.text}</span>
+                  )}
+                  <span className="inv-quick-qty">x{qty}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       ) : (
-        <div className="small" style={{ marginBottom: 8 }}>
-          Отметьте зелья/свитки как избранные, чтобы они появились в быстрых слотах.
+        <div className="small inv-quick-empty">
+          ???????? ?????/?????? ??? ?????????, ????? ??? ????????? ? ??????? ??????.
         </div>
       )}
       <div className="inv-toolbar">
@@ -229,7 +256,7 @@ export default function Inventory() {
           <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
           <span className={`badge ${weightStatus}`}>
             <Scale className="icon" aria-hidden="true" />
-            Вес: {totalWeightAll.toFixed(2)} / {MAX_WEIGHT}
+            Вес: {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
           </span>
           {readOnly ? <span className="badge warn">read-only</span> : null}
         </div>

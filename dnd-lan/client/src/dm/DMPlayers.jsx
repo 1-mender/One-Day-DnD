@@ -41,13 +41,16 @@ export default function DMPlayers() {
     const onPlayers = () => load().catch(() => {});
     const onStatus = () => load().catch(() => {});
     const onTickets = () => load().catch(() => {});
+    const onInventory = () => load().catch(() => {});
     socket.on("players:updated", onPlayers);
     socket.on("player:statusChanged", onStatus);
     socket.on("tickets:updated", onTickets);
+    socket.on("inventory:updated", onInventory);
     return () => {
       socket.off("players:updated", onPlayers);
       socket.off("player:statusChanged", onStatus);
       socket.off("tickets:updated", onTickets);
+      socket.off("inventory:updated", onInventory);
     };
   }, [load, socket]);
 

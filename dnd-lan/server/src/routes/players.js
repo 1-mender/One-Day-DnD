@@ -63,6 +63,7 @@ playersRouter.get("/me", (req, res) => {
 playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getPartyId();
+  const limit = Number(LIMITS.inventoryWeight || 0);
   const rows = db.prepare(
     `
     SELECT p.id,
@@ -70,14 +71,27 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
            p.status,
            p.last_seen as lastSeen,
            p.created_at as createdAt,
-           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated,
+           COALESCE((
+             SELECT SUM(i.weight * i.qty)
+             FROM inventory_items i
+             WHERE i.player_id = p.id
+           ), 0) as inventoryWeight
     FROM players p
     LEFT JOIN character_profiles cp ON cp.player_id = p.id
     WHERE p.party_id=?
     ORDER BY p.id
   `
   ).all(partyId);
-  res.json({ items: rows });
+  const items = rows.map((row) => {
+    const total = Number(row.inventoryWeight || 0);
+    return {
+      ...row,
+      inventoryWeight: Number.isFinite(total) ? total : 0,
+      inventoryOverLimit: limit > 0 && Number.isFinite(total) && total > limit
+    };
+  });
+  res.json({ items });
 });
 
 playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {

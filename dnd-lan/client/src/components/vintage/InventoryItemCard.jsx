@@ -54,7 +54,7 @@ function pickFallbackText(tokens) {
   return "ПРЕДМ";
 }
 
-function pickIcon(item) {
+export function pickInventoryIcon(item) {
   const iconKey = getIconKeyFromItem(item);
   const CustomIcon = getInventoryIcon(iconKey);
   if (CustomIcon) return { Icon: CustomIcon };
@@ -98,10 +98,10 @@ function InventoryItemCard({
   selected = false,
   onSelectChange
 }) {
-  const icon = pickIcon(item);
+  const icon = pickInventoryIcon(item);
   const isHidden = item.visibility === "hidden";
   const vis = isHidden ? "Скрытый" : "Публичный";
-  const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility;
+  const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility || !!onToggleFavorite;
   const weight = Number(item.weight || 0);
   const rarityKey = String(item.rarity || "common").toLowerCase().replace(/\s+/g, "_");
   const rarityLabel = getRarityLabel(rarityKey);
@@ -128,6 +128,7 @@ function InventoryItemCard({
       className="item taped inv-card"
       data-rarity={rarityKey}
       data-visibility={item.visibility}
+      data-favorite={isFavorite ? "true" : "false"}
       data-variant={actionsVariant}
       data-lite={lite ? "true" : "false"}
       style={{ contentVisibility: "auto", containIntrinsicSize: "180px" }}

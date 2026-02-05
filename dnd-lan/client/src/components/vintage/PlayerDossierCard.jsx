@@ -1,4 +1,5 @@
 import React from "react";
+import { Scale } from "lucide-react";
 import PolaroidFrame from "./PolaroidFrame.jsx";
 
 function StatusStamp({ status }) {
@@ -39,8 +40,17 @@ export default function PlayerDossierCard({ player, rightActions = null, ticketB
           ) : null}
         </div>
 
-        <div style={{ marginTop: 10, fontWeight: 1000, fontSize: 18 }}>
-          {player.displayName}
+        <div className="dossier-name">
+          <span>{player.displayName}</span>
+          {player.inventoryOverLimit ? (
+            <span
+              className="dossier-overweight"
+              title="Перегруз"
+              aria-label="Перегруз"
+            >
+              <Scale className="icon" aria-hidden="true" />
+            </span>
+          ) : null}
         </div>
         <div className="small" style={{ marginTop: 6 }}>
           lastSeen: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}
