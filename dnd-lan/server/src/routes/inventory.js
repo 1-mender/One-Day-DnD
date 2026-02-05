@@ -318,9 +318,15 @@ inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) 
   const db = getDb();
   const row = db.prepare("SELECT name, reserved_qty FROM inventory_items WHERE id=? AND player_id=?").get(itemId, pid);
   if (!row) return res.status(404).json({ error: "not_found" });
-  if (Number(row.reserved_qty || 0) > 0) return res.status(400).json({ error: "transfer_pending" });
+  const recipients = db.prepare(
+    "SELECT DISTINCT to_player_id AS pid FROM item_transfers WHERE item_id=? AND status='pending'"
+  ).all(itemId).map((r) => Number(r.pid));
 
-  db.prepare("DELETE FROM inventory_items WHERE id=? AND player_id=?").run(itemId, pid);
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE item_transfers SET status='canceled' WHERE item_id=? AND status='pending'").run(itemId);
+    db.prepare("DELETE FROM inventory_items WHERE id=? AND player_id=?").run(itemId, pid);
+  });
+  tx();
 
   const p = db.prepare("SELECT party_id FROM players WHERE id=?").get(pid);
   logEvent({
@@ -336,6 +342,10 @@ inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) 
   });
 
   req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
+  req.app.locals.io?.to(`player:${pid}`).emit("transfers:updated");
+  for (const rid of recipients) {
+    if (rid) req.app.locals.io?.to(`player:${rid}`).emit("transfers:updated");
+  }
   req.app.locals.io?.to("dm").emit("inventory:updated");
   res.json({ ok: true });
 });
@@ -400,6 +410,7 @@ inventoryRouter.post("/transfers", (req, res) => {
 
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${toPlayerId}`).emit("inventory:updated");
+    req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
     req.app.locals.io?.to(`player:${toPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
 
@@ -433,6 +444,42 @@ inventoryRouter.get("/transfers/inbox", (req, res) => {
     id: r.id,
     fromPlayerId: r.from_player_id,
     fromName: r.fromName,
+    itemId: r.item_id,
+    itemName: r.itemName,
+    itemWeight: Number(r.itemWeight || 0),
+    qty: Number(r.qty || 0),
+    status: r.status,
+    note: r.note || "",
+    createdAt: r.created_at,
+    expiresAt: r.expires_at
+  }));
+
+  res.json({ items });
+});
+
+inventoryRouter.get("/transfers/outbox", (req, res) => {
+  const sess = authPlayer(req);
+  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  const db = getDb();
+  const t = now();
+  const rows = db.prepare(
+    `
+    SELECT tr.*,
+           p.display_name as toName,
+           i.name as itemName,
+           i.weight as itemWeight
+    FROM item_transfers tr
+    JOIN players p ON p.id = tr.to_player_id
+    JOIN inventory_items i ON i.id = tr.item_id
+    WHERE tr.from_player_id=? AND tr.status='pending' AND tr.expires_at>?
+    ORDER BY tr.created_at DESC
+  `
+  ).all(sess.player_id, t);
+
+  const items = rows.map((r) => ({
+    id: r.id,
+    toPlayerId: r.to_player_id,
+    toName: r.toName,
     itemId: r.item_id,
     itemName: r.itemName,
     itemWeight: Number(r.itemWeight || 0),
@@ -528,6 +575,7 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
+    req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
 
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
@@ -571,6 +619,7 @@ inventoryRouter.post("/transfers/:id/reject", (req, res) => {
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
+    req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
 
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
@@ -593,7 +642,7 @@ inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
     if (!tr) transferError("transfer_not_found", 404);
     if (tr.from_player_id !== sess.player_id) transferError("forbidden", 403);
     if (tr.status !== "pending") {
-      if (tr.status === "canceled") return { status: tr.status, idempotent: true };
+      if (tr.status === "canceled") return { status: tr.status, idempotent: true, toPlayerId: tr.to_player_id };
       transferError("already_finalized", 400);
     }
 
@@ -605,12 +654,14 @@ inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
     }
 
     db.prepare("UPDATE item_transfers SET status=? WHERE id=?").run("canceled", tr.id);
-    return { status: "canceled" };
+    return { status: "canceled", toPlayerId: tr.to_player_id };
   });
 
   try {
     const result = tx();
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
+    req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
+    if (result.toPlayerId) req.app.locals.io?.to(`player:${result.toPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
   } catch (e) {

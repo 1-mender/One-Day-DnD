@@ -35,6 +35,8 @@ export default function Inventory() {
   const [items, setItems] = useState([]);
   const [transfers, setTransfers] = useState([]);
   const [transfersLoading, setTransfersLoading] = useState(false);
+  const [outbox, setOutbox] = useState([]);
+  const [outboxLoading, setOutboxLoading] = useState(false);
   const [players, setPlayers] = useState([]);
   const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
   const [open, setOpen] = useState(false);
@@ -83,6 +85,18 @@ export default function Inventory() {
     }
   }, []);
 
+  const loadOutbox = useCallback(async () => {
+    setOutboxLoading(true);
+    try {
+      const r = await api.invTransferOutbox();
+      setOutbox(r.items || []);
+    } catch {
+      setOutbox([]);
+    } finally {
+      setOutboxLoading(false);
+    }
+  }, []);
+
   const loadPlayers = useCallback(async () => {
     try {
       const [meRes, listRes] = await Promise.all([api.me(), api.players()]);
@@ -98,9 +112,13 @@ export default function Inventory() {
     if (!socket) return () => {};
     load().catch(() => {});
     loadTransfers().catch(() => {});
+    loadOutbox().catch(() => {});
     const onUpdated = () => load().catch(() => {});
     const onProfile = () => load().catch(() => {});
-    const onTransfers = () => loadTransfers().catch(() => {});
+    const onTransfers = () => {
+      loadTransfers().catch(() => {});
+      loadOutbox().catch(() => {});
+    };
     socket.on("inventory:updated", onUpdated);
     socket.on("profile:updated", onProfile);
     socket.on("transfers:updated", onTransfers);
@@ -109,11 +127,15 @@ export default function Inventory() {
       socket.off("profile:updated", onProfile);
       socket.off("transfers:updated", onTransfers);
     };
-  }, [load, loadTransfers, socket]);
+  }, [load, loadTransfers, loadOutbox, socket]);
 
   useEffect(() => {
     loadTransfers().catch(() => {});
   }, [loadTransfers]);
+
+  useEffect(() => {
+    loadOutbox().catch(() => {});
+  }, [loadOutbox]);
 
   useEffect(() => {
     if (transferOpen && !transferTo && players.length) {
@@ -233,6 +255,7 @@ export default function Inventory() {
       setTransferOpen(false);
       await load();
       await loadTransfers();
+      await loadOutbox();
       toast.success("Передача отправлена");
     } catch (e) {
       const msg = formatError(e);
@@ -247,6 +270,7 @@ export default function Inventory() {
     try {
       await api.invTransferAccept(tr.id);
       await loadTransfers();
+      await loadOutbox();
       await load();
       toast.success("Передача принята");
     } catch (e) {
@@ -262,8 +286,24 @@ export default function Inventory() {
     try {
       await api.invTransferReject(tr.id);
       await loadTransfers();
+      await loadOutbox();
       await load();
       toast.success("Передача отклонена");
+    } catch (e) {
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+    }
+  }
+
+  async function cancelTransfer(tr) {
+    if (readOnly) return;
+    setErr("");
+    try {
+      await api.invTransferCancel(tr.id);
+      await loadOutbox();
+      await load();
+      toast.success("Передача отменена");
     } catch (e) {
       const msg = formatError(e);
       setErr(msg);
@@ -422,6 +462,50 @@ export default function Inventory() {
                     </button>
                     <button className="btn secondary" onClick={() => rejectTransfer(tr)} disabled={readOnly}>
                       Отклонить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="paper-note" style={{ marginTop: 12 }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="title">Исходящие передачи</div>
+          <button className="btn secondary" onClick={loadOutbox}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+        </div>
+        <div className="small note-hint" style={{ marginTop: 6 }}>
+          Передачи можно отменить, пока получатель не подтвердил.
+        </div>
+        <div style={{ marginTop: 8 }}>
+          {outboxLoading ? (
+            <Skeleton h={80} w="100%" />
+          ) : outbox.length === 0 ? (
+            <div className="small">Нет исходящих передач.</div>
+          ) : (
+            <div className="list">
+              {outbox.map((tr) => (
+                <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <span className="badge secondary">кому {tr.toName || `#${tr.toPlayerId}`}</span>
+                      <span className="badge">x{tr.qty}</span>
+                      <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="small" style={{ marginTop: 6 }}>
+                      Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
+                    </div>
+                    {tr.note ? (
+                      <div className="small" style={{ marginTop: 6 }}>
+                        <b>Сообщение:</b> {tr.note}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <button className="btn secondary" onClick={() => cancelTransfer(tr)} disabled={readOnly}>
+                      Отменить
                     </button>
                   </div>
                 </div>

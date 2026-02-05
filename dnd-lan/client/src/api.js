@@ -137,6 +137,8 @@ export const api = {
     request("/api/inventory/transfers", { method: "POST", body: JSON.stringify(payload) }),
   invTransferInbox: () =>
     request("/api/inventory/transfers/inbox", { method: "GET" }),
+  invTransferOutbox: () =>
+    request("/api/inventory/transfers/outbox", { method: "GET" }),
   invTransferAccept: (transferId) =>
     request(`/api/inventory/transfers/${transferId}/accept`, { method: "POST" }),
   invTransferReject: (transferId) =>
