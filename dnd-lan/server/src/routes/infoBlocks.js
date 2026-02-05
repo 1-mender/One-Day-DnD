@@ -20,8 +20,31 @@ const storage = multer.diskStorage({
     cb(null, safe);
   }
 });
-const INFO_ASSET_MAX_BYTES = Number(process.env.INFO_ASSET_MAX_BYTES || 10 * 1024 * 1024);
-const upload = multer({ storage, limits: { fileSize: INFO_ASSET_MAX_BYTES } });
+const INFO_ASSET_MAX_BYTES = Number(process.env.INFO_ASSET_MAX_BYTES || 5 * 1024 * 1024);
+const DEFAULT_INFO_ASSET_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "text/plain",
+  "text/markdown"
+]);
+const INFO_ASSET_ALLOWED_MIMES = process.env.INFO_ASSET_ALLOWED_MIMES
+  ? new Set(String(process.env.INFO_ASSET_ALLOWED_MIMES).split(",").map((m) => m.trim().toLowerCase()).filter(Boolean))
+  : DEFAULT_INFO_ASSET_MIMES;
+const upload = multer({
+  storage,
+  limits: { fileSize: INFO_ASSET_MAX_BYTES },
+  fileFilter: (req, file, cb) => {
+    const mime = String(file.mimetype || "").toLowerCase();
+    if (!INFO_ASSET_ALLOWED_MIMES.has(mime)) {
+      req.fileValidationError = "unsupported_file_type";
+      return cb(null, false);
+    }
+    cb(null, true);
+  }
+});
 
 function authPlayer(req) {
   const token = req.header("x-player-token");
@@ -178,6 +201,7 @@ infoBlocksRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
 
 // upload helper for local images (DM вставляет ссылку в markdown)
 infoBlocksRouter.post("/upload", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
+  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
   if (!req.file) return res.status(400).json({ error: "file_required" });
   res.json({ ok: true, url: `/uploads/assets/${req.file.filename}` });
 });

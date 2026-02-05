@@ -12,6 +12,7 @@ export const bestiaryImagesRouter = express.Router();
 
 const UPLOAD_DIR = path.join(uploadsDir, "bestiary");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+const MAX_IMAGES_PER_MONSTER = Number(process.env.BESTIARY_IMAGE_MAX_COUNT || 20);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
@@ -45,6 +46,12 @@ function handleUpload(req, res) {
 
   const monster = db.prepare("SELECT id FROM monsters WHERE id=?").get(monsterId);
   if (!monster) return res.status(404).json({ error: "monster_not_found" });
+  if (MAX_IMAGES_PER_MONSTER > 0) {
+    const cnt = db.prepare("SELECT COUNT(*) AS c FROM monster_images WHERE monster_id=?").get(monsterId)?.c || 0;
+    if (cnt >= MAX_IMAGES_PER_MONSTER) {
+      return res.status(409).json({ error: "image_limit_reached", limit: MAX_IMAGES_PER_MONSTER });
+    }
+  }
 
   const f = req.file;
   if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });

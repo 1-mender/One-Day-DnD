@@ -96,7 +96,7 @@ async function uploadBackupZip(zipPath, headers = {}) {
 test("infoUploads returns 413 on oversized upload", async () => {
   const cookie = dmCookie();
   const elevenMb = 10 * 1024 * 1024 + 1;
-  const out = await upload("/api/info-blocks/upload", "file", elevenMb, { cookie });
+  const out = await upload("/api/info-blocks/upload", "file", elevenMb, { cookie }, "image/png");
   assert.equal(out.res.status, 413);
   assert.equal(out.data.error, "file_too_large");
 });

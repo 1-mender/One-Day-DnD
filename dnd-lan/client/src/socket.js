@@ -12,6 +12,11 @@ export function connectSocket({ role }) {
     if (rid) auth.joinRequestId = rid;
   }
   // DM uses cookie
-  const s = io("/", { auth });
+  const s = io("/", {
+    auth,
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelayMax: 5000
+  });
   return s;
 }

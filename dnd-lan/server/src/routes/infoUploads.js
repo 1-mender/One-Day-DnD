@@ -18,11 +18,30 @@ const storage = multer.diskStorage({
   }
 });
 
+const INFO_UPLOAD_MAX_BYTES = Number(process.env.INFO_UPLOAD_MAX_BYTES || 5 * 1024 * 1024);
+const DEFAULT_INFO_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "text/plain",
+  "text/markdown"
+]);
+const INFO_UPLOAD_ALLOWED_MIMES = process.env.INFO_UPLOAD_ALLOWED_MIMES
+  ? new Set(String(process.env.INFO_UPLOAD_ALLOWED_MIMES).split(",").map((m) => m.trim().toLowerCase()).filter(Boolean))
+  : DEFAULT_INFO_MIMES;
+
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: INFO_UPLOAD_MAX_BYTES },
   fileFilter: (req, file, cb) => {
-    if (req.isPlayerUpload && !isAllowedPlayerImage(file.mimetype)) {
+    const mime = String(file.mimetype || "").toLowerCase();
+    if (req.isPlayerUpload && !isAllowedPlayerImage(mime)) {
+      req.fileValidationError = "unsupported_file_type";
+      return cb(null, false);
+    }
+    if (!INFO_UPLOAD_ALLOWED_MIMES.has(mime)) {
       req.fileValidationError = "unsupported_file_type";
       return cb(null, false);
     }

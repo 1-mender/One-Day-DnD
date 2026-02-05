@@ -10,6 +10,7 @@
     "start": "npm --prefix server run start",
     "test": "npm --prefix server run test",
     "lint": "npm --prefix client run lint",
-    "verify": "npm run lint && npm run test && npm run build"
+    "verify": "npm run lint && npm run test && npm run build",
+    "preflight": "node scripts/preflight.mjs"
   }
 }

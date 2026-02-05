@@ -34,6 +34,7 @@ npm run start
 - `npm run test` — серверные тесты
 - `npm run lint` — линт client-кода
 - `npm run verify` — быстрая проверка качества (`lint + test + build`)
+- `npm run preflight` — быстрая проверка перед сессией (health/readyz/диск/минимальная запись)
 
 ## Health / Readiness
 - `GET /healthz` — liveness (процесс запущен)
@@ -44,6 +45,20 @@ npm run start
 curl http://localhost:3000/healthz
 curl http://localhost:3000/readyz
 ```
+
+## Preflight (перед партией)
+```powershell
+npm run preflight
+```
+
+Опции:
+- `--join-code <code>` — если включён join code
+- `--skip-write` — пропустить проверку записи
+
+Переменные:
+- `PREFLIGHT_BASE_URL` (по умолчанию `http://127.0.0.1:3000`)
+- `PREFLIGHT_JOIN_CODE`
+- `PREFLIGHT_TIMEOUT_MS` (по умолчанию 3000)
 
 ## Очистка uploads (безопасный dry-run)
 По умолчанию ничего не удаляет. Показывает кандидатов на удаление и причины.
@@ -119,3 +134,28 @@ npm --prefix server run cleanup:uploads -- --apply
 - **Игры недоступны**: проверьте, что аркада включена и у игрока хватает билетов.
 - **Награды не начисляются**: убедитесь, что сервер доступен, а `/api/tickets/play` не блокируется.
 - **Проблемы с UI**: попробуйте `Ctrl+Shift+U` для смены темы.
+
+
+
+Гайд по запуску и dev‑циклу
+Минимальные требования:
+
+Node.js >=18.18.0
+Запуск в дев‑режиме:
+cd dnd-lan
+npm install
+npm run dev
+npm run dev поднимет и сервер, и клиент одновременно (см. dev.js).
+
+Полезные команды:
+npm run build   # сборка клиента и копирование в server/public
+npm run start   # старт сервера (prod)
+npm run test    # тесты сервера
+npm run lint    # eslint (клиент)
+npm run verify  # lint + test + build
+
+Где смотреть логи/порт:
+
+По умолчанию сервер на http://localhost:3000
+Клиент Vite на http://localhost:5173
+

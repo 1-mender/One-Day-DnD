@@ -13,8 +13,15 @@ export default function DMLayout() {
   const offlineTimerRef = useRef(null);
   const hasConnectedRef = useRef(false);
   const closingRef = useRef(false);
-  const { socket } = useSocket();
+  const { socket, netState } = useSocket();
   const OFFLINE_BANNER_DELAY_MS = 2000;
+  const socketErr = netState?.lastError;
+  const offlineDetails =
+    socketErr === "dm_token_invalid"
+      ? "DM session expired. Please sign in again."
+      : socketErr && socketErr !== "connect_error"
+        ? `Socket error: ${socketErr}`
+        : "";
 
   useEffect(() => {
     if (!socket) return () => {};
@@ -79,7 +86,7 @@ export default function DMLayout() {
 
   return (
     <div className="dm-root">
-      <OfflineBanner online={!showOffline} />
+      <OfflineBanner online={!showOffline} details={offlineDetails} />
       <VintageShell layout="spread" pageKey={location.pathname}>
         <DMTabBar />
         <div className="container">

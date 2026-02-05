@@ -7,11 +7,15 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 
 import { closeDb, getDb, initDb } from "./db.js";
+import { runBackup, startAutoBackups, stopAutoBackups } from "./backup.js";
 import { ensureUploads } from "./uploads.js";
 import { createSocketServer } from "./sockets.js";
 import { now } from "./util.js";
 import { uploadsDir, publicDir } from "./paths.js";
 import { registerHealthRoutes } from "./health.js";
+import { checkReadiness } from "./readiness.js";
+import { setDegraded, clearDegraded } from "./degraded.js";
+import { assertWritable } from "./writeGate.js";
 
 import { serverInfoRouter } from "./routes/serverInfo.js";
 import { setupRouter } from "./routes/setup.js";
@@ -33,6 +37,8 @@ const PORT = Number(process.env.PORT || 3000);
 
 initDb();
 ensureUploads();
+runBackup("startup");
+startAutoBackups();
 
 const app = express();
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -40,6 +46,20 @@ app.use(morgan("dev"));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 registerHealthRoutes(app, { getDb, uploadsDir });
+
+const READINESS_CHECK_EVERY_MS = Number(process.env.READINESS_CHECK_EVERY_MS || 10_000);
+const runReadinessCheck = () => {
+  const out = checkReadiness({ getDb, uploadsDir });
+  if (out.ok) {
+    clearDegraded(app.locals.io);
+  } else {
+    setDegraded(out.error?.message || "not_ready", app.locals.io);
+  }
+};
+const readinessInterval = setInterval(() => {
+  runReadinessCheck();
+}, READINESS_CHECK_EVERY_MS);
+runReadinessCheck();
 
 // DEV: allow Vite dev server with credentials
 app.use((req, res, next) => {
@@ -70,6 +90,7 @@ app.use((req, res, next) => {
 app.use("/uploads", express.static(uploadsDir));
 
 // API routes
+app.use(assertWritable);
 app.use("/api/server", serverInfoRouter);
 app.use("/api/dm", setupRouter);
 app.use("/api/auth", authRouter);
@@ -211,6 +232,8 @@ function shutdown(signal) {
 
   clearInterval(idleSweepInterval);
   if (app.locals.cleanupInterval) clearInterval(app.locals.cleanupInterval);
+  if (readinessInterval) clearInterval(readinessInterval);
+  stopAutoBackups();
 
   const forceExitTimer = setTimeout(() => {
     console.error("Forced shutdown after timeout");
