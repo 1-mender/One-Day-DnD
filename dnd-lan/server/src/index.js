@@ -11,6 +11,7 @@ import { ensureUploads } from "./uploads.js";
 import { createSocketServer } from "./sockets.js";
 import { now } from "./util.js";
 import { uploadsDir, publicDir } from "./paths.js";
+import { registerHealthRoutes } from "./health.js";
 
 import { serverInfoRouter } from "./routes/serverInfo.js";
 import { setupRouter } from "./routes/setup.js";
@@ -39,21 +40,7 @@ app.use(morgan("dev"));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 
-app.get("/healthz", (_req, res) => {
-  return res.status(200).json({ ok: true, uptimeSec: Math.round(process.uptime()) });
-});
-
-app.get("/readyz", (_req, res) => {
-  try {
-    const db = getDb();
-    db.prepare("SELECT 1 AS ok").get();
-    fs.accessSync(uploadsDir, fs.constants.R_OK | fs.constants.W_OK);
-    return res.status(200).json({ ok: true });
-  } catch (error) {
-    console.error("readiness check failed:", error);
-    return res.status(503).json({ ok: false, error: "not_ready" });
-  }
-});
+registerHealthRoutes(app, { getDb, uploadsDir });
 
 // DEV: allow Vite dev server with credentials
 app.use((req, res, next) => {
