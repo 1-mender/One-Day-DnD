@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../../api.js";
+import { makeProof } from "../../lib/gameProof.js";
 
 const SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const SUIT_LABELS = {
@@ -13,31 +15,46 @@ const SUIT_SYMBOLS = {
   clubs: "♣",
   spades: "♠"
 };
-const RANKS = ["A", "K", "Q"];
-const MAX_ATTEMPTS = 3;
-const TIME_LIMIT = 40;
+const DEFAULT_MODE = {
+  ranks: ["A", "K", "Q"],
+  maxAttempts: 3,
+  timeLimit: 40,
+  hintCount: 3
+};
 const GRID_COLS = 4;
 
 let cardId = 1;
 const nextId = () => cardId++;
 
-function shuffle(arr) {
+function makeRng(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return () => {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return (h & 0xfffffff) / 0xfffffff;
+  };
+}
+
+function shuffleWithSeed(arr, seed) {
+  const rng = makeRng(seed);
   const out = arr.slice();
   for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
   }
   return out;
 }
 
-function buildDeck() {
+function buildDeck(seed, ranks) {
   const cards = [];
   for (const suit of SUITS) {
-    for (const rank of RANKS) {
+    for (const rank of ranks) {
       cards.push({ id: nextId(), suit, rank, color: suit === "hearts" || suit === "diamonds" ? "red" : "black" });
     }
   }
-  return shuffle(cards);
+  return shuffleWithSeed(cards, seed);
 }
 
 export default function GuessCardGame({
@@ -47,13 +64,16 @@ export default function GuessCardGame({
   disabled,
   entryCost = 0,
   rewardRange = "—",
+  mode,
   readOnly
 }) {
+  const modeConfig = useMemo(() => ({ ...DEFAULT_MODE, ...(mode || {}) }), [mode]);
+  const [seed, setSeed] = useState("");
   const [deck, setDeck] = useState([]);
   const [target, setTarget] = useState(null);
   const [revealed, setRevealed] = useState([]);
   const [attempt, setAttempt] = useState(1);
-  const [timeLeft, setTimeLeft] = useState(TIME_LIMIT);
+  const [timeLeft, setTimeLeft] = useState(modeConfig.timeLimit);
   const [status, setStatus] = useState("playing");
   const [busy, setBusy] = useState(false);
   const [missId, setMissId] = useState(null);
@@ -61,11 +81,13 @@ export default function GuessCardGame({
   const [settling, setSettling] = useState(false);
   const [apiErr, setApiErr] = useState("");
   const [winAttempt, setWinAttempt] = useState(1);
+  const [pickHistory, setPickHistory] = useState([]);
   const endAtRef = useRef(0);
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
+  const modeLabel = mode?.label || "Классика";
 
   const hints = useMemo(() => {
     if (!target) return [];
@@ -77,12 +99,13 @@ export default function GuessCardGame({
   }, [target]);
 
   function resetGame() {
-    const next = buildDeck();
+    const next = buildDeck(seed || "fallback", modeConfig.ranks);
     setDeck(next);
-    setTarget(next[Math.floor(Math.random() * next.length)]);
+    const rng = makeRng(`${seed || "fallback"}-target`);
+    setTarget(next[Math.floor(rng() * next.length)]);
     setRevealed([]);
     setAttempt(1);
-    setTimeLeft(TIME_LIMIT);
+    setTimeLeft(modeConfig.timeLimit);
     setStatus("playing");
     setBusy(false);
     setMissId(null);
@@ -90,13 +113,21 @@ export default function GuessCardGame({
     setSettling(false);
     setApiErr("");
     setWinAttempt(1);
-    endAtRef.current = Date.now() + TIME_LIMIT * 1000;
+    setPickHistory([]);
+    endAtRef.current = Date.now() + modeConfig.timeLimit * 1000;
   }
 
   useEffect(() => {
     if (!open) return;
-    resetGame();
+    api.ticketsSeed("guess")
+      .then((res) => setSeed(res?.seed || "fallback"))
+      .catch(() => setSeed("fallback"));
   }, [open]);
+
+  useEffect(() => {
+    if (!open || !seed) return;
+    resetGame();
+  }, [open, seed, modeConfig]);
 
   useEffect(() => {
     if (!open || status !== "playing") return;
@@ -116,13 +147,20 @@ export default function GuessCardGame({
     const perf = status === "win"
       ? (winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third")
       : "normal";
+    const payload = {
+      picks: pickHistory,
+      ranks: modeConfig.ranks,
+      maxAttempts: modeConfig.maxAttempts,
+      outcome: status
+    };
+    const proof = makeProof(seed, payload);
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance: perf })
+    onSubmitResult({ outcome: status, performance: perf, payload, seed, proof })
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, winAttempt]);
+  }, [status, onSubmitResult, settling, result, winAttempt, pickHistory, seed, modeConfig]);
 
   function isRevealed(id) {
     return revealed.includes(id);
@@ -134,6 +172,7 @@ export default function GuessCardGame({
 
     setBusy(true);
     setRevealed((prev) => [...prev, card.id]);
+    setPickHistory((prev) => [...prev, { suit: card.suit, rank: card.rank }]);
 
     if (card.id === target.id) {
       setWinAttempt(attempt);
@@ -147,7 +186,7 @@ export default function GuessCardGame({
 
     const nextAttempt = attempt + 1;
     setAttempt(nextAttempt);
-    if (nextAttempt > MAX_ATTEMPTS) {
+    if (nextAttempt > modeConfig.maxAttempts) {
       setStatus("loss");
     }
     setBusy(false);
@@ -158,10 +197,17 @@ export default function GuessCardGame({
     const perf = status === "win"
       ? (winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third")
       : "normal";
+    const payload = {
+      picks: pickHistory,
+      ranks: modeConfig.ranks,
+      maxAttempts: modeConfig.maxAttempts,
+      outcome: status
+    };
+    const proof = makeProof(seed, payload);
     setSettling(true);
     setApiErr("");
     try {
-      const r = await onSubmitResult({ outcome: status, performance: perf });
+      const r = await onSubmitResult({ outcome: status, performance: perf, payload, seed, proof });
       setResult(r);
     } catch (e) {
       setApiErr(e?.message || String(e));
@@ -178,7 +224,7 @@ export default function GuessCardGame({
         <div className="guess-head">
           <div>
             <div className="guess-title">Угадай карту</div>
-            <div className="small">Вход: {entryLabel} • Награда: {rewardRange}</div>
+            <div className="small">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
           </div>
           <button className="btn secondary" onClick={onClose}>Выйти</button>
         </div>
@@ -186,7 +232,7 @@ export default function GuessCardGame({
         <div className="guess-hud">
           <div className="hud-card">
             <div className="hud-label">Попытка</div>
-            <div className="hud-value">{Math.min(attempt, MAX_ATTEMPTS)}/{MAX_ATTEMPTS}</div>
+            <div className="hud-value">{Math.min(attempt, modeConfig.maxAttempts)}/{modeConfig.maxAttempts}</div>
           </div>
           <div className="hud-card">
             <div className="hud-label">Время</div>
@@ -199,11 +245,15 @@ export default function GuessCardGame({
         </div>
 
         <div className="guess-timer">
-          <div className="guess-timer-bar" style={{ width: `${Math.max(0, (timeLeft / TIME_LIMIT) * 100)}%` }} />
+          <div
+            className="guess-timer-bar"
+            data-urgent={timeLeft <= 7}
+            style={{ width: `${Math.max(0, (timeLeft / modeConfig.timeLimit) * 100)}%` }}
+          />
         </div>
 
         <div className="guess-hints">
-          {hints.slice(0, Math.min(attempt, MAX_ATTEMPTS)).map((h, idx) => (
+          {hints.slice(0, Math.min(attempt, modeConfig.hintCount, hints.length)).map((h, idx) => (
             <div key={idx} className="guess-hint">{h}</div>
           ))}
         </div>

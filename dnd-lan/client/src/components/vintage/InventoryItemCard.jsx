@@ -7,6 +7,8 @@ import {
   Crown,
   Eye,
   EyeOff,
+  Star,
+  StarOff,
   FlaskConical,
   Gem,
   Key,
@@ -89,6 +91,7 @@ function InventoryItemCard({
   onEdit,
   onDelete,
   onToggleVisibility,
+  onToggleFavorite,
   actionsVariant = "stack",
   lite = false,
   selectable = false,
@@ -103,6 +106,7 @@ function InventoryItemCard({
   const rarityKey = String(item.rarity || "common").toLowerCase().replace(/\s+/g, "_");
   const rarityLabel = getRarityLabel(rarityKey);
   const tags = stripIconTags(Array.isArray(item.tags) ? item.tags.filter(Boolean) : []);
+  const isFavorite = tags.includes("favorite");
   const compact = actionsVariant === "compact";
   const metaParts = (
     lite
@@ -154,6 +158,11 @@ function InventoryItemCard({
         </div>
         <div className="inv-badges">
           <span className="badge">x{item.qty}</span>
+          {isFavorite ? (
+            <span className="badge warn">
+              <Star className="icon" aria-hidden="true" />Избранное
+            </span>
+          ) : null}
           <span className={`badge ${isHidden ? "off" : "ok"}`}>
             {isHidden ? <EyeOff className="icon" aria-hidden="true" /> : <Eye className="icon" aria-hidden="true" />}{vis}
           </span>
@@ -180,6 +189,18 @@ function InventoryItemCard({
 
       {hasActions ? (
         <div className={`inv-actions ${compact ? "compact" : ""}`.trim()}>
+          {onToggleFavorite ? (
+            <button
+              className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
+              onClick={onToggleFavorite}
+              disabled={readOnly}
+              title={isFavorite ? "Убрать из избранного" : "В избранное"}
+              aria-label={isFavorite ? "Убрать из избранного" : "В избранное"}
+            >
+              {isFavorite ? <StarOff className="icon" aria-hidden="true" /> : <Star className="icon" aria-hidden="true" />}
+              {compact ? null : (isFavorite ? "Убрать из избранного" : "В избранное")}
+            </button>
+          ) : null}
           {onEdit && (
             <button
               className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
@@ -223,8 +244,6 @@ function InventoryItemCard({
 }
 
 export default memo(InventoryItemCard);
-
-
 
 
 

@@ -208,6 +208,7 @@ export default function DMInventory() {
 
   const filtered = useMemo(() => filterInventory(items, { q: debouncedQ, vis, rarity }), [items, debouncedQ, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
+  const { totalWeight: totalWeightAll } = useMemo(() => summarizeInventory(items), [items]);
   const hasAny = items.length > 0;
   const selectedCount = selectedIds.size;
   const selectedItems = useMemo(() => items.filter((it) => selectedIds.has(it.id)), [items, selectedIds]);
@@ -285,7 +286,7 @@ export default function DMInventory() {
           <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
           <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
           <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
-          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeight.toFixed(2)}</span>
+          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeightAll.toFixed(2)}</span>
         </div>
       </div>
 
@@ -432,4 +433,3 @@ function summarizeInventory(list) {
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
 }
-

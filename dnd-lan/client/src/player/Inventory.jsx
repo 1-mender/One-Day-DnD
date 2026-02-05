@@ -22,6 +22,8 @@ import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useSocket } from "../context/SocketContext.jsx";
 
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
+const FAVORITE_TAG = "favorite";
+const MAX_WEIGHT = 100;
 
 export default function Inventory() {
   const toast = useToast();
@@ -68,6 +70,11 @@ export default function Inventory() {
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
+  const { totalWeight: totalWeightAll } = useMemo(() => summarizeInventory(items), [items]);
+  const favorites = useMemo(
+    () => items.filter((it) => Array.isArray(it.tags) && it.tags.includes(FAVORITE_TAG)),
+    [items]
+  );
   const hasAny = items.length > 0;
   const SelectedIcon = getInventoryIcon(form.iconKey);
 
@@ -140,6 +147,24 @@ export default function Inventory() {
     }
   }
 
+  async function toggleFavorite(it) {
+    if (readOnly) return;
+    try {
+      const nextTags = Array.isArray(it.tags) ? [...it.tags] : [];
+      const idx = nextTags.indexOf(FAVORITE_TAG);
+      if (idx >= 0) nextTags.splice(idx, 1);
+      else nextTags.push(FAVORITE_TAG);
+      await api.invUpdateMine(it.id, { ...it, tags: nextTags });
+      toast.success(idx >= 0 ? "Убрано из избранного" : "Добавлено в избранное");
+      await load();
+    } catch (e) {
+      toast.error(formatError(e));
+    }
+  }
+
+  const weightRatio = MAX_WEIGHT ? totalWeightAll / MAX_WEIGHT : 0;
+  const weightStatus = weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok";
+
   return (
     <div className={`card taped inventory-shell${lite ? " page-lite" : ""}`.trim()}>
       <div className="row" style={{ justifyContent:"space-between", alignItems:"center" }}>
@@ -150,6 +175,31 @@ export default function Inventory() {
         <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
       </div>
       <hr />
+
+      {favorites.length ? (
+        <div className="inv-quick">
+          <div className="inv-quick-title">Быстрые слоты</div>
+          <div className="inv-quick-grid">
+            {favorites.map((it) => (
+              <InventoryItemCard
+                key={`fav_${it.id}`}
+                item={it}
+                readOnly={readOnly}
+                actionsVariant="compact"
+                lite
+                onEdit={() => startEdit(it)}
+                onDelete={() => del(it.id)}
+                onToggleVisibility={() => toggleVisibility(it)}
+                onToggleFavorite={() => toggleFavorite(it)}
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="small" style={{ marginBottom: 8 }}>
+          Отметьте зелья/свитки как избранные, чтобы они появились в быстрых слотах.
+        </div>
+      )}
       <div className="inv-toolbar">
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." />
         <select value={vis} onChange={(e)=>setVis(e.target.value)}>
@@ -177,7 +227,10 @@ export default function Inventory() {
           <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
           <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
           <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
-          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeight.toFixed(2)}</span>
+          <span className={`badge ${weightStatus}`}>
+            <Scale className="icon" aria-hidden="true" />
+            Вес: {totalWeightAll.toFixed(2)} / {MAX_WEIGHT}
+          </span>
           {readOnly ? <span className="badge warn">read-only</span> : null}
         </div>
       </div>
@@ -208,6 +261,7 @@ export default function Inventory() {
                 onEdit={() => startEdit(it)}
                 onDelete={() => del(it.id)}
                 onToggleVisibility={() => toggleVisibility(it)}
+                onToggleFavorite={() => toggleFavorite(it)}
               />
             ))}
           </div>
@@ -291,7 +345,6 @@ function summarizeInventory(list) {
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
 }
-
 
 
 
