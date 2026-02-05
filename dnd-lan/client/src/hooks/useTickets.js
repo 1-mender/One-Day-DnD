@@ -8,6 +8,7 @@ export function useTickets() {
   const [rules, setRules] = useState(null);
   const [usage, setUsage] = useState({ playsToday: {}, purchasesToday: {} });
   const [quests, setQuests] = useState([]);
+  const [questHistory, setQuestHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
 
@@ -19,6 +20,7 @@ export function useTickets() {
     if (payload.rules) setRules(payload.rules);
     if (payload.usage) setUsage(payload.usage);
     if (payload.quests) setQuests(Array.isArray(payload.quests) ? payload.quests : []);
+    if (payload.questHistory) setQuestHistory(Array.isArray(payload.questHistory) ? payload.questHistory : []);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -66,6 +68,7 @@ export function useTickets() {
     rules,
     usage,
     quests,
+    questHistory,
     loading,
     err,
     refresh,

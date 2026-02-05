@@ -322,6 +322,21 @@ function getQuestStates(db, playerId, dayKey, rules) {
   }];
 }
 
+function getQuestHistory(db, playerId, dayKey, rules, days = 7) {
+  const q = getActiveQuest(rules);
+  if (!q) return [];
+  const d = Math.max(1, Math.min(30, Math.floor(Number(days) || 7)));
+  const minDay = dayKey - (d - 1);
+  const rows = db.prepare(
+    "SELECT day_key, reward_granted, rewarded_at FROM ticket_quests WHERE player_id=? AND quest_key=? AND day_key>=? ORDER BY day_key DESC"
+  ).all(playerId, q.key, minDay);
+  return rows.map((r) => ({
+    dayKey: r.day_key,
+    rewardGranted: r.reward_granted ?? 0,
+    rewardedAt: r.rewarded_at ?? null
+  }));
+}
+
 function maybeGrantDailyQuest(db, playerId, dayKey, rules) {
   const q = getActiveQuest(rules);
   if (!q) return null;
@@ -426,11 +441,13 @@ function getUsage(db, playerId, dayKey) {
 
 function buildPayload(db, playerId, dayKey, rules) {
   const row = db.prepare("SELECT * FROM tickets WHERE player_id=?").get(playerId);
+  const historyDays = Number(process.env.DAILY_QUEST_HISTORY_DAYS || 7);
   return {
     state: mapState(row),
     rules,
     usage: getUsage(db, playerId, dayKey),
-    quests: getQuestStates(db, playerId, dayKey, rules)
+    quests: getQuestStates(db, playerId, dayKey, rules),
+    questHistory: getQuestHistory(db, playerId, dayKey, rules, historyDays)
   };
 }
 
@@ -668,6 +685,7 @@ ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
   const enabled = typeof enabledInput === "boolean" ? enabledInput : (incoming?.enabled ?? curSettings?.tickets_enabled);
   if ("enabled" in incoming) delete incoming.enabled;
 
+  const prevRules = getEffectiveRules(party.id);
   const overrides = reset ? {} : mergeRules(currentOverrides, incoming);
   saveRulesOverride(party.id, enabled, overrides);
 
@@ -675,7 +693,56 @@ ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
   req.app.locals.io?.to("dm").emit("tickets:updated");
 
   const rules = getEffectiveRules(party.id);
+  const prevActive = prevRules?.dailyQuest?.activeKey || "";
+  const nextActive = rules?.dailyQuest?.activeKey || "";
+  if (prevActive !== nextActive) {
+    logEvent({
+      partyId: party.id,
+      type: "dailyquest.active_changed",
+      actorRole: "dm",
+      actorName: "DM",
+      targetType: "daily_quest",
+      targetId: null,
+      message: `Активный daily‑quest: ${prevActive || "—"} → ${nextActive || "—"}`,
+      data: { prevActive, nextActive },
+      io: req.app.locals.io
+    });
+  }
   res.json({ rules });
+});
+
+ticketsRouter.post("/dm/quest/active", dmAuthMiddleware, (req, res) => {
+  const party = getParty();
+  const questKey = String(req.body?.questKey || "").trim();
+  if (!questKey) return res.status(400).json({ error: "quest_key_required" });
+
+  const rules = getEffectiveRules(party.id);
+  const pool = Array.isArray(rules?.dailyQuest?.pool) ? rules.dailyQuest.pool : [];
+  const nextQuest = pool.find((q) => q.key === questKey && q.enabled !== false);
+  if (!nextQuest) return res.status(400).json({ error: "invalid_quest_key" });
+
+  const curSettings = getPartySettings(party.id);
+  const currentOverrides = jsonParse(curSettings?.tickets_rules, {});
+  const nextOverrides = mergeRules(currentOverrides, { dailyQuest: { activeKey: questKey } });
+  saveRulesOverride(party.id, curSettings?.tickets_enabled, nextOverrides);
+
+  const prevActive = rules?.dailyQuest?.activeKey || "";
+  if (prevActive !== questKey) {
+    logEvent({
+      partyId: party.id,
+      type: "dailyquest.active_changed",
+      actorRole: "dm",
+      actorName: "DM",
+      targetType: "daily_quest",
+      targetId: null,
+      message: `Активный daily‑quest: ${prevActive || "—"} → ${questKey || "—"}`,
+      data: { prevActive, nextActive: questKey },
+      io: req.app.locals.io
+    });
+  }
+
+  req.app.locals.io?.emit("tickets:updated");
+  res.json({ ok: true, activeKey: questKey });
 });
 
 ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
@@ -692,6 +759,17 @@ ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
   const r = db.prepare("DELETE FROM ticket_quests WHERE quest_key=? AND day_key=?").run(questKey, dayKey);
 
   req.app.locals.io?.to("dm").emit("tickets:updated");
+  logEvent({
+    partyId: party.id,
+    type: "dailyquest.reset",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "daily_quest",
+    targetId: null,
+    message: `Сброс daily‑quest: ${questKey} (dayKey=${dayKey})`,
+    data: { questKey, dayKey, deleted: r.changes || 0 },
+    io: req.app.locals.io
+  });
   res.json({ ok: true, questKey, dayKey, deleted: r.changes || 0 });
 });
 

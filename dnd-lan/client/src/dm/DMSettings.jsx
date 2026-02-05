@@ -223,6 +223,30 @@ export default function DMSettings() {
     }
   }
 
+  async function reassignDailyQuestToday() {
+    const activeKey = ticketRules?.dailyQuest?.activeKey || "";
+    if (!activeKey) {
+      setTicketErr("Нет активного daily‑quest.");
+      return;
+    }
+    const ok = window.confirm("Переназначить daily‑quest на сегодня и применить сразу?");
+    if (!ok) return;
+    setTicketErr("");
+    setTicketMsg("");
+    setTicketBusy(true);
+    try {
+      await api.dmTicketsSetActiveQuest(activeKey);
+      setTicketMsg("Daily‑quest переназначен на сегодня.");
+      setTicketRulesBase((prev) => (
+        prev ? { ...prev, dailyQuest: { ...(prev.dailyQuest || {}), activeKey } } : prev
+      ));
+    } catch (e) {
+      setTicketErr(formatError(e));
+    } finally {
+      setTicketBusy(false);
+    }
+  }
+
   function updateTicketGame(key, patch) {
     setTicketRules((prev) => {
       const next = { ...(prev || {}) };
@@ -716,6 +740,9 @@ export default function DMSettings() {
                     <button className="btn secondary" onClick={resetDailyQuestToday} disabled={ticketBusy}>
                       {"\u0421\u0431\u0440\u043e\u0441\u0438\u0442\u044c \u043d\u0430 \u0441\u0435\u0433\u043e\u0434\u043d\u044f"}
                     </button>
+                    <button className="btn secondary" onClick={reassignDailyQuestToday} disabled={ticketBusy}>
+                      {"\u041f\u0435\u0440\u0435\u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u0441\u0435\u0433\u043e\u0434\u043d\u044f"}
+                    </button>
                   </div>
 
                   <div className="settings-fields" style={{ marginTop: 6 }}>
@@ -730,6 +757,25 @@ export default function DMSettings() {
                         </option>
                       ))}
                     </select>
+                  </div>
+
+                  <div className="paper-note" style={{ marginTop: 8 }}>
+                    <div className="title">{"Превью (игрокам)"}</div>
+                    {(() => {
+                      const pool = ticketRules?.dailyQuest?.pool || [];
+                      const activeKey = ticketRules?.dailyQuest?.activeKey || "";
+                      const active = pool.find((q) => q.key === activeKey) || pool[0];
+                      if (!active) return <div className="small">{"Нет активного квеста."}</div>;
+                      return (
+                        <div className="list">
+                          <div className="small">{active.title}: {active.description}</div>
+                          <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                            <span className="badge">{"Прогресс: 0/"}{active.goal}</span>
+                            <span className="badge secondary">{"Награда: "}{active.reward} {"билета"}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="settings-grid" style={{ marginTop: 8 }}>

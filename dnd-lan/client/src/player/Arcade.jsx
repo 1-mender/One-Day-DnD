@@ -87,7 +87,7 @@ const games = [
 
 export default function Arcade() {
   const toast = useToast();
-  const { state, rules, usage, quests, loading, err, play, readOnly } = useTickets();
+  const { state, rules, usage, quests, questHistory, loading, err, play, readOnly } = useTickets();
   const lite = useLiteMode();
   const [activeGameKey, setActiveGameKey] = useState("");
   const [outcome, setOutcome] = useState("win");
@@ -122,6 +122,7 @@ export default function Arcade() {
   const dailySpent = Number(state?.dailySpent || 0);
   const dailyCap = Number(rules?.dailyEarnCap || 0);
   const dailyQuest = Array.isArray(quests) && quests.length ? quests[0] : null;
+  const questHistoryRows = Array.isArray(questHistory) ? questHistory : [];
   const lastGameTitle = lastGameKey ? (games.find((g) => g.key === lastGameKey)?.title || lastGameKey) : "";
   const lastGameReason = lastGameKey ? getDisabledReason(lastGameKey) : "";
   const showLastGame = lastGameKey && rules?.games?.[lastGameKey]?.enabled !== false;
@@ -304,6 +305,11 @@ export default function Arcade() {
           {dailyQuest.rewarded && dailyQuest.rewardGranted != null ? (
             <div className="small" style={{ marginTop: 6 }}>
               Получено: {dailyQuest.rewardGranted}
+            </div>
+          ) : null}
+          {questHistoryRows.length ? (
+            <div className="small" style={{ marginTop: 8 }}>
+              История: {questHistoryRows.map((r) => `${formatDayKey(r.dayKey)}${r.rewardGranted ? `(+${r.rewardGranted})` : ""}`).join(", ")}
             </div>
           ) : null}
         </div>
@@ -503,6 +509,13 @@ function formatEntry(entry) {
   const qty = Number(entry || 0);
   if (!qty) return "Вход: бесплатно";
   return `Вход: ${qty} ${qty === 1 ? "билет" : qty < 5 ? "билета" : "билетов"}`;
+}
+
+function formatDayKey(dayKey) {
+  const n = Number(dayKey);
+  if (!Number.isFinite(n) || n <= 0) return String(dayKey || "");
+  const d = new Date(n * 24 * 60 * 60 * 1000);
+  return d.toLocaleDateString("ru-RU", { timeZone: "UTC" });
 }
 
 function formatTicketError(code) {
