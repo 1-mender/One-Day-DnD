@@ -6,7 +6,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 
-import { getDb, initDb } from "./db.js";
+import { closeDb, getDb, initDb } from "./db.js";
 import { ensureUploads } from "./uploads.js";
 import { createSocketServer } from "./sockets.js";
 import { now } from "./util.js";
@@ -38,6 +38,22 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(morgan("dev"));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
+
+app.get("/healthz", (_req, res) => {
+  return res.status(200).json({ ok: true, uptimeSec: Math.round(process.uptime()) });
+});
+
+app.get("/readyz", (_req, res) => {
+  try {
+    const db = getDb();
+    db.prepare("SELECT 1 AS ok").get();
+    fs.accessSync(uploadsDir, fs.constants.R_OK | fs.constants.W_OK);
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error("readiness check failed:", error);
+    return res.status(503).json({ ok: false, error: "not_ready" });
+  }
+});
 
 // DEV: allow Vite dev server with credentials
 app.use((req, res, next) => {
@@ -110,7 +126,7 @@ app.locals.io = io;
 const IDLE_AFTER_MS = Number(process.env.IDLE_AFTER_MS || 5 * 60 * 1000);
 const SWEEP_EVERY_MS = 15_000;
 
-setInterval(() => {
+const idleSweepInterval = setInterval(() => {
   try {
     const db = getDb();
     const t = now();
@@ -149,7 +165,7 @@ const CLEANUP_EVERY_MS = Number(process.env.CLEANUP_EVERY_MS || 5 * 60 * 1000);
 const JOIN_REQUEST_TTL_MS = Number(process.env.JOIN_REQUEST_TTL_MS || 24 * 60 * 60 * 1000);
 
 if (CLEANUP_EVERY_MS > 0) {
-  setInterval(() => {
+  const cleanupInterval = setInterval(() => {
     try {
       const db = getDb();
       const t = now();
@@ -164,9 +180,43 @@ if (CLEANUP_EVERY_MS > 0) {
       console.error("cleanup failed:", e);
     }
   }, CLEANUP_EVERY_MS);
+
+  app.locals.cleanupInterval = cleanupInterval;
 }
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`LAN server listening on 0.0.0.0:${PORT}`);
   console.log(`DM: http://localhost:${PORT}/dm`);
 });
+
+let shuttingDown = false;
+const SHUTDOWN_TIMEOUT_MS = Number(process.env.SHUTDOWN_TIMEOUT_MS || 10_000);
+
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`Received ${signal}, shutting down...`);
+
+  clearInterval(idleSweepInterval);
+  if (app.locals.cleanupInterval) clearInterval(app.locals.cleanupInterval);
+
+  const forceExitTimer = setTimeout(() => {
+    console.error("Forced shutdown after timeout");
+    process.exit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+
+  io.close(() => {
+    httpServer.close(() => {
+      clearTimeout(forceExitTimer);
+      try {
+        closeDb();
+      } catch (error) {
+        console.error("Failed to close DB:", error);
+      }
+      process.exit(0);
+    });
+  });
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
