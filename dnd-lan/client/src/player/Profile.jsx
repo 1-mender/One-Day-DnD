@@ -106,6 +106,38 @@ const RACE_OPTIONS = [
   { value: "goliath", label: "Голиаф" }
 ];
 
+const DEFAULT_RACE = "human";
+
+const RACE_ALIASES = {
+  "human": "human",
+  "человек": "human",
+  "elf": "elf",
+  "эльф": "elf",
+  "half_elf": "half_elf",
+  "полуэльф": "half_elf",
+  "полу_эльф": "half_elf",
+  "dwarf": "dwarf",
+  "дварф": "dwarf",
+  "дворф": "dwarf",
+  "halfling": "halfling",
+  "полурослик": "halfling",
+  "хоббит": "halfling",
+  "gnome": "gnome",
+  "гном": "gnome",
+  "orc": "orc",
+  "орк": "orc",
+  "half_orc": "half_orc",
+  "полуорк": "half_orc",
+  "полу_орк": "half_orc",
+  "dragonborn": "dragonborn",
+  "драконорожденный": "dragonborn",
+  "драконорождённый": "dragonborn",
+  "tiefling": "tiefling",
+  "тифлинг": "tiefling",
+  "goliath": "goliath",
+  "голиаф": "goliath"
+};
+
 const RACE_BONUS = {
   human: 0,
   elf: 0,
@@ -120,17 +152,24 @@ const RACE_BONUS = {
   goliath: 10
 };
 
+function normalizeRace(raw) {
+  const key = String(raw || "").trim().toLowerCase().replace(/[\s.-]+/g, "_");
+  if (!key) return DEFAULT_RACE;
+  return RACE_ALIASES[key] || key;
+}
+
 function getRaceValue(stats) {
-  const raw = String(stats?.race || "").trim();
-  return raw || "human";
+  return normalizeRace(stats?.race);
 }
 
 function getRaceLabel(race) {
-  return RACE_OPTIONS.find((opt) => opt.value === race)?.label || "Человек";
+  const key = normalizeRace(race);
+  return RACE_OPTIONS.find((opt) => opt.value === key)?.label || "Человек";
 }
 
 function getRaceBonus(race) {
-  return Number(RACE_BONUS[race] ?? 0);
+  const key = normalizeRace(race);
+  return Number(RACE_BONUS[key] ?? RACE_BONUS[DEFAULT_RACE] ?? 0);
 }
 
 function formatRaceBonus(bonus) {
@@ -144,7 +183,7 @@ function setRaceInStats(stats, race) {
     delete next.race;
     return next;
   }
-  next.race = race;
+  next.race = normalizeRace(race);
   return next;
 }
 

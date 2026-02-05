@@ -15,6 +15,7 @@ import {
   PencilLine,
   PocketKnife,
   ScrollText,
+  Send,
   Shield,
   Skull,
   Sword,
@@ -96,27 +97,34 @@ function InventoryItemCard({
   lite = false,
   selectable = false,
   selected = false,
-  onSelectChange
+  onSelectChange,
+  onTransfer
 }) {
   const icon = pickInventoryIcon(item);
   const isHidden = item.visibility === "hidden";
   const vis = isHidden ? "Скрытый" : "Публичный";
-  const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility || !!onToggleFavorite;
+  const hasActions = !!onEdit || !!onDelete || !!onToggleVisibility || !!onToggleFavorite || !!onTransfer;
   const weight = Number(item.weight || 0);
   const rarityKey = String(item.rarity || "common").toLowerCase().replace(/\s+/g, "_");
   const rarityLabel = getRarityLabel(rarityKey);
   const tags = stripIconTags(Array.isArray(item.tags) ? item.tags.filter(Boolean) : []);
   const isFavorite = tags.includes("favorite");
   const compact = actionsVariant === "compact";
+  const reservedQty = Number(item.reservedQty ?? item.reserved_qty ?? 0);
+  const totalQty = Number(item.qty || 0);
+  const availableQty = Math.max(0, totalQty - reservedQty);
+  const transferDisabled = readOnly || availableQty <= 0;
   const metaParts = (
     lite
       ? [
         `Вес: ${weight.toFixed(2)}`,
-        `Редкость: ${rarityLabel}`
+        `Редкость: ${rarityLabel}`,
+        reservedQty > 0 ? `Доступно: ${availableQty} (в резерве ${reservedQty})` : null
       ]
       : [
         `Вес: ${weight.toFixed(2)}`,
         `Редкость: ${rarityLabel}`,
+        reservedQty > 0 ? `Доступно: ${availableQty} (в резерве ${reservedQty})` : null,
         tags.length ? `Теги: ${tags.slice(0, 3).join(", ")}` : null,
         item.updated_by === "dm" ? "изменено DM" : null
       ]
@@ -212,6 +220,18 @@ function InventoryItemCard({
             >
               <PencilLine className="icon" aria-hidden="true" />
               {compact ? null : "Редактировать"}
+            </button>
+          )}
+          {onTransfer && (
+            <button
+              className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
+              onClick={onTransfer}
+              disabled={transferDisabled}
+              title={transferDisabled ? "Недоступно для передачи" : "Передать"}
+              aria-label="Передать"
+            >
+              <Send className="icon" aria-hidden="true" />
+              {compact ? null : "Передать"}
             </button>
           )}
           {onToggleVisibility && (

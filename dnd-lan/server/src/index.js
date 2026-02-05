@@ -163,8 +163,32 @@ const idleSweepInterval = setInterval(() => {
 
 const CLEANUP_EVERY_MS = Number(process.env.CLEANUP_EVERY_MS || 5 * 60 * 1000);
 const JOIN_REQUEST_TTL_MS = Number(process.env.JOIN_REQUEST_TTL_MS || 24 * 60 * 60 * 1000);
+const TRANSFER_CLEANUP_EVERY_MS = Number(process.env.TRANSFER_CLEANUP_EVERY_MS || CLEANUP_EVERY_MS || 5 * 60 * 1000);
 
-if (CLEANUP_EVERY_MS > 0) {
+function cleanupExpiredTransfers() {
+  const db = getDb();
+  const t = now();
+  const rows = db
+    .prepare("SELECT * FROM item_transfers WHERE status='pending' AND expires_at<=?")
+    .all(t);
+  if (!rows.length) return;
+
+  const tx = db.transaction(() => {
+    for (const tr of rows) {
+      const item = db.prepare("SELECT id, reserved_qty FROM inventory_items WHERE id=? AND player_id=?")
+        .get(tr.item_id, tr.from_player_id);
+      if (item) {
+        const reservedQty = Number(item.reserved_qty || 0);
+        const nextReserved = Math.max(0, reservedQty - Number(tr.qty || 0));
+        db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, t, item.id);
+      }
+      db.prepare("UPDATE item_transfers SET status='expired' WHERE id=?").run(tr.id);
+    }
+  });
+  tx();
+}
+
+if (TRANSFER_CLEANUP_EVERY_MS > 0) {
   const cleanupInterval = setInterval(() => {
     try {
       const db = getDb();
@@ -176,10 +200,12 @@ if (CLEANUP_EVERY_MS > 0) {
         const cutoff = t - JOIN_REQUEST_TTL_MS;
         db.prepare("DELETE FROM join_requests WHERE created_at<?").run(cutoff);
       }
+
+      cleanupExpiredTransfers();
     } catch (e) {
       console.error("cleanup failed:", e);
     }
-  }, CLEANUP_EVERY_MS);
+  }, TRANSFER_CLEANUP_EVERY_MS);
 
   app.locals.cleanupInterval = cleanupInterval;
 }

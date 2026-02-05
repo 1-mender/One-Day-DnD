@@ -55,6 +55,9 @@ function ensureMigrations(database) {
   if (invCols.length && !invCols.includes("image_url")) {
     database.exec("ALTER TABLE inventory_items ADD COLUMN image_url TEXT;");
   }
+  if (invCols.length && !invCols.includes("reserved_qty")) {
+    database.exec("ALTER TABLE inventory_items ADD COLUMN reserved_qty INTEGER NOT NULL DEFAULT 0;");
+  }
 
   const partyCols = database.prepare("PRAGMA table_info(party_settings)").all().map((c) => c.name);
   if (partyCols.length) {
@@ -90,6 +93,25 @@ function ensureMigrations(database) {
     );`
   );
   database.exec("CREATE INDEX IF NOT EXISTS idx_ticket_quests_player_day ON ticket_quests(player_id, day_key);");
+
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS item_transfers(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_player_id INTEGER NOT NULL,
+      to_player_id INTEGER NOT NULL,
+      item_id INTEGER NOT NULL,
+      qty INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      note TEXT,
+      FOREIGN KEY(from_player_id) REFERENCES players(id) ON DELETE CASCADE,
+      FOREIGN KEY(to_player_id) REFERENCES players(id) ON DELETE CASCADE,
+      FOREIGN KEY(item_id) REFERENCES inventory_items(id) ON DELETE CASCADE
+    );`
+  );
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_inbox ON item_transfers(to_player_id, status);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);");
 }
 
 export function initDb() {

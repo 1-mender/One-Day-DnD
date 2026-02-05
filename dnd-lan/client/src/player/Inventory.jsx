@@ -5,7 +5,7 @@ import InventoryItemCard, { pickInventoryIcon } from "../components/vintage/Inve
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale } from "lucide-react";
+import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale, Send } from "lucide-react";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
@@ -33,10 +33,18 @@ export default function Inventory() {
   const [rarity, setRarity] = useQueryState("rarity", "");
   const [view, setView] = useQueryState("view", "list");
   const [items, setItems] = useState([]);
+  const [transfers, setTransfers] = useState([]);
+  const [transfersLoading, setTransfersLoading] = useState(false);
+  const [players, setPlayers] = useState([]);
   const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [transferItem, setTransferItem] = useState(null);
+  const [transferTo, setTransferTo] = useState("");
+  const [transferQty, setTransferQty] = useState(1);
+  const [transferNote, setTransferNote] = useState("");
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
@@ -63,18 +71,55 @@ export default function Inventory() {
     }
   }, []);
 
+  const loadTransfers = useCallback(async () => {
+    setTransfersLoading(true);
+    try {
+      const r = await api.invTransferInbox();
+      setTransfers(r.items || []);
+    } catch {
+      setTransfers([]);
+    } finally {
+      setTransfersLoading(false);
+    }
+  }, []);
+
+  const loadPlayers = useCallback(async () => {
+    try {
+      const [meRes, listRes] = await Promise.all([api.me(), api.players()]);
+      const meId = meRes?.player?.id ?? null;
+      const list = Array.isArray(listRes?.items) ? listRes.items : [];
+      setPlayers(list.filter((p) => p.id !== meId));
+    } catch {
+      setPlayers([]);
+    }
+  }, []);
+
   useEffect(() => {
     if (!socket) return () => {};
     load().catch(() => {});
+    loadTransfers().catch(() => {});
     const onUpdated = () => load().catch(() => {});
     const onProfile = () => load().catch(() => {});
+    const onTransfers = () => loadTransfers().catch(() => {});
     socket.on("inventory:updated", onUpdated);
     socket.on("profile:updated", onProfile);
+    socket.on("transfers:updated", onTransfers);
     return () => {
       socket.off("inventory:updated", onUpdated);
       socket.off("profile:updated", onProfile);
+      socket.off("transfers:updated", onTransfers);
     };
-  }, [load, socket]);
+  }, [load, loadTransfers, socket]);
+
+  useEffect(() => {
+    loadTransfers().catch(() => {});
+  }, [loadTransfers]);
+
+  useEffect(() => {
+    if (transferOpen && !transferTo && players.length) {
+      setTransferTo(String(players[0].id));
+    }
+  }, [transferOpen, transferTo, players]);
 
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
@@ -99,12 +144,30 @@ export default function Inventory() {
     const rest = { ...(it || {}) };
     delete rest.imageUrl;
     delete rest.image_url;
+    delete rest.reservedQty;
+    delete rest.reserved_qty;
     setForm({
       ...rest,
       tags: stripIconTags(it.tags || []),
       iconKey: getIconKeyFromItem(it)
     });
     setOpen(true);
+  }
+  function startTransfer(it) {
+    if (readOnly) return;
+    const reserved = Number(it?.reservedQty ?? it?.reserved_qty ?? 0);
+    const total = Number(it?.qty || 0);
+    const available = Math.max(0, total - reserved);
+    if (available <= 0) {
+      toast.warn("Нет доступного количества для передачи");
+      return;
+    }
+    setTransferItem(it);
+    setTransferQty(Math.min(available, 1));
+    setTransferTo("");
+    setTransferNote("");
+    setTransferOpen(true);
+    if (!players.length) loadPlayers().catch(() => {});
   }
 
   async function save() {
@@ -144,6 +207,70 @@ export default function Inventory() {
     }
   }
 
+  async function sendTransfer() {
+    if (readOnly || !transferItem) return;
+    const qty = Number(transferQty);
+    if (!Number.isFinite(qty) || qty < 1 || qty > 9999) {
+      toast.error("Некорректное количество");
+      return;
+    }
+    if (!transferTo) {
+      toast.error("Выберите получателя");
+      return;
+    }
+    if (String(transferNote || "").length > 140) {
+      toast.error("Сообщение слишком длинное");
+      return;
+    }
+    setErr("");
+    try {
+      await api.invTransferCreate({
+        to_player_id: Number(transferTo),
+        item_id: transferItem.id,
+        qty,
+        note: transferNote
+      });
+      setTransferOpen(false);
+      await load();
+      await loadTransfers();
+      toast.success("Передача отправлена");
+    } catch (e) {
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+    }
+  }
+
+  async function acceptTransfer(tr) {
+    if (readOnly) return;
+    setErr("");
+    try {
+      await api.invTransferAccept(tr.id);
+      await loadTransfers();
+      await load();
+      toast.success("Передача принята");
+    } catch (e) {
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+    }
+  }
+
+  async function rejectTransfer(tr) {
+    if (readOnly) return;
+    setErr("");
+    try {
+      await api.invTransferReject(tr.id);
+      await loadTransfers();
+      await load();
+      toast.success("Передача отклонена");
+    } catch (e) {
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+    }
+  }
+
   async function toggleVisibility(it) {
     if (readOnly) return;
     try {
@@ -174,6 +301,9 @@ export default function Inventory() {
   const hasWeightLimit = Number.isFinite(maxWeight) && maxWeight > 0;
   const weightRatio = hasWeightLimit ? totalWeightAll / maxWeight : 0;
   const weightStatus = hasWeightLimit ? (weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok") : "secondary";
+  const transferAvailable = transferItem
+    ? Math.max(0, Number(transferItem.qty || 0) - Number(transferItem.reservedQty ?? transferItem.reserved_qty ?? 0))
+    : 0;
 
   return (
     <div className={`card taped inventory-shell${lite ? " page-lite" : ""}`.trim()}>
@@ -188,7 +318,7 @@ export default function Inventory() {
 
       {favorites.length ? (
         <div className="inv-quick-bar">
-          <div className="inv-quick-title">??????? ?????</div>
+          <div className="inv-quick-title">Избранные предметы</div>
           <div className="inv-quick-list">
             {favorites.map((it) => {
               const icon = pickInventoryIcon(it);
@@ -216,15 +346,15 @@ export default function Inventory() {
         </div>
       ) : (
         <div className="small inv-quick-empty">
-          ???????? ?????/?????? ??? ?????????, ????? ??? ????????? ? ??????? ??????.
+          Добавьте предмет в избранное, чтобы он появился в быстрых слотах.
         </div>
       )}
       <div className="inv-toolbar">
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." />
         <select value={vis} onChange={(e)=>setVis(e.target.value)}>
           <option value="">Видимость: все</option>
-          <option value="public">Публичные</option>
-          <option value="hidden">Скрытые</option>
+              <option value="public">Публичные</option>
+              <option value="hidden">Скрытые</option>
         </select>
         <select value={rarity} onChange={(e)=>setRarity(e.target.value)}>
           <option value="">Редкость: все</option>
@@ -251,6 +381,53 @@ export default function Inventory() {
             Вес: {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
           </span>
           {readOnly ? <span className="badge warn">read-only</span> : null}
+        </div>
+      </div>
+
+      <div className="paper-note" style={{ marginTop: 12 }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="title">Входящие передачи</div>
+          <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+        </div>
+        <div className="small note-hint" style={{ marginTop: 6 }}>
+          Подтвердите получение, чтобы предмет попал в инвентарь.
+        </div>
+        <div style={{ marginTop: 8 }}>
+          {transfersLoading ? (
+            <Skeleton h={80} w="100%" />
+          ) : transfers.length === 0 ? (
+            <div className="small">Нет входящих передач.</div>
+          ) : (
+            <div className="list">
+              {transfers.map((tr) => (
+                <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <span className="badge secondary">от {tr.fromName || `#${tr.fromPlayerId}`}</span>
+                      <span className="badge">x{tr.qty}</span>
+                      <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="small" style={{ marginTop: 6 }}>
+                      Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
+                    </div>
+                    {tr.note ? (
+                      <div className="small" style={{ marginTop: 6 }}>
+                        <b>Сообщение:</b> {tr.note}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <button className="btn" onClick={() => acceptTransfer(tr)} disabled={readOnly}>
+                      <Send className="icon" aria-hidden="true" />Принять
+                    </button>
+                    <button className="btn secondary" onClick={() => rejectTransfer(tr)} disabled={readOnly}>
+                      Отклонить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -281,6 +458,7 @@ export default function Inventory() {
                 onDelete={() => del(it.id)}
                 onToggleVisibility={() => toggleVisibility(it)}
                 onToggleFavorite={() => toggleFavorite(it)}
+                onTransfer={() => startTransfer(it)}
               />
             ))}
           </div>
@@ -302,8 +480,8 @@ export default function Inventory() {
               ))}
             </select>
             <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} style={inp}>
-              <option value="public">Public</option>
-              <option value="hidden">Hidden</option>
+              <option value="public">Публичные</option>
+              <option value="hidden">Скрытые</option>
             </select>
           </div>
           <div className="row" style={{ alignItems: "center" }}>
@@ -364,6 +542,43 @@ export default function Inventory() {
             style={inp}
           />
           <button className="btn" onClick={save}>Сохранить</button>
+        </div>
+      </Modal>
+
+      <Modal open={transferOpen} title="Передать предмет" onClose={() => setTransferOpen(false)}>
+        <div className="list">
+          {transferItem ? (
+            <div className="small note-hint">
+              <b>{transferItem.name}</b> • доступно: {transferAvailable}
+            </div>
+          ) : null}
+          <select value={transferTo} onChange={(e) => setTransferTo(e.target.value)} style={inp}>
+            <option value="">Выберите получателя</option>
+            {players.map((p) => (
+              <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min={1}
+            max={9999}
+            value={transferQty}
+            onChange={(e) => setTransferQty(e.target.value)}
+            placeholder="Количество"
+            style={inp}
+          />
+          <textarea
+            value={transferNote}
+            onChange={(e) => setTransferNote(e.target.value)}
+            rows={3}
+            maxLength={140}
+            placeholder="Сообщение (до 140 символов)"
+            style={inp}
+          />
+          <div className="small">{String(transferNote || "").length}/140</div>
+          <button className="btn" onClick={sendTransfer} disabled={!transferItem || !transferTo}>
+            <Send className="icon" aria-hidden="true" />Отправить
+          </button>
         </div>
       </Modal>
     </div>

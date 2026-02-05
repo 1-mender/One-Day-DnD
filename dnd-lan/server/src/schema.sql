@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   description TEXT,
   image_url TEXT,
   qty INTEGER NOT NULL DEFAULT 1,
+  reserved_qty INTEGER NOT NULL DEFAULT 0,
   weight REAL NOT NULL DEFAULT 0,
   rarity TEXT NOT NULL DEFAULT 'common',
   tags TEXT NOT NULL DEFAULT '[]',
@@ -160,6 +161,21 @@ CREATE TABLE IF NOT EXISTS profile_change_requests (
   FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS item_transfers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  from_player_id INTEGER NOT NULL,
+  to_player_id INTEGER NOT NULL,
+  item_id INTEGER NOT NULL,
+  qty INTEGER NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending', -- pending/accepted/rejected/canceled/expired
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL,
+  note TEXT,
+  FOREIGN KEY(from_player_id) REFERENCES players(id) ON DELETE CASCADE,
+  FOREIGN KEY(to_player_id) REFERENCES players(id) ON DELETE CASCADE,
+  FOREIGN KEY(item_id) REFERENCES inventory_items(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS tickets (
   player_id INTEGER PRIMARY KEY,
   balance INTEGER NOT NULL DEFAULT 0,
@@ -212,6 +228,8 @@ CREATE TABLE IF NOT EXISTS ticket_purchases (
 
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
+CREATE INDEX IF NOT EXISTS idx_transfers_inbox ON item_transfers(to_player_id, status);
+CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
 CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);
 CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);

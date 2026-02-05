@@ -104,6 +104,8 @@ export default function DMInventory() {
     const rest = { ...(item || {}) };
     delete rest.imageUrl;
     delete rest.image_url;
+    delete rest.reservedQty;
+    delete rest.reserved_qty;
     setForm({
       ...rest,
       tags: stripIconTags(item.tags || []),
@@ -237,8 +239,8 @@ export default function DMInventory() {
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(360px, 100%)" }} />
         <select value={vis} onChange={(e)=>setVis(e.target.value)} style={{ width: 180 }}>
           <option value="">Видимость: все</option>
-          <option value="public">Публичные</option>
-          <option value="hidden">Скрытые</option>
+              <option value="public">Публичные</option>
+              <option value="hidden">Скрытые</option>
         </select>
         <select value={rarity} onChange={(e)=>setRarity(e.target.value)} style={{ width: 180 }}>
           <option value="">Редкость: все</option>
@@ -370,8 +372,8 @@ export default function DMInventory() {
               ))}
             </select>
             <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} style={inp}>
-              <option value="public">Public</option>
-              <option value="hidden">Hidden</option>
+              <option value="public">Публичные</option>
+              <option value="hidden">Скрытые</option>
             </select>
           </div>
 

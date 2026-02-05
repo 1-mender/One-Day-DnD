@@ -133,6 +133,16 @@ export const api = {
     request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "PUT", body: JSON.stringify(item) }),
   invDmDeletePlayerItem: (playerId, itemId) =>
     request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "DELETE" }),
+  invTransferCreate: (payload) =>
+    request("/api/inventory/transfers", { method: "POST", body: JSON.stringify(payload) }),
+  invTransferInbox: () =>
+    request("/api/inventory/transfers/inbox", { method: "GET" }),
+  invTransferAccept: (transferId) =>
+    request(`/api/inventory/transfers/${transferId}/accept`, { method: "POST" }),
+  invTransferReject: (transferId) =>
+    request(`/api/inventory/transfers/${transferId}/reject`, { method: "POST" }),
+  invTransferCancel: (transferId) =>
+    request(`/api/inventory/transfers/${transferId}/cancel`, { method: "POST" }),
 
   bestiary: (opts) => bestiaryPageRequest(opts),
   bestiaryPage: (opts) => bestiaryPageRequest(opts),
