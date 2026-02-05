@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Modal from "../components/Modal.jsx";
 import Match3Game from "./games/Match3.jsx";
 import GuessCardGame from "./games/GuessCard.jsx";
@@ -94,6 +94,10 @@ export default function Arcade() {
   const [performance, setPerformance] = useState("");
   const [busy, setBusy] = useState(false);
   const [playErr, setPlayErr] = useState("");
+  const [questUpdated, setQuestUpdated] = useState(false);
+  const questUpdatedTimer = useRef(null);
+  const prevQuestKey = useRef(null);
+  const questInit = useRef(false);
   const [lastGameKey, setLastGameKey] = useState(() => {
     if (typeof window === "undefined") return "";
     return localStorage.getItem("fish_last_game") || "";
@@ -126,6 +130,28 @@ export default function Arcade() {
   const lastGameTitle = lastGameKey ? (games.find((g) => g.key === lastGameKey)?.title || lastGameKey) : "";
   const lastGameReason = lastGameKey ? getDisabledReason(lastGameKey) : "";
   const showLastGame = lastGameKey && rules?.games?.[lastGameKey]?.enabled !== false;
+
+  useEffect(() => {
+    if (!dailyQuest?.key) {
+      prevQuestKey.current = null;
+      return;
+    }
+    if (!questInit.current) {
+      questInit.current = true;
+      prevQuestKey.current = dailyQuest.key;
+      return;
+    }
+    if (prevQuestKey.current !== dailyQuest.key) {
+      prevQuestKey.current = dailyQuest.key;
+      setQuestUpdated(true);
+      if (questUpdatedTimer.current) clearTimeout(questUpdatedTimer.current);
+      questUpdatedTimer.current = setTimeout(() => setQuestUpdated(false), 3000);
+    }
+  }, [dailyQuest?.key]);
+
+  useEffect(() => () => {
+    if (questUpdatedTimer.current) clearTimeout(questUpdatedTimer.current);
+  }, []);
 
   function openGame(gameKey) {
     setActiveGameKey(gameKey);
@@ -296,6 +322,9 @@ export default function Arcade() {
             <span className="badge secondary">
               Награда: {dailyQuest.reward} билета
             </span>
+            {questUpdated ? (
+              <span className="badge ok">Обновлено</span>
+            ) : null}
             {dailyQuest.completed ? (
               <span className={`badge ${dailyQuest.rewarded ? "ok" : "warn"}`}>
                 {dailyQuest.rewarded ? "Выполнено" : "Готово к награде"}
@@ -515,7 +544,10 @@ function formatDayKey(dayKey) {
   const n = Number(dayKey);
   if (!Number.isFinite(n) || n <= 0) return String(dayKey || "");
   const d = new Date(n * 24 * 60 * 60 * 1000);
-  return d.toLocaleDateString("ru-RU", { timeZone: "UTC" });
+  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = months[d.getUTCMonth()] || "";
+  return month ? `${day} ${month}` : day;
 }
 
 function formatTicketError(code) {
