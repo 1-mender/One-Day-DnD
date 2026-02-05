@@ -207,7 +207,7 @@ export default function DMInventory() {
 
 
   const filtered = useMemo(() => filterInventory(items, { q: debouncedQ, vis, rarity }), [items, debouncedQ, vis, rarity]);
-  const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
+  const { publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
   const { totalWeight: totalWeightAll } = useMemo(() => summarizeInventory(items), [items]);
   const hasAny = items.length > 0;
   const selectedCount = selectedIds.size;

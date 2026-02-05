@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const COLOR_POOL = ["ruby", "amber", "emerald", "sapphire", "amethyst", "bone", "topaz", "violet"];
 const DEFAULT_CONFIG = {
@@ -246,7 +246,7 @@ export default function Match3Game({
 
   const progress = Math.min(100, Math.round((score / config.target) * 100));
 
-  function resetGame() {
+  const resetGame = useCallback(() => {
     const next = createBoard(config);
     setBoard(next);
     setSelected(null);
@@ -261,12 +261,12 @@ export default function Match3Game({
     setResult(null);
     setSettling(false);
     maxMatchRef.current = 0;
-  }
+  }, [config]);
 
   useEffect(() => {
     if (!open) return;
     resetGame();
-  }, [open, config]);
+  }, [open, resetGame]);
 
   useEffect(() => {
     if (status === "playing") return;

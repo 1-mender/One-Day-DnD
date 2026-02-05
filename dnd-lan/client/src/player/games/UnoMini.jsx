@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
 
 const COLORS = ["red", "green", "blue", "yellow"];
@@ -45,7 +45,7 @@ export default function UnoMiniGame({
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
 
-  function resetGame() {
+  const resetGame = useCallback(() => {
     const nextDeck = buildDeck();
     const player = nextDeck.splice(0, handSize);
     const ai = nextDeck.splice(0, handSize);
@@ -59,12 +59,12 @@ export default function UnoMiniGame({
     setSettling(false);
     setResult(null);
     setApiErr("");
-  }
+  }, [handSize]);
 
   useEffect(() => {
     if (!open) return;
     resetGame();
-  }, [open, handSize]);
+  }, [open, resetGame]);
 
   useEffect(() => {
     if (status === "playing") return;
@@ -96,10 +96,10 @@ export default function UnoMiniGame({
       setStatus("win");
       return;
     }
-    setTimeout(() => handleAiTurn(card, nextHand), 200);
+    setTimeout(() => handleAiTurn(card), 200);
   }
 
-  function handleAiTurn(newTop, nextPlayerHand) {
+  function handleAiTurn(newTop) {
     if (status !== "playing") return;
     let ai = aiHand.slice();
     const playableIdx = ai.findIndex((card) => canPlay(card, newTop));
@@ -126,7 +126,7 @@ export default function UnoMiniGame({
     setDeck(nextDeck);
     setPlayerHand((prev) => [...prev, drawn]);
     setPlayerDraws((v) => v + 1);
-    setTimeout(() => handleAiTurn(topCard, playerHand), 200);
+    setTimeout(() => handleAiTurn(topCard), 200);
   }
 
   if (!open) return null;

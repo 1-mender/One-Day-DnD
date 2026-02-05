@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api.js";
 import { makeProof } from "../../lib/gameProof.js";
 
@@ -98,7 +98,7 @@ export default function GuessCardGame({
     ];
   }, [target]);
 
-  function resetGame() {
+  const resetGame = useCallback(() => {
     const next = buildDeck(seed || "fallback", modeConfig.ranks);
     setDeck(next);
     const rng = makeRng(`${seed || "fallback"}-target`);
@@ -115,7 +115,7 @@ export default function GuessCardGame({
     setWinAttempt(1);
     setPickHistory([]);
     endAtRef.current = Date.now() + modeConfig.timeLimit * 1000;
-  }
+  }, [modeConfig.ranks, modeConfig.timeLimit, seed]);
 
   useEffect(() => {
     if (!open) return;
@@ -127,7 +127,7 @@ export default function GuessCardGame({
   useEffect(() => {
     if (!open || !seed) return;
     resetGame();
-  }, [open, seed, modeConfig]);
+  }, [open, seed, resetGame]);
 
   useEffect(() => {
     if (!open || status !== "playing") return;

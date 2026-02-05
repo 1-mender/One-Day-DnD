@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
 
 const LINES = [
@@ -70,14 +70,14 @@ export default function TicTacToeGame({
   const winner = useMemo(() => getWinner(board), [board]);
   const isDraw = useMemo(() => board.every(Boolean) && !winner, [board, winner]);
 
-  function resetRound(nextPlayerWins = playerWins, nextAiWins = aiWins) {
+  const resetRound = useCallback((nextPlayerWins, nextAiWins) => {
     setBoard(Array(9).fill(null));
     setMoves([]);
-    if (nextPlayerWins !== playerWins) setPlayerWins(nextPlayerWins);
-    if (nextAiWins !== aiWins) setAiWins(nextAiWins);
-  }
+    setPlayerWins(nextPlayerWins);
+    setAiWins(nextAiWins);
+  }, []);
 
-  function resetMatch() {
+  const resetMatch = useCallback(() => {
     setBoard(Array(9).fill(null));
     setMoves([]);
     setPlayerWins(0);
@@ -86,12 +86,12 @@ export default function TicTacToeGame({
     setSettling(false);
     setResult(null);
     setApiErr("");
-  }
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     resetMatch();
-  }, [open]);
+  }, [open, resetMatch]);
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -113,7 +113,7 @@ export default function TicTacToeGame({
     } else if (isDraw) {
       resetRound(playerWins, aiWins);
     }
-  }, [winner, isDraw, playerWins, aiWins, roundsToWin, status]);
+  }, [winner, isDraw, playerWins, aiWins, roundsToWin, status, resetRound]);
 
   useEffect(() => {
     if (status === "playing") return;

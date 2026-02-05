@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
 
 const LETTERS = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЫЭЮЯ";
@@ -44,7 +44,7 @@ export default function ScrabbleBlitzGame({
 
   const available = useMemo(() => rack.join(" "), [rack]);
 
-  function resetGame() {
+  const resetGame = useCallback(() => {
     setRack(pickLetters(rackSize));
     setWord("");
     setTimeLeft(timeLimit);
@@ -53,12 +53,12 @@ export default function ScrabbleBlitzGame({
     setSettling(false);
     setApiErr("");
     endAtRef.current = Date.now() + timeLimit * 1000;
-  }
+  }, [rackSize, timeLimit]);
 
   useEffect(() => {
     if (!open) return;
     resetGame();
-  }, [open, timeLimit, rackSize]);
+  }, [open, resetGame]);
 
   useEffect(() => {
     if (!open || status !== "playing") return;

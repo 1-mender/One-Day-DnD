@@ -69,11 +69,12 @@ export default function Bestiary() {
     };
   }, [load, socket]);
 
-  if (!enabled) return <div className="card taped"><div className="badge warn">Бестиарий отключён DM</div></div>;
 
   const cur = useMemo(() => items.find((m) => m.id === curId) || null, [curId, items]);
   const gallery = lite ? (cur?.images || []).slice(0, 1) : (cur?.images || []);
   const gridCols = lite ? "repeat(auto-fill, minmax(120px, 1fr))" : "repeat(auto-fill, minmax(170px, 1fr))";
+
+  if (!enabled) return <div className="card taped"><div className="badge warn">Бестиарий отключён DM</div></div>;
 
   return (
     <div className={`card taped bestiary-shell${lite ? " page-lite" : ""}`.trim()}>
