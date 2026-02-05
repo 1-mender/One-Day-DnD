@@ -8,9 +8,8 @@
     "dev": "node scripts/dev.js",
     "build": "npm --prefix client run build && node ./server/src/util.js copy-client",
     "start": "npm --prefix server run start",
-    "test": "npm --prefix server run test"
-  },
-  "dependencies": {
-    "multer": "^2.0.2"
+    "test": "npm --prefix server run test",
+    "lint": "npm --prefix client run lint",
+    "verify": "npm run lint && npm run test && npm run build"
   }
 }
