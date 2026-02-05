@@ -1033,6 +1033,65 @@ a:hover{ color: #000; }
   box-shadow: 0 18px 40px rgba(0,0,0,.3);
 }
 
+.game-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(40,30,20,.35);
+  background:
+    var(--noise),
+    linear-gradient(180deg, rgba(255,255,255,.7), rgba(255,255,255,.35));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+  margin-bottom: 10px;
+}
+.game-title-row{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.game-title{
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 18px;
+}
+.game-sub{
+  opacity: .8;
+  font-size: 12px;
+}
+.game-icon{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(40,30,20,.45);
+  font-size: 10px;
+  letter-spacing: .6px;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(255,255,255,.7);
+  color: #2a2015;
+  white-space: nowrap;
+}
+.game-icon.ttt{
+  background: linear-gradient(180deg, #d8f3d8, #bfe7c7);
+}
+.game-icon.uno{
+  background: linear-gradient(180deg, #f6c9c4, #e7a8a0);
+}
+.game-icon.scrabble{
+  background: linear-gradient(180deg, #f3e2b9, #e2c77f);
+}
+.game-hud{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
 .ttt-board{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1046,6 +1105,22 @@ a:hover{ color: #000; }
   background: #fff8ef;
   font-size: 28px;
   font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .12s ease, box-shadow .18s ease, background .18s ease;
+}
+.ttt-cell.win{
+  background: linear-gradient(180deg, #d8f3d8, #bfe7c7);
+  border-color: #2f6b3a;
+  box-shadow: 0 0 0 2px rgba(60,120,70,.35);
+}
+.ttt-cell.ai-pulse{
+  animation: ttt-pulse .35s ease;
+}
+.ttt-board.ai-thinking .ttt-cell:not(.filled){
+  cursor: wait;
+  opacity: .85;
 }
 
 .ttt-scoreboard{
@@ -1053,6 +1128,12 @@ a:hover{ color: #000; }
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin-top: 8px;
+}
+
+@keyframes ttt-pulse{
+  0%{ transform: scale(1); box-shadow: 0 0 0 0 rgba(60,120,70,.4); }
+  60%{ transform: scale(1.08); }
+  100%{ transform: scale(1); box-shadow: 0 0 0 10px rgba(60,120,70,0); }
 }
 
 .uno-top-card{
@@ -1071,12 +1152,19 @@ a:hover{ color: #000; }
   justify-content: center;
   font-weight: 700;
   background: #fff8ef;
-  transition: transform .2s ease;
+  transition: transform .2s ease, filter .2s ease, opacity .2s ease;
 }
 
 .uno-card.playable{
-  transform: translateY(-4px);
-  box-shadow: 0 6px 12px rgba(0,0,0,.15);
+  transform: translateY(-6px) scale(1.06);
+  box-shadow: 0 8px 14px rgba(0,0,0,.2);
+}
+.uno-card.playable:hover{
+  transform: translateY(-8px) scale(1.08);
+}
+.uno-card.not-playable{
+  opacity: .55;
+  filter: saturate(.6) brightness(.92);
 }
 
 .uno-card.red{ background: #ffb3b3; }
@@ -1090,14 +1178,69 @@ a:hover{ color: #000; }
   gap: 6px;
 }
 
+.uno-log{
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px dashed rgba(0,0,0,.25);
+  background: rgba(255,255,255,.45);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+.uno-log-title{
+  font-weight: 900;
+  letter-spacing: .4px;
+  opacity: .75;
+}
+.uno-log-line{
+  opacity: .85;
+}
+
 .scrabble-rack{
   margin: 12px 0;
   padding: 10px;
   border: 1px dashed rgba(0,0,0,.4);
   border-radius: 12px;
-  letter-spacing: 4px;
-  font-weight: 700;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  background: rgba(255,255,255,.35);
+}
+.scrabble-tile{
+  width: 38px;
+  height: 42px;
+  border-radius: 10px;
+  border: 2px solid #1f1f1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  background: #fff8ef;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 6px 10px rgba(0,0,0,.18);
+}
+.scrabble-tile.rare{
+  background: linear-gradient(180deg, #f2d1b2, #e1ad7c);
+  border-color: #a56a2a;
+}
+.scrabble-hint{
+  margin-top: 6px;
   text-align: center;
+  font-size: 12px;
+  opacity: .85;
+}
+.scrabble-hint-letter{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(70,55,30,.35);
+  background: #fff8ef;
+  font-weight: 900;
 }
 
 .scrabble-input{
@@ -1945,19 +2088,25 @@ a:hover{ color: #000; }
 }
 
 .mode-chip{
-  border: 1px solid rgba(70,55,30,.28);
+  border: 1px solid rgba(70,55,30,.35);
   border-radius: 999px;
   padding: 4px 10px;
   font-size: 11px;
   font-weight: 800;
-  background: rgba(255,255,255,.5);
+  background: rgba(255,255,255,.4);
   cursor: pointer;
-  transition: all .2s ease;
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
 }
 
 .mode-chip.active{
-  background: #1f1f1f;
+  background: linear-gradient(180deg, #2b2118, #1b140f);
   color: #f8f2ea;
+  border-color: rgba(20,15,10,.9);
+  box-shadow: 0 6px 12px rgba(0,0,0,.2);
+}
+.mode-chip:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.03);
 }
 
 .arcade-modes{
@@ -1965,6 +2114,10 @@ a:hover{ color: #000; }
   flex-wrap: wrap;
   gap: 6px;
   margin: 6px 0;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px dashed rgba(70,55,30,.25);
+  background: rgba(255,255,255,.25);
 }
 .rule-list{
   display:flex;
@@ -2087,20 +2240,52 @@ a:hover{ color: #000; }
 .hud-card{
   border-radius: 14px;
   padding: 8px 10px;
-  border: 1px solid rgba(70,55,30,.24);
-  background: rgba(255,255,255,.35);
+  border: 1px solid rgba(70,55,30,.28);
+  background:
+    var(--noise),
+    linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.25));
   text-align: center;
+  min-height: 66px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  position: relative;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.6);
 }
 .hud-label{
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: .6px;
-  opacity: .7;
+  letter-spacing: .7px;
+  opacity: .75;
   font-weight: 900;
 }
 .hud-value{
   font-weight: 1000;
   font-size: 18px;
+}
+.hud-card.key{
+  border-color: rgba(140,95,45,.5);
+  background:
+    var(--noise),
+    linear-gradient(180deg, #fff1d4, #e6c998);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.75),
+    0 6px 12px rgba(0,0,0,.12);
+}
+.hud-badge{
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  letter-spacing: .6px;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(45,30,15,.92);
+  color: #f6e7c7;
+  border: 1px solid rgba(255,255,255,.2);
 }
 
 .match3-progress{
@@ -2390,6 +2575,10 @@ a:hover{ color: #000; }
   .guess-grid{
     gap: 8px;
   }
+  .scrabble-tile{
+    width: 34px;
+    height: 38px;
+  }
   .inv-hero{
     height: 110px;
   }
@@ -2573,6 +2762,9 @@ a:hover{ color: #000; }
   .match3-tile.matched{
     animation: none;
     opacity: .5;
+  }
+  .ttt-cell.ai-pulse{
+    animation: none;
   }
   .guess-inner{
     transition: none;

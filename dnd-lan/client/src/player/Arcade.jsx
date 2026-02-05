@@ -451,6 +451,7 @@ export default function Arcade() {
                       key={`${g.key}_${mode.key}`}
                       type="button"
                       className={`mode-chip${selectedModeKey === mode.key ? " active" : ""}`}
+                      title={describeMode(mode)}
                       onClick={() => setMode(g.key, mode.key)}
                     >
                       {mode.label}
@@ -632,6 +633,24 @@ function impactClass(label) {
   if (v.includes("сред") || v.includes("mid") || v.includes("medium")) return "impact-mid";
   if (v.includes("лег") || v.includes("easy") || v.includes("низ")) return "impact-low";
   return "impact-low";
+}
+
+
+function describeMode(mode) {
+  if (!mode) return "";
+  const bits = [];
+  if (mode.roundsToWin) bits.push(`?? ${mode.roundsToWin} ?????`);
+  if (mode.handSize) bits.push(`????: ${mode.handSize}`);
+  if (mode.timeLimit) bits.push(`?????: ${mode.timeLimit}?`);
+  if (mode.rackSize) bits.push(`????: ${mode.rackSize}`);
+  if (mode.moves) bits.push(`?????: ${mode.moves}`);
+  if (mode.size) bits.push(`????: ${mode.size}x${mode.size}`);
+  if (typeof mode.blocks === "number" && mode.blocks > 0) bits.push(`?????: ${mode.blocks}`);
+  if (mode.maxAttempts) bits.push(`???????: ${mode.maxAttempts}`);
+  if (mode.hintCount) bits.push(`?????????: ${mode.hintCount}`);
+  if (Array.isArray(mode.ranks)) bits.push(`?????: ${mode.ranks.length}`);
+  if (bits.length) return bits.join(" ? ");
+  return mode.label ? `?????: ${mode.label}` : "?????";
 }
 
 function formatEntry(entry) {

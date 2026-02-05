@@ -16,6 +16,21 @@ function normalizeWord(word) {
   return String(word || "").trim().toUpperCase();
 }
 
+function analyzeWord(normalized, rack) {
+  if (!normalized) return { valid: false, reason: "empty" };
+  if (normalized.length < 3) return { valid: false, reason: "short" };
+  const counts = new Map();
+  for (const letter of rack) {
+    counts.set(letter, (counts.get(letter) || 0) + 1);
+  }
+  for (const ch of normalized) {
+    const count = counts.get(ch) || 0;
+    if (count <= 0) return { valid: false, reason: "missing", letter: ch };
+    counts.set(ch, count - 1);
+  }
+  return { valid: true };
+}
+
 export default function ScrabbleBlitzGame({
   open,
   onClose,
@@ -35,6 +50,7 @@ export default function ScrabbleBlitzGame({
   const [result, setResult] = useState(null);
   const [settling, setSettling] = useState(false);
   const [apiErr, setApiErr] = useState("");
+  const [invalidLetter, setInvalidLetter] = useState("");
   const endAtRef = useRef(0);
 
   const entryLabel = entryCost
@@ -42,7 +58,8 @@ export default function ScrabbleBlitzGame({
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
 
-  const available = useMemo(() => rack.join(" "), [rack]);
+  const normalizedWord = useMemo(() => normalizeWord(word), [word]);
+  const wordCheck = useMemo(() => analyzeWord(normalizedWord, rack), [normalizedWord, rack]);
 
   function resetGame() {
     setRack(pickLetters(rackSize));
@@ -52,6 +69,7 @@ export default function ScrabbleBlitzGame({
     setResult(null);
     setSettling(false);
     setApiErr("");
+    setInvalidLetter("");
     endAtRef.current = Date.now() + timeLimit * 1000;
   }
 
@@ -88,24 +106,16 @@ export default function ScrabbleBlitzGame({
       .finally(() => setSettling(false));
   }, [status, onSubmitResult, settling, result, word, rack]);
 
-  function canFormWord(normalized) {
-    if (normalized.length < 3) return false;
-    const letters = rack.slice();
-    for (const ch of normalized) {
-      const idx = letters.indexOf(ch);
-      if (idx === -1) return false;
-      letters.splice(idx, 1);
-    }
-    return true;
-  }
-
   function handleSubmit() {
     if (status !== "playing" || disabled || readOnly) return;
     const normalized = normalizeWord(word);
-    if (!canFormWord(normalized)) {
+    const analysis = analyzeWord(normalized, rack);
+    if (!analysis.valid) {
+      setInvalidLetter(analysis.reason === "missing" ? analysis.letter : "");
       setStatus("loss");
       return;
     }
+    setInvalidLetter("");
     setStatus("win");
   }
 
@@ -114,18 +124,22 @@ export default function ScrabbleBlitzGame({
   return (
     <div className="scrabble-overlay">
       <div className="scrabble-panel">
-        <div className="scrabble-head">
+        <div className="scrabble-head game-head">
           <div>
-            <div className="scrabble-title">Эрудит-блиц</div>
-            <div className="small">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
+            <div className="game-title-row">
+              <span className="game-icon scrabble">Scrabble</span>
+              <div className="scrabble-title game-title">Эрудит-блиц</div>
+            </div>
+            <div className="small game-sub">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
           </div>
           <button className="btn secondary" onClick={onClose}>Выйти</button>
         </div>
 
-        <div className="scrabble-hud">
-          <div className="hud-card">
+        <div className="scrabble-hud game-hud">
+          <div className="hud-card key">
             <div className="hud-label">Время</div>
             <div className="hud-value">{Math.ceil(timeLeft)}с</div>
+            <span className="hud-badge">????</span>
           </div>
           <div className="hud-card">
             <div className="hud-label">Буквы</div>
@@ -133,7 +147,24 @@ export default function ScrabbleBlitzGame({
           </div>
         </div>
 
-        <div className="scrabble-rack">{available}</div>
+        
+        <div className="scrabble-rack">
+          {rack.map((letter, idx) => (
+            <span
+              key={`${letter}-${idx}`}
+              className={`scrabble-tile${RARE.has(letter) ? " rare" : ""}`}
+            >
+              {letter}
+            </span>
+          ))}
+        </div>
+
+        {status === "playing" && wordCheck.reason === "missing" ? (
+          <div className="scrabble-hint">
+            ?????? ?????: <span className="scrabble-hint-letter">{wordCheck.letter}</span>
+          </div>
+        ) : null}
+
 
         <div className="scrabble-input">
           <input
@@ -154,6 +185,9 @@ export default function ScrabbleBlitzGame({
         {status !== "playing" ? (
           <div className={`scrabble-result ${status}`}>
             <div className="scrabble-result-title">{status === "win" ? "Победа!" : "Поражение"}</div>
+            {status === "loss" && invalidLetter ? (
+              <div className="badge warn">?????? ?????: {invalidLetter}</div>
+            ) : null}
             {settling ? <div className="badge warn">Начисляю билеты...</div> : null}
             {apiErr ? (
               <div className="badge off">

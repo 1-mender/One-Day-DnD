@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
 
 const LINES = [
@@ -15,6 +15,13 @@ const LINES = [
 function getWinner(board) {
   for (const [a, b, c] of LINES) {
     if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+  }
+  return null;
+}
+
+function getWinningLine(board) {
+  for (const [a, b, c] of LINES) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return [a, b, c];
   }
   return null;
 }
@@ -61,18 +68,41 @@ export default function TicTacToeGame({
   const [settling, setSettling] = useState(false);
   const [result, setResult] = useState(null);
   const [apiErr, setApiErr] = useState("");
+  const [aiThinking, setAiThinking] = useState(false);
+  const [aiPulse, setAiPulse] = useState(null);
+  const aiMoveTimer = useRef(null);
+  const aiPulseTimer = useRef(null);
+  const statusRef = useRef(status);
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Обычный";
 
-  const winner = useMemo(() => getWinner(board), [board]);
+  const winningLine = useMemo(() => getWinningLine(board), [board]);
+  const winner = useMemo(() => (winningLine ? board[winningLine[0]] : null), [winningLine, board]);
   const isDraw = useMemo(() => board.every(Boolean) && !winner, [board, winner]);
+
+  function clearAiTimers(options = {}) {
+    const { skipState } = options;
+    if (aiMoveTimer.current) {
+      clearTimeout(aiMoveTimer.current);
+      aiMoveTimer.current = null;
+    }
+    if (aiPulseTimer.current) {
+      clearTimeout(aiPulseTimer.current);
+      aiPulseTimer.current = null;
+    }
+    if (!skipState) {
+      setAiThinking(false);
+      setAiPulse(null);
+    }
+  }
 
   function resetRound(nextPlayerWins = playerWins, nextAiWins = aiWins) {
     setBoard(Array(9).fill(null));
     setMoves([]);
+    clearAiTimers();
     if (nextPlayerWins !== playerWins) setPlayerWins(nextPlayerWins);
     if (nextAiWins !== aiWins) setAiWins(nextAiWins);
   }
@@ -86,12 +116,24 @@ export default function TicTacToeGame({
     setSettling(false);
     setResult(null);
     setApiErr("");
+    clearAiTimers();
   }
 
   useEffect(() => {
     if (!open) return;
     resetMatch();
   }, [open]);
+
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
+    if (open) return;
+    clearAiTimers();
+  }, [open]);
+
+  useEffect(() => () => clearAiTimers({ skipState: true }), []);
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -130,7 +172,7 @@ export default function TicTacToeGame({
   }, [status, onSubmitResult, settling, result, moves, aiWins, roundsToWin]);
 
   function handlePick(idx) {
-    if (status !== "playing" || disabled || readOnly) return;
+    if (status !== "playing" || disabled || readOnly || aiThinking) return;
     if (board[idx]) return;
     const next = board.slice();
     next[idx] = "X";
@@ -139,8 +181,27 @@ export default function TicTacToeGame({
     if (!hasWinner && next.some((v) => !v)) {
       const aiMove = pickAiMove(next);
       if (aiMove != null) {
-        next[aiMove] = "O";
-        nextMoves.push(aiMove);
+        setBoard(next);
+        setMoves(nextMoves);
+        clearAiTimers();
+        setAiThinking(true);
+        aiMoveTimer.current = setTimeout(() => {
+          if (statusRef.current !== "playing") {
+            setAiThinking(false);
+            return;
+          }
+          setBoard((prev) => {
+            if (prev[aiMove]) return prev;
+            const updated = prev.slice();
+            updated[aiMove] = "O";
+            return updated;
+          });
+          setMoves((prev) => [...prev, aiMove]);
+          setAiPulse(aiMove);
+          aiPulseTimer.current = setTimeout(() => setAiPulse(null), 350);
+          setAiThinking(false);
+        }, 350);
+        return;
       }
     }
     setBoard(next);
@@ -152,18 +213,22 @@ export default function TicTacToeGame({
   return (
     <div className="ttt-overlay">
       <div className="ttt-panel">
-        <div className="ttt-head">
+        <div className="ttt-head game-head">
           <div>
-            <div className="ttt-title">Крестики-нолики</div>
-            <div className="small">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
+            <div className="game-title-row">
+              <span className="game-icon ttt">TTT</span>
+              <div className="ttt-title game-title">Крестики-нолики</div>
+            </div>
+            <div className="small game-sub">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
           </div>
           <button className="btn secondary" onClick={onClose}>Выйти</button>
         </div>
 
-        <div className="ttt-scoreboard">
-          <div className="hud-card">
+        <div className="ttt-scoreboard game-hud">
+          <div className="hud-card key">
             <div className="hud-label">Ты</div>
             <div className="hud-value">{playerWins}</div>
+            <span className="hud-badge">????</span>
           </div>
           <div className="hud-card">
             <div className="hud-label">ИИ</div>
@@ -175,14 +240,14 @@ export default function TicTacToeGame({
           </div>
         </div>
 
-        <div className="ttt-board">
+        <div className={`ttt-board${aiThinking ? " ai-thinking" : ""}`}>
           {board.map((cell, idx) => (
             <button
               key={idx}
               type="button"
-              className={`ttt-cell ${cell ? "filled" : ""}`}
+              className={`ttt-cell ${cell ? "filled" : ""}${winningLine?.includes(idx) ? " win" : ""}${aiPulse === idx ? " ai-pulse" : ""}`}
               onClick={() => handlePick(idx)}
-              disabled={status !== "playing" || disabled || readOnly || !!cell}
+              disabled={status !== "playing" || disabled || readOnly || !!cell || aiThinking}
             >
               {cell || ""}
             </button>

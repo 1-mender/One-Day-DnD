@@ -3,6 +3,16 @@ import { makeProof } from "../../lib/gameProof.js";
 
 const COLORS = ["red", "green", "blue", "yellow"];
 const NUMBERS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+const COLOR_LABELS = {
+  red: "красный",
+  green: "зеленый",
+  blue: "синий",
+  yellow: "желтый"
+};
+
+function formatColor(color) {
+  return COLOR_LABELS[color] || color || "?";
+}
 
 function buildDeck() {
   const deck = [];
@@ -39,11 +49,16 @@ export default function UnoMiniGame({
   const [settling, setSettling] = useState(false);
   const [result, setResult] = useState(null);
   const [apiErr, setApiErr] = useState("");
+  const [aiLog, setAiLog] = useState([]);
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
+
+  function pushAiLog(message) {
+    setAiLog((prev) => [{ id: Date.now() + Math.random(), text: message }, ...prev].slice(0, 4));
+  }
 
   function resetGame() {
     const nextDeck = buildDeck();
@@ -59,6 +74,7 @@ export default function UnoMiniGame({
     setSettling(false);
     setResult(null);
     setApiErr("");
+    setAiLog([]);
   }
 
   useEffect(() => {
@@ -107,6 +123,7 @@ export default function UnoMiniGame({
       const [card] = ai.splice(playableIdx, 1);
       setAiHand(ai);
       setTopCard(card);
+      pushAiLog(`ИИ сыграл ${card.value} (${formatColor(card.color)})`);
       if (ai.length === 0) {
         setStatus("loss");
       }
@@ -117,6 +134,7 @@ export default function UnoMiniGame({
     ai.push(drawn);
     setDeck(nextDeck);
     setAiHand(ai);
+    pushAiLog("ИИ добрал карту");
   }
 
   function handleDraw() {
@@ -134,18 +152,22 @@ export default function UnoMiniGame({
   return (
     <div className="uno-overlay">
       <div className="uno-panel">
-        <div className="uno-head">
+        <div className="uno-head game-head">
           <div>
-            <div className="uno-title">Uno-мини</div>
-            <div className="small">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
+            <div className="game-title-row">
+              <span className="game-icon uno">UNO</span>
+              <div className="uno-title game-title">Uno-мини</div>
+            </div>
+            <div className="small game-sub">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
           </div>
           <button className="btn secondary" onClick={onClose}>Выйти</button>
         </div>
 
-        <div className="uno-hud">
-          <div className="hud-card">
+        <div className="uno-hud game-hud">
+          <div className="hud-card key">
             <div className="hud-label">Карты</div>
             <div className="hud-value">{playerHand.length}</div>
+            <span className="hud-badge">????</span>
           </div>
           <div className="hud-card">
             <div className="hud-label">ИИ</div>
@@ -162,17 +184,20 @@ export default function UnoMiniGame({
         </div>
 
         <div className="uno-hand">
-          {playerHand.map((card, idx) => (
-            <button
-              key={`${card.color}-${card.value}-${idx}`}
-              type="button"
-              className={`uno-card ${card.color}${canPlay(card, topCard) ? " playable" : ""}`}
-              onClick={() => handlePlay(card, idx)}
-              disabled={!canPlay(card, topCard) || disabled || readOnly}
-            >
-              {card.value}
-            </button>
-          ))}
+          {playerHand.map((card, idx) => {
+            const playable = canPlay(card, topCard);
+            return (
+              <button
+                key={`${card.color}-${card.value}-${idx}`}
+                type="button"
+                className={`uno-card ${card.color}${playable ? " playable" : " not-playable"}`}
+                onClick={() => handlePlay(card, idx)}
+                disabled={!playable || disabled || readOnly}
+              >
+                {card.value}
+              </button>
+            );
+          })}
         </div>
 
         <div className="row" style={{ gap: 8, marginTop: 8 }}>
@@ -180,6 +205,16 @@ export default function UnoMiniGame({
             Добрать карту
           </button>
         </div>
+
+        {aiLog.length ? (
+          <div className="uno-log">
+            <div className="uno-log-title">???? ??</div>
+            {aiLog.map((entry) => (
+              <div key={entry.id} className="uno-log-line">{entry.text}</div>
+            ))}
+          </div>
+        ) : null}
+
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Read-only: действия отключены</div> : null}
