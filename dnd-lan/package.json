@@ -9,8 +9,5 @@
     "build": "npm --prefix client run build && node ./server/src/util.js copy-client",
     "start": "npm --prefix server run start",
     "test": "npm --prefix server run test"
-  },
-  "dependencies": {
-    "multer": "^2.0.2"
   }
 }
