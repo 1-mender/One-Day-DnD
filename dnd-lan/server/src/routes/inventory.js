@@ -347,6 +347,7 @@ inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) 
     if (rid) req.app.locals.io?.to(`player:${rid}`).emit("transfers:updated");
   }
   req.app.locals.io?.to("dm").emit("inventory:updated");
+  req.app.locals.io?.to("dm").emit("transfers:updated");
   res.json({ ok: true });
 });
 
@@ -413,6 +414,7 @@ inventoryRouter.post("/transfers", (req, res) => {
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
     req.app.locals.io?.to(`player:${toPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("transfers:updated");
 
     return res.json({ ok: true, id: out.id });
   } catch (e) {
@@ -577,6 +579,7 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("transfers:updated");
 
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
   } catch (e) {
@@ -621,6 +624,7 @@ inventoryRouter.post("/transfers/:id/reject", (req, res) => {
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("transfers:updated");
 
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
   } catch (e) {
@@ -663,6 +667,7 @@ inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
     req.app.locals.io?.to(`player:${sess.player_id}`).emit("transfers:updated");
     if (result.toPlayerId) req.app.locals.io?.to(`player:${result.toPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("transfers:updated");
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
   } catch (e) {
     if (e?.code) return res.status(e.status || 400).json({ error: e.code, ...(e.extra || {}) });
@@ -734,7 +739,10 @@ inventoryRouter.post("/transfers/:id/dm/cancel", dmAuthMiddleware, (req, res) =>
     const result = tx();
     req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("inventory:updated");
     req.app.locals.io?.to(`player:${result.toPlayerId}`).emit("inventory:updated");
+    req.app.locals.io?.to(`player:${result.fromPlayerId}`).emit("transfers:updated");
+    req.app.locals.io?.to(`player:${result.toPlayerId}`).emit("transfers:updated");
     req.app.locals.io?.to("dm").emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("transfers:updated");
     return res.json({ ok: true, status: result.status, idempotent: !!result.idempotent });
   } catch (e) {
     if (e?.code) return res.status(e.status || 400).json({ error: e.code, ...(e.extra || {}) });

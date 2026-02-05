@@ -167,6 +167,11 @@ function InventoryItemCard({
         </div>
         <div className="inv-badges">
           <span className="badge">x{item.qty}</span>
+          {reservedQty > 0 ? (
+            <span className="badge warn" title={`В резерве: ${reservedQty}`} aria-label={`В резерве: ${reservedQty}`}>
+              Ожидает передачи
+            </span>
+          ) : null}
           {isFavorite ? (
             <span className="badge warn">
               <Star className="icon" aria-hidden="true" />Избранное

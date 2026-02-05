@@ -37,6 +37,7 @@ export default function Inventory() {
   const [transfersLoading, setTransfersLoading] = useState(false);
   const [outbox, setOutbox] = useState([]);
   const [outboxLoading, setOutboxLoading] = useState(false);
+  const [outboxQ, setOutboxQ] = useState("");
   const [players, setPlayers] = useState([]);
   const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
   const [open, setOpen] = useState(false);
@@ -151,6 +152,7 @@ export default function Inventory() {
     () => items.filter((it) => Array.isArray(it.tags) && it.tags.includes(FAVORITE_TAG)),
     [items]
   );
+  const outboxFiltered = useMemo(() => filterTransfers(outbox, outboxQ), [outbox, outboxQ]);
   const hasAny = items.length > 0;
   const SelectedIcon = getInventoryIcon(form.iconKey);
 
@@ -479,14 +481,22 @@ export default function Inventory() {
         <div className="small note-hint" style={{ marginTop: 6 }}>
           Передачи можно отменить, пока получатель не подтвердил.
         </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <input
+            value={outboxQ}
+            onChange={(e) => setOutboxQ(e.target.value)}
+            placeholder="Поиск в исходящих..."
+            style={inp}
+          />
+        </div>
         <div style={{ marginTop: 8 }}>
           {outboxLoading ? (
             <Skeleton h={80} w="100%" />
-          ) : outbox.length === 0 ? (
-            <div className="small">Нет исходящих передач.</div>
+          ) : outboxFiltered.length === 0 ? (
+            <div className="small">{outbox.length ? "Ничего не найдено." : "Нет исходящих передач."}</div>
           ) : (
             <div className="list">
-              {outbox.map((tr) => (
+              {outboxFiltered.map((tr) => (
                 <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -691,6 +701,23 @@ function summarizeInventory(list) {
     else acc.publicCount += 1;
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
+}
+
+function filterTransfers(list, q) {
+  const items = Array.isArray(list) ? list : [];
+  const qq = String(q || "").toLowerCase().trim();
+  if (!qq) return items;
+  return items.filter((tr) => {
+    const hay = [
+      tr.itemName,
+      tr.toName,
+      tr.fromName,
+      tr.note,
+      String(tr.toPlayerId || ""),
+      String(tr.fromPlayerId || "")
+    ].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(qq);
+  });
 }
 
 

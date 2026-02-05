@@ -37,6 +37,9 @@ export default function DMInventory() {
   const [view, setView] = useState("list");
   const [autoAnimateRef] = useAutoAnimate({ duration: 200 });
   const debouncedQ = useDebouncedValue(q, 200);
+  const [transferQ, setTransferQ] = useState("");
+  const [transfers, setTransfers] = useState([]);
+  const [transfersLoading, setTransfersLoading] = useState(false);
 
   const loadPlayers = useCallback(async () => {
     setErr("");
@@ -71,9 +74,25 @@ export default function DMInventory() {
     }
   }
 
+  const loadTransfers = useCallback(async () => {
+    setTransfersLoading(true);
+    try {
+      const r = await api.invTransferDmList("pending");
+      setTransfers(r.items || []);
+    } catch {
+      setTransfers([]);
+    } finally {
+      setTransfersLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadPlayers().catch(() => {});
   }, [loadPlayers]);
+
+  useEffect(() => {
+    loadTransfers().catch(() => {});
+  }, [loadTransfers]);
 
   useEffect(() => {
     if (selectedId) loadInv(selectedId).catch(()=>{});
@@ -207,6 +226,17 @@ export default function DMInventory() {
     }
   }
 
+  async function cancelTransfer(tr) {
+    if (!tr?.id) return;
+    setErr("");
+    try {
+      await api.invTransferDmCancel(tr.id);
+      await loadTransfers();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
 
   const filtered = useMemo(() => filterInventory(items, { q: debouncedQ, vis, rarity }), [items, debouncedQ, vis, rarity]);
   const { publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
@@ -214,6 +244,7 @@ export default function DMInventory() {
   const hasAny = items.length > 0;
   const selectedCount = selectedIds.size;
   const selectedItems = useMemo(() => items.filter((it) => selectedIds.has(it.id)), [items, selectedIds]);
+  const filteredTransfers = useMemo(() => filterTransfers(transfers, transferQ), [transfers, transferQ]);
   const SelectedIcon = getInventoryIcon(form.iconKey);
   const listRef = useRef(null);
   const rowVirtualizer = useVirtualizer({
@@ -289,6 +320,59 @@ export default function DMInventory() {
           <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
           <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
           <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeightAll.toFixed(2)}</span>
+        </div>
+      </div>
+
+      <div className="paper-note" style={{ marginTop: 12 }}>
+        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="title">Активные передачи</div>
+          <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+        </div>
+        <div className="small note-hint" style={{ marginTop: 6 }}>
+          DM может отменить любую ожидающую передачу.
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <input
+            value={transferQ}
+            onChange={(e) => setTransferQ(e.target.value)}
+            placeholder="Поиск по передаче..."
+            style={inp}
+          />
+        </div>
+        <div style={{ marginTop: 8 }}>
+          {transfersLoading ? (
+            <Skeleton h={80} w="100%" />
+          ) : filteredTransfers.length === 0 ? (
+            <div className="small">{transfers.length ? "Ничего не найдено." : "Активных передач нет."}</div>
+          ) : (
+            <div className="list">
+              {filteredTransfers.map((tr) => (
+                <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
+                  <div style={{ flex: 1 }}>
+                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <span className="badge secondary">от {tr.fromName || `#${tr.fromPlayerId}`}</span>
+                      <span className="badge secondary">кому {tr.toName || `#${tr.toPlayerId}`}</span>
+                      <span className="badge">x{tr.qty}</span>
+                      <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="small" style={{ marginTop: 6 }}>
+                      Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
+                    </div>
+                    {tr.note ? (
+                      <div className="small" style={{ marginTop: 6 }}>
+                        <b>Сообщение:</b> {tr.note}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <button className="btn danger" onClick={() => cancelTransfer(tr)}>
+                      Отменить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -463,4 +547,21 @@ function summarizeInventory(list) {
     else acc.publicCount += 1;
     return acc;
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
+}
+
+function filterTransfers(list, q) {
+  const items = Array.isArray(list) ? list : [];
+  const qq = String(q || "").toLowerCase().trim();
+  if (!qq) return items;
+  return items.filter((tr) => {
+    const hay = [
+      tr.itemName,
+      tr.toName,
+      tr.fromName,
+      tr.note,
+      String(tr.toPlayerId || ""),
+      String(tr.fromPlayerId || "")
+    ].filter(Boolean).join(" ").toLowerCase();
+    return hay.includes(qq);
+  });
 }

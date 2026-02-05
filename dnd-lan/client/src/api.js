@@ -145,6 +145,10 @@ export const api = {
     request(`/api/inventory/transfers/${transferId}/reject`, { method: "POST" }),
   invTransferCancel: (transferId) =>
     request(`/api/inventory/transfers/${transferId}/cancel`, { method: "POST" }),
+  invTransferDmList: (status = "pending") =>
+    request(`/api/inventory/transfers/dm?status=${encodeURIComponent(status)}`, { method: "GET" }),
+  invTransferDmCancel: (transferId) =>
+    request(`/api/inventory/transfers/${transferId}/dm/cancel`, { method: "POST" }),
 
   bestiary: (opts) => bestiaryPageRequest(opts),
   bestiaryPage: (opts) => bestiaryPageRequest(opts),
