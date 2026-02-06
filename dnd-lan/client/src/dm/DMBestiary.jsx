@@ -3,8 +3,11 @@ import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { formatError } from "../lib/formatError.js";
+import ActionMenu from "../components/ui/ActionMenu.jsx";
+import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import { useQueryState } from "../hooks/useQueryState.js";
 
 const empty = { name:"", type:"", habitat:"", cr:"", description:"", abilities:[], stats:{}, is_hidden:false };
 
@@ -17,6 +20,9 @@ export default function DMBestiary() {
   const [form, setForm] = useState(empty);
   const [images, setImages] = useState([]);
   const [err, setErr] = useState("");
+  const [q, setQ] = useQueryState("q", "");
+  const [vis, setVis] = useQueryState("vis", "");
+  const [selectedIdParam, setSelectedIdParam] = useQueryState("id", "");
   const [loadingMore, setLoadingMore] = useState(false);
   const [portErr, setPortErr] = useState("");
   const [portMsg, setPortMsg] = useState("");

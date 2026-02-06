@@ -5,6 +5,7 @@ import OfflineBanner from "../components/OfflineBanner.jsx";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import DMTabBar from "./DMTabBar.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
+import DMOpsBar from "./DMOpsBar.jsx";
 
 export default function DMLayout() {
   const nav = useNavigate();
@@ -93,6 +94,7 @@ export default function DMLayout() {
       <OfflineBanner online={!showOffline} details={offlineDetails} />
       {netState?.degraded ? <OfflineBanner online={false} details={degradedDetails} tone="readonly" /> : null}
       <VintageShell layout="spread" pageKey={location.pathname}>
+        <DMOpsBar />
         <DMTabBar />
         <div className="container">
           <Outlet context={{ socket }} />

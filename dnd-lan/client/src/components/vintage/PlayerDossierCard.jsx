@@ -9,17 +9,38 @@ function StatusStamp({ status }) {
   return <span className={`stamp ${cls}`}>{label}</span>;
 }
 
-export default function PlayerDossierCard({ player, rightActions = null, ticketBalance = null, ticketStreak = null }) {
+export default function PlayerDossierCard({
+  player,
+  rightActions = null,
+  ticketBalance = null,
+  ticketStreak = null,
+  menu = null,
+  selected = false,
+  onClick
+}) {
   const initial = (player.displayName || "?").slice(0, 1).toUpperCase();
   const avatar = player.avatarUrl || null;
   const weight = Number(player.inventoryWeight || 0);
   const limit = Number(player.inventoryLimit || 0);
   const weightLabel = Number.isFinite(limit) && limit > 0
     ? `${weight.toFixed(2)} / ${limit}`
-    : `${weight.toFixed(2)} / ∞`;
+    : `${weight.toFixed(2)} / inf`;
+  const clickable = typeof onClick === "function";
 
   return (
-    <div className="item taped dossier-card" style={{ alignItems: "stretch" }}>
+    <div
+      className={`item taped dossier-card${selected ? " selected" : ""}`.trim()}
+      style={{ alignItems: "stretch" }}
+      onClick={clickable ? onClick : undefined}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
+    >
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <PolaroidFrame src={avatar} alt={player.displayName} fallback={initial} />
         <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
@@ -45,7 +66,8 @@ export default function PlayerDossierCard({ player, rightActions = null, ticketB
           ) : null}
         </div>
 
-        <div className="dossier-name">
+        <div className="dossier-head">
+          <div className="dossier-name">
           <span>{player.displayName}</span>
           {player.inventoryOverLimit ? (
             <span
@@ -56,6 +78,8 @@ export default function PlayerDossierCard({ player, rightActions = null, ticketB
               <Scale className="icon" aria-hidden="true" />
             </span>
           ) : null}
+          </div>
+          {menu ? <div className="dossier-menu">{menu}</div> : null}
         </div>
         <div className="small" style={{ marginTop: 6 }}>
           lastSeen: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}

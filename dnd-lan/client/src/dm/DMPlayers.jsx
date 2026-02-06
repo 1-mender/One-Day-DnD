@@ -4,9 +4,12 @@ import { api } from "../api.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import Modal from "../components/Modal.jsx";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
+import ActionMenu from "../components/ui/ActionMenu.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
+import { useQueryState } from "../hooks/useQueryState.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -20,6 +23,9 @@ export default function DMPlayers() {
   const [ticketDelta, setTicketDelta] = useState("");
   const [ticketSet, setTicketSet] = useState("");
   const [ticketReason, setTicketReason] = useState("");
+  const [q, setQ] = useQueryState("q", "");
+  const [statusFilter, setStatusFilter] = useQueryState("status", "all");
+  const [selectedIdParam, setSelectedIdParam] = useQueryState("id", "");
   const nav = useNavigate();
   const { socket } = useSocket();
   const readOnly = useReadOnly();
@@ -83,6 +89,11 @@ export default function DMPlayers() {
 
   function openProfile(playerId) {
     nav(`/dm/app/players/${playerId}/profile`);
+  }
+
+  function selectPlayer(playerId) {
+    if (!playerId) setSelectedIdParam("");
+    else setSelectedIdParam(String(playerId));
   }
 
   function startEdit(player) {
@@ -172,35 +183,110 @@ export default function DMPlayers() {
     });
   }, [players, tickets]);
 
+  const selectedId = Number(selectedIdParam || 0);
+  const selectedPlayer = useMemo(() => {
+    return playersWithTickets.find((p) => p.id === selectedId) || null;
+  }, [playersWithTickets, selectedId]);
+
+  const filtered = useMemo(() => {
+    const qq = String(q || "").toLowerCase().trim();
+    return playersWithTickets.filter((p) => {
+      const status = String(p.status || "offline");
+      if (statusFilter !== "all" && status !== statusFilter) return false;
+      if (!qq) return true;
+      return String(p.displayName || "").toLowerCase().includes(qq);
+    });
+  }, [playersWithTickets, q, statusFilter]);
+
   return (
-    <div className="card taped">
-      <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
-      <div className="small">“Как игрок” открывается в режиме read-only</div>
-      <hr />
-      {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
-      <ErrorBanner message={err} onRetry={loadAll} />
-      <div className="list">
-        {playersWithTickets.map((p) => (
-          <PlayerDossierCard
-            key={p.id}
-            player={p}
-            ticketBalance={p.ticketBalance}
-            ticketStreak={p.ticketStreak}
-            rightActions={(
-              <>
-                <button className="btn" onClick={() => openProfile(p.id)}>Профиль персонажа</button>
-                <button className="btn secondary" onClick={() => openTickets(p)} disabled={readOnly}>Билеты</button>
-                <button className="btn secondary" onClick={() => startEdit(p)} disabled={readOnly}>Редактировать игрока</button>
-                <button className="btn secondary" onClick={() => viewAs(p.id)} disabled={readOnly}>Как игрок</button>
-                <button className="btn danger" onClick={() => kickPlayer(p.id)} disabled={readOnly}>Kick</button>
-                <button className="btn danger" onClick={() => removePlayer(p)} disabled={readOnly}>Удалить</button>
-              </>
-            )}
-          />
-        ))}
+    <>
+    <div className="two-pane" data-detail={selectedPlayer ? "1" : "0"}>
+      <div className="pane pane-list">
+        <div className="card taped">
+          <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
+          <div className="small">Quick view of player status and actions</div>
+          <hr />
+          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+          <ErrorBanner message={err} onRetry={loadAll} />
+          <div className="row" style={{ flexWrap: "wrap", marginBottom: 8 }}>
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search players..."
+              style={{ width: "min(360px, 100%)" }}
+            />
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
+              <option value="all">Status: all</option>
+              <option value="online">Online</option>
+              <option value="idle">Idle</option>
+              <option value="offline">Offline</option>
+            </select>
+          </div>
+          <div className="list">
+            {filtered.map((p) => (
+              <PlayerDossierCard
+                key={p.id}
+                player={p}
+                ticketBalance={p.ticketBalance}
+                ticketStreak={p.ticketStreak}
+                selected={p.id === selectedId}
+                onClick={() => selectPlayer(p.id)}
+                menu={(
+                  <ActionMenu
+                    items={[
+                      { label: "Open profile", onClick: () => openProfile(p.id) },
+                      { label: "Tickets", onClick: () => openTickets(p), disabled: readOnly },
+                      { label: "Edit name", onClick: () => startEdit(p), disabled: readOnly },
+                      { label: "View as player", onClick: () => viewAs(p.id), disabled: readOnly },
+                      { label: "Kick", onClick: () => kickPlayer(p.id), disabled: readOnly, tone: "danger" },
+                      { label: "Delete", onClick: () => removePlayer(p), disabled: readOnly, tone: "danger" }
+                    ]}
+                  />
+                )}
+              />
+            ))}
+          </div>
+        </div>
       </div>
 
-      <Modal open={editOpen} title="Редактировать игрока" onClose={() => setEditOpen(false)}>
+      <div className="pane pane-detail">
+        <div className="card taped">
+          {selectedPlayer ? (
+            <>
+              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: 20 }}>{selectedPlayer.displayName}</div>
+                  <div className="small">
+                    id: {selectedPlayer.id} - lastSeen: {selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn secondary" onClick={() => selectPlayer(0)}>Back to list</button>
+                  <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>Open profile</button>
+                </div>
+              </div>
+              <hr />
+              <div className="row" style={{ flexWrap: "wrap" }}>
+                <PlayerStatusPill status={selectedPlayer.status} />
+                <span className="badge">Tickets: {selectedPlayer.ticketBalance ?? 0}</span>
+                <span className="badge secondary">Streak: {selectedPlayer.ticketStreak ?? 0}</span>
+              </div>
+              <div className="list" style={{ marginTop: 12 }}>
+                <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>Tickets</button>
+                <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>Edit name</button>
+                <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>View as player</button>
+                <button className="btn danger" onClick={() => kickPlayer(selectedPlayer.id)} disabled={readOnly}>Kick</button>
+                <button className="btn danger" onClick={() => removePlayer(selectedPlayer)} disabled={readOnly}>Delete</button>
+              </div>
+            </>
+          ) : (
+            <div className="small">Select a player to see details.</div>
+          )}
+        </div>
+      </div>
+    </div>
+
+  <Modal open={editOpen} title="Редактировать игрока" onClose={() => setEditOpen(false)}>
         <div className="list">
           <input
             value={editName}
@@ -248,6 +334,6 @@ export default function DMPlayers() {
           <button className="btn" onClick={applyTickets} disabled={readOnly}>Применить</button>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
