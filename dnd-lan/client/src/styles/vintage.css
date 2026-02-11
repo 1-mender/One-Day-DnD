@@ -2391,6 +2391,33 @@ body.arcade-modal-open{
   gap: 6px;
   margin: 6px 0;
 }
+.arcade-queue-row{
+  display:flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.arcade-queue-row select{
+  min-width: 170px;
+  max-width: 100%;
+}
+.arcade-queue-meta{
+  opacity: .82;
+}
+.arcade-queue-history{
+  display:flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.arcade-queue-history-item{
+  display:flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.arcade-queue-history-item .btn{
+  min-height: 34px;
+}
 .rule-list{
   display:flex;
   flex-direction: column;
@@ -3124,6 +3151,22 @@ body.arcade-modal-open{
     width: 100%;
   }
   .arcade-play-modal .badge{
+    width: 100%;
+  }
+  .arcade-queue-row{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .arcade-queue-row select,
+  .arcade-queue-row .btn{
+    width: 100%;
+  }
+  .arcade-queue-history-item{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .arcade-queue-history-item .btn{
     width: 100%;
   }
   .bottom-nav-link{

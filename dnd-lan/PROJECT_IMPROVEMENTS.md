@@ -191,3 +191,106 @@ DoD: false-offline ≤ 1%, reconnect p95 ≤ 5 сек (по клиентской
 - Player: нижняя навигация + быстрые действия в инвентаре.
 - Общие списки: skeleton + empty + error состояния.
 
+## Deep Roadmap: Arcade Progression + Matchmaking
+
+Ниже не “wishlist”, а исполняемый план под текущую архитектуру (`/api/tickets`, `ticket_plays`, `ticket_quests`, socket `tickets:updated`).
+
+### 1) Продуктовые цели (что именно улучшаем)
+1. Рост удержания игроков между сессиями (D1/D7 внутри LAN-кампании).
+2. Быстрый вход в игру без ожидания: “нажал и играешь” за 1-2 тапа.
+3. Прозрачная ценность аркады: игрок понимает, за что получает прогресс/награду.
+
+### 2) Прогрессия: варианты и выбор
+1. Вариант A (ticket-only, рекомендован для MVP)
+   - Что: усиливаем существующие билеты + daily-quests + streak без новой валюты.
+   - Плюсы: минимум миграций, низкий риск регрессий, быстрое внедрение.
+   - Минусы: меньше “долгосрочной” мотивации, чем у сезонов.
+2. Вариант B (XP + сезонный пропуск)
+   - Что: добавляем XP, уровни сезона, milestone rewards.
+   - Плюсы: сильное удержание, понятная долгосрочная цель.
+   - Минусы: новые таблицы/баланс/админка, больше рисков.
+3. Вариант C (гибрид)
+   - Что: MVP на A, затем слой B без ломки текущих билетов.
+   - Выбор: идти по C (A в Sprint-1, B в Sprint-2/3).
+
+### 3) Матчмейкинг: варианты и выбор
+1. Вариант A (in-memory очередь)
+   - Плюсы: самый быстрый старт.
+   - Минусы: теряется при рестарте, сложнее безопасно переживать reconnect.
+2. Вариант B (SQLite-backed очередь, рекомендован)
+   - Плюсы: персистентность, проще отлаживать, лучше для degraded/recover.
+   - Минусы: чуть больше кода и миграций.
+3. Вариант C (invite-only без очереди)
+   - Плюсы: почти без backend-слоя.
+   - Минусы: нет “быстрого матча”, слабый UX для случайного старта.
+4. Выбор: B, но с feature flag, чтобы можно было откатить на A.
+
+### 4) Зависимости и влияние на существующие модули
+1. Backend (`server/src/routes/tickets.js`)
+   - Расширить payload `/api/tickets/me`: добавить `progression` и `matchmaking`.
+   - Новые endpoints: `POST /api/tickets/matchmaking/queue`, `POST /api/tickets/matchmaking/cancel`, `GET /api/tickets/matches/history`.
+2. Socket слой (`server/src/sockets.js`)
+   - События: `arcade:queue:updated`, `arcade:match:found`, `arcade:match:state`.
+   - Обязательное поведение: после reconnect клиент получает актуальный snapshot матча.
+3. DB (`server/src/schema.sql`)
+   - Новые таблицы: `arcade_matches`, `arcade_match_players`, `arcade_progression` (или `season_progress`), индексы по `player_id`, `status`, `created_at`.
+4. Client (`client/src/player/Arcade.jsx` + games/*)
+   - Новый блок: “Быстрый матч”, “Реванш”, “История матчей”.
+   - Гейт на `readOnly/degraded` и корректный fallback на PvE.
+5. DM controls (`client/src/dm/DMSettings.jsx`)
+   - Переключатели: `matchmaking_enabled`, `ranked_enabled`, `season_enabled`.
+   - Лимиты: max concurrent matches, queue timeout.
+
+### 5) План внедрения по этапам (с оценкой S/M/L)
+1. Phase 0: Instrumentation (S)
+   - Добавить метрики: `arcade_queue_wait_ms`, `arcade_match_complete_ms`, `arcade_rematch_rate`, `arcade_d1_return`.
+   - DoD: события логируются в `events` и видны DM в агрегате.
+2. Phase 1: Progression MVP (M)
+   - Реализовать weekly quests поверх текущих `ticket_plays`.
+   - Добавить “уровень аркады” (без новой валюты): level = функция от суммарных win/play.
+   - DoD: игрок видит прогресс-бар и получает milestone-награды без ручной выдачи DM.
+3. Phase 2: Matchmaking MVP (M)
+   - SQLite queue + подбор по режиму/игре + queue timeout + отмена.
+   - Реванш в 1 тап между последними оппонентами.
+   - DoD: P95 time-to-match < 10 сек при 4+ активных игроках, reconnect не ломает матч.
+4. Phase 3: Season Layer (M/L)
+   - Сезонные задачи и таблица лидеров по партии.
+   - Архивация сезона (snapshot) без удаления оперативных данных.
+   - DoD: сброс сезона не ломает билеты и историю матчей.
+
+### 6) Риски и меры снижения
+1. Риск: переусложнение экономики наград.
+   - Мера: флаг `season_enabled=false` по умолчанию, A/B на одной партии.
+2. Риск: нагрузка от частых queue-событий.
+   - Мера: debounce push-обновлений + server-side coalescing (100-250ms).
+3. Риск: регресс read-only/degraded.
+   - Мера: write-gate whitelist только для безопасных операций, тесты на блокировку queue writes в degraded.
+4. Риск: потеря состояния матча при reconnect.
+   - Мера: snapshot матча при connect + периодический heartbeat статуса.
+
+### 7) Минимальный контракт API (предлагаемый)
+1. `POST /api/tickets/matchmaking/queue`
+   - body: `{ gameKey, modeKey, skillBand? }`
+   - resp: `{ ok, queueId, etaSec }`
+2. `POST /api/tickets/matchmaking/cancel`
+   - body: `{ queueId }`
+   - resp: `{ ok }`
+3. `GET /api/tickets/matches/history?limit=20`
+   - resp: `{ items: [{ matchId, gameKey, result, durationSec, createdAt }] }`
+4. `POST /api/tickets/matches/:id/rematch`
+   - resp: `{ ok, queueId }`
+
+### 8) Готовый план на 2 спринта
+1. Sprint A (3-4 дня)
+   - Phase 0 + Phase 1.
+   - Результат: рабочая прогрессия, метрики, без высокого риска.
+2. Sprint B (4-5 дней)
+   - Phase 2 + baseline тесты reconnect/queue/degraded.
+   - Результат: быстрый матч + реванш + история матчей.
+
+### 9) Критерии приёмки (обязательные)
+1. Нет новых падений в `npm --prefix server test` и `npm --prefix client run lint`.
+2. Queue и rematch корректно переживают reconnect игрока.
+3. В degraded режиме операции матчмейкинга блокируются предсказуемо (`503 read_only`).
+4. Игрок в UI всегда видит текущее состояние: `в очереди`, `матч найден`, `матч завершён`.
+

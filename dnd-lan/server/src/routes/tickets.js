@@ -10,6 +10,10 @@ export const ticketsRouter = express.Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SEED_TTL_MS = 10 * 60 * 1000;
+const ARCADE_QUEUE_TTL_MS = Number(process.env.ARCADE_QUEUE_TTL_MS || 2 * 60 * 1000);
+const ARCADE_HISTORY_LIMIT = Number(process.env.ARCADE_HISTORY_LIMIT || 20);
+const ARCADE_QUEUE_ETA_SEC = Number(process.env.ARCADE_QUEUE_ETA_SEC || 12);
+const ARCADE_METRICS_DAYS = Number(process.env.ARCADE_METRICS_DAYS || 7);
 const issuedSeeds = new Map();
 
 validateGameCatalog();
@@ -614,16 +618,412 @@ function getUsage(db, playerId, dayKey) {
   return { playsToday, purchasesToday };
 }
 
-function buildPayload(db, playerId, dayKey, rules) {
+function clampLimit(value, fallback, min, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, Math.floor(n)));
+}
+
+function getCatalogGame(gameKey) {
+  return GAME_CATALOG.find((g) => g.key === gameKey) || null;
+}
+
+function resolveModeKey(gameKey, modeKey) {
+  const game = getCatalogGame(gameKey);
+  if (!game) return null;
+  const modes = Array.isArray(game.modes) ? game.modes : [];
+  if (!modes.length) return modeKey || "default";
+  const safe = String(modeKey || "").trim();
+  if (!safe) return String(modes[0].key || "default");
+  const found = modes.find((m) => String(m.key) === safe);
+  if (!found) return null;
+  return safe;
+}
+
+function calcPercentile(list, p) {
+  if (!Array.isArray(list) || !list.length) return null;
+  const sorted = list.slice().sort((a, b) => a - b);
+  const idx = Math.max(0, Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[idx];
+}
+
+function compactMatchPayload(row, playerId, opponentName = "") {
+  if (!row) return null;
+  const winnerId = row.winner_player_id == null ? null : Number(row.winner_player_id);
+  const loserId = row.loser_player_id == null ? null : Number(row.loser_player_id);
+  let result = "pending";
+  if (winnerId && winnerId === Number(playerId)) result = "win";
+  else if (loserId && loserId === Number(playerId)) result = "loss";
+  else if (row.status === "completed") result = "draw";
+  return {
+    matchId: Number(row.id),
+    gameKey: String(row.game_key || ""),
+    modeKey: String(row.mode_key || ""),
+    status: String(row.status || "pending"),
+    result,
+    opponentName: opponentName || "",
+    createdAt: Number(row.created_at || 0),
+    startedAt: row.started_at == null ? null : Number(row.started_at),
+    endedAt: row.ended_at == null ? null : Number(row.ended_at),
+    queueWaitMs: row.queue_wait_ms == null ? null : Number(row.queue_wait_ms),
+    durationMs: row.duration_ms == null ? null : Number(row.duration_ms),
+    rematchOf: row.rematch_of == null ? null : Number(row.rematch_of)
+  };
+}
+
+function emitQueueUpdated(io, playerId) {
+  if (!io || !playerId) return;
+  io.to(`player:${playerId}`).emit("arcade:queue:updated");
+}
+
+function cleanupExpiredQueue(db, partyId, io = null) {
+  const t = now();
+  const rows = db
+    .prepare("SELECT id, player_id FROM arcade_match_queue WHERE party_id=? AND status='queued' AND expires_at<=?")
+    .all(partyId, t);
+  if (!rows.length) return 0;
+
+  const tx = db.transaction(() => {
+    for (const row of rows) {
+      db.prepare(
+        "UPDATE arcade_match_queue SET status='expired', updated_at=? WHERE id=? AND status='queued'"
+      ).run(t, row.id);
+    }
+  });
+  tx();
+
+  for (const row of rows) {
+    emitQueueUpdated(io, Number(row.player_id));
+  }
+  return rows.length;
+}
+
+function getActiveQueueRow(db, playerId) {
+  return db
+    .prepare("SELECT * FROM arcade_match_queue WHERE player_id=? AND status='queued' ORDER BY joined_at DESC LIMIT 1")
+    .get(playerId);
+}
+
+function getMatchHistory(db, playerId, limit = ARCADE_HISTORY_LIMIT) {
+  const lim = clampLimit(limit, ARCADE_HISTORY_LIMIT, 1, 50);
+  const rows = db.prepare(
+    `SELECT m.*
+     FROM arcade_match_players mp
+     JOIN arcade_matches m ON m.id = mp.match_id
+     WHERE mp.player_id=?
+     ORDER BY m.created_at DESC
+     LIMIT ?`
+  ).all(playerId, lim);
+
+  return rows.map((row) => {
+    const opponent = db.prepare(
+      `SELECT p.display_name as displayName
+       FROM arcade_match_players mp
+       JOIN players p ON p.id = mp.player_id
+       WHERE mp.match_id=? AND mp.player_id<>?
+       LIMIT 1`
+    ).get(row.id, playerId);
+    return compactMatchPayload(row, playerId, String(opponent?.displayName || ""));
+  });
+}
+
+function buildPlayerArcadeMetrics(history) {
+  const items = Array.isArray(history) ? history : [];
+  const finished = items.filter((m) => m.status === "completed" || m.result === "win" || m.result === "loss");
+  const wins = finished.filter((m) => m.result === "win").length;
+  const queueWaitValues = items.map((m) => Number(m.queueWaitMs || 0)).filter((v) => Number.isFinite(v) && v > 0);
+  return {
+    matches: finished.length,
+    wins,
+    losses: finished.filter((m) => m.result === "loss").length,
+    winRate: finished.length ? Number((wins / finished.length).toFixed(2)) : 0,
+    avgQueueWaitMs: queueWaitValues.length
+      ? Math.round(queueWaitValues.reduce((acc, v) => acc + v, 0) / queueWaitValues.length)
+      : null
+  };
+}
+
+function buildMatchmakingPayload(db, playerId, partyId) {
+  cleanupExpiredQueue(db, partyId);
+  const active = getActiveQueueRow(db, playerId);
+  const history = getMatchHistory(db, playerId, ARCADE_HISTORY_LIMIT);
+  const activeQueue = active
+    ? {
+      id: Number(active.id),
+      gameKey: String(active.game_key || ""),
+      modeKey: String(active.mode_key || ""),
+      skillBand: active.skill_band == null ? null : String(active.skill_band),
+      joinedAt: Number(active.joined_at || 0),
+      expiresAt: Number(active.expires_at || 0),
+      waitMs: Math.max(0, now() - Number(active.joined_at || now())),
+      etaSec: ARCADE_QUEUE_ETA_SEC,
+      rematchTargetPlayerId: active.rematch_target_player_id == null ? null : Number(active.rematch_target_player_id),
+      rematchOfMatchId: active.rematch_of_match_id == null ? null : Number(active.rematch_of_match_id)
+    }
+    : null;
+  return { activeQueue, history };
+}
+
+function findQueueOpponent(db, { partyId, playerId, gameKey, modeKey, rematchTargetPlayerId }) {
+  if (rematchTargetPlayerId) {
+    const exact = db.prepare(
+      `SELECT *
+       FROM arcade_match_queue
+       WHERE party_id=? AND status='queued' AND player_id=? AND game_key=? AND mode_key=?
+         AND (rematch_target_player_id IS NULL OR rematch_target_player_id=?)
+       ORDER BY joined_at ASC
+       LIMIT 1`
+    ).get(partyId, rematchTargetPlayerId, gameKey, modeKey, playerId);
+    if (exact) return exact;
+  }
+
+  return db.prepare(
+    `SELECT *
+     FROM arcade_match_queue
+     WHERE party_id=? AND status='queued' AND player_id<>? AND game_key=? AND mode_key=?
+       AND (rematch_target_player_id IS NULL OR rematch_target_player_id=?)
+     ORDER BY CASE WHEN rematch_target_player_id=? THEN 0 ELSE 1 END, joined_at ASC
+     LIMIT 1`
+  ).get(partyId, playerId, gameKey, modeKey, playerId, playerId);
+}
+
+function createMatchFromQueues(db, {
+  partyId,
+  gameKey,
+  modeKey,
+  queueA,
+  queueB,
+  createdAt,
+  rematchOfMatchId
+}) {
+  const waitBase = Math.min(Number(queueA?.joined_at || createdAt), Number(queueB?.joined_at || createdAt));
+  const queueWaitMs = Math.max(0, createdAt - waitBase);
+
+  const matchInfo = db.prepare(
+    `INSERT INTO arcade_matches(
+      party_id, game_key, mode_key, status, created_at, started_at, queue_wait_ms, rematch_of
+    ) VALUES(?,?,?,?,?,?,?,?)`
+  ).run(
+    partyId,
+    gameKey,
+    modeKey,
+    "active",
+    createdAt,
+    createdAt,
+    queueWaitMs,
+    rematchOfMatchId || null
+  );
+  const matchId = Number(matchInfo.lastInsertRowid);
+
+  db.prepare(
+    `INSERT INTO arcade_match_players(match_id, player_id, queue_id, joined_at, result, is_winner)
+     VALUES(?,?,?,?,?,?)`
+  ).run(matchId, Number(queueA.player_id), Number(queueA.id), createdAt, "pending", 0);
+  db.prepare(
+    `INSERT INTO arcade_match_players(match_id, player_id, queue_id, joined_at, result, is_winner)
+     VALUES(?,?,?,?,?,?)`
+  ).run(matchId, Number(queueB.player_id), Number(queueB.id), createdAt, "pending", 0);
+
+  db.prepare(
+    "UPDATE arcade_match_queue SET status='matched', matched_at=?, updated_at=?, match_id=? WHERE id IN (?,?)"
+  ).run(createdAt, createdAt, matchId, Number(queueA.id), Number(queueB.id));
+
+  return db.prepare("SELECT * FROM arcade_matches WHERE id=?").get(matchId);
+}
+
+function loadMatchForPlayer(db, matchId, playerId) {
+  const row = db.prepare("SELECT * FROM arcade_matches WHERE id=?").get(matchId);
+  if (!row) return null;
+  const opponent = db.prepare(
+    `SELECT p.display_name as displayName
+     FROM arcade_match_players mp
+     JOIN players p ON p.id = mp.player_id
+     WHERE mp.match_id=? AND mp.player_id<>?
+     LIMIT 1`
+  ).get(matchId, playerId);
+  return compactMatchPayload(row, playerId, String(opponent?.displayName || ""));
+}
+
+function emitMatchFound(io, db, matchId, players) {
+  if (!io) return;
+  const uniquePlayers = Array.from(new Set((players || []).map((v) => Number(v)).filter(Boolean)));
+  for (const playerId of uniquePlayers) {
+    const payload = loadMatchForPlayer(db, matchId, playerId);
+    io.to(`player:${playerId}`).emit("arcade:match:found", { match: payload });
+    emitQueueUpdated(io, playerId);
+  }
+  io.to("dm").emit("tickets:updated");
+}
+
+function summarizeStats(values) {
+  const list = (values || []).map((v) => Number(v)).filter((v) => Number.isFinite(v) && v >= 0);
+  if (!list.length) return { count: 0, avg: null, p50: null, p95: null };
+  const sum = list.reduce((acc, v) => acc + v, 0);
+  return {
+    count: list.length,
+    avg: Math.round(sum / list.length),
+    p50: calcPercentile(list, 50),
+    p95: calcPercentile(list, 95)
+  };
+}
+
+function buildDmArcadeMetrics(db, partyId, days = ARCADE_METRICS_DAYS) {
+  const windowDays = clampLimit(days, ARCADE_METRICS_DAYS, 1, 30);
+  const since = now() - windowDays * DAY_MS;
+
+  const queueRows = db
+    .prepare("SELECT queue_wait_ms FROM arcade_matches WHERE party_id=? AND created_at>=? AND queue_wait_ms IS NOT NULL")
+    .all(partyId, since);
+  const durationRows = db
+    .prepare("SELECT duration_ms FROM arcade_matches WHERE party_id=? AND created_at>=? AND duration_ms IS NOT NULL")
+    .all(partyId, since);
+  const allMatches = db
+    .prepare("SELECT id, rematch_of FROM arcade_matches WHERE party_id=? AND created_at>=?")
+    .all(partyId, since);
+
+  const rematchCount = allMatches.filter((m) => m.rematch_of != null).length;
+  const matchCount = allMatches.length;
+
+  const activityRows = db.prepare(
+    `SELECT player_id as playerId, COUNT(DISTINCT day_key) as d
+     FROM ticket_plays
+     WHERE created_at>=?
+     GROUP BY player_id`
+  ).all(since);
+  const activePlayers = activityRows.length;
+  const returningPlayers = activityRows.filter((r) => Number(r.d || 0) >= 2).length;
+
+  return {
+    windowDays,
+    queueWaitMs: summarizeStats(queueRows.map((r) => r.queue_wait_ms)),
+    matchCompleteMs: summarizeStats(durationRows.map((r) => r.duration_ms)),
+    rematchRate: matchCount ? Number((rematchCount / matchCount).toFixed(2)) : 0,
+    d1ReturnRate: activePlayers ? Number((returningPlayers / activePlayers).toFixed(2)) : 0
+  };
+}
+
+function queuePlayerForMatchmaking({
+  db,
+  io,
+  me,
+  gameKey,
+  modeKey,
+  skillBand = "",
+  rematchTargetPlayerId = null,
+  rematchOfMatchId = null
+}) {
+  const partyId = Number(me.player.party_id);
+  cleanupExpiredQueue(db, partyId, io);
+
+  const existing = getActiveQueueRow(db, me.player.id);
+  if (existing) {
+    return { error: "already_in_queue", existing };
+  }
+
+  const t = now();
+  const expiresAt = t + Math.max(15_000, ARCADE_QUEUE_TTL_MS);
+  const info = db.prepare(
+    `INSERT INTO arcade_match_queue(
+      party_id, player_id, game_key, mode_key, skill_band, rematch_target_player_id,
+      rematch_of_match_id, status, joined_at, expires_at, updated_at
+    ) VALUES(?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(
+    partyId,
+    me.player.id,
+    gameKey,
+    modeKey,
+    skillBand || null,
+    rematchTargetPlayerId || null,
+    rematchOfMatchId || null,
+    "queued",
+    t,
+    expiresAt,
+    t
+  );
+
+  const queueRow = db.prepare("SELECT * FROM arcade_match_queue WHERE id=?").get(info.lastInsertRowid);
+  const opponent = findQueueOpponent(db, {
+    partyId,
+    playerId: me.player.id,
+    gameKey,
+    modeKey,
+    rematchTargetPlayerId
+  });
+
+  logEvent({
+    partyId,
+    type: "arcade.queue.join",
+    actorRole: "player",
+    actorPlayerId: me.player.id,
+    actorName: me.player.display_name,
+    targetType: "arcade_queue",
+    targetId: Number(queueRow.id),
+    message: `Queue join ${gameKey}/${modeKey}`,
+    data: {
+      queueId: Number(queueRow.id),
+      gameKey,
+      modeKey,
+      skillBand: skillBand || null,
+      rematchTargetPlayerId: rematchTargetPlayerId || null
+    },
+    io
+  });
+
+  if (!opponent) {
+    emitQueueUpdated(io, me.player.id);
+    return { status: "queued", queueRow, match: null };
+  }
+
+  const nextMatch = createMatchFromQueues(db, {
+    partyId,
+    gameKey,
+    modeKey,
+    queueA: queueRow,
+    queueB: opponent,
+    createdAt: t,
+    rematchOfMatchId: rematchOfMatchId || opponent.rematch_of_match_id || queueRow.rematch_of_match_id
+  });
+
+  const opponentPlayer = db.prepare("SELECT display_name FROM players WHERE id=?").get(opponent.player_id);
+  const waitMs = Math.max(0, t - Math.min(Number(queueRow.joined_at || t), Number(opponent.joined_at || t)));
+  logEvent({
+    partyId,
+    type: "arcade.match.found",
+    actorRole: "system",
+    actorName: "Matchmaker",
+    targetType: "arcade_match",
+    targetId: Number(nextMatch.id),
+    message: `Match found ${gameKey}/${modeKey}`,
+    data: {
+      matchId: Number(nextMatch.id),
+      gameKey,
+      modeKey,
+      queueWaitMs: waitMs,
+      players: [me.player.id, Number(opponent.player_id)],
+      rematchOf: nextMatch.rematch_of == null ? null : Number(nextMatch.rematch_of),
+      opponentName: String(opponentPlayer?.display_name || "")
+    },
+    io
+  });
+
+  emitMatchFound(io, db, Number(nextMatch.id), [me.player.id, Number(opponent.player_id)]);
+  return { status: "matched", queueRow, match: nextMatch, opponent };
+}
+
+function buildPayload(db, playerId, dayKey, rules, options = {}) {
+  const partyId = Number(options.partyId || getParty().id);
   const row = db.prepare("SELECT * FROM tickets WHERE player_id=?").get(playerId);
   const historyDays = Number(process.env.DAILY_QUEST_HISTORY_DAYS || 7);
+  const matchmaking = buildMatchmakingPayload(db, playerId, partyId);
   return {
     state: mapState(row),
     rules,
     catalog: GAME_CATALOG,
     usage: getUsage(db, playerId, dayKey),
     quests: getQuestStates(db, playerId, dayKey, rules),
-    questHistory: getQuestHistory(db, playerId, dayKey, rules, historyDays)
+    questHistory: getQuestHistory(db, playerId, dayKey, rules, historyDays),
+    matchmaking,
+    arcadeMetrics: buildPlayerArcadeMetrics(matchmaking.history)
   };
 }
 
@@ -645,7 +1045,7 @@ ticketsRouter.get("/me", (req, res) => {
   row = normalizeDay(db, row, dayKey);
 
   const rules = getEffectiveRules(me.player.party_id);
-  res.json(buildPayload(db, me.player.id, dayKey, rules));
+  res.json(buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }));
 });
 
 ticketsRouter.get("/catalog", (req, res) => {
@@ -661,6 +1061,263 @@ ticketsRouter.get("/seed", (req, res) => {
   }
   const seed = issueSeed(me.player.id, gameKey);
   res.json({ seed, gameKey });
+});
+
+ticketsRouter.post("/matchmaking/queue", (req, res) => {
+  const me = getPlayerFromToken(req);
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+
+  const gameKey = String(req.body?.gameKey || "").trim();
+  const modeKeyInput = String(req.body?.modeKey || "").trim();
+  const skillBand = String(req.body?.skillBand || "").trim().slice(0, 24);
+
+  const rules = getEffectiveRules(me.player.party_id);
+  if (!rules.enabled) return res.status(400).json({ error: "tickets_disabled" });
+  const game = rules.games?.[gameKey];
+  if (!game) return res.status(400).json({ error: "invalid_game" });
+  if (game.enabled === false) return res.status(400).json({ error: "game_disabled" });
+
+  const modeKey = resolveModeKey(gameKey, modeKeyInput);
+  if (!modeKey) return res.status(400).json({ error: "invalid_mode" });
+
+  const db = getDb();
+  let row = ensureTicketRow(db, me.player.id);
+  const dayKey = getDayKey();
+  row = normalizeDay(db, row, dayKey);
+
+  const queued = queuePlayerForMatchmaking({
+    db,
+    io: req.app.locals.io,
+    me,
+    gameKey,
+    modeKey,
+    skillBand
+  });
+  if (queued.error === "already_in_queue") {
+    return res.status(409).json({ error: "already_in_queue" });
+  }
+
+  return res.json({
+    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    matchmakingAction: {
+      status: queued.status,
+      queueId: Number(queued.queueRow?.id || 0),
+      matchId: queued.match ? Number(queued.match.id) : null
+    }
+  });
+});
+
+ticketsRouter.post("/matchmaking/cancel", (req, res) => {
+  const me = getPlayerFromToken(req);
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+
+  const queueId = req.body?.queueId == null ? null : Number(req.body.queueId);
+  const db = getDb();
+  cleanupExpiredQueue(db, me.player.party_id, req.app.locals.io);
+
+  const active = queueId
+    ? db.prepare(
+      "SELECT * FROM arcade_match_queue WHERE id=? AND player_id=? AND status='queued' LIMIT 1"
+    ).get(queueId, me.player.id)
+    : getActiveQueueRow(db, me.player.id);
+
+  const dayKey = getDayKey();
+  let row = ensureTicketRow(db, me.player.id);
+  row = normalizeDay(db, row, dayKey);
+  const rules = getEffectiveRules(me.player.party_id);
+
+  if (!active) {
+    return res.json({
+      ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+      matchmakingAction: { status: "noop" }
+    });
+  }
+
+  const t = now();
+  db.prepare(
+    "UPDATE arcade_match_queue SET status='canceled', canceled_at=?, updated_at=? WHERE id=?"
+  ).run(t, t, active.id);
+
+  emitQueueUpdated(req.app.locals.io, me.player.id);
+  req.app.locals.io?.to("dm").emit("tickets:updated");
+  logEvent({
+    partyId: me.player.party_id,
+    type: "arcade.queue.cancel",
+    actorRole: "player",
+    actorPlayerId: me.player.id,
+    actorName: me.player.display_name,
+    targetType: "arcade_queue",
+    targetId: Number(active.id),
+    message: `Queue cancel ${active.game_key}/${active.mode_key}`,
+    data: {
+      queueId: Number(active.id),
+      gameKey: String(active.game_key || ""),
+      modeKey: String(active.mode_key || "")
+    },
+    io: req.app.locals.io
+  });
+
+  return res.json({
+    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    matchmakingAction: { status: "canceled", queueId: Number(active.id) }
+  });
+});
+
+ticketsRouter.get("/matches/history", (req, res) => {
+  const me = getPlayerFromToken(req);
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const db = getDb();
+  const limit = clampLimit(req.query?.limit, ARCADE_HISTORY_LIMIT, 1, 50);
+  return res.json({ items: getMatchHistory(db, me.player.id, limit) });
+});
+
+ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
+  const me = getPlayerFromToken(req);
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+
+  const matchId = Number(req.params?.matchId);
+  if (!matchId) return res.status(400).json({ error: "invalid_match_id" });
+
+  const db = getDb();
+  const match = db.prepare("SELECT * FROM arcade_matches WHERE id=?").get(matchId);
+  if (!match) return res.status(404).json({ error: "match_not_found" });
+  if (Number(match.party_id) !== Number(me.player.party_id)) return res.status(404).json({ error: "match_not_found" });
+
+  const participantRows = db
+    .prepare("SELECT player_id FROM arcade_match_players WHERE match_id=? ORDER BY player_id")
+    .all(matchId);
+  const playerIds = participantRows.map((r) => Number(r.player_id));
+  if (!playerIds.includes(Number(me.player.id))) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+  const opponentId = playerIds.find((id) => id !== Number(me.player.id)) || null;
+  if (!opponentId) return res.status(400).json({ error: "opponent_not_found" });
+
+  let row = ensureTicketRow(db, me.player.id);
+  const dayKey = getDayKey();
+  row = normalizeDay(db, row, dayKey);
+  const rules = getEffectiveRules(me.player.party_id);
+  const game = rules.games?.[String(match.game_key || "")];
+  if (!game || game.enabled === false) return res.status(400).json({ error: "game_disabled" });
+
+  const queued = queuePlayerForMatchmaking({
+    db,
+    io: req.app.locals.io,
+    me,
+    gameKey: String(match.game_key || ""),
+    modeKey: String(match.mode_key || ""),
+    rematchTargetPlayerId: opponentId,
+    rematchOfMatchId: matchId
+  });
+  if (queued.error === "already_in_queue") {
+    return res.status(409).json({ error: "already_in_queue" });
+  }
+
+  logEvent({
+    partyId: me.player.party_id,
+    type: "arcade.match.rematch_request",
+    actorRole: "player",
+    actorPlayerId: me.player.id,
+    actorName: me.player.display_name,
+    targetType: "arcade_match",
+    targetId: matchId,
+    message: `Rematch requested for match ${matchId}`,
+    data: {
+      matchId,
+      gameKey: String(match.game_key || ""),
+      modeKey: String(match.mode_key || ""),
+      opponentId
+    },
+    io: req.app.locals.io
+  });
+
+  return res.json({
+    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    matchmakingAction: {
+      status: queued.status,
+      queueId: Number(queued.queueRow?.id || 0),
+      matchId: queued.match ? Number(queued.match.id) : null
+    }
+  });
+});
+
+ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
+  const me = getPlayerFromToken(req);
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+
+  const matchId = Number(req.params?.matchId);
+  if (!matchId) return res.status(400).json({ error: "invalid_match_id" });
+
+  const db = getDb();
+  const match = db.prepare("SELECT * FROM arcade_matches WHERE id=?").get(matchId);
+  if (!match) return res.status(404).json({ error: "match_not_found" });
+
+  const participants = db.prepare(
+    "SELECT player_id FROM arcade_match_players WHERE match_id=? ORDER BY player_id"
+  ).all(matchId).map((r) => Number(r.player_id));
+  if (!participants.includes(Number(me.player.id))) return res.status(403).json({ error: "forbidden" });
+
+  if (String(match.status) === "completed") {
+    return res.json({ ok: true, match: loadMatchForPlayer(db, matchId, me.player.id) });
+  }
+
+  const winnerPlayerIdInput = req.body?.winnerPlayerId == null ? null : Number(req.body.winnerPlayerId);
+  const durationMsInput = req.body?.durationMs == null ? null : Number(req.body.durationMs);
+  const durationMs = durationMsInput == null ? null : clampLimit(durationMsInput, 0, 0, 24 * 60 * 60 * 1000);
+  const t = now();
+
+  let winnerPlayerId = null;
+  let loserPlayerId = null;
+  if (winnerPlayerIdInput != null) {
+    if (!participants.includes(winnerPlayerIdInput)) return res.status(400).json({ error: "invalid_winner" });
+    winnerPlayerId = winnerPlayerIdInput;
+    loserPlayerId = participants.find((id) => id !== winnerPlayerId) || null;
+  }
+
+  db.prepare(
+    `UPDATE arcade_matches
+     SET status='completed', ended_at=?, duration_ms=?, winner_player_id=?, loser_player_id=?
+     WHERE id=?`
+  ).run(t, durationMs, winnerPlayerId, loserPlayerId, matchId);
+
+  db.prepare("UPDATE arcade_match_players SET result='draw', is_winner=0 WHERE match_id=?").run(matchId);
+  if (winnerPlayerId) {
+    db.prepare(
+      "UPDATE arcade_match_players SET result='win', is_winner=1 WHERE match_id=? AND player_id=?"
+    ).run(matchId, winnerPlayerId);
+  }
+  if (loserPlayerId) {
+    db.prepare(
+      "UPDATE arcade_match_players SET result='loss', is_winner=0 WHERE match_id=? AND player_id=?"
+    ).run(matchId, loserPlayerId);
+  }
+
+  for (const playerId of participants) {
+    req.app.locals.io?.to(`player:${playerId}`).emit("arcade:match:state", {
+      matchId,
+      status: "completed",
+      winnerPlayerId,
+      loserPlayerId,
+      durationMs
+    });
+    req.app.locals.io?.to(`player:${playerId}`).emit("tickets:updated");
+  }
+  req.app.locals.io?.to("dm").emit("tickets:updated");
+
+  logEvent({
+    partyId: Number(match.party_id),
+    type: "arcade.match.completed",
+    actorRole: "player",
+    actorPlayerId: me.player.id,
+    actorName: me.player.display_name,
+    targetType: "arcade_match",
+    targetId: matchId,
+    message: `Match ${matchId} completed`,
+    data: { matchId, winnerPlayerId, loserPlayerId, durationMs },
+    io: req.app.locals.io
+  });
+
+  return res.json({ ok: true, match: loadMatchForPlayer(db, matchId, me.player.id) });
 });
 
 ticketsRouter.post("/play", (req, res) => {
@@ -791,7 +1448,7 @@ ticketsRouter.post("/play", (req, res) => {
   });
 
   res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules),
+    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
     result: {
       gameKey,
       outcome,
@@ -870,9 +1527,16 @@ ticketsRouter.post("/purchase", (req, res) => {
   });
 
   res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules),
+    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
     result: { itemKey, price }
   });
+});
+
+ticketsRouter.get("/dm/metrics", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const partyId = Number(getParty().id);
+  const days = clampLimit(req.query?.days, ARCADE_METRICS_DAYS, 1, 30);
+  return res.json({ metrics: buildDmArcadeMetrics(db, partyId, days) });
 });
 
 ticketsRouter.get("/dm/rules", dmAuthMiddleware, (req, res) => {
@@ -1038,5 +1702,5 @@ ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
   });
 
   const rules = getEffectiveRules(getParty().id);
-  res.json(buildPayload(db, playerId, dayKey, rules));
+  res.json(buildPayload(db, playerId, dayKey, rules, { partyId: getParty().id }));
 });

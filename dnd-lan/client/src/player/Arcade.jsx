@@ -14,13 +14,31 @@ const ScrabbleBlitzGame = lazy(() => import("./games/ScrabbleBlitz.jsx"));
 
 export default function Arcade() {
   const toast = useToast();
-  const { state, rules, catalog, usage, quests, questHistory, loading, err, play, readOnly } = useTickets();
+  const {
+    state,
+    rules,
+    catalog,
+    usage,
+    quests,
+    questHistory,
+    matchmaking,
+    arcadeMetrics,
+    loading,
+    err,
+    play,
+    queueMatchmaking,
+    cancelMatchmaking,
+    rematch,
+    readOnly
+  } = useTickets();
   const lite = useLiteMode();
   const [activeGameKey, setActiveGameKey] = useState("");
   const [activeModeKey, setActiveModeKey] = useState("");
   const [outcome, setOutcome] = useState("win");
   const [performance, setPerformance] = useState("");
   const [busy, setBusy] = useState(false);
+  const [queueBusy, setQueueBusy] = useState(false);
+  const [queueGameKey, setQueueGameKey] = useState("");
   const [playErr, setPlayErr] = useState("");
   const [questUpdated, setQuestUpdated] = useState(false);
   const questUpdatedTimer = useRef(null);
@@ -64,6 +82,19 @@ export default function Arcade() {
     });
   }, [games]);
 
+  useEffect(() => {
+    if (!queueReadyGames.length) {
+      setQueueGameKey("");
+      return;
+    }
+    if (queueGameKey && queueReadyGames.some((g) => g.key === queueGameKey)) return;
+    if (lastGameKey && queueReadyGames.some((g) => g.key === lastGameKey)) {
+      setQueueGameKey(lastGameKey);
+      return;
+    }
+    setQueueGameKey(queueReadyGames[0].key);
+  }, [queueReadyGames, queueGameKey, lastGameKey]);
+
   const perfOptions = useMemo(() => {
     const list = [];
     const perf = activeRules?.performance || {};
@@ -88,6 +119,18 @@ export default function Arcade() {
   const lastGameTitle = lastGameKey ? (games.find((g) => g.key === lastGameKey)?.title || lastGameKey) : "";
   const lastGameReason = lastGameKey ? getDisabledReason(lastGameKey) : "";
   const showLastGame = lastGameKey && rules?.games?.[lastGameKey]?.enabled !== false;
+  const queueState = matchmaking?.activeQueue || null;
+  const matchHistory = Array.isArray(matchmaking?.history) ? matchmaking.history : [];
+  const queueReadyGames = useMemo(
+    () => games.filter((g) => rules?.games?.[g.key]?.enabled !== false),
+    [games, rules]
+  );
+  const queueGame = useMemo(
+    () => queueReadyGames.find((g) => g.key === queueGameKey) || queueReadyGames[0] || null,
+    [queueGameKey, queueReadyGames]
+  );
+  const queueModes = Array.isArray(queueGame?.modes) ? queueGame.modes : [];
+  const queueModeKey = queueGame ? (selectedModes[queueGame.key] || queueModes[0]?.key || "") : "";
 
   useEffect(() => {
     if (!dailyQuest?.key) {
@@ -170,6 +213,63 @@ export default function Arcade() {
 
   function setMode(gameKey, modeKey) {
     setSelectedModes((prev) => ({ ...prev, [gameKey]: modeKey }));
+  }
+
+  async function handleQueueJoin() {
+    if (queueBusy || readOnly) return;
+    if (!queueGame || !queueModeKey) {
+      toast.warn("Select game mode first");
+      return;
+    }
+    setQueueBusy(true);
+    try {
+      const res = await queueMatchmaking({
+        gameKey: queueGame.key,
+        modeKey: queueModeKey
+      });
+      const action = res?.matchmakingAction?.status;
+      if (action === "matched") {
+        toast.success("Match found");
+      } else {
+        toast.success("You are in queue");
+      }
+    } catch (e) {
+      const code = formatError(e);
+      if (String(code) === "already_in_queue") toast.warn("Queue is already active");
+      else toast.error(formatTicketError(code));
+    } finally {
+      setQueueBusy(false);
+    }
+  }
+
+  async function handleQueueCancel() {
+    if (queueBusy || readOnly) return;
+    setQueueBusy(true);
+    try {
+      await cancelMatchmaking(queueState?.id || null);
+      toast.warn("Queue canceled");
+    } catch (e) {
+      toast.error(formatTicketError(formatError(e)));
+    } finally {
+      setQueueBusy(false);
+    }
+  }
+
+  async function handleRematch(matchId) {
+    if (!matchId || queueBusy || readOnly) return;
+    setQueueBusy(true);
+    try {
+      const res = await rematch(matchId);
+      const status = res?.matchmakingAction?.status;
+      if (status === "matched") toast.success("Rematch started");
+      else toast.success("Rematch requested");
+    } catch (e) {
+      const code = formatError(e);
+      if (String(code) === "already_in_queue") toast.warn("Queue is already active");
+      else toast.error(formatTicketError(code));
+    } finally {
+      setQueueBusy(false);
+    }
   }
 
   async function handlePlay() {
@@ -356,6 +456,76 @@ export default function Arcade() {
           Сложнее игра — выше награда. За серии побед дают бонус, но вход требует
           билеты.
         </div>
+      </div>
+      <div className="paper-note arcade-queue-note" style={{ marginTop: 10 }}>
+        <div className="title">Quick Match</div>
+        <div className="small" style={{ marginTop: 6 }}>
+          Queue, rematch, and short match history.
+        </div>
+        <div className="arcade-queue-row" style={{ marginTop: 8 }}>
+          {queueState ? (
+            <>
+              <span className="badge warn">In queue: {queueState.gameKey}/{queueState.modeKey}</span>
+              <span className="badge secondary">Wait: {formatDurationMs(queueState.waitMs)}</span>
+              <button className="btn secondary" onClick={handleQueueCancel} disabled={queueBusy || readOnly}>
+                {queueBusy ? "..." : "Cancel queue"}
+              </button>
+            </>
+          ) : (
+            <>
+              <select
+                value={queueGame?.key || ""}
+                onChange={(e) => setQueueGameKey(e.target.value)}
+                disabled={queueBusy || readOnly || !queueReadyGames.length}
+              >
+                {queueReadyGames.map((g) => (
+                  <option key={`qm_${g.key}`} value={g.key}>{g.title}</option>
+                ))}
+              </select>
+              <div className="arcade-modes">
+                {queueModes.map((mode) => (
+                  <button
+                    key={`qm_mode_${mode.key}`}
+                    type="button"
+                    className={`mode-chip${queueModeKey === mode.key ? " active" : ""}`}
+                    onClick={() => queueGame && setMode(queueGame.key, mode.key)}
+                    disabled={queueBusy || readOnly}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="btn secondary"
+                onClick={handleQueueJoin}
+                disabled={queueBusy || readOnly || !queueGame || !queueModeKey}
+              >
+                {queueBusy ? "..." : "Join queue"}
+              </button>
+            </>
+          )}
+        </div>
+        <div className="small arcade-queue-meta" style={{ marginTop: 8 }}>
+          Win rate: {Math.round(Number(arcadeMetrics?.winRate || 0) * 100)}%
+          {" • "}
+          Avg queue: {arcadeMetrics?.avgQueueWaitMs != null ? formatDurationMs(arcadeMetrics.avgQueueWaitMs) : "n/a"}
+          {" • "}
+          Matches: {Number(arcadeMetrics?.matches || 0)}
+        </div>
+        {matchHistory.length ? (
+          <div className="arcade-queue-history" style={{ marginTop: 8 }}>
+            {matchHistory.slice(0, 3).map((m) => (
+              <div key={`hist_${m.matchId}`} className="arcade-queue-history-item">
+                <span className="small">
+                  {m.gameKey}/{m.modeKey} • {m.result} {m.opponentName ? `vs ${m.opponentName}` : ""}
+                </span>
+                <button className="btn secondary" onClick={() => handleRematch(m.matchId)} disabled={queueBusy || readOnly}>
+                  Rematch
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </div>
       {dailyQuest ? (
         <div className="paper-note arcade-note" style={{ marginTop: 10 }}>
@@ -681,6 +851,14 @@ function formatDayKey(dayKey) {
   return month ? `${day} ${month}` : day;
 }
 
+function formatDurationMs(ms) {
+  const total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  if (m <= 0) return `${s}s`;
+  return `${m}m ${String(s).padStart(2, "0")}s`;
+}
+
 function formatTicketError(code) {
   const c = String(code || "");
   if (c === "tickets_disabled") return "Аркада временно закрыта.";
@@ -692,6 +870,11 @@ function formatTicketError(code) {
   if (c === "invalid_seed") return "Сессия игры устарела. Откройте игру снова.";
   if (c === "invalid_proof") return "Результат игры не прошел проверку.";
   if (c === "invalid_game") return "Эта игра недоступна.";
+  if (c === "invalid_mode") return "Selected mode is not available.";
+  if (c === "already_in_queue") return "You are already in queue.";
+  if (c === "match_not_found") return "Match not found.";
+  if (c === "opponent_not_found") return "Opponent not found.";
+  if (c === "forbidden") return "Action is not allowed.";
   return c || "Ошибка";
 }
 

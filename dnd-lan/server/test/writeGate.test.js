@@ -16,6 +16,7 @@ const { signDmToken } = await import("../src/auth.js");
 const { setDegraded, clearDegraded } = await import("../src/degraded.js");
 const { assertWritable } = await import("../src/writeGate.js");
 const { backupRouter } = await import("../src/routes/backup.js");
+const { ticketsRouter } = await import("../src/routes/tickets.js");
 
 initDb();
 
@@ -25,6 +26,7 @@ app.use(cookieParser());
 app.use(assertWritable);
 app.post("/api/party/write-probe", (_req, res) => res.json({ ok: true }));
 app.use("/api/backup", backupRouter);
+app.use("/api/tickets", ticketsRouter);
 
 const server = app.listen(0);
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -66,6 +68,22 @@ test("write gate allows backup import endpoint when degraded", async () => {
     const data = await res.json().catch(() => ({}));
     assert.notEqual(res.status, 503);
     assert.equal(data.error, "file_required");
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate blocks matchmaking writes when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/tickets/matchmaking/queue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameKey: "ttt" })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.equal(res.status, 503);
+    assert.equal(data.error, "read_only");
   } finally {
     clearDegraded();
   }
