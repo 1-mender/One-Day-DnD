@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
+import { logger } from "./logger.js";
 
 export const now = () => Date.now();
 export const jsonParse = (s, fallback) => {
@@ -41,7 +42,7 @@ export const copyClientDistToServerPublic = () => {
   const dstDir = path.join(repoRoot, "server", "public");
 
   if (!fs.existsSync(srcDir)) {
-    console.error("client/dist not found. Run: npm --prefix client run build");
+    logger.error({ path: srcDir }, "client/dist not found. Run: npm --prefix client run build");
     process.exit(1);
   }
   fs.rmSync(dstDir, { recursive: true, force: true });
@@ -60,7 +61,7 @@ export const copyClientDistToServerPublic = () => {
     }
   };
   copyRecursive(srcDir, dstDir);
-  console.log("Copied client/dist -> server/public");
+  logger.info({ from: srcDir, to: dstDir }, "Copied client/dist -> server/public");
 };
 
 if (process.argv[2] === "copy-client") {

@@ -1,18 +1,14 @@
-import backPng from "../assets/ui/Back.png";
 import backWebp from "../assets/ui/Back.webp";
 import backAvif from "../assets/ui/Back.avif";
-import bookPng from "../assets/ui/book.png";
 import bookWebp from "../assets/ui/book.webp";
 import bookAvif from "../assets/ui/book.avif";
-import plenkaPng from "../assets/ui/Plenka.png";
 import plenkaWebp from "../assets/ui/Plenka.webp";
 import plenkaAvif from "../assets/ui/Plenka.avif";
-import tapePng from "../assets/ui/tape.png";
 import tapeWebp from "../assets/ui/tape.webp";
 import tapeAvif from "../assets/ui/tape.avif";
 
 function loadRarityTextures() {
-  const glob = import.meta.glob("../assets/ui/*Rang*.{png,webp,avif}", {
+  const glob = import.meta.glob("../assets/ui/*Rang*.{webp,avif}", {
     eager: true,
     query: "?url",
     import: "default"
@@ -21,7 +17,7 @@ function loadRarityTextures() {
   const grouped = {};
   for (const [path, url] of Object.entries(glob)) {
     const file = path.split("/").pop()?.toLowerCase() || "";
-    const match = file.match(/^(.*)\.(png|webp|avif)$/);
+    const match = file.match(/^(.*)\.(webp|avif)$/);
     if (!match) continue;
     const name = match[1];
     const ext = match[2];
@@ -61,7 +57,8 @@ function resolveImage(assets) {
     && typeof CSS.supports === "function"
     && CSS.supports("background-image", 'image-set(url("x") 1x)');
   if (supportsImageSet) return buildImageSet(assets);
-  return assets.png ? `url("${assets.png}")` : buildImageSet(assets);
+  const fallback = assets.webp || assets.avif || assets.png;
+  return fallback ? `url("${fallback}")` : "none";
 }
 
 export function applyThemeAssets() {
@@ -73,10 +70,10 @@ export function applyThemeAssets() {
     root.classList.add("theme-lite");
   }
 
-  const backAssets = { png: backPng, webp: backWebp, avif: backAvif };
-  const bookAssets = { png: bookPng, webp: bookWebp, avif: bookAvif };
-  const plenkaAssets = { png: plenkaPng, webp: plenkaWebp, avif: plenkaAvif };
-  const tapeAssets = { png: tapePng, webp: tapeWebp, avif: tapeAvif };
+  const backAssets = { webp: backWebp, avif: backAvif };
+  const bookAssets = { webp: bookWebp, avif: bookAvif };
+  const plenkaAssets = { webp: plenkaWebp, avif: plenkaAvif };
+  const tapeAssets = { webp: tapeWebp, avif: tapeAvif };
 
   root.style.setProperty("--tex-back", lite ? "none" : resolveImage(backAssets));
   root.style.setProperty("--tex-book", lite ? "none" : resolveImage(bookAssets));
@@ -90,10 +87,10 @@ export function applyThemeAssets() {
 
   if (!lite) {
     const checks = [
-      { key: "--tex-back", url: backPng },
-      { key: "--tex-book", url: bookPng },
-      { key: "--tex-plenka", url: plenkaPng },
-      { key: "--tex-tape", url: tapePng }
+      { key: "--tex-back", url: backWebp || backAvif },
+      { key: "--tex-book", url: bookWebp || bookAvif },
+      { key: "--tex-plenka", url: plenkaWebp || plenkaAvif },
+      { key: "--tex-tape", url: tapeWebp || tapeAvif }
     ];
 
     for (const c of checks) {

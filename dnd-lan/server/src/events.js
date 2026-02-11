@@ -1,4 +1,5 @@
 import { getDb } from "./db.js";
+import { logger } from "./logger.js";
 import { now } from "./util.js";
 
 const RETENTION = Number(process.env.EVENTS_RETENTION || 20000);
@@ -79,7 +80,7 @@ export function logEvent(event, maybeIo) {
   try {
     trimEventsIfNeeded(partyId);
   } catch (e) {
-    console.error("events retention failed:", e);
+    logger.error({ err: e, partyId }, "events retention failed");
   }
 
   if (io) {

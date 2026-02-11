@@ -38,6 +38,7 @@ npm run start
 - `npm --prefix server run chaos:presence` - presence chaos test (reconnect p95 + false-offline)
 - `npm run e2e` - e2e smoke: temp server + DM setup/login + join/approve + inventory write/read
 - `npm run images:opt` - convert UI textures to webp/avif (local)
+- `npm run perf:report` - report JS bundle and image sizes from `client/dist/assets`
 
 ## Health / Readiness
 - `GET /healthz` — liveness (процесс запущен)
@@ -75,6 +76,22 @@ Env:
 - `E2E_READY_P95_MS` (default 300)
 - `E2E_REQUEST_TIMEOUT_MS` (default 5000)
 - `E2E_PORT` (optional fixed port)
+
+## Performance Baseline (2026-02-11)
+Repeatable command:
+```powershell
+npm run build
+npm run perf:report
+```
+
+| Metric | Baseline (before texture path optimization) | Current | Target |
+|---|---:|---:|---:|
+| Total JS (`client/dist/assets/*.js`) | 862,663 bytes (842.4 KB) | 863,933 bytes (843.7 KB) | <= 850 KB |
+| Largest JS chunk | 440,140 bytes (`vendor-react`) | 440,140 bytes (`vendor-react`) | <= 440 KB |
+| Total images (`client/dist/assets/*.{png,jpg,jpeg,webp,avif,gif,svg}`) | 7,918,188 bytes (7.55 MB) | 751,600 bytes (734.0 KB) | <= 2 MB |
+| Largest image asset | 1,902,461 bytes (`Back.png`) | 77,456 bytes (`book.webp`) | <= 900 KB |
+
+`perf:report` is the source of truth for this table and should be rerun after any asset or bundling change.
 
 
 ## Очистка uploads (безопасный dry-run)

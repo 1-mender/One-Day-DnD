@@ -4,6 +4,7 @@ import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
+import { logger } from "../logger.js";
 
 export const ticketsRouter = express.Router();
 
@@ -770,7 +771,7 @@ ticketsRouter.post("/play", (req, res) => {
   try {
     maybeGrantDailyQuest(db, me.player.id, dayKey, rules);
   } catch (e) {
-    console.error("daily quest reward failed:", e);
+    logger.error({ err: e, playerId: me.player.id, dayKey }, "daily quest reward failed");
   }
 
   req.app.locals.io?.to(`player:${me.player.id}`).emit("tickets:updated");

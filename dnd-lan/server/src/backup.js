@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDb, DATA_DIR } from "./db.js";
+import { logger } from "./logger.js";
 import { ensureDir, now } from "./util.js";
 
 const BACKUP_EVERY_MS = Number(process.env.BACKUP_EVERY_MS || 10 * 60 * 1000);
@@ -33,7 +34,7 @@ function pruneBackups() {
     try {
       fs.rmSync(b.full, { force: true });
     } catch (e) {
-      console.error("backup prune failed:", b.full, e);
+      logger.error({ err: e, path: b.full }, "backup prune failed");
     }
   }
 }
@@ -49,10 +50,10 @@ export async function runBackup(reason = "manual") {
     const db = getDb();
     await db.backup(dest);
     pruneBackups();
-    console.log(`backup ok (${reason}): ${dest}`);
+    logger.info({ reason, path: dest }, "backup ok");
     return { ok: true, path: dest };
   } catch (e) {
-    console.error(`backup failed (${reason}):`, e);
+    logger.error({ err: e, reason }, "backup failed");
     return { ok: false, error: String(e?.message || e) };
   } finally {
     backupInProgress = false;

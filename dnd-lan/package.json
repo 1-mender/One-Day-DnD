@@ -13,6 +13,7 @@
     "verify": "npm run lint && npm run test && npm run build",
     "preflight": "node scripts/preflight.mjs",
     "images:opt": "node scripts/optimize-images.mjs",
+    "perf:report": "node scripts/perf-report.mjs",
     "e2e": "node scripts/e2e.mjs"
   },
   "devDependencies": {
