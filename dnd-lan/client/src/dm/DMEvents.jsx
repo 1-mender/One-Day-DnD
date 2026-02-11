@@ -7,19 +7,23 @@ import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import { useQueryState } from "../hooks/useQueryState.js";
+import { Copy } from "lucide-react";
 
 const scopes = [
-  { key: "", label: "All", prefix: "" },
-  { key: "player", label: "Connections", prefix: "player." },
-  { key: "join", label: "Lobby", prefix: "join." },
-  { key: "inv", label: "Inventory", prefix: "inventory." },
-  { key: "best", label: "Bestiary", prefix: "bestiary." },
+  { key: "", label: "Все", prefix: "" },
+  { key: "player", label: "Подключения", prefix: "player." },
+  { key: "join", label: "Лобби", prefix: "join." },
+  { key: "inv", label: "Инвентарь", prefix: "inventory." },
+  { key: "best", label: "Бестиарий", prefix: "bestiary." },
   { key: "info", label: "InfoBlocks", prefix: "info." }
 ];
 
 export default function DMEvents() {
-  const [q, setQ] = useState("");
-  const [scope, setScope] = useState("");
+  const [q, setQ] = useQueryState("q", "");
+  const [scope, setScope] = useQueryState("scope", "");
+  const [viewMode, setViewMode] = useQueryState("view", "all");
+  const [sinceParam, setSinceParam] = useQueryState("since", "");
   const [items, setItems] = useState([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(false);
@@ -34,6 +38,7 @@ export default function DMEvents() {
   const limit = 200;
   const debouncedQ = useDebouncedValue(q, 250);
   const prefix = scopes.find((s) => s.key === scope)?.prefix || "";
+  const sinceMs = Number(sinceParam || 0);
   const offsetRef = useRef(0);
 
   useEffect(() => {
@@ -49,7 +54,8 @@ export default function DMEvents() {
         limit,
         offset: pageOffset,
         q: debouncedQ,
-        prefix
+        prefix,
+        since: Number.isFinite(sinceMs) && sinceMs > 0 ? sinceMs : undefined
       });
       const next = r.items || [];
       if (reset) {
@@ -70,7 +76,7 @@ export default function DMEvents() {
     } finally {
       setBusy(false);
     }
-  }, [limit, debouncedQ, prefix]);
+  }, [limit, debouncedQ, prefix, sinceMs]);
 
   const loadRef = useRef(load);
   useEffect(() => {
@@ -95,19 +101,47 @@ export default function DMEvents() {
     _time: fmtTime(e.created_at)
   })), [items]);
 
+  const displayRows = useMemo(() => {
+    if (viewMode === "recent") return rows.slice(0, 50);
+    return rows;
+  }, [rows, viewMode]);
+
   const listRef = useRef(null);
   const rowVirtualizer = useVirtualizer({
-    count: rows.length,
+    count: displayRows.length,
     getScrollElement: () => listRef.current,
     estimateSize: () => 140,
     overscan: 8
   });
 
+  async function copyEvent(e) {
+    const text = formatEventSnippet(e);
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success("Скопировано в буфер");
+    } catch {
+      window.prompt("Copy:", text);
+    }
+  }
+
+  function setSinceHours(hours) {
+    if (!hours) {
+      setSinceParam("");
+      return;
+    }
+    const ms = Date.now() - hours * 60 * 60 * 1000;
+    setSinceParam(String(ms));
+  }
+
   async function exportJson() {
     setErr("");
     setBusy(true);
     try {
-      const blob = await api.dmEventsExportJson({ q, prefix });
+      const blob = await api.dmEventsExportJson({
+        q,
+        prefix,
+        since: Number.isFinite(sinceMs) && sinceMs > 0 ? sinceMs : undefined
+      });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -193,7 +227,25 @@ export default function DMEvents() {
             <option key={s.key} value={s.key}>{s.label}</option>
           ))}
         </select>
+        <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={sel}>
+          <option value="all">Все события</option>
+          <option value="recent">Последние 50</option>
+        </select>
+        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <button className={`btn ${!sinceMs ? "" : "secondary"}`} onClick={() => setSinceHours(0)}>
+            Всё время
+          </button>
+          <button className={`btn ${sinceMs ? "secondary" : ""}`} onClick={() => setSinceHours(1)}>
+            За 1 час
+          </button>
+          <button className={`btn ${sinceMs ? "secondary" : ""}`} onClick={() => setSinceHours(24)}>
+            За 24 часа
+          </button>
+        </div>
       </div>
+      {viewMode === "recent" ? (
+        <div className="badge secondary" style={{ marginTop: 8 }}>Показаны последние 50 событий</div>
+      ) : null}
       <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
         <button className="btn danger" onClick={cleanupAll} disabled={busy || readOnly}>
           Очистить всё
@@ -225,12 +277,12 @@ export default function DMEvents() {
         className="list"
         style={{ marginTop: 12, height: "70vh", overflow: "auto" }}
       >
-        {rows.length === 0 && !busy ? (
+        {displayRows.length === 0 && !busy ? (
           <div className="small">Событий пока нет.</div>
         ) : (
           <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
             {rowVirtualizer.getVirtualItems().map((vRow) => {
-              const e = rows[vRow.index];
+              const e = displayRows[vRow.index];
               return (
                 <div
                   key={e.id}
@@ -257,6 +309,11 @@ export default function DMEvents() {
                       {e.target_type ? `target: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
                     </div>
                   </div>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn secondary icon-btn" onClick={() => copyEvent(e)} title="Скопировать">
+                      <Copy className="icon" aria-hidden="true" />
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -264,7 +321,7 @@ export default function DMEvents() {
         )}
       </div>
 
-      {hasMore && (
+      {hasMore && viewMode !== "recent" && (
         <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => load(false)} disabled={busy}>
           Load more
         </button>
@@ -281,3 +338,11 @@ function fmtTime(ts) {
 
 const inp = { width: "min(520px, 100%)" };
 const sel = {};
+
+function formatEventSnippet(e) {
+  const time = fmtTime(e?.created_at);
+  const actor = e?.actor_name ? `${e.actor_role} • ${e.actor_name}` : String(e?.actor_role || "");
+  const target = e?.target_type ? `${e.target_type}${e?.target_id ? ` #${e.target_id}` : ""}` : "";
+  const message = e?.message || "";
+  return [time, e?.type, actor, target, message].filter(Boolean).join(" | ");
+}
