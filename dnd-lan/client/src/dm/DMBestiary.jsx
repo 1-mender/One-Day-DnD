@@ -211,6 +211,18 @@ export default function DMBestiary() {
     }
   }
 
+  async function toggleMonsterHidden(monster) {
+    if (readOnly) return;
+    if (!monster) return;
+    setErr("");
+    try {
+      await api.dmBestiaryUpdate(monster.id, { is_hidden: !monster.is_hidden });
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
   async function doExport() {
     setPortErr("");
     setPortMsg("");
@@ -355,6 +367,7 @@ export default function DMBestiary() {
                   <ActionMenu
                     items={[
                       { label: "Редактировать", onClick: () => startEdit(m), disabled: readOnly },
+                      { label: m.is_hidden ? "Сделать публичным" : "Скрыть", onClick: () => toggleMonsterHidden(m), disabled: readOnly },
                       { label: "Удалить", onClick: () => del(m.id), disabled: readOnly, tone: "danger" }
                     ]}
                   />
@@ -391,6 +404,11 @@ export default function DMBestiary() {
                   <span className={`badge ${selected.is_hidden ? "off" : "ok"}`}>
                     {selected.is_hidden ? "Скрыт" : "Публичный"}
                   </span>
+                </div>
+                <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                  <button className="btn secondary" onClick={() => toggleMonsterHidden(selected)} disabled={readOnly}>
+                    {selected.is_hidden ? "Сделать публичным" : "Скрыть"}
+                  </button>
                 </div>
                 {selected.description ? (
                   <div style={{ marginTop: 12 }}>
