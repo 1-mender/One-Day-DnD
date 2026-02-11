@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
+import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const LETTERS = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЫЭЮЯ";
 const RARE = new Set(["Ф", "Щ", "Ъ", "Э", "Ю", "Я"]);
@@ -109,10 +110,8 @@ export default function ScrabbleBlitzGame({
     setStatus("win");
   }
 
-  if (!open) return null;
-
   return (
-    <div className="scrabble-overlay">
+    <ArcadeOverlay open={open} className="scrabble-overlay">
       <div className="scrabble-panel">
         <div className="scrabble-head">
           <div>
@@ -183,6 +182,6 @@ export default function ScrabbleBlitzGame({
           </div>
         ) : null}
       </div>
-    </div>
+    </ArcadeOverlay>
   );
 }

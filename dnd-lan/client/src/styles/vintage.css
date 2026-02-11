@@ -278,12 +278,17 @@ a:hover{ color: #000; }
   backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(10px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
   z-index: 999;
 }
 .vintage-modal{
     width: min(820px, 94vw);
     max-height: 90vh;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
     display:flex;
     flex-direction: column;
     border-radius: 20px;
@@ -308,6 +313,8 @@ a:hover{ color: #000; }
     padding: 14px;
     overflow: auto;
     max-height: calc(90vh - 64px);
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 84px);
+    overscroll-behavior: contain;
   }
 
 .bottom-nav{
@@ -315,9 +322,18 @@ a:hover{ color: #000; }
   left: 0; right: 0; bottom: 0;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   z-index: 900;
+  transition: transform .18s ease, opacity .18s ease;
   background:
     linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.35)),
     rgba(0,0,0,.12);
+}
+body.arcade-modal-open{
+  overflow: hidden;
+}
+.arcade-modal-open .bottom-nav{
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(120%);
 }
 .bottom-nav-inner{
   max-width: 780px;
@@ -1062,8 +1078,12 @@ a:hover{ color: #000; }
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 40;
-  padding: 16px;
+  z-index: 1300;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(10px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
   backdrop-filter: blur(4px) saturate(110%);
 }
 
@@ -1072,7 +1092,10 @@ a:hover{ color: #000; }
 .scrabble-panel{
   width: min(780px, 96vw);
   max-height: 92vh;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: 22px;
   padding: 16px;
   background:
@@ -2413,6 +2436,16 @@ a:hover{ color: #000; }
   pointer-events: none;
 }
 
+.arcade-play-modal .row{
+  align-items: stretch;
+}
+.arcade-play-modal .row .btn{
+  min-height: 38px;
+}
+.arcade-play-modal .note-hint{
+  word-break: break-word;
+}
+
 .settings-grid{
   display:grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -2447,17 +2480,24 @@ a:hover{ color: #000; }
 .match3-overlay{
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: 1300;
   background: rgba(5,4,3,.72);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(10px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
   backdrop-filter: blur(2px);
 }
 .match3-panel{
   width: min(980px, 96vw);
   max-height: 90vh;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: 20px;
   padding: 16px;
   background:
@@ -2626,17 +2666,24 @@ a:hover{ color: #000; }
 .guess-overlay{
   position: fixed;
   inset: 0;
-  z-index: 1200;
+  z-index: 1300;
   background: rgba(5,4,3,.72);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(10px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
   backdrop-filter: blur(2px);
 }
 .guess-panel{
   width: min(980px, 96vw);
   max-height: 90vh;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   border-radius: 20px;
   padding: 16px;
   background:
@@ -2998,6 +3045,87 @@ a:hover{ color: #000; }
 }
 
 @media (max-width: 640px){
+  .vintage-modal-overlay{
+    display: flex;
+    align-items: flex-end;
+  }
+  .vintage-modal{
+    width: 100%;
+    max-width: none;
+    border-radius: 16px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px);
+  }
+  .vintage-modal-header{
+    padding: 10px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .vintage-modal-title{
+    font-size: 15px;
+  }
+  .vintage-modal-body{
+    padding: 12px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 74px);
+  }
+  .ttt-overlay,
+  .uno-overlay,
+  .scrabble-overlay{
+    align-items: flex-end;
+  }
+  .match3-overlay,
+  .guess-overlay{
+    place-items: end center;
+  }
+  .ttt-panel,
+  .uno-panel,
+  .scrabble-panel,
+  .match3-panel,
+  .guess-panel{
+    width: 100%;
+    max-width: none;
+    border-radius: 16px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px);
+    padding: 12px;
+  }
+  .ttt-head,
+  .uno-head,
+  .scrabble-head,
+  .match3-head,
+  .guess-head{
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .ttt-title,
+  .uno-title,
+  .scrabble-title,
+  .match3-title,
+  .guess-title{
+    font-size: 18px;
+  }
+  .ttt-head .btn,
+  .uno-head .btn,
+  .scrabble-head .btn,
+  .match3-head .btn,
+  .guess-head .btn{
+    flex-shrink: 0;
+    min-height: 36px;
+    padding: 8px 10px;
+  }
+  .arcade-play-modal .row{
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+  }
+  .arcade-play-modal .row .btn{
+    width: 100%;
+  }
+  .arcade-play-modal > .btn{
+    width: 100%;
+  }
+  .arcade-play-modal .badge{
+    width: 100%;
+  }
   .bottom-nav-link{
     font-size: 12px;
     padding: 10px 6px;

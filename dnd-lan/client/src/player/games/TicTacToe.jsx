@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
+import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const LINES = [
   [0, 1, 2],
@@ -155,10 +156,8 @@ export default function TicTacToeGame({
     setMoves(nextMoves);
   }
 
-  if (!open) return null;
-
   return (
-    <div className="ttt-overlay">
+    <ArcadeOverlay open={open} className="ttt-overlay">
       <div className="ttt-panel">
         <div className="ttt-head">
           <div>
@@ -225,6 +224,6 @@ export default function TicTacToeGame({
           </div>
         ) : null}
       </div>
-    </div>
+    </ArcadeOverlay>
   );
 }

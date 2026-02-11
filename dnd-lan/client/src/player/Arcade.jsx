@@ -41,6 +41,17 @@ export default function Arcade() {
   );
 
   useEffect(() => {
+    if (typeof document === "undefined") return () => {};
+    const cls = "arcade-modal-open";
+    if (activeGame) {
+      document.body.classList.add(cls);
+      return () => document.body.classList.remove(cls);
+    }
+    document.body.classList.remove(cls);
+    return () => {};
+  }, [activeGame]);
+
+  useEffect(() => {
     if (!games.length) return;
     setSelectedModes((prev) => {
       const next = { ...prev };
@@ -598,7 +609,7 @@ export default function Arcade() {
           title={activeGame ? `Game: ${activeGame.title}` : ""}
           onClose={closeGame}
         >
-          <div className="list">
+          <div className="list arcade-play-modal">
             <div className="small note-hint">
               {activeRules
                 ? `Entry: ${formatEntry(activeRules.entryCost)} | Reward: ${activeRules.rewardMin}-${activeRules.rewardMax}`

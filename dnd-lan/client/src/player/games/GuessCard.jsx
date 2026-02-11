@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api.js";
 import { makeProof } from "../../lib/gameProof.js";
+import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const SUITS = ["hearts", "diamonds", "clubs", "spades"];
 const SUIT_LABELS = {
@@ -217,10 +218,8 @@ export default function GuessCardGame({
     }
   }
 
-  if (!open) return null;
-
   return (
-    <div className="guess-overlay">
+    <ArcadeOverlay open={open} className="guess-overlay">
       <div className="guess-panel">
         <div className="guess-head">
           <div>
@@ -318,6 +317,6 @@ export default function GuessCardGame({
           </div>
         ) : null}
       </div>
-    </div>
+    </ArcadeOverlay>
   );
 }

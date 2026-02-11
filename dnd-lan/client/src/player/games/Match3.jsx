@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const COLOR_POOL = ["ruby", "amber", "emerald", "sapphire", "amethyst", "bone", "topaz", "violet"];
 const DEFAULT_CONFIG = {
@@ -380,15 +381,13 @@ export default function Match3Game({
     }
   }
 
-  if (!open) return null;
-
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
 
   return (
-    <div className="match3-overlay">
+    <ArcadeOverlay open={open} className="match3-overlay">
       <div className="match3-panel">
         <div className="match3-head">
           <div>
@@ -476,6 +475,6 @@ export default function Match3Game({
           </div>
         ) : null}
       </div>
-    </div>
+    </ArcadeOverlay>
   );
 }

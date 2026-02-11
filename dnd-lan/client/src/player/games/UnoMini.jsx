@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
+import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const COLORS = ["red", "green", "blue", "yellow"];
 const NUMBERS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -138,10 +139,8 @@ export default function UnoMiniGame({
     setTimeout(() => handleAiTurn(topCard), 200);
   }
 
-  if (!open) return null;
-
   return (
-    <div className="uno-overlay">
+    <ArcadeOverlay open={open} className="uno-overlay">
       <div className="uno-panel">
         <div className="uno-head">
           <div>
@@ -220,6 +219,6 @@ export default function UnoMiniGame({
           </div>
         ) : null}
       </div>
-    </div>
+    </ArcadeOverlay>
   );
 }
