@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -12,39 +12,72 @@ export default function DMOpsBar() {
   const [showQr, setShowQr] = useState(false);
   const [copied, setCopied] = useState({ url: false, code: false });
   const [err, setErr] = useState("");
+  const playersRefreshTimerRef = useRef(null);
+
+  const loadInfo = useCallback(async () => {
+    const i = await api.serverInfo();
+    setInfo(i);
+    if (i?.party?.joinCodeEnabled) {
+      const r = await api.dmGetJoinCode();
+      setJoinCode(String(r?.joinCode || ""));
+      return;
+    }
+    setJoinCode("");
+  }, []);
+
+  const loadPlayers = useCallback(async () => {
+    const p = await api.dmPlayers();
+    setPlayers(p.items || []);
+  }, []);
 
   const load = useCallback(async () => {
     setErr("");
     try {
-      const [i, p] = await Promise.all([api.serverInfo(), api.dmPlayers()]);
-      setInfo(i);
-      setPlayers(p.items || []);
-      if (i?.party?.joinCodeEnabled) {
-        const r = await api.dmGetJoinCode();
-        setJoinCode(String(r?.joinCode || ""));
-      } else {
-        setJoinCode("");
-      }
+      await Promise.all([loadInfo(), loadPlayers()]);
     } catch (e) {
       setErr(String(e?.message || e));
     }
-  }, []);
+  }, [loadInfo, loadPlayers]);
 
   useEffect(() => {
     if (!socket) return () => {};
     load().catch(() => {});
-    const onPlayers = () => load().catch(() => {});
-    const onStatus = () => load().catch(() => {});
-    const onSettings = () => load().catch(() => {});
+
+    const schedulePlayersRefresh = () => {
+      if (playersRefreshTimerRef.current != null) return;
+      playersRefreshTimerRef.current = setTimeout(() => {
+        playersRefreshTimerRef.current = null;
+        loadPlayers().catch(() => {});
+      }, 150);
+    };
+
+    const onPlayers = () => schedulePlayersRefresh();
+    const onStatus = (payload) => {
+      const playerId = Number(payload?.playerId);
+      const status = String(payload?.status || "");
+      if (!playerId || !status) return;
+      setPlayers((prev) => prev.map((p) => (
+        Number(p?.id) === playerId
+          ? { ...p, status, lastSeen: Number(payload?.lastSeen || Date.now()) }
+          : p
+      )));
+    };
+    const onSettings = () => loadInfo().catch(() => {});
+
     socket.on("players:updated", onPlayers);
     socket.on("player:statusChanged", onStatus);
     socket.on("settings:updated", onSettings);
+
     return () => {
+      if (playersRefreshTimerRef.current != null) {
+        clearTimeout(playersRefreshTimerRef.current);
+        playersRefreshTimerRef.current = null;
+      }
       socket.off("players:updated", onPlayers);
       socket.off("player:statusChanged", onStatus);
       socket.off("settings:updated", onSettings);
     };
-  }, [load, socket]);
+  }, [load, loadInfo, loadPlayers, socket]);
 
   const counts = useMemo(() => {
     return (players || []).reduce((acc, p) => {
@@ -108,7 +141,7 @@ export default function DMOpsBar() {
         <div className="dm-ops-field">
           <div className="dm-ops-label">Join code</div>
           <div className="dm-ops-value">
-            {joinCodeEnabled ? (joinCode || "—") : "Disabled"}
+            {joinCodeEnabled ? (joinCode || "-") : "Disabled"}
           </div>
           <div className="dm-ops-actions">
             <button className="btn secondary" onClick={() => copyText(joinCode, "code")} disabled={!joinCodeEnabled || !joinCode}>

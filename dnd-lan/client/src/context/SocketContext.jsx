@@ -88,12 +88,13 @@ export function SocketProvider({ role, children }) {
         const samples = reconnectSamplesRef.current;
         samples.push(ms);
         if (samples.length > RECONNECT_SAMPLES_LIMIT) samples.shift();
-        setNetState({
+        setNetState((prev) => ({
+          ...prev,
           reconnecting: false,
           lastError: null,
           lastReconnectMs: ms,
           sampleCount: samples.length
-        });
+        }));
         return;
       }
       setNetState((prev) => ({ ...prev, reconnecting: false, lastError: null }));

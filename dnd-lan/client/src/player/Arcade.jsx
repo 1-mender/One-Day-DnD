@@ -517,7 +517,7 @@ export default function Arcade() {
             entryCost={Number(rules?.games?.match3?.entryCost || 0)}
             rewardRange={
               rules?.games?.match3
-                ? `${rules.games.match3.rewardMin}-${rules.games.match3.rewardMax} ??????????????`
+                ? `${rules.games.match3.rewardMin}-${rules.games.match3.rewardMax} tickets`
                 : "-"
             }
             mode={activeMode}
@@ -534,7 +534,7 @@ export default function Arcade() {
             entryCost={Number(rules?.games?.guess?.entryCost || 0)}
             rewardRange={
               rules?.games?.guess
-                ? `${rules.games.guess.rewardMin}-${rules.games.guess.rewardMax} ??????????????`
+                ? `${rules.games.guess.rewardMin}-${rules.games.guess.rewardMax} tickets`
                 : "-"
             }
             mode={activeMode}
@@ -551,7 +551,7 @@ export default function Arcade() {
             entryCost={Number(rules?.games?.ttt?.entryCost || 0)}
             rewardRange={
               rules?.games?.ttt
-                ? `${rules.games.ttt.rewardMin}-${rules.games.ttt.rewardMax} ??????????????`
+                ? `${rules.games.ttt.rewardMin}-${rules.games.ttt.rewardMax} tickets`
                 : "-"
             }
             mode={activeMode}
@@ -568,7 +568,7 @@ export default function Arcade() {
             entryCost={Number(rules?.games?.uno?.entryCost || 0)}
             rewardRange={
               rules?.games?.uno
-                ? `${rules.games.uno.rewardMin}-${rules.games.uno.rewardMax} ??????????????`
+                ? `${rules.games.uno.rewardMin}-${rules.games.uno.rewardMax} tickets`
                 : "-"
             }
             mode={activeMode}
@@ -585,7 +585,7 @@ export default function Arcade() {
             entryCost={Number(rules?.games?.scrabble?.entryCost || 0)}
             rewardRange={
               rules?.games?.scrabble
-                ? `${rules.games.scrabble.rewardMin}-${rules.games.scrabble.rewardMax} ??????????????`
+                ? `${rules.games.scrabble.rewardMin}-${rules.games.scrabble.rewardMax} tickets`
                 : "-"
             }
             mode={activeMode}
@@ -595,20 +595,22 @@ export default function Arcade() {
       ) : (
         <Modal
           open={!!activeGame}
-          title={activeGame ? `????: ${activeGame.title}` : ""}
+          title={activeGame ? `Game: ${activeGame.title}` : ""}
           onClose={closeGame}
         >
           <div className="list">
             <div className="small note-hint">
-              {activeRules ? `????: ${formatEntry(activeRules.entryCost)} ? ???????: ${activeRules.rewardMin}-${activeRules.rewardMax}` : "??????? ????????????"}
+              {activeRules
+                ? `Entry: ${formatEntry(activeRules.entryCost)} | Reward: ${activeRules.rewardMin}-${activeRules.rewardMax}`
+                : "Rules unavailable"}
             </div>
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>??????</button>
-              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>?????????</button>
+              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>Win</button>
+              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>Loss</button>
             </div>
             {outcome === "win" ? (
               <div className="list">
-                <div className="small">????? ??????????</div>
+                <div className="small">Performance:</div>
                 <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                   {perfOptions.map((opt) => (
                     <button
@@ -622,13 +624,13 @@ export default function Arcade() {
                 </div>
               </div>
             ) : (
-              <div className="small">????? ?? ????????? ??????? ?? ????.</div>
+              <div className="small">Loss applies entry cost and penalty.</div>
             )}
-            {playErr ? <div className="badge off">??????: {playErr}</div> : null}
+            {playErr ? <div className="badge off">Error: {playErr}</div> : null}
             <button className="btn" disabled={busy || readOnly} onClick={handlePlay}>
-              {busy ? "??????????..." : "????????? ?????"}
+              {busy ? "Submitting..." : "Submit result"}
             </button>
-            {readOnly ? <div className="small">????? read-only: ???????? ?????????.</div> : null}
+            {readOnly ? <div className="small">Read-only mode: actions are disabled.</div> : null}
           </div>
         </Modal>
       )}

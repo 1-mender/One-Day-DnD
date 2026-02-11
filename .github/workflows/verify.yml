@@ -13,6 +13,9 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: dnd-lan
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,9 +26,9 @@ jobs:
           node-version: 20.x
           cache: npm
           cache-dependency-path: |
-            package-lock.json
-            server/package-lock.json
-            client/package-lock.json
+            dnd-lan/package-lock.json
+            dnd-lan/server/package-lock.json
+            dnd-lan/client/package-lock.json
 
       - name: Install root dependencies
         run: npm ci
