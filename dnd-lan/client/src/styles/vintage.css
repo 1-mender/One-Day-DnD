@@ -1055,94 +1055,229 @@ a:hover{ color: #000; }
 .scrabble-overlay{
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,.45);
+  background:
+    radial-gradient(1200px 800px at 20% -20%, rgba(255,210,140,.2), transparent 58%),
+    radial-gradient(1200px 800px at 90% 120%, rgba(80,120,180,.16), transparent 62%),
+    rgba(7,6,5,.72);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 40;
+  padding: 16px;
+  backdrop-filter: blur(4px) saturate(110%);
 }
 
 .ttt-panel,
 .uno-panel,
 .scrabble-panel{
-  width: min(720px, 92vw);
-  background: #f8f2ea;
-  border: 2px solid #1f1f1f;
-  border-radius: 16px;
+  width: min(780px, 96vw);
+  max-height: 92vh;
+  overflow: auto;
+  border-radius: 22px;
   padding: 16px;
-  box-shadow: 0 18px 40px rgba(0,0,0,.3);
+  background:
+    var(--noise),
+    linear-gradient(180deg, rgba(255,255,255,.38), rgba(255,255,255,.04)),
+    linear-gradient(180deg, var(--paper), var(--paper2));
+  border: 1px solid rgba(98,74,42,.38);
+  box-shadow:
+    0 30px 54px rgba(0,0,0,.38),
+    inset 0 1px 0 rgba(255,255,255,.38);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: game-panel-pop .18s ease-out;
+}
+
+.ttt-head,
+.uno-head,
+.scrabble-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.ttt-title,
+.uno-title,
+.scrabble-title{
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 21px;
+  line-height: 1.15;
+}
+
+.ttt-panel .small,
+.uno-panel .small,
+.scrabble-panel .small{
+  line-height: 1.35;
+}
+
+.ttt-scoreboard,
+.uno-hud,
+.scrabble-hud{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.ttt-panel .hud-card,
+.uno-panel .hud-card,
+.scrabble-panel .hud-card{
+  border-radius: 14px;
+  padding: 9px 10px;
+  border: 1px solid rgba(70,55,30,.24);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.64), rgba(255,255,255,.24));
+  text-align: center;
 }
 
 .ttt-board{
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 12px 0;
+  gap: 10px;
+  margin: 4px 0;
+  padding: 10px;
+  border-radius: 18px;
+  border: 1px solid rgba(90,65,35,.22);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(255,255,255,.24), transparent 55%),
+    rgba(255,255,255,.2);
 }
 
 .ttt-cell{
   aspect-ratio: 1;
-  border: 2px solid #1f1f1f;
-  background: #fff8ef;
-  font-size: 28px;
-  font-weight: 700;
+  border: 1px solid rgba(40,30,20,.32);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.74), rgba(255,255,255,0) 45%),
+    linear-gradient(180deg, #fff6e8, #ecd8b9);
+  border-radius: 14px;
+  font-size: clamp(30px, 5vw, 42px);
+  font-weight: 900;
+  color: #2f2217;
+  box-shadow: 0 10px 16px rgba(0,0,0,.15);
+  transition: transform .14s ease, filter .14s ease, box-shadow .14s ease;
 }
 
-.ttt-scoreboard{
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 8px;
-  margin-top: 8px;
+.ttt-cell:not(:disabled):hover{
+  transform: translateY(-2px);
+  filter: brightness(1.03);
+  box-shadow: 0 14px 20px rgba(0,0,0,.2);
+}
+
+.ttt-cell:focus-visible{
+  outline: 2px solid rgba(241,182,89,.95);
+  outline-offset: 2px;
+}
+
+.ttt-cell.win-cell{
+  animation: ttt-win-pulse .65s ease-in-out infinite alternate;
+  box-shadow: 0 0 0 2px rgba(255,235,170,.7), 0 14px 20px rgba(0,0,0,.22);
 }
 
 .uno-top-card{
   display: flex;
   justify-content: center;
-  margin: 12px 0;
+  margin: 2px 0;
 }
 
 .uno-card{
-  width: 50px;
-  height: 70px;
-  border-radius: 10px;
-  border: 2px solid #1f1f1f;
+  width: clamp(52px, 8vw, 66px);
+  height: clamp(74px, 11vw, 94px);
+  border-radius: 12px;
+  border: 1px solid rgba(40,30,20,.38);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 1000;
+  font-size: clamp(18px, 2.3vw, 22px);
   background: #fff8ef;
-  transition: transform .2s ease;
+  color: #21160f;
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 8px 14px rgba(0,0,0,.16);
 }
 
 .uno-card.playable{
   transform: translateY(-4px);
-  box-shadow: 0 6px 12px rgba(0,0,0,.15);
+  box-shadow: 0 12px 18px rgba(0,0,0,.24);
 }
 
-.uno-card.red{ background: #ffb3b3; }
-.uno-card.green{ background: #b8e5c6; }
-.uno-card.blue{ background: #b3d4ff; }
-.uno-card.yellow{ background: #ffe9a8; }
+.uno-card.playable:hover{
+  transform: translateY(-6px) scale(1.03);
+  filter: brightness(1.04);
+}
+
+.uno-card:disabled{
+  opacity: .48;
+  filter: saturate(.55);
+  cursor: not-allowed;
+}
+
+.uno-card.red{ background: linear-gradient(180deg, #ffbebe, #eb8585); }
+.uno-card.green{ background: linear-gradient(180deg, #c5f0d1, #86c79c); }
+.uno-card.blue{ background: linear-gradient(180deg, #c1dbff, #84aee6); }
+.uno-card.yellow{ background: linear-gradient(180deg, #fff0ba, #e9c97f); }
 
 .uno-hand{
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  justify-content: center;
 }
 
 .scrabble-rack{
-  margin: 12px 0;
+  margin: 2px 0;
   padding: 10px;
-  border: 1px dashed rgba(0,0,0,.4);
-  border-radius: 12px;
-  letter-spacing: 4px;
-  font-weight: 700;
-  text-align: center;
+  border: 1px dashed rgba(84,62,38,.44);
+  border-radius: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  background: rgba(255,255,255,.22);
+}
+
+.scrabble-tile{
+  min-width: 34px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid rgba(60,44,25,.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  font-weight: 900;
+  font-size: 17px;
+  color: #2c2015;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.72), rgba(255,255,255,0) 48%),
+    linear-gradient(180deg, #f5e2bd, #dfc18a);
+  box-shadow: 0 7px 12px rgba(0,0,0,.12);
+}
+
+.scrabble-word-state{
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed rgba(80,58,34,.28);
+  background: rgba(255,255,255,.2);
+}
+
+.scrabble-word-state.ok{
+  border-style: solid;
+  border-color: rgba(57,128,67,.48);
+  background: linear-gradient(180deg, rgba(202,238,202,.82), rgba(178,221,183,.5));
+}
+
+.scrabble-word-state.bad{
+  border-style: solid;
+  border-color: rgba(150,68,56,.45);
+  background: linear-gradient(180deg, rgba(245,212,206,.9), rgba(233,179,171,.5));
 }
 
 .scrabble-input{
   display: flex;
   gap: 8px;
+  align-items: stretch;
 }
 
 .scrabble-input input{
@@ -1151,6 +1286,67 @@ a:hover{ color: #000; }
   border-radius: 10px;
   padding: 8px 10px;
   background: #fff;
+}
+
+.ttt-result,
+.uno-result,
+.scrabble-result{
+  margin-top: 4px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(70,55,30,.25);
+  background: rgba(255,255,255,.35);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.ttt-result.win,
+.uno-result.win,
+.scrabble-result.win{
+  background: var(--noise), linear-gradient(180deg,#d5f2d5,#b7e1bb);
+}
+
+.ttt-result.loss,
+.uno-result.loss,
+.scrabble-result.loss{
+  background: var(--noise), linear-gradient(180deg,#f2c1c1,#d89a9a);
+}
+
+.ttt-result-title,
+.uno-result-title,
+.scrabble-result-title{
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.arcade-game-hint{
+  text-align: center;
+  opacity: .8;
+}
+
+@keyframes game-panel-pop{
+  from{
+    opacity: 0;
+    transform: translateY(10px) scale(.985);
+  }
+  to{
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ttt-win-pulse{
+  from{
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  to{
+    transform: scale(1.04);
+    filter: brightness(1.08);
+  }
 }
 
 .match3-tile.blocked{
@@ -2333,6 +2529,7 @@ a:hover{ color: #000; }
   border: 1px solid rgba(70,55,30,.25);
   background: rgba(255,255,255,.25);
   box-shadow: inset 0 0 24px rgba(0,0,0,.12);
+  contain: layout paint;
 }
 .match3-board.shake{
   animation: board-shake .22s ease-in-out;
@@ -2347,6 +2544,11 @@ a:hover{ color: #000; }
   cursor: pointer;
   position: relative;
   transition: transform .12s ease, filter .12s ease;
+  will-change: transform, filter;
+}
+.match3-tile:not(:disabled):hover{
+  transform: translateY(-1px);
+  filter: brightness(1.04);
 }
 .match3-tile.selected{
   transform: scale(1.08);
@@ -2494,6 +2696,7 @@ a:hover{ color: #000; }
 .guess-grid{
   display:grid;
   gap: 10px;
+  contain: layout paint;
 }
 .guess-card{
   perspective: 900px;
@@ -2502,12 +2705,19 @@ a:hover{ color: #000; }
   padding: 0;
   cursor: pointer;
 }
+.guess-card[data-revealed="true"]{
+  cursor: default;
+}
 .guess-inner{
   position: relative;
   width: 100%;
   padding-top: 140%;
   transition: transform .4s ease;
   transform-style: preserve-3d;
+  will-change: transform;
+}
+.guess-card:not(.flipped):hover .guess-inner{
+  transform: translateY(-2px) rotateZ(.2deg);
 }
 .guess-card.flipped .guess-inner{
   transform: rotateY(180deg);
@@ -2523,6 +2733,7 @@ a:hover{ color: #000; }
   justify-content:center;
   font-weight: 900;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 6px 12px rgba(0,0,0,.18);
+  user-select: none;
 }
 .guess-face.front{
   background:
@@ -2583,6 +2794,32 @@ a:hover{ color: #000; }
 }
 
 @media (max-width: 520px){
+  .ttt-panel,
+  .uno-panel,
+  .scrabble-panel{
+    padding: 12px;
+  }
+  .ttt-board{
+    gap: 8px;
+    padding: 8px;
+  }
+  .uno-hand{
+    justify-content: flex-start;
+  }
+  .uno-card{
+    width: 50px;
+    height: 72px;
+  }
+  .scrabble-rack{
+    gap: 6px;
+    padding: 8px;
+  }
+  .scrabble-input{
+    flex-direction: column;
+  }
+  .scrabble-input .btn{
+    width: 100%;
+  }
   .match3-panel{
     padding: 12px;
   }
@@ -2787,6 +3024,14 @@ a:hover{ color: #000; }
   .page-enter{
     animation: none;
   }
+  .ttt-panel,
+  .uno-panel,
+  .scrabble-panel{
+    animation: none;
+  }
+  .ttt-cell.win-cell{
+    animation: none;
+  }
   .match3-board.shake{
     animation: none;
   }
@@ -2799,6 +3044,9 @@ a:hover{ color: #000; }
   }
   .guess-card.miss .guess-inner{
     animation: none;
+  }
+  .guess-card:not(.flipped):hover .guess-inner{
+    transform: none;
   }
 }
 

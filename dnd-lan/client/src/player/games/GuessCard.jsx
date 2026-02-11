@@ -83,6 +83,7 @@ export default function GuessCardGame({
   const [winAttempt, setWinAttempt] = useState(1);
   const [pickHistory, setPickHistory] = useState([]);
   const endAtRef = useRef(0);
+  const revealedSet = useMemo(() => new Set(revealed), [revealed]);
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
@@ -137,7 +138,7 @@ export default function GuessCardGame({
       if (left <= 0) {
         setStatus("loss");
       }
-    }, 200);
+    }, 300);
     return () => clearInterval(interval);
   }, [open, status]);
 
@@ -163,7 +164,7 @@ export default function GuessCardGame({
   }, [status, onSubmitResult, settling, result, winAttempt, pickHistory, seed, modeConfig]);
 
   function isRevealed(id) {
-    return revealed.includes(id);
+    return revealedSet.has(id);
   }
 
   function handlePick(card) {
@@ -257,6 +258,9 @@ export default function GuessCardGame({
             <div key={idx} className="guess-hint">{h}</div>
           ))}
         </div>
+        <div className="small arcade-game-hint">
+          Pick carefully: {Math.max(0, modeConfig.maxAttempts - attempt + 1)} attempt(s) left.
+        </div>
 
         <div
           className="guess-grid"
@@ -271,6 +275,8 @@ export default function GuessCardGame({
                 className={`guess-card${flipped ? " flipped" : ""}${missId === card.id ? " miss" : ""}`}
                 onClick={() => handlePick(card)}
                 disabled={busy || status !== "playing" || disabled || readOnly}
+                aria-label={`Card ${card.rank} ${SUIT_SYMBOLS[card.suit]}`}
+                data-revealed={flipped ? "true" : "false"}
               >
                 <div className="guess-inner">
                   <div className="guess-face front">?</div>

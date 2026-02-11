@@ -243,8 +243,10 @@ export default function Match3Game({
   const [result, setResult] = useState(null);
   const [settling, setSettling] = useState(false);
   const maxMatchRef = useRef(0);
+  const matchedSet = useMemo(() => new Set(matched), [matched]);
 
   const progress = Math.min(100, Math.round((score / config.target) * 100));
+  const targetLeft = Math.max(0, config.target - score);
 
   const resetGame = useCallback(() => {
     const next = createBoard(config);
@@ -418,6 +420,7 @@ export default function Match3Game({
         <div className="match3-progress">
           <div className="match3-progress-bar" style={{ width: `${progress}%` }} />
         </div>
+        <div className="small arcade-game-hint">Target remaining: {targetLeft}</div>
 
         <div
           className={`match3-board${shake ? " shake" : ""}`}
@@ -425,7 +428,7 @@ export default function Match3Game({
         >
           {board.map((tile, idx) => {
             const isSelected = selected === idx;
-            const isMatched = matched.includes(idx);
+            const isMatched = matchedSet.has(idx);
             return (
               <button
                 key={tile?.id || `empty_${idx}`}
@@ -433,6 +436,7 @@ export default function Match3Game({
                 className={`match3-tile ${tile?.color || "empty"}${tile?.blocked ? " blocked" : ""}${isSelected ? " selected" : ""}${isMatched ? " matched" : ""}`}
                 onClick={() => handleSelect(idx)}
                 disabled={busy || status !== "playing" || disabled || readOnly || tile?.blocked}
+                aria-label={`Tile ${idx + 1}${tile?.blocked ? " blocked" : ""}${tile?.color ? ` ${tile.color}` : ""}`}
               >
                 <span className="match3-gem" />
               </button>

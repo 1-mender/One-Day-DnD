@@ -19,6 +19,13 @@ function getWinner(board) {
   return null;
 }
 
+function getWinnerLine(board) {
+  for (const [a, b, c] of LINES) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return [a, b, c];
+  }
+  return null;
+}
+
 function findWinningMove(board, symbol) {
   for (const [a, b, c] of LINES) {
     const line = [board[a], board[b], board[c]];
@@ -67,7 +74,8 @@ export default function TicTacToeGame({
     : "бесплатно";
   const modeLabel = mode?.label || "Обычный";
 
-  const winner = useMemo(() => getWinner(board), [board]);
+  const winnerLine = useMemo(() => getWinnerLine(board), [board]);
+  const winner = useMemo(() => (winnerLine ? board[winnerLine[0]] : getWinner(board)), [board, winnerLine]);
   const isDraw = useMemo(() => board.every(Boolean) && !winner, [board, winner]);
 
   const resetRound = useCallback((nextPlayerWins, nextAiWins) => {
@@ -180,14 +188,16 @@ export default function TicTacToeGame({
             <button
               key={idx}
               type="button"
-              className={`ttt-cell ${cell ? "filled" : ""}`}
+              className={`ttt-cell ${cell ? "filled" : ""}${winnerLine?.includes(idx) ? " win-cell" : ""}`}
               onClick={() => handlePick(idx)}
               disabled={status !== "playing" || disabled || readOnly || !!cell}
+              aria-label={`Cell ${idx + 1}${cell ? ` ${cell}` : ""}`}
             >
               {cell || ""}
             </button>
           ))}
         </div>
+        <div className="small arcade-game-hint">Tap any free cell. Win {roundsToWin} rounds before AI.</div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Read-only: действия отключены</div> : null}

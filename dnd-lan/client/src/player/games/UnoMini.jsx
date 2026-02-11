@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { makeProof } from "../../lib/gameProof.js";
 
 const COLORS = ["red", "green", "blue", "yellow"];
@@ -39,6 +39,15 @@ export default function UnoMiniGame({
   const [settling, setSettling] = useState(false);
   const [result, setResult] = useState(null);
   const [apiErr, setApiErr] = useState("");
+
+  const playableByIndex = useMemo(
+    () => playerHand.map((card) => canPlay(card, topCard)),
+    [playerHand, topCard]
+  );
+  const playableCount = useMemo(
+    () => playableByIndex.reduce((acc, canUse) => acc + (canUse ? 1 : 0), 0),
+    [playableByIndex]
+  );
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
@@ -158,7 +167,7 @@ export default function UnoMiniGame({
         </div>
 
         <div className="uno-top-card">
-          <span className={`uno-card ${topCard?.color || ""}`}>{topCard?.value || "?"}</span>
+          <span className={`uno-card ${topCard?.color || ""}`} title="Top card">{topCard?.value || "?"}</span>
         </div>
 
         <div className="uno-hand">
@@ -166,14 +175,18 @@ export default function UnoMiniGame({
             <button
               key={`${card.color}-${card.value}-${idx}`}
               type="button"
-              className={`uno-card ${card.color}${canPlay(card, topCard) ? " playable" : ""}`}
+              className={`uno-card ${card.color}${playableByIndex[idx] ? " playable" : ""}`}
               onClick={() => handlePlay(card, idx)}
-              disabled={!canPlay(card, topCard) || disabled || readOnly}
+              disabled={!playableByIndex[idx] || disabled || readOnly}
+              title={playableByIndex[idx] ? "Playable card" : "Card does not match top card"}
+              aria-label={`Card ${card.color} ${card.value}`}
             >
               {card.value}
             </button>
           ))}
         </div>
+
+        <div className="small arcade-game-hint">Playable cards: {playableCount}. Draw if you cannot play.</div>
 
         <div className="row" style={{ gap: 8, marginTop: 8 }}>
           <button className="btn secondary" onClick={handleDraw} disabled={disabled || readOnly}>

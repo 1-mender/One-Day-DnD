@@ -16,6 +16,17 @@ function normalizeWord(word) {
   return String(word || "").trim().toUpperCase();
 }
 
+function canFormWordFromRack(normalizedWord, rack) {
+  if (normalizedWord.length < 3) return false;
+  const letters = rack.slice();
+  for (const ch of normalizedWord) {
+    const idx = letters.indexOf(ch);
+    if (idx === -1) return false;
+    letters.splice(idx, 1);
+  }
+  return true;
+}
+
 export default function ScrabbleBlitzGame({
   open,
   onClose,
@@ -42,7 +53,8 @@ export default function ScrabbleBlitzGame({
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
 
-  const available = useMemo(() => rack.join(" "), [rack]);
+  const normalizedWord = useMemo(() => normalizeWord(word), [word]);
+  const isWordPlayable = useMemo(() => canFormWordFromRack(normalizedWord, rack), [normalizedWord, rack]);
 
   const resetGame = useCallback(() => {
     setRack(pickLetters(rackSize));
@@ -66,7 +78,7 @@ export default function ScrabbleBlitzGame({
       const left = Math.max(0, (endAtRef.current - Date.now()) / 1000);
       setTimeLeft(left);
       if (left <= 0) setStatus("loss");
-    }, 200);
+    }, 300);
     return () => clearInterval(interval);
   }, [open, status]);
 
@@ -88,21 +100,9 @@ export default function ScrabbleBlitzGame({
       .finally(() => setSettling(false));
   }, [status, onSubmitResult, settling, result, word, rack]);
 
-  function canFormWord(normalized) {
-    if (normalized.length < 3) return false;
-    const letters = rack.slice();
-    for (const ch of normalized) {
-      const idx = letters.indexOf(ch);
-      if (idx === -1) return false;
-      letters.splice(idx, 1);
-    }
-    return true;
-  }
-
   function handleSubmit() {
     if (status !== "playing" || disabled || readOnly) return;
-    const normalized = normalizeWord(word);
-    if (!canFormWord(normalized)) {
+    if (!isWordPlayable) {
       setStatus("loss");
       return;
     }
@@ -133,7 +133,16 @@ export default function ScrabbleBlitzGame({
           </div>
         </div>
 
-        <div className="scrabble-rack">{available}</div>
+        <div className="scrabble-rack" role="list" aria-label="Letter rack">
+          {rack.map((letter, idx) => (
+            <span key={`${letter}-${idx}`} className="scrabble-tile" role="listitem">{letter}</span>
+          ))}
+        </div>
+        <div className={`small scrabble-word-state ${normalizedWord ? (isWordPlayable ? "ok" : "bad") : ""}`}>
+          {normalizedWord
+            ? (isWordPlayable ? "Valid composition" : "Word must use rack letters and be at least 3 chars")
+            : "Compose a word from your rack"}
+        </div>
 
         <div className="scrabble-input">
           <input
@@ -143,7 +152,7 @@ export default function ScrabbleBlitzGame({
             placeholder="Введи слово"
             disabled={disabled || readOnly || status !== "playing"}
           />
-          <button className="btn" onClick={handleSubmit} disabled={disabled || readOnly || status !== "playing"}>
+          <button className="btn" onClick={handleSubmit} disabled={disabled || readOnly || status !== "playing" || !normalizedWord}>
             Проверить
           </button>
         </div>
