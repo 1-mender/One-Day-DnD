@@ -203,8 +203,8 @@ export default function DMPlayers() {
     <div className="two-pane" data-detail={selectedPlayer ? "1" : "0"}>
       <div className="pane pane-list">
         <div className="card taped">
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Players</div>
-          <div className="small">Quick view of player status and actions</div>
+          <div style={{ fontWeight: 900, fontSize: 20 }}>Игроки</div>
+          <div className="small">Быстрый обзор статусов и действий</div>
           <hr />
           {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
           <ErrorBanner message={err} onRetry={loadAll} />
@@ -212,11 +212,11 @@ export default function DMPlayers() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search players..."
+              placeholder="Поиск игрока..."
               style={{ width: "min(360px, 100%)" }}
             />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
-              <option value="all">Status: all</option>
+              <option value="all">Статус: все</option>
               <option value="online">Online</option>
               <option value="idle">Idle</option>
               <option value="offline">Offline</option>
@@ -234,12 +234,12 @@ export default function DMPlayers() {
                 menu={(
                   <ActionMenu
                     items={[
-                      { label: "Open profile", onClick: () => openProfile(p.id) },
-                      { label: "Tickets", onClick: () => openTickets(p), disabled: readOnly },
-                      { label: "Edit name", onClick: () => startEdit(p), disabled: readOnly },
-                      { label: "View as player", onClick: () => viewAs(p.id), disabled: readOnly },
+                      { label: "Открыть профиль", onClick: () => openProfile(p.id) },
+                      { label: "Билеты", onClick: () => openTickets(p), disabled: readOnly },
+                      { label: "Изменить имя", onClick: () => startEdit(p), disabled: readOnly },
+                      { label: "Как игрок", onClick: () => viewAs(p.id), disabled: readOnly },
                       { label: "Kick", onClick: () => kickPlayer(p.id), disabled: readOnly, tone: "danger" },
-                      { label: "Delete", onClick: () => removePlayer(p), disabled: readOnly, tone: "danger" }
+                      { label: "Удалить", onClick: () => removePlayer(p), disabled: readOnly, tone: "danger" }
                     ]}
                   />
                 )}
@@ -250,7 +250,7 @@ export default function DMPlayers() {
       </div>
 
       <div className="pane pane-detail">
-        <div className="card taped">
+        <div className="card taped pane-sticky">
           {selectedPlayer ? (
             <>
               <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -261,26 +261,26 @@ export default function DMPlayers() {
                   </div>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
-                  <button className="btn secondary" onClick={() => selectPlayer(0)}>Back to list</button>
-                  <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>Open profile</button>
+                  <button className="btn secondary" onClick={() => selectPlayer(0)}>Назад к списку</button>
+                  <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>Открыть профиль</button>
                 </div>
               </div>
               <hr />
               <div className="row" style={{ flexWrap: "wrap" }}>
                 <PlayerStatusPill status={selectedPlayer.status} />
-                <span className="badge">Tickets: {selectedPlayer.ticketBalance ?? 0}</span>
-                <span className="badge secondary">Streak: {selectedPlayer.ticketStreak ?? 0}</span>
+                <span className="badge">Билеты: {selectedPlayer.ticketBalance ?? 0}</span>
+                <span className="badge secondary">Серия: {selectedPlayer.ticketStreak ?? 0}</span>
               </div>
               <div className="list" style={{ marginTop: 12 }}>
-                <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>Tickets</button>
-                <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>Edit name</button>
-                <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>View as player</button>
+                <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>Билеты</button>
+                <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>Изменить имя</button>
+                <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>Как игрок</button>
                 <button className="btn danger" onClick={() => kickPlayer(selectedPlayer.id)} disabled={readOnly}>Kick</button>
-                <button className="btn danger" onClick={() => removePlayer(selectedPlayer)} disabled={readOnly}>Delete</button>
+                <button className="btn danger" onClick={() => removePlayer(selectedPlayer)} disabled={readOnly}>Удалить</button>
               </div>
             </>
           ) : (
-            <div className="small">Select a player to see details.</div>
+            <div className="small">Выберите игрока, чтобы увидеть детали.</div>
           )}
         </div>
       </div>

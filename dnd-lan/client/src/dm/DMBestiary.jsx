@@ -93,6 +93,27 @@ export default function DMBestiary() {
     };
   }, [load, socket]);
 
+  const selectedId = Number(selectedIdParam || 0);
+  const selected = useMemo(() => items.find((m) => m.id === selectedId) || null, [items, selectedId]);
+
+  const filtered = useMemo(() => {
+    const qq = String(q || "").toLowerCase().trim();
+    return items.filter((m) => {
+      if (vis === "hidden" && !m.is_hidden) return false;
+      if (vis === "public" && m.is_hidden) return false;
+      if (!qq) return true;
+      const hay = [
+        m.name,
+        m.type,
+        m.habitat,
+        m.cr,
+        m.description,
+        Array.isArray(m.abilities) ? m.abilities.join(" ") : ""
+      ].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(qq);
+    });
+  }, [items, q, vis]);
+
   const loadImages = useCallback(async (monsterId) => {
     try {
       const r = await api.dmBestiaryImages(monsterId);
@@ -102,6 +123,11 @@ export default function DMBestiary() {
       setErr(formatError(e));
     }
   }, []);
+
+  function selectMonster(id) {
+    if (!id) setSelectedIdParam("");
+    else setSelectedIdParam(String(id));
+  }
 
   function startNew() {
     if (readOnly) return;
@@ -276,99 +302,176 @@ export default function DMBestiary() {
     await runDryRun(file);
   }
 
-  const bestiaryRows = useMemo(() => items.map((m) => (
-    <BestiaryRow key={m.id} item={m} onEdit={startEdit} onDelete={del} />
-  )), [items, startEdit, del]);
-
   return (
-    <div className="spread-grid">
-      <div className="spread-col">
-        <div className="card taped scrap-card paper-stack">
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Bestiary (DM)</div>
-          <div className="small">Список существ и доступ для игроков</div>
-          <hr />
-          {err && <div className="badge off">Ошибка: {err}</div>}
-          <div className="list">
-            {bestiaryRows}
-          </div>
-          {nextCursor && (
-            <div className="row" style={{ marginTop: 10 }}>
-              <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
-                {loadingMore ? "Загрузка..." : "Показать ещё"}
-              </button>
+    <>
+      <div className="two-pane" data-detail={selected ? "1" : "0"}>
+        <div className="pane pane-list">
+          <div className="card taped scrap-card paper-stack">
+            <div style={{ fontWeight: 900, fontSize: 20 }}>Bestiary (DM)</div>
+            <div className="small">Каталог существ и общий лор</div>
+            <hr />
+            {err && <div className="badge off">Ошибка: {err}</div>}
+            <div className="row" style={{ flexWrap: "wrap" }}>
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Поиск..."
+                style={{ width: "min(360px, 100%)" }}
+              />
+              <select value={vis} onChange={(e) => setVis(e.target.value)} style={{ width: 180 }}>
+                <option value="">Видимость: все</option>
+                <option value="public">Публичные</option>
+                <option value="hidden">Скрытые</option>
+              </select>
+              <span className={`badge ${enabled ? "ok" : "off"}`}>
+                {enabled ? "Видно игрокам" : "Скрыто для игроков"}
+              </span>
+              <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="spread-col">
-        <div className="card taped scrap-card">
-          <div style={{ fontWeight: 800 }}>Управление</div>
-          <div className="small">Экспорт / импорт / глобальная видимость</div>
-          <hr />
-          <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <button className="btn secondary" onClick={toggleEnabled} disabled={readOnly}>
-              {enabled ? "Выключить для игроков" : "Включить для игроков"}
-            </button>
-            <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
-          </div>
-
-          <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
-            <button className="btn secondary" onClick={doExport} disabled={portBusy}>Export JSON</button>
-            <input
-              ref={importRef}
-              type="file"
-              accept="application/json,.json"
-              style={{ display: "none" }}
-              onChange={onPickImport}
-            />
-            <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Import JSON (dry-run)</button>
-            <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-              <option value="merge">merge</option>
-              <option value="replace">replace</option>
-            </select>
-            <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-              <option value="name">match: name</option>
-              <option value="id">match: id</option>
-            </select>
-            <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-              <option value="update">при совпадении: обновлять</option>
-              <option value="skip">при совпадении: не трогать (skip)</option>
-            </select>
-            <label className="row" style={{ gap: 6, alignItems: "center" }}>
-              <input type="checkbox" checked={portImagesMeta} onChange={(e) => setPortImagesMeta(e.target.checked)} />
-              <span className="small">импортировать метаданные картинок</span>
-            </label>
-          </div>
-          {portErr && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {portErr}</div>}
-          {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
-          {portPlan && (
-            <div className="card taped" style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 900 }}>Dry-run план</div>
-              <div className="small" style={{ marginTop: 6 }}>
-                mode={portPlan.mode}, match={portPlan.match}, onExisting={portPlan.onExisting}, imagesMeta={String(portPlan.imagesMeta)}
-              </div>
-              <div style={{ marginTop: 8 }}>
-                <b>created:</b> {portPlan.created} &nbsp; <b>updated:</b> {portPlan.updated} &nbsp; <b>skipped:</b> {portPlan.skipped}
-                {portPlan.mode === "replace" && <span> &nbsp; • <b>удалит существующих:</b> {portPlan.willDelete}</span>}
-              </div>
-              {Array.isArray(portPlan.warnings) && portPlan.warnings.length > 0 && (
-                <div className="badge warn" style={{ display: "block", marginTop: 10 }}>
-                  {portPlan.warnings.slice(0, 3).join(" • ")}
+            <div className="list" style={{ marginTop: 12 }}>
+              {filtered.map((m) => (
+                <div
+                  key={m.id}
+                  className={`item taped${selected?.id === m.id ? " selected" : ""}`}
+                  style={{ alignItems: "stretch" }}
+                  onClick={() => selectMonster(m.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      selectMonster(m.id);
+                    }
+                  }}
+                >
+                  <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="MON" />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 800 }}>
+                      {m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}
+                    </div>
+                    <div className="small">{m.type || "-"} • CR: {m.cr || "-"}</div>
+                    {m.habitat ? <div className="small">Среда: {m.habitat}</div> : null}
+                  </div>
+                  <ActionMenu
+                    items={[
+                      { label: "Редактировать", onClick: () => startEdit(m), disabled: readOnly },
+                      { label: "Удалить", onClick: () => del(m.id), disabled: readOnly, tone: "danger" }
+                    ]}
+                  />
                 </div>
-              )}
-              <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-                <button className="btn" onClick={applyImport} disabled={readOnly || portBusy || !portPendingFile}>Применить</button>
-                <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={readOnly || portBusy || !portPendingFile}>Пересчитать</button>
-                <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
-              </div>
-              <div className="small" style={{ marginTop: 8 }}>
-                Примеры: created={portPlan.samples?.created?.slice(0,5)?.join(", ") || "—"}<br />
-                updated={portPlan.samples?.updated?.slice(0,5)?.join(", ") || "—"}<br />
-                skipped={portPlan.samples?.skipped?.slice(0,5)?.join(", ") || "—"}
-              </div>
+              ))}
             </div>
-          )}
+            {nextCursor ? (
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
+                  {loadingMore ? "Загрузка..." : "Показать еще"}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="pane pane-detail">
+          <div className="card taped scrap-card pane-sticky">
+            {selected ? (
+              <>
+                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 900, fontSize: 20 }}>{selected.name}</div>
+                    <div className="small">{selected.type || "-"} • CR: {selected.cr || "-"}</div>
+                  </div>
+                  <div className="row" style={{ gap: 8 }}>
+                    <button className="btn secondary" onClick={() => selectMonster(0)}>Назад к списку</button>
+                    <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>Редактировать</button>
+                  </div>
+                </div>
+                <hr />
+                <div className="row" style={{ flexWrap: "wrap" }}>
+                  {selected.habitat ? <span className="badge secondary">Среда: {selected.habitat}</span> : null}
+                  <span className={`badge ${selected.is_hidden ? "off" : "ok"}`}>
+                    {selected.is_hidden ? "Скрыт" : "Публичный"}
+                  </span>
+                </div>
+                {selected.description ? (
+                  <div style={{ marginTop: 12 }}>
+                    <MarkdownView source={selected.description} />
+                  </div>
+                ) : null}
+                {Array.isArray(selected.abilities) && selected.abilities.length ? (
+                  <div className="paper-note" style={{ marginTop: 12 }}>
+                    <div className="title">Способности</div>
+                    <div className="small" style={{ whiteSpace: "pre-wrap" }}>{selected.abilities.join("\n")}</div>
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <div className="small">Выберите монстра, чтобы увидеть детали.</div>
+            )}
+          </div>
+
+          <div className="card taped scrap-card" style={{ marginTop: 12 }}>
+            <div style={{ fontWeight: 800 }}>Управление</div>
+            <div className="small">Экспорт / импорт / видимость</div>
+            <hr />
+            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <button className="btn secondary" onClick={toggleEnabled} disabled={readOnly}>
+                {enabled ? "Скрыть от игроков" : "Показать игрокам"}
+              </button>
+              <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
+            </div>
+
+            <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+              <button className="btn secondary" onClick={doExport} disabled={portBusy}>Export JSON</button>
+              <input
+                ref={importRef}
+                type="file"
+                accept="application/json,.json"
+                style={{ display: "none" }}
+                onChange={onPickImport}
+              />
+              <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Import JSON (dry-run)</button>
+              <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+                <option value="merge">merge</option>
+                <option value="replace">replace</option>
+              </select>
+              <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+                <option value="name">match: name</option>
+                <option value="id">match: id</option>
+              </select>
+              <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+                <option value="update">при совпадении: обновлять</option>
+                <option value="skip">при совпадении: пропустить</option>
+              </select>
+              <label className="row" style={{ gap: 6, alignItems: "center" }}>
+                <input type="checkbox" checked={portImagesMeta} onChange={(e) => setPortImagesMeta(e.target.checked)} />
+                <span className="small">импортировать метаданные картинок</span>
+              </label>
+            </div>
+            {portErr && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {portErr}</div>}
+            {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
+            {portPlan && (
+              <div className="card taped" style={{ marginTop: 12 }}>
+                <div style={{ fontWeight: 900 }}>Dry-run план</div>
+                <div className="small" style={{ marginTop: 6 }}>
+                  mode={portPlan.mode}, match={portPlan.match}, onExisting={portPlan.onExisting}, imagesMeta={String(portPlan.imagesMeta)}
+                </div>
+                <div style={{ marginTop: 8 }}>
+                  <b>created:</b> {portPlan.created} &nbsp; <b>updated:</b> {portPlan.updated} &nbsp; <b>skipped:</b> {portPlan.skipped}
+                  {portPlan.mode === "replace" && <span> &nbsp; • <b>удалит существующих:</b> {portPlan.willDelete}</span>}
+                </div>
+                {Array.isArray(portPlan.warnings) && portPlan.warnings.length > 0 && (
+                  <div className="badge warn" style={{ display: "block", marginTop: 10 }}>
+                    {portPlan.warnings.slice(0, 3).join(" • ")}
+                  </div>
+                )}
+                <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <button className="btn" onClick={applyImport} disabled={readOnly || portBusy || !portPendingFile}>Применить</button>
+                  <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={readOnly || portBusy || !portPendingFile}>Пересчитать</button>
+                  <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -416,25 +519,7 @@ export default function DMBestiary() {
           </div>
         </div>
       </Modal>
-    </div>
+    </>
   );
 }
 const inp = { width: "100%" };
-
-const BestiaryRow = React.memo(function BestiaryRow({ item, onEdit, onDelete }) {
-  return (
-    <div className="item taped" style={{ alignItems: "stretch", contentVisibility: "auto", containIntrinsicSize: "160px" }}>
-      <PolaroidFrame src={item.images?.[0]?.url} alt={item.name} fallback="МОН" />
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 800 }}>
-          {item.name} {item.is_hidden ? <span className="badge off">hidden</span> : null}
-        </div>
-        <div className="small">{item.type || "—"} • CR: {item.cr || "—"}</div>
-      </div>
-      <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
-        <button className="btn secondary" onClick={() => onEdit(item)}>Ред.</button>
-        <button className="btn danger" onClick={() => onDelete(item.id)}>Удал.</button>
-      </div>
-    </div>
-  );
-});

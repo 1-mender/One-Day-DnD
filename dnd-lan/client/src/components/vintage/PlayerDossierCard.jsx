@@ -68,16 +68,16 @@ export default function PlayerDossierCard({
 
         <div className="dossier-head">
           <div className="dossier-name">
-          <span>{player.displayName}</span>
-          {player.inventoryOverLimit ? (
-            <span
-              className="dossier-overweight"
-              title={`Перегруз • Вес: ${weightLabel}`}
-              aria-label={`Перегруз • Вес: ${weightLabel}`}
-            >
-              <Scale className="icon" aria-hidden="true" />
-            </span>
-          ) : null}
+            <span>{player.displayName}</span>
+            {player.inventoryOverLimit ? (
+              <span
+                className="dossier-overweight"
+                title={`Перегруз • Вес: ${weightLabel}`}
+                aria-label={`Перегруз • Вес: ${weightLabel}`}
+              >
+                <Scale className="icon" aria-hidden="true" />
+              </span>
+            ) : null}
           </div>
           {menu ? <div className="dossier-menu">{menu}</div> : null}
         </div>

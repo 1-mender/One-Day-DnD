@@ -12,7 +12,8 @@ export default function BottomNav({ items = [] }) {
             to={it.to}
             className={({ isActive }) => "bottom-nav-link" + (isActive ? " active" : "")}
           >
-            {it.label}
+            {it.icon ? <it.icon className="icon nav-icon" aria-hidden="true" /> : null}
+            <span>{it.label}</span>
           </NavLink>
         ))}
       </div>

@@ -172,27 +172,27 @@ export default function DMInfoBlocks() {
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div>
                 <div style={{ fontWeight: 900, fontSize: 20 }}>Info Blocks (DM)</div>
-                <div className="small">Access: DM-only / All / Selected players</div>
+                <div className="small">Доступ: только DM / все / выбранные</div>
               </div>
-              <button className="btn" onClick={startNew} disabled={readOnly}>+ Add</button>
+              <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
             </div>
             <hr />
             {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
-            {err && <div className="badge off">Error: {err}</div>}
+            {err && <div className="badge off">Ошибка: {err}</div>}
             <div className="row" style={{ flexWrap: "wrap" }}>
-              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Search..." style={{ width: "min(420px, 100%)" }} />
+              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." style={{ width: "min(420px, 100%)" }} />
               <select value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 160 }}>
-                <option value="">Category: all</option>
+                <option value="">Категория: все</option>
                 <option value="lore">lore</option>
                 <option value="quest">quest</option>
                 <option value="note">note</option>
                 <option value="other">other</option>
               </select>
               <select value={acc} onChange={(e) => setAcc(e.target.value)} style={{ width: 180 }}>
-                <option value="">Access: all</option>
-                <option value="dm">DM-only</option>
-                <option value="all">All players</option>
-                <option value="selected">Selected players</option>
+                <option value="">Доступ: все</option>
+                <option value="dm">Только DM</option>
+                <option value="all">Все игроки</option>
+                <option value="selected">Выбранные</option>
               </select>
             </div>
             <div className="list" style={{ marginTop: 12 }}>
@@ -220,11 +220,11 @@ export default function DMInfoBlocks() {
                   </div>
                   <ActionMenu
                     items={[
-                      { label: "Edit", onClick: () => startEdit(b), disabled: readOnly },
-                      { label: "Delete", onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
-                      { label: "Show to all", onClick: () => setAccess(b, "all"), disabled: readOnly },
-                      { label: "DM only", onClick: () => setAccess(b, "dm"), disabled: readOnly },
-                      { label: "Selected players", onClick: () => setAccess(b, "selected"), disabled: readOnly }
+                      { label: "Редактировать", onClick: () => startEdit(b), disabled: readOnly },
+                      { label: "Удалить", onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
+                      { label: "Показать всем", onClick: () => setAccess(b, "all"), disabled: readOnly },
+                      { label: "Только DM", onClick: () => setAccess(b, "dm"), disabled: readOnly },
+                      { label: "Выбранным", onClick: () => setAccess(b, "selected"), disabled: readOnly }
                     ]}
                   />
                 </div>
@@ -234,7 +234,7 @@ export default function DMInfoBlocks() {
         </div>
 
         <div className="pane pane-detail">
-          <div className="card taped scrap-card">
+          <div className="card taped scrap-card pane-sticky">
             {selected ? (
               <>
                 <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
@@ -243,8 +243,8 @@ export default function DMInfoBlocks() {
                     <div className="small">{selected.category} - {selected.access}</div>
                   </div>
                   <div className="row" style={{ gap: 8 }}>
-                    <button className="btn secondary" onClick={() => selectBlock(0)}>Back to list</button>
-                    <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>Edit</button>
+                    <button className="btn secondary" onClick={() => selectBlock(0)}>Назад к списку</button>
+                    <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>Редактировать</button>
                   </div>
                 </div>
                 <hr />
@@ -255,25 +255,25 @@ export default function DMInfoBlocks() {
                 </div>
                 {selected.access === "selected" ? (
                   <div className="small" style={{ marginTop: 8 }}>
-                    Visible to: {(selected.selectedPlayerIds || []).map((id) => playerMap.get(id) || `#${id}`).join(", ") || "-"}
+                    Видят: {(selected.selectedPlayerIds || []).map((id) => playerMap.get(id) || `#${id}`).join(", ") || "-"}
                   </div>
                 ) : null}
                 <div style={{ marginTop: 12 }}>
                   <MarkdownView source={selected.content || ""} />
                 </div>
                 <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 12 }}>
-                  <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>Show to all</button>
-                  <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>DM only</button>
-                  <button className="btn secondary" onClick={() => setAccess(selected, "selected")} disabled={readOnly}>Selected players</button>
-                  <button className="btn danger" onClick={() => del(selected.id)} disabled={readOnly}>Delete</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>Показать всем</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>Только DM</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "selected")} disabled={readOnly}>Выбранным</button>
+                  <button className="btn danger" onClick={() => del(selected.id)} disabled={readOnly}>Удалить</button>
                 </div>
               </>
             ) : (
               <>
-                <div className="small">Select a block to see details.</div>
+                <div className="small">Выберите блок, чтобы увидеть детали.</div>
                 <div className="paper-note" style={{ marginTop: 10 }}>
-                  <div className="title">Hint</div>
-                  <div className="small">Markdown supported for text and images.</div>
+                  <div className="title">Подсказка</div>
+                  <div className="small">Markdown поддерживается для текста и изображений.</div>
                 </div>
               </>
             )}

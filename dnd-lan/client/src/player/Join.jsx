@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, storage } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
+import QRCodeCard from "../components/QRCodeCard.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useReadOnly } from "../hooks/useReadOnly.js";
@@ -35,6 +36,8 @@ export default function Join() {
       setErr(formatError(e2));
     }
   }
+
+  const joinUrl = info?.urls?.[0] || "http://<LAN-IP>:3000";
 
   return (
     <VintageShell layout="spread">
@@ -95,6 +98,8 @@ export default function Join() {
                 <div className="small">Если не открывается — проверьте Wi‑Fi сеть и повторите.</div>
               </div>
             </div>
+
+            <QRCodeCard url={joinUrl} className="scrap-card paper-stack" />
           </div>
         </div>
       </div>

@@ -27,7 +27,10 @@ export default function ActionMenu({ items = [], align = "right", label = "Actio
       <button
         type="button"
         className="btn secondary icon-btn action-menu-btn"
-        onClick={() => setOpen((v) => !v)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
         aria-haspopup="menu"
         aria-expanded={open ? "true" : "false"}
         aria-label={label}
@@ -46,7 +49,8 @@ export default function ActionMenu({ items = [], align = "right", label = "Actio
                 type="button"
                 role="menuitem"
                 className={`action-menu-item${tone}`.trim()}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   if (item.disabled) return;
                   setOpen(false);
                   item.onClick?.();

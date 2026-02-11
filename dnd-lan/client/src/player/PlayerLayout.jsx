@@ -7,6 +7,7 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { Backpack, BookOpen, Gamepad2, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
 
 export default function PlayerLayout() {
   const nav = useNavigate();
@@ -197,14 +198,14 @@ export default function PlayerLayout() {
   }
 
   const items = [
-    { to: "/app/players", label: "Players" },
-    { to: "/app/profile", label: "Profile" },
-    { to: "/app/inventory", label: "Inventory" },
-    { to: "/app/notes", label: "Notes" },
-    { to: "/app/arcade", label: "Fish" },
-    { to: "/app/shop", label: "DJO" },
+    { to: "/app/players", label: "Игроки", icon: Users },
+    { to: "/app/profile", label: "Профиль", icon: UserRound },
+    { to: "/app/inventory", label: "Инвентарь", icon: Backpack },
+    { to: "/app/notes", label: "Заметки", icon: StickyNote },
+    { to: "/app/arcade", label: "Аркада", icon: Gamepad2 },
+    { to: "/app/shop", label: "Магазин", icon: ShoppingBag },
   ];
-  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Bestiary" });
+  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Бестиарий", icon: BookOpen });
 
   return (
     <div>
