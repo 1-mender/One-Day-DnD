@@ -143,3 +143,60 @@ test("issued seed/proof token is one-time", async () => {
   assert.equal(second.res.status, 400);
   assert.equal(second.data.error, "invalid_seed");
 });
+
+test("match3 win rejects payload with score below target", async () => {
+  const playerId = createPlayer("Match3-Invalid");
+  const token = createSession(playerId);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=match3", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "match3",
+      outcome: "win",
+      performance: "normal",
+      payload: {
+        score: 10,
+        target: 120,
+        size: 6,
+        maxRun: 3,
+        movesUsed: 12
+      },
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "invalid_proof");
+});
+
+test("scrabble rare performance requires rare letter in word", async () => {
+  const playerId = createPlayer("Scrabble-Rare");
+  const token = createSession(playerId);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=scrabble", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "scrabble",
+      outcome: "win",
+      performance: "rare",
+      payload: {
+        word: "\u0410\u0411\u0412",
+        rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
+      },
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "invalid_proof");
+});

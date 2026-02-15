@@ -16,6 +16,7 @@ const ARCADE_HISTORY_LIMIT = Number(process.env.ARCADE_HISTORY_LIMIT || 20);
 const ARCADE_QUEUE_ETA_SEC = Number(process.env.ARCADE_QUEUE_ETA_SEC || 12);
 const ARCADE_METRICS_DAYS = Number(process.env.ARCADE_METRICS_DAYS || 7);
 const issuedSeeds = new Map();
+const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
 
 validateGameCatalog();
 
@@ -252,6 +253,74 @@ function validateTttPayload(payload) {
   if (payload.outcome === "win") return winnerSymbol === playerSymbol;
   if (payload.outcome === "loss") return hasWinner && winnerSymbol !== playerSymbol;
   return false;
+}
+
+function intInRange(value, min, max) {
+  return Number.isInteger(value) && value >= min && value <= max;
+}
+
+function normalizeScrabbleWord(word) {
+  return String(word || "").trim().toUpperCase();
+}
+
+function canFormScrabbleWord(word, rack) {
+  if (word.length < 3) return false;
+  const letters = rack.slice();
+  for (const ch of word) {
+    const idx = letters.indexOf(ch);
+    if (idx === -1) return false;
+    letters.splice(idx, 1);
+  }
+  return true;
+}
+
+function validateMatch3Payload(payload, outcome, performanceKey) {
+  const score = Number(payload?.score);
+  const target = Number(payload?.target);
+  const size = Number(payload?.size);
+  const maxRun = Number(payload?.maxRun);
+  const movesUsed = Number(payload?.movesUsed);
+
+  if (!intInRange(Math.floor(score), 0, 50000) || score !== Math.floor(score)) return false;
+  if (!intInRange(Math.floor(target), 60, 500) || target !== Math.floor(target)) return false;
+  if (!intInRange(Math.floor(size), 4, 8) || size !== Math.floor(size)) return false;
+  if (!intInRange(Math.floor(maxRun), 0, 8) || maxRun !== Math.floor(maxRun)) return false;
+  if (!intInRange(Math.floor(movesUsed), 0, 60) || movesUsed !== Math.floor(movesUsed)) return false;
+
+  if (outcome === "win" && score < target) return false;
+  if (outcome === "loss" && score >= target) return false;
+  if (performanceKey === "combo5" && maxRun < 5) return false;
+  if (performanceKey === "combo4" && maxRun < 4) return false;
+  return true;
+}
+
+function validateUnoPayload(payload, outcome, performanceKey) {
+  const playerDraws = Number(payload?.playerDraws);
+  const handSize = Number(payload?.handSize);
+  if (!intInRange(Math.floor(playerDraws), 0, 60) || playerDraws !== Math.floor(playerDraws)) return false;
+  if (!intInRange(Math.floor(handSize), 1, 20) || handSize !== Math.floor(handSize)) return false;
+  if (outcome === "win" && performanceKey === "clean" && playerDraws !== 0) return false;
+  return true;
+}
+
+function validateScrabblePayload(payload, outcome, performanceKey) {
+  const rackRaw = Array.isArray(payload?.rack) ? payload.rack : [];
+  const rack = rackRaw
+    .map((item) => normalizeScrabbleWord(item))
+    .filter(Boolean);
+  if (!intInRange(rack.length, 3, 12)) return false;
+  if (!rack.every((ch) => ch.length === 1)) return false;
+
+  const word = normalizeScrabbleWord(payload?.word);
+  if (word.length > rack.length) return false;
+
+  if (outcome === "win") {
+    if (!canFormScrabbleWord(word, rack)) return false;
+    const hasRare = Array.from(word).some((ch) => SCRABBLE_RARE.has(ch));
+    if (performanceKey === "long" && word.length < 6) return false;
+    if (performanceKey === "rare" && !hasRare) return false;
+  }
+  return true;
 }
 
 function randInt(min, max) {
@@ -1252,34 +1321,111 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
   }
 
   const winnerPlayerIdInput = req.body?.winnerPlayerId == null ? null : Number(req.body.winnerPlayerId);
+  const outcomeInputRaw = String(req.body?.outcome || "").trim().toLowerCase();
   const durationMsInput = req.body?.durationMs == null ? null : Number(req.body.durationMs);
   const durationMs = durationMsInput == null ? null : clampLimit(durationMsInput, 0, 0, 24 * 60 * 60 * 1000);
+  const currentDurationMs = match.duration_ms == null ? null : Number(match.duration_ms);
+  const mergedDurationMs = durationMs == null
+    ? currentDurationMs
+    : (currentDurationMs == null ? durationMs : Math.max(currentDurationMs, durationMs));
   const t = now();
 
   if (winnerPlayerIdInput != null) {
     return res.status(403).json({ error: "winner_locked" });
   }
+  if (outcomeInputRaw && !["win", "loss", "draw"].includes(outcomeInputRaw)) {
+    return res.status(400).json({ error: "invalid_outcome" });
+  }
 
+  const selfRow = db.prepare(
+    "SELECT player_id, result FROM arcade_match_players WHERE match_id=? AND player_id=?"
+  ).get(matchId, me.player.id);
+  if (!selfRow) return res.status(403).json({ error: "forbidden" });
+
+  // Backward-compatible flow: no explicit outcome means close as draw.
+  if (!outcomeInputRaw) {
+    db.prepare(
+      `UPDATE arcade_matches
+       SET status='completed', ended_at=?, duration_ms=?, winner_player_id=NULL, loser_player_id=NULL
+       WHERE id=?`
+    ).run(t, mergedDurationMs, matchId);
+    db.prepare("UPDATE arcade_match_players SET result='draw', is_winner=0 WHERE match_id=?").run(matchId);
+
+    for (const playerId of participants) {
+      req.app.locals.io?.to(`player:${playerId}`).emit("arcade:match:state", {
+        matchId,
+        status: "completed",
+        winnerPlayerId: null,
+        loserPlayerId: null,
+        durationMs: mergedDurationMs
+      });
+      req.app.locals.io?.to(`player:${playerId}`).emit("tickets:updated");
+    }
+    req.app.locals.io?.to("dm").emit("tickets:updated");
+
+    logEvent({
+      partyId: Number(match.party_id),
+      type: "arcade.match.completed",
+      actorRole: "player",
+      actorPlayerId: me.player.id,
+      actorName: me.player.display_name,
+      targetType: "arcade_match",
+      targetId: matchId,
+      message: `Match ${matchId} completed`,
+      data: { matchId, winnerPlayerId: null, loserPlayerId: null, durationMs: mergedDurationMs },
+      io: req.app.locals.io
+    });
+
+    return res.json({ ok: true, match: loadMatchForPlayer(db, matchId, me.player.id) });
+  }
+
+  if (selfRow.result !== "pending" && String(selfRow.result) !== outcomeInputRaw) {
+    return res.status(409).json({ error: "already_submitted" });
+  }
+  if (selfRow.result === "pending") {
+    db.prepare(
+      "UPDATE arcade_match_players SET result=?, is_winner=? WHERE match_id=? AND player_id=?"
+    ).run(outcomeInputRaw, outcomeInputRaw === "win" ? 1 : 0, matchId, me.player.id);
+  }
+  if (durationMs != null) {
+    db.prepare("UPDATE arcade_matches SET duration_ms=? WHERE id=?").run(mergedDurationMs, matchId);
+  }
+
+  const results = db.prepare(
+    "SELECT player_id, result FROM arcade_match_players WHERE match_id=? ORDER BY player_id"
+  ).all(matchId).map((row) => ({ playerId: Number(row.player_id), result: String(row.result || "pending") }));
+  const pendingCount = results.filter((row) => row.result === "pending").length;
+  if (pendingCount > 0) {
+    return res.json({
+      ok: true,
+      awaitingOpponent: true,
+      match: loadMatchForPlayer(db, matchId, me.player.id)
+    });
+  }
+
+  const wins = results.filter((row) => row.result === "win");
+  const losses = results.filter((row) => row.result === "loss");
   let winnerPlayerId = null;
   let loserPlayerId = null;
+  let resolution = "draw";
+  if (participants.length === 2 && wins.length === 1 && losses.length === 1) {
+    winnerPlayerId = Number(wins[0].playerId);
+    loserPlayerId = Number(losses[0].playerId);
+    resolution = "win_loss";
+  } else if (wins.length === 0 && losses.length === 0) {
+    winnerPlayerId = null;
+    loserPlayerId = null;
+    resolution = "draw";
+  } else {
+    resolution = "conflict_draw";
+    db.prepare("UPDATE arcade_match_players SET result='draw', is_winner=0 WHERE match_id=?").run(matchId);
+  }
 
   db.prepare(
     `UPDATE arcade_matches
      SET status='completed', ended_at=?, duration_ms=?, winner_player_id=?, loser_player_id=?
      WHERE id=?`
-  ).run(t, durationMs, winnerPlayerId, loserPlayerId, matchId);
-
-  db.prepare("UPDATE arcade_match_players SET result='draw', is_winner=0 WHERE match_id=?").run(matchId);
-  if (winnerPlayerId) {
-    db.prepare(
-      "UPDATE arcade_match_players SET result='win', is_winner=1 WHERE match_id=? AND player_id=?"
-    ).run(matchId, winnerPlayerId);
-  }
-  if (loserPlayerId) {
-    db.prepare(
-      "UPDATE arcade_match_players SET result='loss', is_winner=0 WHERE match_id=? AND player_id=?"
-    ).run(matchId, loserPlayerId);
-  }
+  ).run(t, mergedDurationMs, winnerPlayerId, loserPlayerId, matchId);
 
   for (const playerId of participants) {
     req.app.locals.io?.to(`player:${playerId}`).emit("arcade:match:state", {
@@ -1287,7 +1433,7 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
       status: "completed",
       winnerPlayerId,
       loserPlayerId,
-      durationMs
+      durationMs: mergedDurationMs
     });
     req.app.locals.io?.to(`player:${playerId}`).emit("tickets:updated");
   }
@@ -1302,7 +1448,7 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
     targetType: "arcade_match",
     targetId: matchId,
     message: `Match ${matchId} completed`,
-    data: { matchId, winnerPlayerId, loserPlayerId, durationMs },
+    data: { matchId, winnerPlayerId, loserPlayerId, durationMs: mergedDurationMs, resolution },
     io: req.app.locals.io
   });
 
@@ -1339,6 +1485,15 @@ ticketsRouter.post("/play", (req, res) => {
     return res.status(400).json({ error: "invalid_proof" });
   }
   if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome })) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  if (gameKey === "match3" && !validateMatch3Payload(payload, outcome, performanceKey)) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  if (gameKey === "uno" && !validateUnoPayload(payload, outcome, performanceKey)) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  if (gameKey === "scrabble" && !validateScrabblePayload(payload, outcome, performanceKey)) {
     return res.status(400).json({ error: "invalid_proof" });
   }
 

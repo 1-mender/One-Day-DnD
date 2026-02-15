@@ -58,6 +58,32 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
   return { res, data };
 }
 
+async function createActiveMatch(gameKey = "ttt") {
+  const p1 = createPlayer(`M-${gameKey}-A-${Date.now()}`);
+  const p2 = createPlayer(`M-${gameKey}-B-${Date.now()}`);
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey }
+  });
+  assert.equal(q1.res.status, 200);
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "matched");
+
+  const matchId = Number(q2.data?.matchmakingAction?.matchId || 0);
+  assert.ok(matchId > 0);
+  return { p1, p2, t1, t2, matchId };
+}
+
 test("queue join + auto match for same game/mode", async () => {
   const p1 = createPlayer("Queue-A");
   const p2 = createPlayer("Queue-B");
@@ -159,28 +185,7 @@ test("rematch creates second match with rematch_of", async () => {
 });
 
 test("match complete rejects client-provided winner", async () => {
-  const p1 = createPlayer("Complete-A");
-  const p2 = createPlayer("Complete-B");
-  const t1 = createSession(p1);
-  const t2 = createSession(p2);
-
-  const q1 = await api("/api/tickets/matchmaking/queue", {
-    method: "POST",
-    token: t1,
-    body: { gameKey: "ttt" }
-  });
-  assert.equal(q1.res.status, 200);
-
-  const q2 = await api("/api/tickets/matchmaking/queue", {
-    method: "POST",
-    token: t2,
-    body: { gameKey: "ttt" }
-  });
-  assert.equal(q2.res.status, 200);
-  assert.equal(q2.data?.matchmakingAction?.status, "matched");
-
-  const matchId = Number(q2.data?.matchmakingAction?.matchId || 0);
-  assert.ok(matchId > 0);
+  const { p1, t1, matchId } = await createActiveMatch("ttt");
 
   const complete = await api(`/api/tickets/matches/${matchId}/complete`, {
     method: "POST",
@@ -189,4 +194,59 @@ test("match complete rejects client-provided winner", async () => {
   });
   assert.equal(complete.res.status, 403);
   assert.equal(complete.data.error, "winner_locked");
+});
+
+test("match complete waits for opponent and resolves winner by paired outcomes", async () => {
+  const { p1, p2, t1, t2, matchId } = await createActiveMatch("ttt");
+
+  const first = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: { outcome: "win", durationMs: 1200 }
+  });
+  assert.equal(first.res.status, 200);
+  assert.equal(first.data.awaitingOpponent, true);
+
+  const second = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t2,
+    body: { outcome: "loss", durationMs: 1400 }
+  });
+  assert.equal(second.res.status, 200);
+  assert.equal(second.data?.match?.status, "completed");
+  assert.equal(second.data?.match?.result, "loss");
+
+  const db = getDb();
+  const row = db.prepare("SELECT winner_player_id, loser_player_id, status, duration_ms FROM arcade_matches WHERE id=?").get(matchId);
+  assert.equal(Number(row.winner_player_id), Number(p1));
+  assert.equal(Number(row.loser_player_id), Number(p2));
+  assert.equal(String(row.status), "completed");
+  assert.equal(Number(row.duration_ms), 1400);
+});
+
+test("match complete resolves conflicting outcomes as draw", async () => {
+  const { t1, t2, matchId } = await createActiveMatch("ttt");
+
+  const first = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: { outcome: "win" }
+  });
+  assert.equal(first.res.status, 200);
+  assert.equal(first.data.awaitingOpponent, true);
+
+  const second = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t2,
+    body: { outcome: "win" }
+  });
+  assert.equal(second.res.status, 200);
+  assert.equal(second.data?.match?.status, "completed");
+  assert.equal(second.data?.match?.result, "draw");
+
+  const db = getDb();
+  const row = db.prepare("SELECT winner_player_id, loser_player_id, status FROM arcade_matches WHERE id=?").get(matchId);
+  assert.equal(row.winner_player_id, null);
+  assert.equal(row.loser_player_id, null);
+  assert.equal(String(row.status), "completed");
 });
