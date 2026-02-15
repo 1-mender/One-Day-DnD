@@ -1328,7 +1328,7 @@ ticketsRouter.post("/play", (req, res) => {
   const outcome = String(req.body?.outcome || "win").trim();
   const performanceKey = String(req.body?.performance || "normal").trim();
   const seed = req.body?.seed ? String(req.body.seed) : "";
-  const payload = req.body?.payload || null;
+  const payload = req.body?.payload;
   const proof = req.body?.proof ? String(req.body.proof) : "";
 
   const rules = getEffectiveRules(me.player.party_id);
@@ -1337,19 +1337,20 @@ ticketsRouter.post("/play", (req, res) => {
   if (!game) return res.status(400).json({ error: "invalid_game" });
   if (game.enabled === false) return res.status(400).json({ error: "game_disabled" });
   if (!["win", "loss"].includes(outcome)) return res.status(400).json({ error: "invalid_outcome" });
-  if (payload) {
-    if (proof && makeProof(seed, payload) !== proof) {
-      return res.status(400).json({ error: "invalid_proof" });
-    }
-    if (seed && !takeSeed(me.player.id, gameKey, seed)) {
-      return res.status(400).json({ error: "invalid_seed" });
-    }
-    if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "")) {
-      return res.status(400).json({ error: "invalid_proof" });
-    }
-    if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome })) {
-      return res.status(400).json({ error: "invalid_proof" });
-    }
+  if (!isPlainObject(payload)) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  if (!proof || makeProof(seed, payload) !== proof) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  if (seed && !takeSeed(me.player.id, gameKey, seed)) {
+    return res.status(400).json({ error: "invalid_seed" });
+  }
+  if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "")) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome })) {
+    return res.status(400).json({ error: "invalid_proof" });
   }
 
   const db = getDb();
@@ -1678,6 +1679,8 @@ ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
   const reason = String(req.body?.reason || "").trim();
 
   const db = getDb();
+  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(playerId);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
   let row = ensureTicketRow(db, playerId);
   const dayKey = getDayKey();
   row = normalizeDay(db, row, dayKey);
@@ -1690,7 +1693,7 @@ ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
   req.app.locals.io?.to("dm").emit("tickets:updated");
 
   logEvent({
-    partyId: getParty().id,
+    partyId: player.party_id,
     type: "tickets.adjust",
     actorRole: "dm",
     actorName: "DM",
@@ -1701,6 +1704,6 @@ ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
     io: req.app.locals.io
   });
 
-  const rules = getEffectiveRules(getParty().id);
-  res.json(buildPayload(db, playerId, dayKey, rules, { partyId: getParty().id }));
+  const rules = getEffectiveRules(player.party_id);
+  res.json(buildPayload(db, playerId, dayKey, rules, { partyId: player.party_id }));
 });

@@ -236,7 +236,10 @@ inventoryRouter.delete("/mine/:id", (req, res) => {
 // DM edit any inventory
 inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
   const pid = Number(req.params.playerId);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
   const db = getDb();
+  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
   const b = req.body || {};
   const name = String(b.name || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
@@ -255,9 +258,8 @@ inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
     "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
   ).run(pid, name, desc, imageUrl || null, qty, weight, rarity, JSON.stringify(tags), visibility, now(), "dm");
 
-  const p = db.prepare("SELECT party_id FROM players WHERE id=?").get(pid);
   logEvent({
-    partyId: p?.party_id ?? getParty().id,
+    partyId: player.party_id,
     type: "inventory.granted",
     actorRole: "dm",
     actorName: "DM",

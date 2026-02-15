@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
+import { makeProof } from "../../lib/gameProof.js";
 
 const COLOR_POOL = ["ruby", "amber", "emerald", "sapphire", "amethyst", "bone", "topaz", "violet"];
 const DEFAULT_CONFIG = {
@@ -276,13 +277,21 @@ export default function Match3Game({
     if (!onSubmitResult || settling || result) return;
     const maxRun = maxMatchRef.current || 0;
     const performance = maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal";
+    const payload = {
+      score,
+      target: config.target,
+      size: config.size,
+      maxRun,
+      movesUsed: Math.max(0, config.moves - movesLeft)
+    };
+    const proof = makeProof("", payload);
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance })
+    onSubmitResult({ outcome: status, performance, payload, proof })
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result]);
+  }, [status, onSubmitResult, settling, result, score, config, movesLeft]);
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -369,10 +378,18 @@ export default function Match3Game({
     if (!onSubmitResult) return;
     const maxRun = maxMatchRef.current || 0;
     const performance = maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal";
+    const payload = {
+      score,
+      target: config.target,
+      size: config.size,
+      maxRun,
+      movesUsed: Math.max(0, config.moves - movesLeft)
+    };
+    const proof = makeProof("", payload);
     setSettling(true);
     setApiErr("");
     try {
-      const r = await onSubmitResult({ outcome: status, performance });
+      const r = await onSubmitResult({ outcome: status, performance, payload, proof });
       setResult(r);
     } catch (e) {
       setApiErr(e?.message || String(e));

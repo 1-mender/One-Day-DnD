@@ -150,6 +150,7 @@ partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
 
   const p = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
+  if (!p) return res.status(404).json({ error: "not_found" });
   const t = now();
   const tx = db.transaction(() => {
     db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
@@ -161,13 +162,13 @@ partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
   req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
   req.app.locals.io?.to("dm").emit("players:updated");
   logEvent({
-    partyId: p?.party_id ?? getParty().id,
+    partyId: p.party_id,
     type: "player.kicked",
     actorRole: "dm",
     actorName: "DM",
     targetType: "player",
     targetId: pid,
-    message: `Кикнут игрок: ${p?.display_name || pid}`,
+    message: `Кикнут игрок: ${p.display_name}`,
     data: { playerId: pid },
     io: req.app.locals.io
   });
