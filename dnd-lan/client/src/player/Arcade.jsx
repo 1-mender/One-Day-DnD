@@ -29,6 +29,7 @@ export default function Arcade() {
     queueMatchmaking,
     cancelMatchmaking,
     rematch,
+    completeMatch,
     readOnly
   } = useTickets();
   const lite = useLiteMode();
@@ -267,6 +268,26 @@ export default function Arcade() {
       const code = formatError(e);
       if (String(code) === "already_in_queue") toast.warn("Queue is already active");
       else toast.error(formatTicketError(code));
+    } finally {
+      setQueueBusy(false);
+    }
+  }
+
+  async function handleMatchComplete(matchId, finalOutcome) {
+    if (!matchId || !finalOutcome || queueBusy || readOnly) return;
+    setQueueBusy(true);
+    try {
+      const res = await completeMatch(matchId, { outcome: finalOutcome });
+      if (res?.awaitingOpponent) {
+        toast.warn("Result submitted, waiting for opponent");
+        return;
+      }
+      const finalResult = String(res?.match?.result || finalOutcome);
+      if (finalResult === "win") toast.success("Match completed: win");
+      else if (finalResult === "loss") toast.warn("Match completed: loss");
+      else toast.warn("Match completed: draw");
+    } catch (e) {
+      toast.error(formatTicketError(formatError(e)));
     } finally {
       setQueueBusy(false);
     }
@@ -525,11 +546,25 @@ export default function Arcade() {
             {matchHistory.slice(0, 3).map((m) => (
               <div key={`hist_${m.matchId}`} className="arcade-queue-history-item">
                 <span className="small">
-                  {m.gameKey}/{m.modeKey} • {m.result} {m.opponentName ? `vs ${m.opponentName}` : ""}
+                  {m.gameKey}/{m.modeKey} • {m.status === "completed" ? m.result : "active"} {m.opponentName ? `vs ${m.opponentName}` : ""}
                 </span>
-                <button className="btn secondary" onClick={() => handleRematch(m.matchId)} disabled={queueBusy || readOnly}>
-                  Rematch
-                </button>
+                {m.status === "completed" ? (
+                  <button className="btn secondary" onClick={() => handleRematch(m.matchId)} disabled={queueBusy || readOnly}>
+                    Rematch
+                  </button>
+                ) : (
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn secondary" onClick={() => handleMatchComplete(m.matchId, "win")} disabled={queueBusy || readOnly}>
+                      Win
+                    </button>
+                    <button className="btn secondary" onClick={() => handleMatchComplete(m.matchId, "loss")} disabled={queueBusy || readOnly}>
+                      Loss
+                    </button>
+                    <button className="btn secondary" onClick={() => handleMatchComplete(m.matchId, "draw")} disabled={queueBusy || readOnly}>
+                      Draw
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -879,9 +914,12 @@ function formatTicketError(code) {
   if (c === "invalid_proof") return "Результат игры не прошел проверку.";
   if (c === "invalid_game") return "Эта игра недоступна.";
   if (c === "invalid_mode") return "Selected mode is not available.";
+  if (c === "invalid_outcome") return "Invalid match outcome.";
   if (c === "already_in_queue") return "You are already in queue.";
+  if (c === "already_submitted") return "Result is already submitted.";
   if (c === "match_not_found") return "Match not found.";
   if (c === "opponent_not_found") return "Opponent not found.";
+  if (c === "winner_locked") return "Winner is already locked.";
   if (c === "forbidden") return "Action is not allowed.";
   return c || "Ошибка";
 }

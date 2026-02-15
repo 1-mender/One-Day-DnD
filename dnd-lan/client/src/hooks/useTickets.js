@@ -124,6 +124,12 @@ export function useTickets() {
     return res;
   }, [applyPayload]);
 
+  const completeMatch = useCallback(async (matchId, payload = {}) => {
+    const res = await api.ticketsCompleteMatch(matchId, payload);
+    await refresh();
+    return res;
+  }, [refresh]);
+
   const loadHistory = useCallback(async (limit = 20) => {
     const res = await api.ticketsMatchHistory(limit);
     return Array.isArray(res?.items) ? res.items : [];
@@ -146,6 +152,7 @@ export function useTickets() {
     queueMatchmaking,
     cancelMatchmaking,
     rematch,
+    completeMatch,
     loadHistory,
     readOnly
   };
