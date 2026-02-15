@@ -83,6 +83,17 @@ export default function Arcade() {
     });
   }, [games]);
 
+  const queueReadyGames = useMemo(
+    () => games.filter((g) => rules?.games?.[g.key]?.enabled !== false),
+    [games, rules]
+  );
+  const queueGame = useMemo(
+    () => queueReadyGames.find((g) => g.key === queueGameKey) || queueReadyGames[0] || null,
+    [queueGameKey, queueReadyGames]
+  );
+  const queueModes = Array.isArray(queueGame?.modes) ? queueGame.modes : [];
+  const queueModeKey = queueGame ? (selectedModes[queueGame.key] || queueModes[0]?.key || "") : "";
+
   useEffect(() => {
     if (!queueReadyGames.length) {
       setQueueGameKey("");
@@ -122,16 +133,6 @@ export default function Arcade() {
   const showLastGame = lastGameKey && rules?.games?.[lastGameKey]?.enabled !== false;
   const queueState = matchmaking?.activeQueue || null;
   const matchHistory = Array.isArray(matchmaking?.history) ? matchmaking.history : [];
-  const queueReadyGames = useMemo(
-    () => games.filter((g) => rules?.games?.[g.key]?.enabled !== false),
-    [games, rules]
-  );
-  const queueGame = useMemo(
-    () => queueReadyGames.find((g) => g.key === queueGameKey) || queueReadyGames[0] || null,
-    [queueGameKey, queueReadyGames]
-  );
-  const queueModes = Array.isArray(queueGame?.modes) ? queueGame.modes : [];
-  const queueModeKey = queueGame ? (selectedModes[queueGame.key] || queueModes[0]?.key || "") : "";
 
   useEffect(() => {
     if (!dailyQuest?.key) {
