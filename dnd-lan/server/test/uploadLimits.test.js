@@ -14,7 +14,7 @@ process.env.DM_COOKIE = "dm_token_test";
 process.env.BACKUP_IMPORT_MAX_BYTES = "204800";
 
 const { getDb, initDb, getPartyId, DB_PATH } = await import("../src/db.js");
-const { signDmToken } = await import("../src/auth.js");
+const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { ensureUploads } = await import("../src/uploads.js");
 const { uploadsDir } = await import("../src/paths.js");
 const { infoUploadsRouter } = await import("../src/routes/infoUploads.js");
@@ -23,6 +23,7 @@ const { backupRouter } = await import("../src/routes/backup.js");
 const { now } = await import("../src/util.js");
 
 initDb();
+const dmUser = createDmUser("dm", "secret123");
 ensureUploads();
 
 const app = express();
@@ -39,7 +40,7 @@ test.after(() => {
 });
 
 function dmCookie() {
-  const token = signDmToken({ id: 1, username: "dm" });
+  const token = signDmToken(dmUser);
   return `${process.env.DM_COOKIE}=${token}`;
 }
 
@@ -150,4 +151,32 @@ test("backup import rolls back DB and uploads when replacement fails", async () 
   const restoredName = getDb().prepare("SELECT name FROM parties WHERE id=?").get(partyId)?.name;
   assert.equal(restoredName, "Original Party");
   assert.equal(fs.readFileSync(path.join(uploadsRoot, "keep.txt"), "utf8"), "must-stay");
+});
+
+test("backup import rolls back DB and uploads when reloadDb fails", async () => {
+  const cookie = dmCookie();
+  const db = getDb();
+  const partyId = getPartyId();
+
+  db.prepare("UPDATE parties SET name=? WHERE id=?").run("Before Reload Fail", partyId);
+  const uploadsRoot = uploadsDir;
+  fs.mkdirSync(uploadsRoot, { recursive: true });
+  fs.writeFileSync(path.join(uploadsRoot, "keep-reload.txt"), "must-stay-too");
+
+  const zipPath = await createZip([
+    { name: "app.db", content: Buffer.from("not-a-valid-sqlite-db", "utf8") },
+    { name: "uploads/new-reload.txt", content: "imported" }
+  ]);
+
+  try {
+    const out = await uploadBackupZip(zipPath, { cookie });
+    assert.equal(out.res.status, 500);
+    assert.equal(out.data.error, "import_failed");
+  } finally {
+    fs.rmSync(zipPath, { force: true });
+  }
+
+  const restoredName = getDb().prepare("SELECT name FROM parties WHERE id=?").get(partyId)?.name;
+  assert.equal(restoredName, "Before Reload Fail");
+  assert.equal(fs.readFileSync(path.join(uploadsRoot, "keep-reload.txt"), "utf8"), "must-stay-too");
 });

@@ -12,11 +12,12 @@ process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
 const { getDb, initDb, getPartyId } = await import("../src/db.js");
-const { signDmToken } = await import("../src/auth.js");
+const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { profileRouter } = await import("../src/routes/profile.js");
 const { now } = await import("../src/util.js");
 
 initDb();
+const dmUser = createDmUser("dm", "secret123");
 
 const app = express();
 app.use(cookieParser());
@@ -31,7 +32,7 @@ test.after(() => {
 });
 
 function dmCookie() {
-  const token = signDmToken({ id: 1, username: "dm" });
+  const token = signDmToken(dmUser);
   return `${process.env.DM_COOKIE}=${token}`;
 }
 

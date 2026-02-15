@@ -16,6 +16,19 @@ const MAX_BACKUP_BYTES = Number(process.env.BACKUP_IMPORT_MAX_BYTES || 200 * 102
 const MAX_BACKUP_EXTRACT_BYTES = Number(process.env.BACKUP_IMPORT_MAX_EXTRACT_BYTES || 500 * 1024 * 1024);
 const upload = multer({ dest: path.join(DATA_DIR, "tmp"), limits: { fileSize: MAX_BACKUP_BYTES } });
 
+function restorePreviousState({ hadDstDb, hadDstUploads, dstDb, dstUploads, dbBackupPath, uploadsBackupPath }) {
+  if (hadDstDb && fs.existsSync(dbBackupPath)) {
+    fs.copyFileSync(dbBackupPath, dstDb);
+  } else {
+    fs.rmSync(dstDb, { force: true });
+  }
+
+  fs.rmSync(dstUploads, { recursive: true, force: true });
+  if (hadDstUploads && fs.existsSync(uploadsBackupPath)) {
+    fs.cpSync(uploadsBackupPath, dstUploads, { recursive: true });
+  }
+}
+
 async function safeExtractZip(zipPath, destDir) {
   const base = path.resolve(destDir);
   const directory = await unzipper.Open.file(zipPath);
@@ -105,6 +118,7 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
       fs.cpSync(dstUploads, uploadsBackupPath, { recursive: true });
     }
 
+    let replaced = false;
     try {
       fs.copyFileSync(srcDb, dstDb);
 
@@ -114,24 +128,24 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
       } else {
         fs.mkdirSync(dstUploads, { recursive: true });
       }
-    } catch (replaceError) {
-      if (hadDstDb && fs.existsSync(dbBackupPath)) {
-        fs.copyFileSync(dbBackupPath, dstDb);
-      } else {
-        fs.rmSync(dstDb, { force: true });
+      replaced = true;
+
+      // reload db
+      reloadDb();
+    } catch (replaceOrReloadError) {
+      try {
+        if (replaced || fs.existsSync(dbBackupPath) || fs.existsSync(uploadsBackupPath)) {
+          restorePreviousState({ hadDstDb, hadDstUploads, dstDb, dstUploads, dbBackupPath, uploadsBackupPath });
+        }
+        reloadDb();
+      } catch {
+        // keep original error from failed import path
       }
-      fs.rmSync(dstUploads, { recursive: true, force: true });
-      if (hadDstUploads && fs.existsSync(uploadsBackupPath)) {
-        fs.cpSync(uploadsBackupPath, dstUploads, { recursive: true });
-      }
-      throw replaceError;
+      throw replaceOrReloadError;
     } finally {
       fs.rmSync(uploadsBackupPath, { recursive: true, force: true });
       fs.rmSync(dbBackupPath, { force: true });
     }
-
-    // reload db
-    reloadDb();
 
     req.app.locals.io?.emit("settings:updated");
     req.app.locals.io?.emit("players:updated");

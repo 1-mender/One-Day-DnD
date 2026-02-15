@@ -157,3 +157,36 @@ test("rematch creates second match with rematch_of", async () => {
   const last = rows[rows.length - 1];
   assert.equal(Number(last.rematch_of), firstMatchId);
 });
+
+test("match complete rejects client-provided winner", async () => {
+  const p1 = createPlayer("Complete-A");
+  const p2 = createPlayer("Complete-B");
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q1.res.status, 200);
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "matched");
+
+  const matchId = Number(q2.data?.matchmakingAction?.matchId || 0);
+  assert.ok(matchId > 0);
+
+  const complete = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: { winnerPlayerId: p1, durationMs: 120000 }
+  });
+  assert.equal(complete.res.status, 403);
+  assert.equal(complete.data.error, "winner_locked");
+});

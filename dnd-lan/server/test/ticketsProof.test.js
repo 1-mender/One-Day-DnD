@@ -25,19 +25,6 @@ test.after(() => {
   server.close();
 });
 
-function simpleHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    h = (h * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h).toString(36);
-}
-
-function makeProof(seed, payload) {
-  const body = `${seed || ""}:${JSON.stringify(payload || {})}`;
-  return simpleHash(body);
-}
-
 function createPlayer(displayName = "Player") {
   const db = getDb();
   const partyId = getPartyId();
@@ -84,7 +71,7 @@ test("play rejects submission without payload/proof", async () => {
   assert.equal(out.data.error, "invalid_proof");
 });
 
-test("play accepts valid ttt payload with proof", async () => {
+test("play accepts valid ttt payload with issued seed/proof token", async () => {
   const playerId = createPlayer("Proofed");
   const token = createSession(playerId);
   const payload = {
@@ -92,14 +79,67 @@ test("play accepts valid ttt payload with proof", async () => {
     playerSymbol: "X",
     outcome: "win"
   };
-  const proof = makeProof("", payload);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=ttt", { token });
+  assert.equal(seedOut.res.status, 200);
+  assert.ok(seedOut.data?.seed);
+  assert.ok(seedOut.data?.proof);
 
   const out = await api("/api/tickets/play", {
     method: "POST",
     token,
-    body: { gameKey: "ttt", outcome: "win", performance: "normal", payload, proof }
+    body: {
+      gameKey: "ttt",
+      outcome: "win",
+      performance: "normal",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof
+    }
   });
 
   assert.equal(out.res.status, 200);
   assert.equal(out.data?.result?.outcome, "win");
+});
+
+test("issued seed/proof token is one-time", async () => {
+  const playerId = createPlayer("SingleUse");
+  const token = createSession(playerId);
+  const payload = {
+    moves: [0, 3, 1, 4, 2],
+    playerSymbol: "X",
+    outcome: "win"
+  };
+
+  const seedOut = await api("/api/tickets/seed?gameKey=ttt", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const first = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "ttt",
+      outcome: "win",
+      performance: "normal",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof
+    }
+  });
+  assert.equal(first.res.status, 200);
+
+  const second = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "ttt",
+      outcome: "win",
+      performance: "normal",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof
+    }
+  });
+  assert.equal(second.res.status, 400);
+  assert.equal(second.data.error, "invalid_seed");
 });

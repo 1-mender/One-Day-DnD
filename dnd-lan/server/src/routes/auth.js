@@ -1,7 +1,7 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { getDmCookieName, loginDm, signDmToken, changeDmPassword, verifyDmToken } from "../auth.js";
-import { dbHasDm, getDb } from "../db.js";
+import { dbHasDm } from "../db.js";
 import { dmAuthMiddleware } from "../auth.js";
 
 export const authRouter = express.Router();
@@ -54,6 +54,13 @@ authRouter.post("/logout", (req, res) => {
 authRouter.post("/change-password", dmAuthMiddleware, (req, res) => {
   const { newPassword } = req.body || {};
   if (!newPassword || String(newPassword).length < 6) return res.status(400).json({ error: "invalid_input" });
-  changeDmPassword(req.dm.uid, String(newPassword));
+  const user = changeDmPassword(req.dm.uid, String(newPassword));
+  const token = signDmToken(user);
+  const secure = process.env.NODE_ENV === "production";
+  res.cookie(getDmCookieName(), token, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure
+  });
   res.json({ ok: true });
 });

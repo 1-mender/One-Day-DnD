@@ -4,7 +4,6 @@ import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useLiteMode } from "../hooks/useLiteMode.js";
-import { makeProof } from "../lib/gameProof.js";
 
 const fallbackGames = [];
 const Match3Game = lazy(() => import("./games/Match3.jsx"));
@@ -289,13 +288,11 @@ export default function Arcade() {
         performance: perf,
         submittedAt: Date.now()
       };
-      const proof = makeProof("", payload);
       const res = await play({
         gameKey: activeGameKey,
         outcome,
         performance: perf,
-        payload,
-        proof
+        payload
       });
       const result = res?.result;
       if (result?.outcome === "win") {

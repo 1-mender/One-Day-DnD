@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "node:crypto";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";
@@ -163,15 +164,17 @@ function seedKey(playerId, gameKey) {
 
 function issueSeed(playerId, gameKey) {
   const seed = makeSeed();
-  issuedSeeds.set(seedKey(playerId, gameKey), { seed, expiresAt: now() + SEED_TTL_MS });
-  return seed;
+  const proof = crypto.randomBytes(16).toString("hex");
+  issuedSeeds.set(seedKey(playerId, gameKey), { seed, proof, expiresAt: now() + SEED_TTL_MS });
+  return { seed, proof };
 }
 
-function takeSeed(playerId, gameKey, seed) {
+function takeSeed(playerId, gameKey, seed, proof) {
   const key = seedKey(playerId, gameKey);
   const entry = issuedSeeds.get(key);
   if (!entry) return false;
   if (entry.seed !== seed) return false;
+  if (entry.proof !== proof) return false;
   if (entry.expiresAt < now()) {
     issuedSeeds.delete(key);
     return false;
@@ -189,19 +192,6 @@ function makeRng(seed) {
     h = (h * 1664525 + 1013904223) >>> 0;
     return (h & 0xfffffff) / 0xfffffff;
   };
-}
-
-function simpleHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    h = (h * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h).toString(36);
-}
-
-function makeProof(seed, payload) {
-  const body = `${seed || ""}:${JSON.stringify(payload || {})}`;
-  return simpleHash(body);
 }
 
 function shuffleWithSeed(list, seed) {
@@ -1059,8 +1049,8 @@ ticketsRouter.get("/seed", (req, res) => {
   if (!gameKey || !GAME_CATALOG.find((g) => g.key === gameKey)) {
     return res.status(400).json({ error: "invalid_game" });
   }
-  const seed = issueSeed(me.player.id, gameKey);
-  res.json({ seed, gameKey });
+  const issued = issueSeed(me.player.id, gameKey);
+  res.json({ seed: issued.seed, proof: issued.proof, gameKey });
 });
 
 ticketsRouter.post("/matchmaking/queue", (req, res) => {
@@ -1266,13 +1256,12 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
   const durationMs = durationMsInput == null ? null : clampLimit(durationMsInput, 0, 0, 24 * 60 * 60 * 1000);
   const t = now();
 
+  if (winnerPlayerIdInput != null) {
+    return res.status(403).json({ error: "winner_locked" });
+  }
+
   let winnerPlayerId = null;
   let loserPlayerId = null;
-  if (winnerPlayerIdInput != null) {
-    if (!participants.includes(winnerPlayerIdInput)) return res.status(400).json({ error: "invalid_winner" });
-    winnerPlayerId = winnerPlayerIdInput;
-    loserPlayerId = participants.find((id) => id !== winnerPlayerId) || null;
-  }
 
   db.prepare(
     `UPDATE arcade_matches
@@ -1340,10 +1329,10 @@ ticketsRouter.post("/play", (req, res) => {
   if (!isPlainObject(payload)) {
     return res.status(400).json({ error: "invalid_proof" });
   }
-  if (!proof || makeProof(seed, payload) !== proof) {
-    return res.status(400).json({ error: "invalid_proof" });
+  if (!seed || !proof) {
+    return res.status(400).json({ error: "invalid_seed" });
   }
-  if (seed && !takeSeed(me.player.id, gameKey, seed)) {
+  if (!takeSeed(me.player.id, gameKey, seed, proof)) {
     return res.status(400).json({ error: "invalid_seed" });
   }
   if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "")) {

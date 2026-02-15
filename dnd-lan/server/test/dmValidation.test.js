@@ -12,11 +12,12 @@ process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
 const { initDb } = await import("../src/db.js");
-const { signDmToken } = await import("../src/auth.js");
+const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { inventoryRouter } = await import("../src/routes/inventory.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 
 initDb();
+const dmUser = createDmUser("dm", "secret123");
 
 const app = express();
 app.use(cookieParser());
@@ -32,7 +33,12 @@ test.after(() => {
 });
 
 function dmCookie() {
-  const token = signDmToken({ id: 1, username: "dm" });
+  const token = signDmToken(dmUser);
+  return `${process.env.DM_COOKIE}=${token}`;
+}
+
+function orphanDmCookie() {
+  const token = signDmToken({ id: 999999, username: "orphan", token_version: 0 });
   return `${process.env.DM_COOKIE}=${token}`;
 }
 
@@ -65,4 +71,18 @@ test("DM tickets adjust returns 404 for unknown player", async () => {
   });
   assert.equal(out.res.status, 404);
   assert.equal(out.data.error, "player_not_found");
+});
+
+test("orphan DM token is rejected", async () => {
+  const res = await fetch(`${base}/api/tickets/dm/adjust`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      cookie: orphanDmCookie()
+    },
+    body: JSON.stringify({ playerId: 1, delta: 1 })
+  });
+  const data = await res.json().catch(() => ({}));
+  assert.equal(res.status, 401);
+  assert.equal(data.error, "not_authenticated");
 });

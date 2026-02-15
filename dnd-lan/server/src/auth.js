@@ -30,11 +30,20 @@ export function getDmCookieName() {
 }
 
 export function signDmToken(user) {
-  return jwt.sign({ uid: user.id, u: user.username, role: "dm" }, getJwtSecret(), { expiresIn: "30d" });
+  const tokenVersion = Number(user?.token_version || 0);
+  return jwt.sign({ uid: user.id, u: user.username, role: "dm", tv: tokenVersion }, getJwtSecret(), { expiresIn: "30d" });
 }
 
 export function verifyDmToken(token) {
-  return jwt.verify(token, getJwtSecret());
+  const payload = jwt.verify(token, getJwtSecret());
+  const user = getDb().prepare("SELECT id, token_version FROM users WHERE id=?").get(Number(payload?.uid || 0));
+  if (!user) {
+    throw new Error("dm_user_not_found");
+  }
+  if (Number(user.token_version || 0) !== Number(payload?.tv || 0)) {
+    throw new Error("dm_token_revoked");
+  }
+  return payload;
 }
 
 export function dmAuthMiddleware(req, res, next) {
@@ -55,7 +64,7 @@ export function createDmUser(username, password) {
   const info = getDb()
     .prepare("INSERT INTO users(username, password_hash, must_change_password, created_at) VALUES(?,?,?,?)")
     .run(username, hash, 0, t);
-  return getDb().prepare("SELECT id, username, must_change_password FROM users WHERE id=?").get(info.lastInsertRowid);
+  return getDb().prepare("SELECT id, username, must_change_password, token_version FROM users WHERE id=?").get(info.lastInsertRowid);
 }
 
 export function loginDm(username, password) {
@@ -63,10 +72,17 @@ export function loginDm(username, password) {
   if (!row) return null;
   const ok = bcrypt.compareSync(password, row.password_hash);
   if (!ok) return null;
-  return { id: row.id, username: row.username, must_change_password: row.must_change_password };
+  return {
+    id: row.id,
+    username: row.username,
+    must_change_password: row.must_change_password,
+    token_version: Number(row.token_version || 0)
+  };
 }
 
 export function changeDmPassword(userId, newPassword) {
   const hash = bcrypt.hashSync(newPassword, 10);
-  getDb().prepare("UPDATE users SET password_hash=?, must_change_password=0 WHERE id=?").run(hash, userId);
+  getDb().prepare("UPDATE users SET password_hash=?, must_change_password=0, token_version=token_version+1 WHERE id=?")
+    .run(hash, userId);
+  return getDb().prepare("SELECT id, username, must_change_password, token_version FROM users WHERE id=?").get(userId);
 }

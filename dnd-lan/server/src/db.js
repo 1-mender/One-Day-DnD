@@ -33,6 +33,11 @@ export function closeDb() {
 }
 
 function ensureMigrations(database) {
+  const userCols = database.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+  if (userCols.length && !userCols.includes("token_version")) {
+    database.exec("ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0;");
+  }
+
   const cols = database.prepare("PRAGMA table_info(sessions)").all().map((c) => c.name);
   if (!cols.includes("impersonated")) {
     database.exec("ALTER TABLE sessions ADD COLUMN impersonated INTEGER NOT NULL DEFAULT 0;");

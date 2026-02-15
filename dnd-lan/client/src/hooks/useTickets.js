@@ -89,7 +89,13 @@ export function useTickets() {
   }, [refresh, socket]);
 
   const play = useCallback(async (payload) => {
-    const res = await api.ticketsPlay(payload);
+    const nextPayload = { ...(payload || {}) };
+    if ((!nextPayload.seed || !nextPayload.proof) && nextPayload.gameKey) {
+      const issued = await api.ticketsSeed(nextPayload.gameKey);
+      nextPayload.seed = String(issued?.seed || "");
+      nextPayload.proof = String(issued?.proof || "");
+    }
+    const res = await api.ticketsPlay(nextPayload);
     applyPayload(res);
     return res;
   }, [applyPayload]);
