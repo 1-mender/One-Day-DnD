@@ -4,6 +4,7 @@ import { getDb, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { getInventoryLimitForPlayer } from "../inventoryLimit.js";
 import { logEvent } from "../events.js";
+import { getActiveSessionByToken, getPlayerTokenFromRequest } from "../sessionAuth.js";
 
 export const inventoryRouter = express.Router();
 
@@ -17,12 +18,9 @@ function toFiniteNumber(value, fallback) {
 }
 
 function authPlayer(req) {
-  const token = req.header("x-player-token");
+  const token = getPlayerTokenFromRequest(req);
   if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
-  if (!sess) return null;
-  return sess;
+  return getActiveSessionByToken(token, { at: now() });
 }
 
 function ensureWritable(sess, res) {

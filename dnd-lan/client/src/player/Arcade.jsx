@@ -4,6 +4,15 @@ import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useLiteMode } from "../hooks/useLiteMode.js";
+import {
+  formatDayKey,
+  formatDurationMs,
+  formatEntry,
+  formatTicketError,
+  impactClass,
+  isGameLimitReached
+} from "./arcade/domain/arcadeFormatters.js";
+import { submitArcadePlay } from "./arcade/usecases/submitArcadePlay.js";
 
 const fallbackGames = [];
 const Match3Game = lazy(() => import("./games/Match3.jsx"));
@@ -296,35 +305,27 @@ export default function Arcade() {
 
   async function handlePlay() {
     if (!activeGameKey || busy) return;
-    if (!ticketsEnabled) {
-      setPlayErr("Аркада закрыта DM.");
-      return;
-    }
     setPlayErr("");
     setBusy(true);
     try {
       const perf = outcome === "win" ? performance : "normal";
-      const payload = {
+      await submitArcadePlay({
+        play,
+        toast,
         gameKey: activeGameKey,
         outcome,
-        performance: perf,
-        submittedAt: Date.now()
-      };
-      const res = await play({
-        gameKey: activeGameKey,
-        outcome,
-        performance: perf,
-        payload
+        performance: perf || "normal",
+        payload: {
+          gameKey: activeGameKey,
+          outcome,
+          performance: perf,
+          submittedAt: Date.now()
+        },
+        ticketsEnabled
       });
-      const result = res?.result;
-      if (result?.outcome === "win") {
-        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
-      } else {
-        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
-      }
       closeGame();
     } catch (e) {
-      const msg = formatTicketError(formatError(e));
+      const msg = String(e?.message || e || "Error");
       setPlayErr(msg);
       toast.error(msg);
     } finally {
@@ -332,135 +333,25 @@ export default function Arcade() {
     }
   }
 
-  async function handleMatch3Submit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
-    if (!ticketsEnabled) {
-      throw new Error("Аркада закрыта DM.");
-    }
-    try {
-      const res = await play({
-        gameKey: "match3",
-        outcome: finalOutcome,
-        performance: perf || "normal",
-        payload,
-        seed,
-        proof
-      });
-      const result = res?.result;
-      if (result?.outcome === "win") {
-        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
-      } else {
-        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
-      }
-      return result;
-    } catch (e) {
-      const msg = formatTicketError(formatError(e));
-      throw new Error(msg);
-    }
+  async function handleGameSubmit(gameKey, { outcome: finalOutcome, performance: perf, payload, seed, proof }) {
+    return submitArcadePlay({
+      play,
+      toast,
+      gameKey,
+      outcome: finalOutcome,
+      performance: perf || "normal",
+      payload,
+      seed,
+      proof,
+      ticketsEnabled
+    });
   }
 
-  async function handleGuessSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
-    if (!ticketsEnabled) {
-      throw new Error("Аркада закрыта DM.");
-    }
-    try {
-      const res = await play({
-        gameKey: "guess",
-        outcome: finalOutcome,
-        performance: perf || "normal",
-        payload,
-        seed,
-        proof
-      });
-      const result = res?.result;
-      if (result?.outcome === "win") {
-        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
-      } else {
-        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
-      }
-      return result;
-    } catch (e) {
-      const msg = formatTicketError(formatError(e));
-      throw new Error(msg);
-    }
-  }
-
-  async function handleTttSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
-    if (!ticketsEnabled) {
-      throw new Error("Аркада закрыта DM.");
-    }
-    try {
-      const res = await play({
-        gameKey: "ttt",
-        outcome: finalOutcome,
-        performance: perf || "normal",
-        payload,
-        seed,
-        proof
-      });
-      const result = res?.result;
-      if (result?.outcome === "win") {
-        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
-      } else {
-        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
-      }
-      return result;
-    } catch (e) {
-      const msg = formatTicketError(formatError(e));
-      throw new Error(msg);
-    }
-  }
-
-  async function handleUnoSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
-    if (!ticketsEnabled) {
-      throw new Error("Аркада закрыта DM.");
-    }
-    try {
-      const res = await play({
-        gameKey: "uno",
-        outcome: finalOutcome,
-        performance: perf || "normal",
-        payload,
-        seed,
-        proof
-      });
-      const result = res?.result;
-      if (result?.outcome === "win") {
-        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
-      } else {
-        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
-      }
-      return result;
-    } catch (e) {
-      const msg = formatTicketError(formatError(e));
-      throw new Error(msg);
-    }
-  }
-
-  async function handleScrabbleSubmit({ outcome: finalOutcome, performance: perf, payload, seed, proof }) {
-    if (!ticketsEnabled) {
-      throw new Error("Аркада закрыта DM.");
-    }
-    try {
-      const res = await play({
-        gameKey: "scrabble",
-        outcome: finalOutcome,
-        performance: perf || "normal",
-        payload,
-        seed,
-        proof
-      });
-      const result = res?.result;
-      if (result?.outcome === "win") {
-        toast.success(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
-      } else {
-        toast.warn(`-${result.penalty + result.entryCost} билетов`, "Поражение");
-      }
-      return result;
-    } catch (e) {
-      const msg = formatTicketError(formatError(e));
-      throw new Error(msg);
-    }
-  }
+  const handleMatch3Submit = (args) => handleGameSubmit("match3", args);
+  const handleGuessSubmit = (args) => handleGameSubmit("guess", args);
+  const handleTttSubmit = (args) => handleGameSubmit("ttt", args);
+  const handleUnoSubmit = (args) => handleGameSubmit("uno", args);
+  const handleScrabbleSubmit = (args) => handleGameSubmit("scrabble", args);
 
   return (
     <div className={`card taped arcade-shell${lite ? " page-lite arcade-lite" : ""}`.trim()}>
@@ -869,65 +760,4 @@ function renderGameFallback(title, onClose) {
       <div className="small">Loading game...</div>
     </Modal>
   );
-}
-
-function impactClass(label) {
-  const v = String(label || "").toLowerCase();
-  if (v.includes("слож") || v.includes("hard") || v.includes("high") || v.includes("высок")) return "impact-high";
-  if (v.includes("сред") || v.includes("mid") || v.includes("medium")) return "impact-mid";
-  if (v.includes("лег") || v.includes("easy") || v.includes("низ")) return "impact-low";
-  return "impact-low";
-}
-
-function formatEntry(entry) {
-  const qty = Number(entry || 0);
-  if (!qty) return "Вход: бесплатно";
-  return `Вход: ${qty} ${qty === 1 ? "билет" : qty < 5 ? "билета" : "билетов"}`;
-}
-
-function formatDayKey(dayKey) {
-  const n = Number(dayKey);
-  if (!Number.isFinite(n) || n <= 0) return String(dayKey || "");
-  const d = new Date(n * 24 * 60 * 60 * 1000);
-  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = months[d.getUTCMonth()] || "";
-  return month ? `${day} ${month}` : day;
-}
-
-function formatDurationMs(ms) {
-  const total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  if (m <= 0) return `${s}s`;
-  return `${m}m ${String(s).padStart(2, "0")}s`;
-}
-
-function formatTicketError(code) {
-  const c = String(code || "");
-  if (c === "tickets_disabled") return "Аркада временно закрыта.";
-  if (c === "game_disabled") return "Эта игра сейчас закрыта.";
-  if (c === "not_enough_tickets") return "Недостаточно билетов для входа.";
-  if (c === "daily_game_limit") return "Достигнут дневной лимит попыток.";
-  if (c === "daily_spend_cap") return "Достигнут дневной лимит трат.";
-  if (c === "invalid_performance") return "Неверный бонус выполнения.";
-  if (c === "invalid_seed") return "Сессия игры устарела. Откройте игру снова.";
-  if (c === "invalid_proof") return "Результат игры не прошел проверку.";
-  if (c === "invalid_game") return "Эта игра недоступна.";
-  if (c === "invalid_mode") return "Selected mode is not available.";
-  if (c === "invalid_outcome") return "Invalid match outcome.";
-  if (c === "already_in_queue") return "You are already in queue.";
-  if (c === "already_submitted") return "Result is already submitted.";
-  if (c === "match_not_found") return "Match not found.";
-  if (c === "opponent_not_found") return "Opponent not found.";
-  if (c === "winner_locked") return "Winner is already locked.";
-  if (c === "forbidden") return "Action is not allowed.";
-  return c || "Ошибка";
-}
-
-function isGameLimitReached(gameKey, rules, usage) {
-  const lim = rules?.games?.[gameKey]?.dailyLimit;
-  if (!lim) return false;
-  const used = usage?.playsToday?.[gameKey] || 0;
-  return used >= lim;
 }

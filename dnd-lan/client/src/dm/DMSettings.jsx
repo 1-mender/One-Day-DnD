@@ -6,6 +6,17 @@ import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import {
+  applyTicketGamePatch,
+  applyTicketRulesPatch,
+  applyTicketShopPatch,
+  buildGeneralChanges,
+  createDailyQuestDraft,
+  isDailyQuestChanged,
+  isGameChanged,
+  isShopChanged
+} from "./settings/domain/ticketRulesEditor.js";
+import { GAME_LABELS, inp, RULE_TIPS, SHOP_LABELS } from "./settings/domain/settingsConstants.js";
 
 export default function DMSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -77,48 +88,16 @@ export default function DMSettings() {
   }, [ticketRules, ticketRulesBase]);
   const ticketBase = ticketRulesBase || {};
   const ticketCur = ticketRules || {};
-  const generalChanges = {
-    enabled: (ticketCur.enabled ?? true) !== (ticketBase.enabled ?? true),
-    dailyEarnCap: (ticketCur.dailyEarnCap ?? 0) !== (ticketBase.dailyEarnCap ?? 0),
-    streakMax: (ticketCur.streak?.max ?? 0) !== (ticketBase.streak?.max ?? 0),
-    streakStep: (ticketCur.streak?.step ?? 0) !== (ticketBase.streak?.step ?? 0),
-    streakFlatBonus: (ticketCur.streak?.flatBonus ?? 0) !== (ticketBase.streak?.flatBonus ?? 0)
-  };
-  const dailyQuestChanged = JSON.stringify(ticketCur.dailyQuest || {}) !== JSON.stringify(ticketBase.dailyQuest || {});
+  const generalChanges = buildGeneralChanges(ticketCur, ticketBase);
+  const dailyQuestChanged = isDailyQuestChanged(ticketCur, ticketBase);
   const showGeneralBlock = !showOnlyChanged || Object.values(generalChanges).some(Boolean);
   const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
   const showDailyQuestBlock = !showOnlyChanged || dailyQuestChanged;
 
-  function isGameChanged(key, g) {
-    const base = ticketBase.games?.[key] || {};
-    const ui = g.ui || {};
-    const baseUi = base.ui || {};
-    return (
-      (g.enabled ?? true) !== (base.enabled ?? true) ||
-      (g.entryCost ?? 0) !== (base.entryCost ?? 0) ||
-      (g.rewardMin ?? 0) !== (base.rewardMin ?? 0) ||
-      (g.rewardMax ?? 0) !== (base.rewardMax ?? 0) ||
-      (g.lossPenalty ?? 0) !== (base.lossPenalty ?? 0) ||
-      (g.dailyLimit ?? 0) !== (base.dailyLimit ?? 0) ||
-      String(ui.difficulty ?? "") !== String(baseUi.difficulty ?? "") ||
-      String(ui.risk ?? "") !== String(baseUi.risk ?? "") ||
-      String(ui.time ?? "") !== String(baseUi.time ?? "")
-    );
-  }
-
-  function isShopChanged(key, item) {
-    const base = ticketBase.shop?.[key] || {};
-    return (
-      (item.enabled ?? true) !== (base.enabled ?? true) ||
-      (item.price ?? 0) !== (base.price ?? 0) ||
-      (item.dailyLimit ?? 0) !== (base.dailyLimit ?? 0)
-    );
-  }
-
   const gameEntries = Object.entries(ticketCur.games || {});
   const shopEntries = Object.entries(ticketCur.shop || {});
-  const filteredGames = showOnlyChanged ? gameEntries.filter(([key, g]) => isGameChanged(key, g)) : gameEntries;
-  const filteredShop = showOnlyChanged ? shopEntries.filter(([key, item]) => isShopChanged(key, item)) : shopEntries;
+  const filteredGames = showOnlyChanged ? gameEntries.filter(([key, g]) => isGameChanged(ticketBase, key, g)) : gameEntries;
+  const filteredShop = showOnlyChanged ? shopEntries.filter(([key, item]) => isShopChanged(ticketBase, key, item)) : shopEntries;
 
   async function saveJoinCode() {
     if (readOnly) return;
@@ -159,29 +138,14 @@ export default function DMSettings() {
   }
 
   function updateTicketRules(patch) {
-    setTicketRules((prev) => {
-      const next = { ...(prev || {}) };
-      if (patch?.streak && typeof patch.streak === "object") {
-        next.streak = { ...(next.streak || {}), ...patch.streak };
-        const rest = { ...patch };
-        delete rest.streak;
-        return { ...next, ...rest };
-      }
-      if (patch?.dailyQuest && typeof patch.dailyQuest === "object") {
-        next.dailyQuest = { ...(next.dailyQuest || {}), ...patch.dailyQuest };
-        const rest = { ...patch };
-        delete rest.dailyQuest;
-        return { ...next, ...rest };
-      }
-      return { ...next, ...(patch || {}) };
-    });
+    setTicketRules((prev) => applyTicketRulesPatch(prev, patch));
   }
 
   function addDailyQuest() {
-    const key = `dq_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+    const draft = createDailyQuestDraft();
     const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    pool.push({ key, enabled: true, title: "Новый квест", description: "", goal: 2, reward: 2 });
-    const activeKey = ticketRules?.dailyQuest?.activeKey || key;
+    pool.push(draft);
+    const activeKey = ticketRules?.dailyQuest?.activeKey || draft.key;
     updateTicketRules({ dailyQuest: { pool, activeKey } });
   }
 
@@ -254,31 +218,11 @@ export default function DMSettings() {
   }
 
   function updateTicketGame(key, patch) {
-    setTicketRules((prev) => {
-      const next = { ...(prev || {}) };
-      const games = { ...(next.games || {}) };
-      const current = { ...(games[key] || {}) };
-      if (patch?.ui && typeof patch.ui === "object") {
-        current.ui = { ...(current.ui || {}), ...patch.ui };
-        const rest = { ...(patch || {}) };
-        delete rest.ui;
-        games[key] = { ...current, ...rest };
-      } else {
-        games[key] = { ...current, ...(patch || {}) };
-      }
-      next.games = games;
-      return next;
-    });
+    setTicketRules((prev) => applyTicketGamePatch(prev, key, patch));
   }
 
   function updateTicketShop(key, patch) {
-    setTicketRules((prev) => {
-      const next = { ...(prev || {}) };
-      const shop = { ...(next.shop || {}) };
-      shop[key] = { ...(shop[key] || {}), ...(patch || {}) };
-      next.shop = shop;
-      return next;
-    });
+    setTicketRules((prev) => applyTicketShopPatch(prev, key, patch));
   }
 
   async function saveTicketRules() {
@@ -989,48 +933,3 @@ export default function DMSettings() {
     </div>
   );
 }
-const inp = { width: "100%" };
-
-const GAME_LABELS = {
-  ttt: "Крестики-нолики",
-  guess: "Угадай карту",
-  match3: "Три в ряд",
-  uno: "Uno-мини",
-  scrabble: "Эрудит-блиц"
-};
-
-const SHOP_LABELS = {
-  stat: "+1 к характеристике",
-  feat: "Памятка-талант",
-  reroll: "Переброс кубика",
-  luck: "Печать удачи",
-  chest: "Сундук-сюрприз",
-  hint: "Тайная подсказка"
-};
-
-const RULE_TIPS = {
-  showOnlyChanged: "\u041f\u043e\u043a\u0430\u0437\u044b\u0432\u0430\u0442\u044c \u0442\u043e\u043b\u044c\u043a\u043e \u0442\u043e, \u0447\u0442\u043e \u043e\u0442\u043b\u0438\u0447\u0430\u0435\u0442\u0441\u044f \u043e\u0442 \u0434\u0435\u0444\u043e\u043b\u0442\u0430.",
-  arcadeEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0430\u0440\u043a\u0430\u0434\u0443 \u0438 \u0441\u0438\u0441\u0442\u0435\u043c\u0443 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
-  dailyEarnCap: "\u0414\u043d\u0435\u0432\u043d\u043e\u0439 \u043b\u0438\u043c\u0438\u0442 \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u043d\u0430 \u0438\u0433\u0440\u043e\u043a\u0430.",
-  streakMax: "\u041c\u0430\u043a\u0441\u0438\u043c\u0443\u043c \u0441\u0435\u0440\u0438\u0438 \u043f\u043e\u0434\u0440\u044f\u0434.",
-  streakStep: "\u0428\u0430\u0433 \u0431\u043e\u043d\u0443\u0441\u0430 \u0437\u0430 \u0441\u0435\u0440\u0438\u044e.",
-  streakFlatBonus: "\u041f\u043b\u043e\u0441\u043a\u0438\u0439 \u0431\u043e\u043d\u0443\u0441 \u0437\u0430 \u0441\u0435\u0440\u0438\u044e.",
-  dailyQuestEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0435\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u043e\u0435 \u0437\u0430\u0434\u0430\u043d\u0438\u0435.",
-  dailyQuestTitle: "\u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a \u0435\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u043e\u0433\u043e \u0437\u0430\u0434\u0430\u043d\u0438\u044f.",
-  dailyQuestDescription: "\u041a\u043e\u0440\u043e\u0442\u043a\u043e\u0435 \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0437\u0430\u0434\u0430\u0447\u0438.",
-  dailyQuestGoal: "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0440\u0430\u0437\u043d\u044b\u0445 \u0438\u0433\u0440 \u043d\u0443\u0436\u043d\u043e \u0441\u044b\u0433\u0440\u0430\u0442\u044c \u0437\u0430 \u0434\u0435\u043d\u044c.",
-  dailyQuestReward: "\u0421\u043a\u043e\u043b\u044c\u043a\u043e \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u0432\u044b\u0434\u0430\u0442\u044c \u0437\u0430 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u0435.",
-  gameEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0438\u0433\u0440\u0443 \u0432 \u0430\u0440\u043a\u0430\u0434\u0435.",
-  entryCost: "\u0426\u0435\u043d\u0430 \u0432\u0445\u043e\u0434\u0430 \u0432 \u0438\u0433\u0440\u0443.",
-  rewardMin: "\u041c\u0438\u043d\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u0430\u0433\u0440\u0430\u0434\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
-  rewardMax: "\u041c\u0430\u043a\u0441\u0438\u043c\u0430\u043b\u044c\u043d\u0430\u044f \u043d\u0430\u0433\u0440\u0430\u0434\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432.",
-  lossPenalty: "\u0428\u0442\u0440\u0430\u0444 \u0431\u0438\u043b\u0435\u0442\u043e\u0432 \u043f\u0440\u0438 \u043f\u0440\u043e\u0438\u0433\u0440\u044b\u0448\u0435.",
-  dailyLimit: "\u041b\u0438\u043c\u0438\u0442 \u0438\u0433\u0440 \u0432 \u0434\u0435\u043d\u044c.",
-  uiDifficulty: "\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0435\u043c\u0430\u044f \u0441\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u044c \u0438\u0433\u0440\u044b.",
-  uiRisk: "\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0435\u043c\u044b\u0439 \u0443\u0440\u043e\u0432\u0435\u043d\u044c \u0440\u0438\u0441\u043a\u0430.",
-  uiTime: "\u041e\u0442\u043e\u0431\u0440\u0430\u0436\u0430\u0435\u043c\u043e\u0435 \u0432\u0440\u0435\u043c\u044f \u0438\u0433\u0440\u044b.",
-  shopEnabled: "\u0412\u043a\u043b\u044e\u0447\u0430\u0435\u0442 \u0442\u043e\u0432\u0430\u0440 \u0432 \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0435.",
-  shopPrice: "\u0426\u0435\u043d\u0430 \u0442\u043e\u0432\u0430\u0440\u0430 \u0432 \u0431\u0438\u043b\u0435\u0442\u0430\u0445.",
-  shopDailyLimit: "\u041b\u0438\u043c\u0438\u0442 \u043f\u043e\u043a\u0443\u043f\u043e\u043a \u0432 \u0434\u0435\u043d\u044c (0 = \u0431\u0435\u0437 \u043b\u0438\u043c\u0438\u0442\u0430)."
-};
-

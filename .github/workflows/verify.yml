@@ -42,5 +42,33 @@ jobs:
       - name: Verify
         run: npm run verify
 
+      - name: Client unit tests
+        run: npm run test:client
+
+      - name: E2E smoke
+        run: npm run e2e
+
+      - name: Preflight smoke
+        run: |
+          set -euo pipefail
+          export PORT=3900
+          export DND_LAN_DATA_DIR="$(mktemp -d)"
+          npm --prefix server run start >/tmp/dnd-lan-server.log 2>&1 &
+          SERVER_PID=$!
+          cleanup() {
+            kill "$SERVER_PID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for i in {1..40}; do
+            if curl -fsS "http://127.0.0.1:${PORT}/readyz" >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          PREFLIGHT_BASE_URL="http://127.0.0.1:${PORT}" npm run preflight -- --skip-write
+
+      - name: Perf report
+        run: npm run perf:report
+
       - name: Server audit (high+)
         run: npm --prefix server audit --omit=dev --audit-level=high

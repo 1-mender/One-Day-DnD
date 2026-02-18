@@ -1,11 +1,21 @@
-import express from "express";
-import crypto from "node:crypto";
-import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
+﻿import express from "express";
+import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
 import { logger } from "../logger.js";
+import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
+import {
+  createSeedStore,
+  randInt,
+  validateGuessPayload,
+  validateMatch3Payload,
+  validateScrabblePayload,
+  validateTttPayload,
+  validateUnoPayload
+} from "../tickets/domain/playValidation.js";
+import { mergeRules, normalizeRules } from "../tickets/domain/rules.js";
 
 export const ticketsRouter = express.Router();
 
@@ -15,16 +25,15 @@ const ARCADE_QUEUE_TTL_MS = Number(process.env.ARCADE_QUEUE_TTL_MS || 2 * 60 * 1
 const ARCADE_HISTORY_LIMIT = Number(process.env.ARCADE_HISTORY_LIMIT || 20);
 const ARCADE_QUEUE_ETA_SEC = Number(process.env.ARCADE_QUEUE_ETA_SEC || 12);
 const ARCADE_METRICS_DAYS = Number(process.env.ARCADE_METRICS_DAYS || 7);
-const issuedSeeds = new Map();
-const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
 
 validateGameCatalog();
+const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
 
 const DEFAULT_DAILY_QUEST = {
   enabled: true,
   key: "daily_mix",
-  title: "Микс игр",
-  description: "Сыграй в 2 разные игры за день",
+  title: "РњРёРєСЃ РёРіСЂ",
+  description: "РЎС‹РіСЂР°Р№ РІ 2 СЂР°Р·РЅС‹Рµ РёРіСЂС‹ Р·Р° РґРµРЅСЊ",
   goal: 2,
   reward: 2
 };
@@ -47,13 +56,13 @@ const DEFAULT_TICKET_RULES = {
       lossPenalty: 0,
       dailyLimit: 10,
       ui: {
-        difficulty: "Легкая",
-        risk: "Низкий",
-        time: "2-4 мин"
+        difficulty: "Р›РµРіРєР°СЏ",
+        risk: "РќРёР·РєРёР№",
+        time: "2-4 РјРёРЅ"
       },
       performance: {
-        normal: { label: "Победа", multiplier: 1 },
-        sweep: { label: "Победа 2-0", multiplier: 1.15 }
+        normal: { label: "РџРѕР±РµРґР°", multiplier: 1 },
+        sweep: { label: "РџРѕР±РµРґР° 2-0", multiplier: 1.15 }
       }
     },
     guess: {
@@ -64,14 +73,14 @@ const DEFAULT_TICKET_RULES = {
       lossPenalty: 1,
       dailyLimit: 8,
       ui: {
-        difficulty: "Средняя",
-        risk: "Средний",
-        time: "3-5 мин"
+        difficulty: "РЎСЂРµРґРЅСЏСЏ",
+        risk: "РЎСЂРµРґРЅРёР№",
+        time: "3-5 РјРёРЅ"
       },
       performance: {
-        first: { label: "Угадал с 1-й попытки", multiplier: 1.2 },
-        second: { label: "Со 2-й попытки", multiplier: 1.05 },
-        third: { label: "С 3-й попытки", multiplier: 1 }
+        first: { label: "РЈРіР°РґР°Р» СЃ 1-Р№ РїРѕРїС‹С‚РєРё", multiplier: 1.2 },
+        second: { label: "РЎРѕ 2-Р№ РїРѕРїС‹С‚РєРё", multiplier: 1.05 },
+        third: { label: "РЎ 3-Р№ РїРѕРїС‹С‚РєРё", multiplier: 1 }
       }
     },
     match3: {
@@ -82,14 +91,14 @@ const DEFAULT_TICKET_RULES = {
       lossPenalty: 1,
       dailyLimit: 6,
       ui: {
-        difficulty: "Средняя",
-        risk: "Средний",
-        time: "4-6 мин"
+        difficulty: "РЎСЂРµРґРЅСЏСЏ",
+        risk: "РЎСЂРµРґРЅРёР№",
+        time: "4-6 РјРёРЅ"
       },
       performance: {
-        normal: { label: "Комбо 3", multiplier: 1 },
-        combo4: { label: "Комбо 4+", multiplier: 1.1 },
-        combo5: { label: "Комбо 5+", multiplier: 1.2 }
+        normal: { label: "РљРѕРјР±Рѕ 3", multiplier: 1 },
+        combo4: { label: "РљРѕРјР±Рѕ 4+", multiplier: 1.1 },
+        combo5: { label: "РљРѕРјР±Рѕ 5+", multiplier: 1.2 }
       }
     },
     uno: {
@@ -100,13 +109,13 @@ const DEFAULT_TICKET_RULES = {
       lossPenalty: 1,
       dailyLimit: 5,
       ui: {
-        difficulty: "Средняя",
-        risk: "Средний",
-        time: "5-7 мин"
+        difficulty: "РЎСЂРµРґРЅСЏСЏ",
+        risk: "РЎСЂРµРґРЅРёР№",
+        time: "5-7 РјРёРЅ"
       },
       performance: {
-        normal: { label: "Победа", multiplier: 1 },
-        clean: { label: "Без штрафных", multiplier: 1.15 }
+        normal: { label: "РџРѕР±РµРґР°", multiplier: 1 },
+        clean: { label: "Р‘РµР· С€С‚СЂР°С„РЅС‹С…", multiplier: 1.15 }
       }
     },
     scrabble: {
@@ -117,14 +126,14 @@ const DEFAULT_TICKET_RULES = {
       lossPenalty: 2,
       dailyLimit: 5,
       ui: {
-        difficulty: "Сложная",
-        risk: "Высокий",
-        time: "2-3 мин"
+        difficulty: "РЎР»РѕР¶РЅР°СЏ",
+        risk: "Р’С‹СЃРѕРєРёР№",
+        time: "2-3 РјРёРЅ"
       },
       performance: {
-        normal: { label: "Слово собрано", multiplier: 1 },
-        long: { label: "6+ букв", multiplier: 1.2 },
-        rare: { label: "Редкая буква", multiplier: 1.1 }
+        normal: { label: "РЎР»РѕРІРѕ СЃРѕР±СЂР°РЅРѕ", multiplier: 1 },
+        long: { label: "6+ Р±СѓРєРІ", multiplier: 1.2 },
+        rare: { label: "Р РµРґРєР°СЏ Р±СѓРєРІР°", multiplier: 1.1 }
       }
     }
   },
@@ -155,331 +164,8 @@ function getDayKey(t = now()) {
   return Math.floor(Number(t) / DAY_MS);
 }
 
-function makeSeed() {
-  return Math.random().toString(36).slice(2, 12);
-}
-
-function seedKey(playerId, gameKey) {
-  return `${playerId}:${gameKey}`;
-}
-
-function issueSeed(playerId, gameKey) {
-  const seed = makeSeed();
-  const proof = crypto.randomBytes(16).toString("hex");
-  issuedSeeds.set(seedKey(playerId, gameKey), { seed, proof, expiresAt: now() + SEED_TTL_MS });
-  return { seed, proof };
-}
-
-function takeSeed(playerId, gameKey, seed, proof) {
-  const key = seedKey(playerId, gameKey);
-  const entry = issuedSeeds.get(key);
-  if (!entry) return false;
-  if (entry.seed !== seed) return false;
-  if (entry.proof !== proof) return false;
-  if (entry.expiresAt < now()) {
-    issuedSeeds.delete(key);
-    return false;
-  }
-  issuedSeeds.delete(key);
-  return true;
-}
-
-function makeRng(seed) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return () => {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    return (h & 0xfffffff) / 0xfffffff;
-  };
-}
-
-function shuffleWithSeed(list, seed) {
-  const rng = makeRng(seed);
-  const out = list.slice();
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
-function validateGuessPayload(payload, seed) {
-  if (!payload?.picks || !Array.isArray(payload.picks)) return false;
-  if (!payload.picks.every((p) => p && typeof p.suit === "string" && typeof p.rank === "string")) return false;
-  const suits = ["hearts", "diamonds", "clubs", "spades"];
-  const ranks = Array.isArray(payload.ranks) ? payload.ranks : ["A", "K", "Q"];
-  const deck = [];
-  for (const suit of suits) {
-    for (const rank of ranks) deck.push({ suit, rank });
-  }
-  const shuffled = shuffleWithSeed(deck, seed);
-  const targetIndex = Math.floor(makeRng(`${seed}-target`)() * shuffled.length);
-  const target = shuffled[targetIndex];
-  const maxAttempts = Number(payload.maxAttempts || 3);
-  const picks = payload.picks.slice(0, maxAttempts).map((p) => `${p.suit}:${p.rank}`);
-  const targetKey = `${target.suit}:${target.rank}`;
-  const winAttempt = picks.findIndex((p) => p === targetKey) + 1;
-  if (payload.outcome === "win") return winAttempt > 0;
-  return winAttempt === 0;
-}
-
-function validateTttPayload(payload) {
-  const moves = Array.isArray(payload?.moves) ? payload.moves : [];
-  if (moves.length === 0) return false;
-  const board = new Array(9).fill(null);
-  const playerSymbol = payload?.playerSymbol === "O" ? "O" : "X";
-  let player = "X";
-  for (const move of moves) {
-    if (!Number.isInteger(move) || move < 0 || move > 8) return false;
-    if (board[move]) return false;
-    board[move] = player;
-    player = player === "X" ? "O" : "X";
-  }
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-  ];
-  const winner = lines.find((line) => line.every((idx) => board[idx] && board[idx] === board[line[0]]));
-  const hasWinner = !!winner;
-  const winnerSymbol = hasWinner ? board[winner[0]] : null;
-  if (payload.outcome === "win") return winnerSymbol === playerSymbol;
-  if (payload.outcome === "loss") return hasWinner && winnerSymbol !== playerSymbol;
-  return false;
-}
-
-function intInRange(value, min, max) {
-  return Number.isInteger(value) && value >= min && value <= max;
-}
-
-function normalizeScrabbleWord(word) {
-  return String(word || "").trim().toUpperCase();
-}
-
-function canFormScrabbleWord(word, rack) {
-  if (word.length < 3) return false;
-  const letters = rack.slice();
-  for (const ch of word) {
-    const idx = letters.indexOf(ch);
-    if (idx === -1) return false;
-    letters.splice(idx, 1);
-  }
-  return true;
-}
-
-function validateMatch3Payload(payload, outcome, performanceKey) {
-  const score = Number(payload?.score);
-  const target = Number(payload?.target);
-  const size = Number(payload?.size);
-  const maxRun = Number(payload?.maxRun);
-  const movesUsed = Number(payload?.movesUsed);
-
-  if (!intInRange(Math.floor(score), 0, 50000) || score !== Math.floor(score)) return false;
-  if (!intInRange(Math.floor(target), 60, 500) || target !== Math.floor(target)) return false;
-  if (!intInRange(Math.floor(size), 4, 8) || size !== Math.floor(size)) return false;
-  if (!intInRange(Math.floor(maxRun), 0, 8) || maxRun !== Math.floor(maxRun)) return false;
-  if (!intInRange(Math.floor(movesUsed), 0, 60) || movesUsed !== Math.floor(movesUsed)) return false;
-
-  if (outcome === "win" && score < target) return false;
-  if (outcome === "loss" && score >= target) return false;
-  if (performanceKey === "combo5" && maxRun < 5) return false;
-  if (performanceKey === "combo4" && maxRun < 4) return false;
-  return true;
-}
-
-function validateUnoPayload(payload, outcome, performanceKey) {
-  const playerDraws = Number(payload?.playerDraws);
-  const handSize = Number(payload?.handSize);
-  if (!intInRange(Math.floor(playerDraws), 0, 60) || playerDraws !== Math.floor(playerDraws)) return false;
-  if (!intInRange(Math.floor(handSize), 1, 20) || handSize !== Math.floor(handSize)) return false;
-  if (outcome === "win" && performanceKey === "clean" && playerDraws !== 0) return false;
-  return true;
-}
-
-function validateScrabblePayload(payload, outcome, performanceKey) {
-  const rackRaw = Array.isArray(payload?.rack) ? payload.rack : [];
-  const rack = rackRaw
-    .map((item) => normalizeScrabbleWord(item))
-    .filter(Boolean);
-  if (!intInRange(rack.length, 3, 12)) return false;
-  if (!rack.every((ch) => ch.length === 1)) return false;
-
-  const word = normalizeScrabbleWord(payload?.word);
-  if (word.length > rack.length) return false;
-
-  if (outcome === "win") {
-    if (!canFormScrabbleWord(word, rack)) return false;
-    const hasRare = Array.from(word).some((ch) => SCRABBLE_RARE.has(ch));
-    if (performanceKey === "long" && word.length < 6) return false;
-    if (performanceKey === "rare" && !hasRare) return false;
-  }
-  return true;
-}
-
-function randInt(min, max) {
-  const lo = Math.ceil(min);
-  const hi = Math.floor(max);
-  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
-}
-
-function isDmRequest(req) {
-  const token = req.cookies?.[getDmCookieName()];
-  if (!token) return false;
-  try {
-    verifyDmToken(token);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function getPlayerFromToken(req) {
-  const token = req.header("x-player-token");
-  if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), Date.now());
-  if (!sess) return null;
-  const player = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(sess.player_id);
-  if (!player) return null;
-  return { sess, player };
-}
-
 function isPlainObject(v) {
   return !!v && typeof v === "object" && !Array.isArray(v);
-}
-
-function mergeRules(base, override) {
-  if (!isPlainObject(override)) return { ...base };
-  const out = { ...base };
-  for (const [k, v] of Object.entries(override)) {
-    if (isPlainObject(v) && isPlainObject(base?.[k])) out[k] = mergeRules(base[k], v);
-    else out[k] = v;
-  }
-  return out;
-}
-
-function clampInt(value, min = 0, max = 999) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, Math.round(n)));
-}
-
-function clampFloat(value, min = 0, max = 10) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return min;
-  return Math.max(min, Math.min(max, n));
-}
-
-function normalizeRules(rules) {
-  const out = { ...rules };
-  out.enabled = out.enabled !== false;
-  out.dailyEarnCap = clampInt(out.dailyEarnCap, 0, 9999);
-  out.dailySpendCap = clampInt(out.dailySpendCap, 0, 9999);
-
-  const streak = out.streak || {};
-  out.streak = {
-    max: clampInt(streak.max, 0, 10),
-    step: clampFloat(streak.step, 0, 2),
-    flatBonus: clampInt(streak.flatBonus, 0, 10)
-  };
-
-  const games = { ...(out.games || {}) };
-  for (const [key, g] of Object.entries(games)) {
-    const cur = g || {};
-    const rewardMin = clampInt(cur.rewardMin, 0, 999);
-    const rewardMax = clampInt(cur.rewardMax, rewardMin, 999);
-    const uiRaw = cur.ui && typeof cur.ui === "object" ? cur.ui : {};
-    const ui = {
-      difficulty: typeof uiRaw.difficulty === "string" ? uiRaw.difficulty.slice(0, 40) : "",
-      risk: typeof uiRaw.risk === "string" ? uiRaw.risk.slice(0, 40) : "",
-      time: typeof uiRaw.time === "string" ? uiRaw.time.slice(0, 40) : ""
-    };
-    games[key] = {
-      ...cur,
-      enabled: cur.enabled !== false,
-      entryCost: clampInt(cur.entryCost, 0, 999),
-      rewardMin,
-      rewardMax,
-      lossPenalty: clampInt(cur.lossPenalty, 0, 999),
-      dailyLimit: clampInt(cur.dailyLimit, 0, 999),
-      ui
-    };
-  }
-  out.games = games;
-
-  const shop = { ...(out.shop || {}) };
-  for (const [key, s] of Object.entries(shop)) {
-    const cur = s || {};
-    shop[key] = {
-      ...cur,
-      enabled: cur.enabled !== false,
-      price: clampInt(cur.price, 0, 999),
-      dailyLimit: clampInt(cur.dailyLimit, 0, 999)
-    };
-  }
-  out.shop = shop;
-
-  const autoBalance = out.autoBalance || {};
-  out.autoBalance = {
-    enabled: autoBalance.enabled === true,
-    windowDays: clampInt(autoBalance.windowDays, 1, 30),
-    targetWinRate: clampFloat(autoBalance.targetWinRate, 0.2, 0.8),
-    rewardStep: clampInt(autoBalance.rewardStep, 0, 5),
-    penaltyStep: clampInt(autoBalance.penaltyStep, 0, 5),
-    minPlays: clampInt(autoBalance.minPlays, 10, 200)
-  };
-
-  const dqRaw = out.dailyQuest && typeof out.dailyQuest === "object" ? out.dailyQuest : {};
-  const poolRaw = Array.isArray(dqRaw.pool) && dqRaw.pool.length ? dqRaw.pool : DEFAULT_TICKET_RULES.dailyQuest.pool;
-  const pool = [];
-  const seen = new Set();
-  const maxPool = 10;
-
-  function sanitizeKey(value, fallback) {
-    const raw = String(value || "").toLowerCase().replace(/[^a-z0-9_-]/g, "_").slice(0, 40);
-    return raw || fallback;
-  }
-
-  for (let i = 0; i < poolRaw.length && pool.length < maxPool; i++) {
-    const q = poolRaw[i] || {};
-    const baseKey = sanitizeKey(q.key, `dq_${i + 1}`);
-    let key = baseKey;
-    let n = 1;
-    while (seen.has(key)) {
-      n += 1;
-      key = sanitizeKey(`${baseKey}_${n}`, `dq_${i + 1}_${n}`);
-    }
-    seen.add(key);
-    pool.push({
-      key,
-      enabled: q.enabled !== false,
-      title: typeof q.title === "string" ? q.title.slice(0, 80) : DEFAULT_DAILY_QUEST.title,
-      description: typeof q.description === "string" ? q.description.slice(0, 160) : DEFAULT_DAILY_QUEST.description,
-      goal: clampInt(q.goal ?? DEFAULT_DAILY_QUEST.goal, 1, 10),
-      reward: clampInt(q.reward ?? DEFAULT_DAILY_QUEST.reward, 0, 50)
-    });
-  }
-
-  const activeKeyRaw = sanitizeKey(dqRaw.activeKey, "");
-  const enabledPool = pool.filter((q) => q.enabled !== false);
-  const activeKey = enabledPool.find((q) => q.key === activeKeyRaw)?.key
-    || enabledPool[0]?.key
-    || "";
-
-  out.dailyQuest = {
-    enabled: dqRaw.enabled !== false,
-    activeKey,
-    pool
-  };
-
-  return out;
 }
 
 function applyAutoBalance(db, partyId, rules) {
@@ -1088,14 +774,14 @@ function buildPayload(db, playerId, dayKey, rules, options = {}) {
 
 ticketsRouter.get("/rules", (req, res) => {
   const isDm = isDmRequest(req);
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
   const partyId = me?.player?.party_id ?? getParty().id;
   res.json({ rules: getEffectiveRules(partyId) });
 });
 
 ticketsRouter.get("/me", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const db = getDb();
@@ -1112,7 +798,7 @@ ticketsRouter.get("/catalog", (req, res) => {
 });
 
 ticketsRouter.get("/seed", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
   const gameKey = String(req.query?.gameKey || "").trim();
   if (!gameKey || !GAME_CATALOG.find((g) => g.key === gameKey)) {
@@ -1123,7 +809,7 @@ ticketsRouter.get("/seed", (req, res) => {
 });
 
 ticketsRouter.post("/matchmaking/queue", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const gameKey = String(req.body?.gameKey || "").trim();
@@ -1167,7 +853,7 @@ ticketsRouter.post("/matchmaking/queue", (req, res) => {
 });
 
 ticketsRouter.post("/matchmaking/cancel", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const queueId = req.body?.queueId == null ? null : Number(req.body.queueId);
@@ -1223,7 +909,7 @@ ticketsRouter.post("/matchmaking/cancel", (req, res) => {
 });
 
 ticketsRouter.get("/matches/history", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
   const db = getDb();
   const limit = clampLimit(req.query?.limit, ARCADE_HISTORY_LIMIT, 1, 50);
@@ -1231,7 +917,7 @@ ticketsRouter.get("/matches/history", (req, res) => {
 });
 
 ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const matchId = Number(req.params?.matchId);
@@ -1301,7 +987,7 @@ ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
 });
 
 ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const matchId = Number(req.params?.matchId);
@@ -1456,7 +1142,7 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
 });
 
 ticketsRouter.post("/play", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const gameKey = String(req.body?.gameKey || "").trim();
@@ -1587,7 +1273,7 @@ ticketsRouter.post("/play", (req, res) => {
     actorName: me.player.display_name,
     targetType: "player",
     targetId: me.player.id,
-    message: `Игра ${gameKey}: ${outcome} (entry ${entryCost}, reward ${reward}, penalty ${penalty})`,
+    message: `РРіСЂР° ${gameKey}: ${outcome} (entry ${entryCost}, reward ${reward}, penalty ${penalty})`,
     data: { gameKey, outcome, entryCost, reward, penalty, multiplier, streakAfter },
     io: req.app.locals.io
   });
@@ -1608,7 +1294,7 @@ ticketsRouter.post("/play", (req, res) => {
 });
 
 ticketsRouter.post("/purchase", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const itemKey = String(req.body?.itemKey || "").trim();
@@ -1666,7 +1352,7 @@ ticketsRouter.post("/purchase", (req, res) => {
     actorName: me.player.display_name,
     targetType: "player",
     targetId: me.player.id,
-    message: `Покупка ${itemKey} за ${price}`,
+    message: `РџРѕРєСѓРїРєР° ${itemKey} Р·Р° ${price}`,
     data: { itemKey, price },
     io: req.app.locals.io
   });
@@ -1720,7 +1406,7 @@ ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
       actorName: "DM",
       targetType: "daily_quest",
       targetId: null,
-      message: `Активный daily‑quest: ${prevActive || "—"} → ${nextActive || "—"}`,
+      message: `РђРєС‚РёРІРЅС‹Р№ dailyвЂ‘quest: ${prevActive || "вЂ”"} в†’ ${nextActive || "вЂ”"}`,
       data: { prevActive, nextActive },
       io: req.app.locals.io
     });
@@ -1752,7 +1438,7 @@ function handleSetActiveQuest(req, res) {
       actorName: "DM",
       targetType: "daily_quest",
       targetId: null,
-      message: `Активный daily‑quest: ${prevActive || "—"} → ${questKey || "—"}`,
+      message: `РђРєС‚РёРІРЅС‹Р№ dailyвЂ‘quest: ${prevActive || "вЂ”"} в†’ ${questKey || "вЂ”"}`,
       data: { prevActive, nextActive: questKey },
       io: req.app.locals.io
     });
@@ -1786,7 +1472,7 @@ ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
     actorName: "DM",
     targetType: "daily_quest",
     targetId: null,
-    message: `Сброс daily‑quest: ${questKey} (dayKey=${dayKey})`,
+    message: `РЎР±СЂРѕСЃ dailyвЂ‘quest: ${questKey} (dayKey=${dayKey})`,
     data: { questKey, dayKey, deleted: r.changes || 0 },
     io: req.app.locals.io
   });
@@ -1851,3 +1537,4 @@ ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
   const rules = getEffectiveRules(player.party_id);
   res.json(buildPayload(db, playerId, dayKey, rules, { partyId: player.party_id }));
 });
+

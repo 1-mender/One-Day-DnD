@@ -1,38 +1,17 @@
 import express from "express";
-import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
+import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getPartyId, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { LIMITS } from "../limits.js";
 import { getInventoryLimitFromStats } from "../inventoryLimit.js";
+import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 
 export const playersRouter = express.Router();
 
-function getPlayerFromToken(req) {
-  const token = req.header("x-player-token");
-  if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), Date.now());
-  if (!sess) return null;
-  const player = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(sess.player_id);
-  if (!player) return null;
-  return { sess, player };
-}
-
-function isDmRequest(req) {
-  const token = req.cookies?.[getDmCookieName()];
-  if (!token) return false;
-  try {
-    verifyDmToken(token);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 playersRouter.get("/", (req, res) => {
   const isDm = isDmRequest(req);
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
 
   const db = getDb();
@@ -54,7 +33,7 @@ playersRouter.get("/", (req, res) => {
 });
 
 playersRouter.get("/me", (req, res) => {
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
   res.json({
     player: { id: me.player.id, displayName: me.player.display_name, partyId: me.player.party_id }

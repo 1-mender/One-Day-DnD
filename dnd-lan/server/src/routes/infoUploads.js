@@ -2,10 +2,14 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import multer from "multer";
-import { getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb } from "../db.js";
 import { jsonParse, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
+import {
+  getActiveSessionByToken,
+  getDmPayloadFromRequest,
+  getPlayerTokenFromRequest
+} from "../sessionAuth.js";
 import {
   DANGEROUS_UPLOAD_MIMES,
   finalizeUploadedFile,
@@ -49,24 +53,15 @@ const upload = multer({
 const PLAYER_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function getPlayerSession(req) {
-  const token = req.header("x-player-token");
+  const token = getPlayerTokenFromRequest(req);
   if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
-  if (!sess) return null;
-  return sess;
+  return getActiveSessionByToken(token, { at: now() });
 }
 
 function dmOrAvatarUpload(req, res, next) {
-  const token = req.cookies?.[getDmCookieName()];
-  if (token) {
-    try {
-      verifyDmToken(token);
-      req.isPlayerUpload = false;
-      return next();
-    } catch {
-      // fall through to player check
-    }
+  if (getDmPayloadFromRequest(req)) {
+    req.isPlayerUpload = false;
+    return next();
   }
 
   const sess = getPlayerSession(req);

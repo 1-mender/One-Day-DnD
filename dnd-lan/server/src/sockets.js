@@ -1,10 +1,9 @@
 import { Server } from "socket.io";
-import cookie from "cookie";
-import { getDmCookieName, verifyDmToken } from "./auth.js";
 import { getDb } from "./db.js";
 import { now } from "./util.js";
 import { logEvent } from "./events.js";
 import { getDegradedState } from "./degraded.js";
+import { getActiveSessionByToken, getDmAuthFromSocketRequest, getPlayerBySession } from "./sessionAuth.js";
 
 const GRACE_MS = Number(process.env.PRESENCE_GRACE_MS || 4000);
 const activeSocketsByPlayerId = new Map();
@@ -112,18 +111,14 @@ export function createSocketServer(httpServer) {
 
   io.use((socket, next) => {
     // DM via cookie
-    const rawCookie = socket.request.headers.cookie || "";
-    const parsed = cookie.parse(rawCookie);
-    const dmToken = parsed[getDmCookieName()];
-    if (dmToken) {
-      try {
-        const payload = verifyDmToken(dmToken);
+    const dmAuth = getDmAuthFromSocketRequest(socket.request);
+    if (dmAuth.hasToken) {
+      if (dmAuth.payload) {
         socket.data.role = "dm";
-        socket.data.dm = payload;
+        socket.data.dm = dmAuth.payload;
         return next();
-      } catch {
-        return next(new Error("dm_token_invalid"));
       }
+      return next(new Error("dm_token_invalid"));
     }
 
     // Player or waiting
@@ -165,14 +160,14 @@ export function createSocketServer(httpServer) {
 
     if (socket.data.role === "player") {
       const token = socket.data.playerToken;
-      const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(token, now());
+      const sess = getActiveSessionByToken(token, { db, at: now() });
       if (!sess) {
         socket.emit("player:sessionInvalid");
         socket.disconnect(true);
         return;
       }
 
-      const player = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(sess.player_id);
+      const player = getPlayerBySession(sess, { db });
       if (!player) {
         socket.emit("player:sessionInvalid");
         socket.disconnect(true);
@@ -246,9 +241,7 @@ export function createSocketServer(httpServer) {
             return;
           }
 
-          const nextSess = db
-            .prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?")
-            .get(token, now());
+          const nextSess = getActiveSessionByToken(token, { db, at: now() });
           if (!nextSess) {
             socket.emit("player:sessionInvalid");
             socket.disconnect(true);
@@ -256,7 +249,7 @@ export function createSocketServer(httpServer) {
             return;
           }
 
-          const nextPlayer = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(nextSess.player_id);
+          const nextPlayer = getPlayerBySession(nextSess, { db });
           if (!nextPlayer) {
             socket.emit("player:sessionInvalid");
             socket.disconnect(true);

@@ -1,32 +1,11 @@
 import express from "express";
-import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
+import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
+import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 
 export const infoBlocksRouter = express.Router();
-
-function authPlayer(req) {
-  const token = req.header("x-player-token");
-  if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
-  if (!sess) return null;
-  const player = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(sess.player_id);
-  if (!player) return null;
-  return { sess, player };
-}
-
-function isDmRequest(req) {
-  const token = req.cookies?.[getDmCookieName()];
-  if (!token) return false;
-  try {
-    verifyDmToken(token);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 infoBlocksRouter.get("/", (req, res) => {
   const db = getDb();
@@ -36,7 +15,7 @@ infoBlocksRouter.get("/", (req, res) => {
     return res.json({ items });
   }
 
-  const me = authPlayer(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   try {

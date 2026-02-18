@@ -1,7 +1,8 @@
 import express from "express";
-import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
+import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
 import { jsonParse, now, randId } from "../util.js";
+import { getDmPayloadFromRequest, getPlayerContextFromRequest } from "../sessionAuth.js";
 
 export const profileRouter = express.Router();
 
@@ -38,27 +39,6 @@ const DEFAULT_PRESET_ACCESS = {
   playerRequest: true,
   hideLocal: false
 };
-
-function getDmFromRequest(req) {
-  const token = req.cookies?.[getDmCookieName()];
-  if (!token) return null;
-  try {
-    return verifyDmToken(token);
-  } catch {
-    return null;
-  }
-}
-
-function getPlayerFromToken(req) {
-  const token = req.header("x-player-token");
-  if (!token) return null;
-  const db = getDb();
-  const sess = db.prepare("SELECT * FROM sessions WHERE token=? AND revoked=0 AND expires_at>?").get(String(token), now());
-  if (!sess) return null;
-  const player = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(sess.player_id);
-  if (!player) return null;
-  return { sess, player };
-}
 
 function mapProfile(row) {
   const stats = jsonParse(row.stats, {});
@@ -265,8 +245,8 @@ function ensureWritable(sess, res) {
 }
 
 profileRouter.get("/profile-presets", (req, res) => {
-  const dm = getDmFromRequest(req);
-  const me = getPlayerFromToken(req);
+  const dm = getDmPayloadFromRequest(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
   if (!dm && !me) return res.status(403).json({ error: "forbidden" });
 
   const party = getParty();
@@ -326,8 +306,8 @@ profileRouter.get("/players/:id/profile", (req, res) => {
   const playerId = Number(req.params.id);
   if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
 
-  const dm = getDmFromRequest(req);
-  const me = getPlayerFromToken(req);
+  const dm = getDmPayloadFromRequest(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
   if (!dm && (!me || me.player.id !== playerId)) return res.status(403).json({ error: "forbidden" });
 
   const db = getDb();
@@ -397,7 +377,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   const playerId = Number(req.params.id);
   if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
 
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
   if (!ensureWritable(me.sess, res)) return;
 
@@ -444,7 +424,7 @@ profileRouter.post("/players/:id/profile-requests", (req, res) => {
   const playerId = Number(req.params.id);
   if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
 
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
   if (!ensureWritable(me.sess, res)) return;
 
@@ -517,7 +497,7 @@ profileRouter.get("/players/:id/profile-requests", (req, res) => {
   const playerId = Number(req.params.id);
   if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
 
-  const me = getPlayerFromToken(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
 
   const status = String(req.query.status || "").trim();

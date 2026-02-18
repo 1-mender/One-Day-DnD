@@ -1,11 +1,12 @@
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
-import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
+import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
+import { isDmRequest } from "../sessionAuth.js";
 
 export const bestiaryRouter = express.Router();
 
@@ -18,17 +19,6 @@ function imageUrl(filename) {
   const bestiaryPath = path.join(BESTIARY_DIR, filename);
   if (fs.existsSync(bestiaryPath)) return `/uploads/bestiary/${filename}`;
   return `/uploads/monsters/${filename}`;
-}
-
-function isDmRequest(req) {
-  const token = req.cookies?.[getDmCookieName()];
-  if (!token) return false;
-  try {
-    verifyDmToken(token);
-    return true;
-  } catch {
-    return false;
-  }
 }
 
 const DEFAULT_PAGE_LIMIT = Number(process.env.BESTIARY_PAGE_LIMIT || 200);
