@@ -1,7 +1,11 @@
 import { getDegradedState } from "./degraded.js";
 
 const BLOCKED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const DEGRADED_WRITE_BYPASS = new Set(["POST /api/backup/import"]);
+const DEGRADED_WRITE_BYPASS = new Set([
+  "POST /api/auth/login",
+  "POST /api/auth/logout",
+  "POST /api/backup/import"
+]);
 
 function normalizePathname(pathname) {
   const raw = String(pathname || "/");

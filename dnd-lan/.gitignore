@@ -1,6 +1,7 @@
 node_modules/
 server/data/
 server/uploads/
+server/server/uploads/
 server/public/
 client/dist/
 .env

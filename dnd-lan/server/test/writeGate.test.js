@@ -16,6 +16,7 @@ const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { setDegraded, clearDegraded } = await import("../src/degraded.js");
 const { assertWritable } = await import("../src/writeGate.js");
 const { backupRouter } = await import("../src/routes/backup.js");
+const { authRouter } = await import("../src/routes/auth.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 
 initDb();
@@ -26,6 +27,7 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(assertWritable);
 app.post("/api/party/write-probe", (_req, res) => res.json({ ok: true }));
+app.use("/api/auth", authRouter);
 app.use("/api/backup", backupRouter);
 app.use("/api/tickets", ticketsRouter);
 
@@ -69,6 +71,58 @@ test("write gate allows backup import endpoint when degraded", async () => {
     const data = await res.json().catch(() => ({}));
     assert.notEqual(res.status, 503);
     assert.equal(data.error, "file_required");
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth login endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "dm", password: "secret123" })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth logout endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/auth/logout`, {
+      method: "POST",
+      headers: { cookie: dmCookie() }
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate keeps auth change-password blocked when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie: dmCookie()
+      },
+      body: JSON.stringify({ newPassword: "new-password-123" })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.equal(res.status, 503);
+    assert.equal(data.error, "read_only");
   } finally {
     clearDegraded();
   }

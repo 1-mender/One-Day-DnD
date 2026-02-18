@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
@@ -36,8 +36,8 @@ export default function DMSetup() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 900, fontSize: 22 }}>РџРµСЂРІС‹Р№ Р·Р°РїСѓСЃРє вЂ” СЃРѕР·РґР°С‚СЊ DM</div>
-          <div className="small">Р РµРєРѕРјРµРЅРґСѓРµС‚СЃСЏ РїР°СЂРѕР»СЊ РѕС‚ 6+ СЃРёРјРІРѕР»РѕРІ.</div>
+          <div style={{ fontWeight: 900, fontSize: 22 }}>First launch: create DM account</div>
+          <div className="small">Use a strong password with at least 6 characters.</div>
           <hr />
           <form className="list" onSubmit={submit}>
             <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="username" style={{ width: "100%" }} />
@@ -48,9 +48,9 @@ export default function DMSetup() {
               placeholder="setup secret (optional)"
               style={{ width: "100%" }}
             />
-            {err && <div className="badge off">РћС€РёР±РєР°: {err}</div>}
-            {netErr && <div className="badge off">РЎРµС‚СЊ: {netErr}</div>}
-            <button className="btn" type="submit">РЎРѕР·РґР°С‚СЊ</button>
+            {err && <div className="badge off">Error: {err}</div>}
+            {netErr && <div className="badge off">Network: {netErr}</div>}
+            <button className="btn" type="submit">Create</button>
           </form>
         </div>
       </div>
