@@ -124,7 +124,7 @@ eventsRouter.post("/cleanup", dmAuthMiddleware, (req, res) => {
   let deleted = 0;
 
   if (mode === "all") {
-    if (req.body?.confirm != null && String(req.body.confirm) !== "DELETE") {
+    if (String(req.body?.confirm || "") !== "DELETE") {
       return res.status(400).json({ error: "confirm_required" });
     }
     const r = db.prepare("DELETE FROM events WHERE party_id=?").run(partyId);

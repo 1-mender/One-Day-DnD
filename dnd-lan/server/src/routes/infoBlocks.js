@@ -1,50 +1,10 @@
 import express from "express";
-import multer from "multer";
-import path from "node:path";
-import fs from "node:fs";
 import { dmAuthMiddleware, getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb, getParty } from "../db.js";
-import { now, jsonParse, wrapMulter } from "../util.js";
+import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
-import { uploadsDir } from "../paths.js";
 
 export const infoBlocksRouter = express.Router();
-
-const ASSETS_DIR = path.join(uploadsDir, "assets");
-fs.mkdirSync(ASSETS_DIR, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, ASSETS_DIR),
-  filename: (req, file, cb) => {
-    const safe = `${Date.now()}_${Math.random().toString(16).slice(2)}_${file.originalname}`.replace(/[^\w.\-]/g, "_");
-    cb(null, safe);
-  }
-});
-const INFO_ASSET_MAX_BYTES = Number(process.env.INFO_ASSET_MAX_BYTES || 5 * 1024 * 1024);
-const DEFAULT_INFO_ASSET_MIMES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-  "text/plain",
-  "text/markdown"
-]);
-const INFO_ASSET_ALLOWED_MIMES = process.env.INFO_ASSET_ALLOWED_MIMES
-  ? new Set(String(process.env.INFO_ASSET_ALLOWED_MIMES).split(",").map((m) => m.trim().toLowerCase()).filter(Boolean))
-  : DEFAULT_INFO_ASSET_MIMES;
-const upload = multer({
-  storage,
-  limits: { fileSize: INFO_ASSET_MAX_BYTES },
-  fileFilter: (req, file, cb) => {
-    const mime = String(file.mimetype || "").toLowerCase();
-    if (!INFO_ASSET_ALLOWED_MIMES.has(mime)) {
-      req.fileValidationError = "unsupported_file_type";
-      return cb(null, false);
-    }
-    cb(null, true);
-  }
-});
 
 function authPlayer(req) {
   const token = req.header("x-player-token");
@@ -107,7 +67,7 @@ infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
   if (!title) return res.status(400).json({ error: "title_required" });
 
   const t = now();
-  const access = ["dm","all","selected"].includes(b.access) ? b.access : "dm";
+  const access = ["dm", "all", "selected"].includes(b.access) ? b.access : "dm";
   const selected = Array.isArray(b.selectedPlayerIds) ? b.selectedPlayerIds.map(Number).filter(Boolean) : [];
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : [];
 
@@ -130,7 +90,7 @@ infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
     actorName: "DM",
     targetType: "info_block",
     targetId: Number(id),
-    message: `Создан блок: ${title}`,
+    message: `Info block created: ${title}`,
     io: req.app.locals.io
   });
 
@@ -148,7 +108,7 @@ infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const title = String(b.title ?? cur.title).trim();
   if (!title) return res.status(400).json({ error: "title_required" });
 
-  const access = ["dm","all","selected"].includes(b.access ?? cur.access) ? (b.access ?? cur.access) : "dm";
+  const access = ["dm", "all", "selected"].includes(b.access ?? cur.access) ? (b.access ?? cur.access) : "dm";
   const selected = Array.isArray(b.selectedPlayerIds) ? b.selectedPlayerIds.map(Number).filter(Boolean) : jsonParse(cur.selected_player_ids, []);
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(cur.tags, []);
 
@@ -172,7 +132,7 @@ infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
     actorName: "DM",
     targetType: "info_block",
     targetId: Number(id),
-    message: `Изменён блок: ${title}`,
+    message: `Info block updated: ${title}`,
     io: req.app.locals.io
   });
 
@@ -192,18 +152,11 @@ infoBlocksRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
     actorName: "DM",
     targetType: "info_block",
     targetId: Number(id),
-    message: `Удалён блок: ${cur?.title || id}`,
+    message: `Info block deleted: ${cur?.title || id}`,
     io: req.app.locals.io
   });
   req.app.locals.io?.emit("infoBlocks:updated");
   res.json({ ok: true });
-});
-
-// upload helper for local images (DM вставляет ссылку в markdown)
-infoBlocksRouter.post("/upload", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
-  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
-  if (!req.file) return res.status(400).json({ error: "file_required" });
-  res.json({ ok: true, url: `/uploads/assets/${req.file.filename}` });
 });
 
 function mapBlock(r) {

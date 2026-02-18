@@ -7,68 +7,78 @@ import { getDb, getParty } from "../db.js";
 import { now, randId, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
+import { DANGEROUS_UPLOAD_MIMES, finalizeUploadedFile, safeUnlink } from "../uploadSecurity.js";
 
 export const bestiaryImagesRouter = express.Router();
 
 const UPLOAD_DIR = path.join(uploadsDir, "bestiary");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 const MAX_IMAGES_PER_MONSTER = Number(process.env.BESTIARY_IMAGE_MAX_COUNT || 20);
+const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (req, file, cb) => {
+  filename: (req, _file, cb) => {
     const mid = String(req.params.monsterId || "0");
-    const ext = path.extname(file.originalname || "").slice(0, 12) || "";
-    cb(null, `m${mid}_${Date.now()}_${randId(8)}${ext}`);
+    cb(null, `m${mid}_${Date.now()}_${randId(8)}`);
   }
 });
 
-function isAllowedImage(mime) {
-  return ["image/jpeg", "image/png", "image/webp", "image/gif"].includes(String(mime || "").toLowerCase());
-}
-
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    if (!isAllowedImage(file.mimetype)) {
-      req.fileValidationError = "unsupported_file_type";
-      return cb(null, false);
-    }
-    cb(null, true);
-  }
+  limits: { fileSize: 5 * 1024 * 1024 }
 });
 
 function handleUpload(req, res) {
   const db = getDb();
+  const f = req.file;
   const monsterId = Number(req.params.monsterId);
-  if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
+  if (!monsterId) {
+    safeUnlink(f?.path);
+    return res.status(400).json({ error: "invalid_monsterId" });
+  }
 
   const monster = db.prepare("SELECT id FROM monsters WHERE id=?").get(monsterId);
-  if (!monster) return res.status(404).json({ error: "monster_not_found" });
+  if (!monster) {
+    safeUnlink(f?.path);
+    return res.status(404).json({ error: "monster_not_found" });
+  }
   if (MAX_IMAGES_PER_MONSTER > 0) {
     const cnt = db.prepare("SELECT COUNT(*) AS c FROM monster_images WHERE monster_id=?").get(monsterId)?.c || 0;
     if (cnt >= MAX_IMAGES_PER_MONSTER) {
+      safeUnlink(f?.path);
       return res.status(409).json({ error: "image_limit_reached", limit: MAX_IMAGES_PER_MONSTER });
     }
   }
 
-  const f = req.file;
-  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
   if (!f) return res.status(400).json({ error: "file_required" });
-  if (!isAllowedImage(f.mimetype)) return res.status(415).json({ error: "unsupported_file_type" });
+
+  const clientClaimedMime = String(f.mimetype || "").toLowerCase();
+  if (DANGEROUS_UPLOAD_MIMES.has(clientClaimedMime)) {
+    safeUnlink(f.path);
+    return res.status(415).json({ error: "unsupported_file_type" });
+  }
+
+  const normalized = finalizeUploadedFile(f, {
+    allowText: false,
+    allowedMimes: ALLOWED_IMAGE_MIMES
+  });
+  if (!normalized.ok) {
+    const status = normalized.error === "upload_failed" ? 400 : 415;
+    return res.status(status).json({ error: normalized.error });
+  }
 
   const t = now();
   const imageId = db
     .prepare("INSERT INTO monster_images(monster_id, filename, original_name, mime, created_at) VALUES(?,?,?,?,?)")
-    .run(monsterId, f.filename, f.originalname || "", f.mimetype || "", t).lastInsertRowid;
+    .run(monsterId, normalized.filename, f.originalname || "", normalized.mime, t).lastInsertRowid;
 
   const image = {
     id: imageId,
     monsterId,
-    url: `/uploads/bestiary/${f.filename}`,
+    url: `/uploads/bestiary/${normalized.filename}`,
     originalName: f.originalname || "",
-    mime: f.mimetype || "",
+    mime: normalized.mime,
     createdAt: t
   };
 
@@ -79,8 +89,8 @@ function handleUpload(req, res) {
     actorName: "DM",
     targetType: "monster",
     targetId: monsterId,
-    message: `Добавлено изображение монстру: #${monsterId}`,
-    data: { imageId: image.id, filename: f.filename },
+    message: `Bestiary image added for monster #${monsterId}`,
+    data: { imageId: image.id, filename: normalized.filename },
     io: req.app.locals.io
   });
 
@@ -146,7 +156,7 @@ bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => 
     actorName: "DM",
     targetType: "monster",
     targetId: row.monster_id,
-    message: `Удалено изображение монстра: #${row.monster_id}`,
+    message: `Bestiary image deleted for monster #${row.monster_id}`,
     data: { imageId, filename: row.filename },
     io: req.app.locals.io
   });

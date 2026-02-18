@@ -73,7 +73,8 @@ function bestiaryPageRequest({ limit, cursor, q, includeImages, imagesLimit } = 
 
 export const api = {
   serverInfo: () => request("/api/server/info", { method: "GET" }),
-  dmSetup: (username, password) => request("/api/dm/setup", { method: "POST", body: JSON.stringify({ username, password }) }),
+  dmSetup: (username, password, setupSecret = "") =>
+    request("/api/dm/setup", { method: "POST", body: JSON.stringify({ username, password, setupSecret }) }),
   dmLogin: (username, password) => request("/api/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
   dmLogout: () => request("/api/auth/logout", { method: "POST" }),
   dmMe: () => request("/api/auth/me", { method: "GET" }),

@@ -1,25 +1,32 @@
 import express from "express";
+import fs from "node:fs";
 import path from "node:path";
 import multer from "multer";
 import { getDmCookieName, verifyDmToken } from "../auth.js";
 import { getDb } from "../db.js";
 import { jsonParse, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
+import {
+  DANGEROUS_UPLOAD_MIMES,
+  finalizeUploadedFile,
+  isImageMime,
+  normalizeAllowedMimes
+} from "../uploadSecurity.js";
 
 export const infoUploadsRouter = express.Router();
 
 const UPLOAD_DIR = path.join(uploadsDir, "assets");
+fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, UPLOAD_DIR),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || "").slice(0, 12) || "";
-    cb(null, `a_${Date.now()}_${randId(10)}${ext}`);
+  filename: (_req, _file, cb) => {
+    cb(null, `a_${Date.now()}_${randId(10)}`);
   }
 });
 
 const INFO_UPLOAD_MAX_BYTES = Number(process.env.INFO_UPLOAD_MAX_BYTES || 5 * 1024 * 1024);
-const DEFAULT_INFO_MIMES = new Set([
+const DEFAULT_INFO_MIMES = [
   "image/jpeg",
   "image/png",
   "image/webp",
@@ -27,36 +34,19 @@ const DEFAULT_INFO_MIMES = new Set([
   "application/pdf",
   "text/plain",
   "text/markdown"
-]);
-const INFO_UPLOAD_ALLOWED_MIMES = process.env.INFO_UPLOAD_ALLOWED_MIMES
-  ? new Set(String(process.env.INFO_UPLOAD_ALLOWED_MIMES).split(",").map((m) => m.trim().toLowerCase()).filter(Boolean))
-  : DEFAULT_INFO_MIMES;
+];
+const INFO_UPLOAD_ALLOWED_MIMES = normalizeAllowedMimes(
+  process.env.INFO_UPLOAD_ALLOWED_MIMES
+    ? String(process.env.INFO_UPLOAD_ALLOWED_MIMES).split(",")
+    : DEFAULT_INFO_MIMES
+);
 
 const upload = multer({
   storage,
-  limits: { fileSize: INFO_UPLOAD_MAX_BYTES },
-  fileFilter: (req, file, cb) => {
-    const mime = String(file.mimetype || "").toLowerCase();
-    if (req.isPlayerUpload && !isAllowedPlayerImage(mime)) {
-      req.fileValidationError = "unsupported_file_type";
-      return cb(null, false);
-    }
-    if (!INFO_UPLOAD_ALLOWED_MIMES.has(mime)) {
-      req.fileValidationError = "unsupported_file_type";
-      return cb(null, false);
-    }
-    cb(null, true);
-  }
+  limits: { fileSize: INFO_UPLOAD_MAX_BYTES }
 });
 
-function isImage(mime) {
-  return String(mime || "").toLowerCase().startsWith("image/");
-}
-
 const PLAYER_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-function isAllowedPlayerImage(mime) {
-  return PLAYER_IMAGE_MIMES.has(String(mime || "").toLowerCase());
-}
 
 function getPlayerSession(req) {
   const token = req.header("x-player-token");
@@ -94,19 +84,32 @@ function dmOrAvatarUpload(req, res, next) {
 }
 
 infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("file")), (req, res) => {
-  if (req.fileValidationError) return res.status(415).json({ error: req.fileValidationError });
   const f = req.file;
   if (!f) return res.status(400).json({ error: "file_required" });
 
-  const url = `/uploads/assets/${f.filename}`;
+  const clientClaimedMime = String(f.mimetype || "").toLowerCase();
+  if (DANGEROUS_UPLOAD_MIMES.has(clientClaimedMime)) {
+    return res.status(415).json({ error: "unsupported_file_type" });
+  }
+
+  const normalized = finalizeUploadedFile(f, {
+    allowText: !req.isPlayerUpload,
+    allowedMimes: req.isPlayerUpload ? PLAYER_IMAGE_MIMES : INFO_UPLOAD_ALLOWED_MIMES
+  });
+  if (!normalized.ok) {
+    const status = normalized.error === "upload_failed" ? 400 : 415;
+    return res.status(status).json({ error: normalized.error });
+  }
+
+  const url = `/uploads/assets/${normalized.filename}`;
   const safeName = (f.originalname || "file").replaceAll("]", ")");
-  const md = isImage(f.mimetype) ? `![](${url})` : `[${safeName}](${url})`;
+  const md = isImageMime(normalized.mime) ? `![](${url})` : `[${safeName}](${url})`;
 
   res.json({
     ok: true,
     url,
     markdown: md,
     originalName: f.originalname || "",
-    mime: f.mimetype || ""
+    mime: normalized.mime
   });
 });

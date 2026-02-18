@@ -87,7 +87,22 @@ app.use((req, res, next) => {
 });
 
 // Static uploads
-app.use("/uploads", express.static(uploadsDir));
+const UPLOAD_BLOCKED_EXT = new Set([".html", ".htm", ".xhtml", ".svg", ".js", ".mjs", ".cjs"]);
+const UPLOAD_IMAGE_EXT = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
+app.use("/uploads", (req, res, next) => {
+  const ext = path.extname(String(req.path || "")).toLowerCase();
+  if (ext && UPLOAD_BLOCKED_EXT.has(ext)) return res.sendStatus(404);
+  return next();
+});
+app.use("/uploads", express.static(uploadsDir, {
+  setHeaders: (res, filePath) => {
+    const ext = path.extname(filePath).toLowerCase();
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    if (!UPLOAD_IMAGE_EXT.has(ext)) {
+      res.setHeader("Content-Disposition", `attachment; filename="${path.basename(filePath)}"`);
+    }
+  }
+}));
 
 // API routes
 app.use(assertWritable);

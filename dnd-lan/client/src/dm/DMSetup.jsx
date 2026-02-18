@@ -9,6 +9,7 @@ export default function DMSetup() {
   const nav = useNavigate();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("");
+  const [setupSecret, setSetupSecret] = useState("");
   const [err, setErr] = useState("");
   const [netErr, setNetErr] = useState("");
 
@@ -23,7 +24,7 @@ export default function DMSetup() {
     e.preventDefault();
     setErr("");
     try {
-      await api.dmSetup(username, password);
+      await api.dmSetup(username, password, setupSecret);
       await api.dmLogin(username, password);
       nav("/dm/app/dashboard", { replace: true });
     } catch (e2) {
@@ -35,15 +36,21 @@ export default function DMSetup() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 900, fontSize: 22 }}>Первый запуск — создать DM</div>
-          <div className="small">Рекомендуется пароль от 6+ символов.</div>
+          <div style={{ fontWeight: 900, fontSize: 22 }}>РџРµСЂРІС‹Р№ Р·Р°РїСѓСЃРє вЂ” СЃРѕР·РґР°С‚СЊ DM</div>
+          <div className="small">Р РµРєРѕРјРµРЅРґСѓРµС‚СЃСЏ РїР°СЂРѕР»СЊ РѕС‚ 6+ СЃРёРјРІРѕР»РѕРІ.</div>
           <hr />
           <form className="list" onSubmit={submit}>
             <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="username" style={{ width: "100%" }} />
             <input value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="password (>=6)" type="password" style={{ width: "100%" }} />
-            {err && <div className="badge off">Ошибка: {err}</div>}
-            {netErr && <div className="badge off">Сеть: {netErr}</div>}
-            <button className="btn" type="submit">Создать</button>
+            <input
+              value={setupSecret}
+              onChange={(e)=>setSetupSecret(e.target.value)}
+              placeholder="setup secret (optional)"
+              style={{ width: "100%" }}
+            />
+            {err && <div className="badge off">РћС€РёР±РєР°: {err}</div>}
+            {netErr && <div className="badge off">РЎРµС‚СЊ: {netErr}</div>}
+            <button className="btn" type="submit">РЎРѕР·РґР°С‚СЊ</button>
           </form>
         </div>
       </div>
