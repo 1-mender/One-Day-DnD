@@ -1,87 +1,87 @@
 export const GAME_CATALOG = [
   {
     key: "ttt",
-    title: "Крестики-нолики: дуэль умов",
-    blurb: "Best of 3 против ИИ. Победа 2-0 дает бонус.",
-    difficulty: "Легкая",
-    time: "2-4 мин",
-    risk: "Низкий",
+    title: "Tic-Tac-Toe: Mind Duel",
+    blurb: "Best of 3 vs AI. A 2-0 sweep gives a bonus.",
+    difficulty: "Easy",
+    time: "2-4 min",
+    risk: "Low",
     rules: [
-      "Матч до 2 побед",
-      "Ничья = переигровка раунда",
-      "Победа 2-0: повышенный множитель"
+      "Match to 2 round wins",
+      "Draw means replay the round",
+      "2-0 sweep applies a higher multiplier"
     ],
     modes: [
-      { key: "normal", label: "Обычный", roundsToWin: 2, ai: "standard" },
-      { key: "fast", label: "Быстрый", roundsToWin: 1, ai: "standard" }
+      { key: "normal", label: "Normal", roundsToWin: 2, ai: "standard" },
+      { key: "fast", label: "Fast", roundsToWin: 1, ai: "standard" }
     ]
   },
   {
     key: "guess",
-    title: "Угадай карту: разум и память",
-    blurb: "Подсказки дают ориентир, но решает скорость.",
-    difficulty: "Средняя",
-    time: "3-5 мин",
-    risk: "Средний",
+    title: "Guess the Card: Logic & Memory",
+    blurb: "Hints help, but speed still matters.",
+    difficulty: "Medium",
+    time: "3-5 min",
+    risk: "Medium",
     rules: [
-      "Подсказки открываются по попыткам",
-      "Чем раньше угадаешь, тем выше бонус",
-      "Время ограничено таймером"
+      "Hints unlock by attempt number",
+      "Earlier correct guess gives a better bonus",
+      "Round duration is limited by a timer"
     ],
     modes: [
-      { key: "easy", label: "Разминка", ranks: ["A", "K", "Q"], maxAttempts: 4, timeLimit: 50, hintCount: 3 },
-      { key: "normal", label: "Классика", ranks: ["A", "K", "Q", "J"], maxAttempts: 3, timeLimit: 40, hintCount: 3 },
-      { key: "hard", label: "Мастер", ranks: ["A", "K", "Q", "J", "10"], maxAttempts: 3, timeLimit: 32, hintCount: 2 }
+      { key: "easy", label: "Warmup", ranks: ["A", "K", "Q"], maxAttempts: 4, timeLimit: 50, hintCount: 3 },
+      { key: "normal", label: "Classic", ranks: ["A", "K", "Q", "J"], maxAttempts: 3, timeLimit: 40, hintCount: 3 },
+      { key: "hard", label: "Master", ranks: ["A", "K", "Q", "J", "10"], maxAttempts: 3, timeLimit: 32, hintCount: 2 }
     ]
   },
   {
     key: "match3",
-    title: "Три в ряд: цепные комбо",
-    blurb: "Цепочки комбо разгоняют награду.",
-    difficulty: "Средняя",
-    time: "4-6 мин",
-    risk: "Средний",
+    title: "Match-3: Chain Combos",
+    blurb: "Long combo chains increase the final reward.",
+    difficulty: "Medium",
+    time: "4-6 min",
+    risk: "Medium",
     rules: [
-      "Ограничение по ходам",
-      "Комбо 4+ дают бонус",
-      "Комбо 5+ усиливают финал"
+      "Limited moves per round",
+      "Combo 4+ gives extra bonus",
+      "Combo 5+ gives max multiplier"
     ],
     modes: [
-      { key: "normal", label: "Классика", size: 6, moves: 18, target: 120, colors: 6, blocks: 0 },
-      { key: "compact", label: "Сжатый", size: 5, moves: 14, target: 90, colors: 5, blocks: 0 },
-      { key: "chaos", label: "Хаос", size: 7, moves: 20, target: 180, colors: 7, blocks: 6 }
+      { key: "normal", label: "Classic", size: 6, moves: 18, target: 120, colors: 6, blocks: 0 },
+      { key: "compact", label: "Compact", size: 5, moves: 14, target: 90, colors: 5, blocks: 0 },
+      { key: "chaos", label: "Chaos", size: 7, moves: 20, target: 180, colors: 7, blocks: 6 }
     ]
   },
   {
     key: "uno",
-    title: "Uno-мини: быстрый матч",
-    blurb: "Сбрось карты быстрее соперника.",
-    difficulty: "Средняя",
-    time: "5-7 мин",
-    risk: "Средний",
+    title: "Uno Mini: Quick Match",
+    blurb: "Drop all cards faster than your opponent.",
+    difficulty: "Medium",
+    time: "5-7 min",
+    risk: "Medium",
     rules: [
-      "Игра до нуля карт",
-      "Штрафы за добор повышают риск",
-      "Чистая победа дает бонус"
+      "Win by reaching zero cards",
+      "Extra draws increase risk",
+      "Clean win gives bonus"
     ],
     modes: [
-      { key: "normal", label: "Классика", handSize: 5, ai: "standard" }
+      { key: "normal", label: "Classic", handSize: 5, ai: "standard" }
     ]
   },
   {
     key: "scrabble",
-    title: "Эрудит-блиц: слово за минуту",
-    blurb: "Собери слово из набора букв.",
-    difficulty: "Сложная",
-    time: "2-3 мин",
-    risk: "Высокий",
+    title: "Scrabble Blitz: Word in a Minute",
+    blurb: "Build a word from a random letter rack.",
+    difficulty: "Hard",
+    time: "2-3 min",
+    risk: "High",
     rules: [
-      "60 секунд на слово",
-      "Длинное слово дает бонус",
-      "Редкая буква усиливает награду"
+      "You have 60 seconds to submit a word",
+      "Long words provide a bonus",
+      "Rare letters boost reward"
     ],
     modes: [
-      { key: "normal", label: "Классика", timeLimit: 60, rackSize: 7 }
+      { key: "normal", label: "Classic", timeLimit: 60, rackSize: 7 }
     ]
   }
 ];

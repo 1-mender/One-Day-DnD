@@ -1,20 +1,20 @@
-export const inp = { width: "100%" };
+﻿export const inp = { width: "100%" };
 
 export const GAME_LABELS = {
-  ttt: "РљСЂРµСЃС‚РёРєРё-РЅРѕР»РёРєРё",
-  guess: "РЈРіР°РґР°Р№ РєР°СЂС‚Сѓ",
-  match3: "РўСЂРё РІ СЂСЏРґ",
-  uno: "Uno-РјРёРЅРё",
-  scrabble: "Р­СЂСѓРґРёС‚-Р±Р»РёС†"
+  ttt: "Tic-Tac-Toe",
+  guess: "Guess Card",
+  match3: "Match-3",
+  uno: "Uno Mini",
+  scrabble: "Scrabble Blitz"
 };
 
 export const SHOP_LABELS = {
-  stat: "+1 Рє С…Р°СЂР°РєС‚РµСЂРёСЃС‚РёРєРµ",
-  feat: "РџР°РјСЏС‚РєР°-С‚Р°Р»Р°РЅС‚",
-  reroll: "РџРµСЂРµР±СЂРѕСЃ РєСѓР±РёРєР°",
-  luck: "РџРµС‡Р°С‚СЊ СѓРґР°С‡Рё",
-  chest: "РЎСѓРЅРґСѓРє-СЃСЋСЂРїСЂРёР·",
-  hint: "РўР°Р№РЅР°СЏ РїРѕРґСЃРєР°Р·РєР°"
+  stat: "+1 Stat Characteristic",
+  feat: "Memory Talisman",
+  reroll: "Cube Reroll",
+  luck: "Seal of Luck",
+  chest: "Dungeon Surprise",
+  hint: "Magic Hint"
 };
 
 export const RULE_TIPS = {
@@ -42,3 +42,4 @@ export const RULE_TIPS = {
   shopPrice: "\u0426\u0435\u043d\u0430 \u0437\u0430 \u0435\u0434\u0438\u043d\u0438\u0446\u0443.",
   shopDailyLimit: "\u0414\u043d\u0435\u0432\u043d\u043e\u0439 \u043b\u0438\u043c\u0438\u0442 \u043f\u043e\u043a\u0443\u043f\u043e\u043a."
 };
+

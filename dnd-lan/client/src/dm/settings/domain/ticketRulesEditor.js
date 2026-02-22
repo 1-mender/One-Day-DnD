@@ -1,4 +1,4 @@
-export function buildGeneralChanges(ticketCur, ticketBase) {
+﻿export function buildGeneralChanges(ticketCur, ticketBase) {
   return {
     enabled: (ticketCur?.enabled ?? true) !== (ticketBase?.enabled ?? true),
     dailyEarnCap: (ticketCur?.dailyEarnCap ?? 0) !== (ticketBase?.dailyEarnCap ?? 0),
@@ -84,9 +84,10 @@ export function createDailyQuestDraft() {
   return {
     key,
     enabled: true,
-    title: "РќРѕРІС‹Р№ РєРІРµСЃС‚",
+    title: "New Quest",
     description: "",
     goal: 2,
     reward: 2
   };
 }
+
