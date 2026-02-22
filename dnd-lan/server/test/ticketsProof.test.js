@@ -44,6 +44,18 @@ function createSession(playerId) {
   return token;
 }
 
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    h = (h * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
+function makeClientProof(seed, data) {
+  return simpleHash(`${seed || ""}:${JSON.stringify(data || {})}`);
+}
+
 async function api(pathname, { method = "GET", token = "", body } = {}) {
   const headers = {};
   if (token) headers["x-player-token"] = token;
@@ -64,7 +76,17 @@ test("play rejects submission without payload/proof", async () => {
   const out = await api("/api/tickets/play", {
     method: "POST",
     token,
-    body: { gameKey: "ttt", outcome: "win", performance: "normal" }
+    body: {
+      gameKey: "ttt",
+      outcome: "win",
+      performance: "normal",
+      clientProof: makeClientProof("", {
+        gameKey: "ttt",
+        outcome: "win",
+        performance: "normal",
+        payload: {}
+      })
+    }
   });
 
   assert.equal(out.res.status, 400);
@@ -94,7 +116,13 @@ test("play accepts valid ttt payload with issued seed/proof token", async () => 
       performance: "normal",
       payload,
       seed: seedOut.data.seed,
-      proof: seedOut.data.proof
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "ttt",
+        outcome: "win",
+        performance: "normal",
+        payload
+      })
     }
   });
 
@@ -123,7 +151,13 @@ test("issued seed/proof token is one-time", async () => {
       performance: "normal",
       payload,
       seed: seedOut.data.seed,
-      proof: seedOut.data.proof
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "ttt",
+        outcome: "win",
+        performance: "normal",
+        payload
+      })
     }
   });
   assert.equal(first.res.status, 200);
@@ -137,7 +171,13 @@ test("issued seed/proof token is one-time", async () => {
       performance: "normal",
       payload,
       seed: seedOut.data.seed,
-      proof: seedOut.data.proof
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "ttt",
+        outcome: "win",
+        performance: "normal",
+        payload
+      })
     }
   });
   assert.equal(second.res.status, 400);
@@ -166,7 +206,19 @@ test("match3 win rejects payload with score below target", async () => {
         movesUsed: 12
       },
       seed: seedOut.data.seed,
-      proof: seedOut.data.proof
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "match3",
+        outcome: "win",
+        performance: "normal",
+        payload: {
+          score: 10,
+          target: 120,
+          size: 6,
+          maxRun: 3,
+          movesUsed: 12
+        }
+      })
     }
   });
 
@@ -193,7 +245,16 @@ test("scrabble rare performance requires rare letter in word", async () => {
         rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
       },
       seed: seedOut.data.seed,
-      proof: seedOut.data.proof
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "scrabble",
+        outcome: "win",
+        performance: "rare",
+        payload: {
+          word: "\u0410\u0411\u0412",
+          rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
+        }
+      })
     }
   });
 

@@ -79,6 +79,21 @@ function parseTransferQty(value) {
   return qty;
 }
 
+function normalizeIdList(input, max = 300) {
+  if (!Array.isArray(input)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const value of input) {
+    const id = Number(value);
+    if (!Number.isInteger(id) || id <= 0) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 inventoryRouter.get("/mine", (req, res) => {
   const sess = authPlayer(req);
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
@@ -360,6 +375,109 @@ inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) 
   req.app.locals.io?.to("dm").emit("inventory:updated");
   req.app.locals.io?.to("dm").emit("transfers:updated");
   res.json({ ok: true });
+});
+
+inventoryRouter.post("/dm/player/:playerId/bulk-visibility", dmAuthMiddleware, (req, res) => {
+  const pid = Number(req.params.playerId);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+  const visibility = req.body?.visibility === "hidden" ? "hidden" : "public";
+  const itemIds = normalizeIdList(req.body?.itemIds, 500);
+  if (!itemIds.length) return res.status(400).json({ error: "empty_item_ids" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
+
+  const placeholders = itemIds.map(() => "?").join(",");
+  const params = [pid, ...itemIds];
+  const t = now();
+  const result = db.prepare(
+    `UPDATE inventory_items
+     SET visibility=?, updated_at=?, updated_by='dm'
+     WHERE player_id=?
+       AND id IN (${placeholders})`
+  ).run(visibility, t, ...params);
+
+  logEvent({
+    partyId: player.party_id,
+    type: "inventory.bulk_visibility",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: Number(pid),
+    message: `DM updated visibility for ${result.changes || 0} item(s) of player #${pid}`,
+    data: { playerId: pid, visibility, itemIds, updated: result.changes || 0 },
+    io: req.app.locals.io
+  });
+
+  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
+  req.app.locals.io?.to("dm").emit("inventory:updated");
+  res.json({ ok: true, updated: result.changes || 0 });
+});
+
+inventoryRouter.post("/dm/player/:playerId/bulk-delete", dmAuthMiddleware, (req, res) => {
+  const pid = Number(req.params.playerId);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+  const itemIds = normalizeIdList(req.body?.itemIds, 500);
+  if (!itemIds.length) return res.status(400).json({ error: "empty_item_ids" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
+
+  const placeholders = itemIds.map(() => "?").join(",");
+  const itemRows = db.prepare(
+    `SELECT id
+     FROM inventory_items
+     WHERE player_id=?
+       AND id IN (${placeholders})`
+  ).all(pid, ...itemIds);
+  const existingIds = itemRows.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0);
+  if (!existingIds.length) return res.json({ ok: true, deleted: 0 });
+
+  const existingPlaceholders = existingIds.map(() => "?").join(",");
+  const recipients = db.prepare(
+    `SELECT DISTINCT to_player_id AS pid
+     FROM item_transfers
+     WHERE status='pending'
+       AND item_id IN (${existingPlaceholders})`
+  ).all(...existingIds).map((row) => Number(row.pid)).filter((id) => Number.isInteger(id) && id > 0);
+
+  const tx = db.transaction(() => {
+    db.prepare(
+      `UPDATE item_transfers
+       SET status='canceled'
+       WHERE status='pending'
+         AND item_id IN (${existingPlaceholders})`
+    ).run(...existingIds);
+    return db.prepare(
+      `DELETE FROM inventory_items
+       WHERE player_id=?
+         AND id IN (${existingPlaceholders})`
+    ).run(pid, ...existingIds);
+  });
+  const deleted = tx()?.changes || 0;
+
+  logEvent({
+    partyId: player.party_id,
+    type: "inventory.bulk_deleted",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: Number(pid),
+    message: `DM deleted ${deleted} item(s) from player #${pid}`,
+    data: { playerId: pid, itemIds: existingIds, deleted },
+    io: req.app.locals.io
+  });
+
+  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
+  req.app.locals.io?.to(`player:${pid}`).emit("transfers:updated");
+  for (const rid of recipients) {
+    req.app.locals.io?.to(`player:${rid}`).emit("transfers:updated");
+  }
+  req.app.locals.io?.to("dm").emit("inventory:updated");
+  req.app.locals.io?.to("dm").emit("transfers:updated");
+  res.json({ ok: true, deleted });
 });
 
 inventoryRouter.post("/transfers", (req, res) => {

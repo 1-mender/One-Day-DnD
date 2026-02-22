@@ -211,6 +211,16 @@ export const api = {
     request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "PUT", body: JSON.stringify(item) }),
   invDmDeletePlayerItem: (playerId, itemId) =>
     request(`/api/inventory/dm/player/${playerId}/${itemId}`, { method: "DELETE" }),
+  invDmBulkVisibility: (playerId, itemIds, visibility = "hidden") =>
+    request(`/api/inventory/dm/player/${playerId}/bulk-visibility`, {
+      method: "POST",
+      body: JSON.stringify({ itemIds, visibility })
+    }),
+  invDmBulkDelete: (playerId, itemIds) =>
+    request(`/api/inventory/dm/player/${playerId}/bulk-delete`, {
+      method: "POST",
+      body: JSON.stringify({ itemIds })
+    }),
   invTransferCreate: (payload) =>
     request("/api/inventory/transfers", { method: "POST", body: JSON.stringify(payload) }),
   invTransferInbox: () =>

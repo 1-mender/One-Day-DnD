@@ -8,6 +8,7 @@ import { logger } from "../logger.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import {
   createSeedStore,
+  makePlayClientProof,
   randInt,
   validateGuessPayload,
   validateMatch3Payload,
@@ -25,6 +26,13 @@ const ARCADE_QUEUE_TTL_MS = Number(process.env.ARCADE_QUEUE_TTL_MS || 2 * 60 * 1
 const ARCADE_HISTORY_LIMIT = Number(process.env.ARCADE_HISTORY_LIMIT || 20);
 const ARCADE_QUEUE_ETA_SEC = Number(process.env.ARCADE_QUEUE_ETA_SEC || 12);
 const ARCADE_METRICS_DAYS = Number(process.env.ARCADE_METRICS_DAYS || 7);
+const MIN_ARCADE_PLAY_MS = Object.freeze({
+  guess: Number(process.env.TICKETS_MIN_PLAY_MS_GUESS || 0),
+  ttt: Number(process.env.TICKETS_MIN_PLAY_MS_TTT || 0),
+  match3: Number(process.env.TICKETS_MIN_PLAY_MS_MATCH3 || 0),
+  uno: Number(process.env.TICKETS_MIN_PLAY_MS_UNO || 0),
+  scrabble: Number(process.env.TICKETS_MIN_PLAY_MS_SCRABBLE || 0)
+});
 
 validateGameCatalog();
 const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
@@ -631,10 +639,11 @@ function buildDmArcadeMetrics(db, partyId, days = ARCADE_METRICS_DAYS) {
 
   const activityRows = db.prepare(
     `SELECT player_id as playerId, COUNT(DISTINCT day_key) as d
-     FROM ticket_plays
-     WHERE created_at>=?
+     FROM ticket_plays tp
+     JOIN players p ON p.id = tp.player_id
+     WHERE tp.created_at>=? AND p.party_id=?
      GROUP BY player_id`
-  ).all(since);
+  ).all(since, partyId);
   const activePlayers = activityRows.length;
   const returningPlayers = activityRows.filter((r) => Number(r.d || 0) >= 2).length;
 
@@ -1019,7 +1028,7 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
   if (winnerPlayerIdInput != null) {
     return res.status(403).json({ error: "winner_locked" });
   }
-  if (outcomeInputRaw && !["win", "loss", "draw"].includes(outcomeInputRaw)) {
+  if (!["win", "loss", "draw"].includes(outcomeInputRaw)) {
     return res.status(400).json({ error: "invalid_outcome" });
   }
 
@@ -1027,43 +1036,6 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
     "SELECT player_id, result FROM arcade_match_players WHERE match_id=? AND player_id=?"
   ).get(matchId, me.player.id);
   if (!selfRow) return res.status(403).json({ error: "forbidden" });
-
-  // Backward-compatible flow: no explicit outcome means close as draw.
-  if (!outcomeInputRaw) {
-    db.prepare(
-      `UPDATE arcade_matches
-       SET status='completed', ended_at=?, duration_ms=?, winner_player_id=NULL, loser_player_id=NULL
-       WHERE id=?`
-    ).run(t, mergedDurationMs, matchId);
-    db.prepare("UPDATE arcade_match_players SET result='draw', is_winner=0 WHERE match_id=?").run(matchId);
-
-    for (const playerId of participants) {
-      req.app.locals.io?.to(`player:${playerId}`).emit("arcade:match:state", {
-        matchId,
-        status: "completed",
-        winnerPlayerId: null,
-        loserPlayerId: null,
-        durationMs: mergedDurationMs
-      });
-      req.app.locals.io?.to(`player:${playerId}`).emit("tickets:updated");
-    }
-    req.app.locals.io?.to("dm").emit("tickets:updated");
-
-    logEvent({
-      partyId: Number(match.party_id),
-      type: "arcade.match.completed",
-      actorRole: "player",
-      actorPlayerId: me.player.id,
-      actorName: me.player.display_name,
-      targetType: "arcade_match",
-      targetId: matchId,
-      message: `Match ${matchId} completed`,
-      data: { matchId, winnerPlayerId: null, loserPlayerId: null, durationMs: mergedDurationMs },
-      io: req.app.locals.io
-    });
-
-    return res.json({ ok: true, match: loadMatchForPlayer(db, matchId, me.player.id) });
-  }
 
   if (selfRow.result !== "pending" && String(selfRow.result) !== outcomeInputRaw) {
     return res.status(409).json({ error: "already_submitted" });
@@ -1146,11 +1118,12 @@ ticketsRouter.post("/play", (req, res) => {
   if (!me) return res.status(401).json({ error: "not_authenticated" });
 
   const gameKey = String(req.body?.gameKey || "").trim();
-  const outcome = String(req.body?.outcome || "win").trim();
+  const outcome = String(req.body?.outcome || "").trim().toLowerCase();
   const performanceKey = String(req.body?.performance || "normal").trim();
   const seed = req.body?.seed ? String(req.body.seed) : "";
   const payload = req.body?.payload;
   const proof = req.body?.proof ? String(req.body.proof) : "";
+  const clientProof = req.body?.clientProof ? String(req.body.clientProof) : "";
 
   const rules = getEffectiveRules(me.player.party_id);
   if (!rules.enabled) return res.status(400).json({ error: "tickets_disabled" });
@@ -1158,14 +1131,30 @@ ticketsRouter.post("/play", (req, res) => {
   if (!game) return res.status(400).json({ error: "invalid_game" });
   if (game.enabled === false) return res.status(400).json({ error: "game_disabled" });
   if (!["win", "loss"].includes(outcome)) return res.status(400).json({ error: "invalid_outcome" });
+  if (outcome === "loss" && performanceKey !== "normal") return res.status(400).json({ error: "invalid_proof" });
   if (!isPlainObject(payload)) {
     return res.status(400).json({ error: "invalid_proof" });
   }
   if (!seed || !proof) {
     return res.status(400).json({ error: "invalid_seed" });
   }
-  if (!takeSeed(me.player.id, gameKey, seed, proof)) {
+  const seedTicket = takeSeed(me.player.id, gameKey, seed, proof);
+  if (!seedTicket) {
     return res.status(400).json({ error: "invalid_seed" });
+  }
+  const expectedClientProof = makePlayClientProof(seed, {
+    gameKey,
+    outcome,
+    performance: performanceKey,
+    payload
+  });
+  if (!clientProof || clientProof !== expectedClientProof) {
+    return res.status(400).json({ error: "invalid_proof" });
+  }
+  const elapsedMs = Math.max(0, now() - Number(seedTicket?.issuedAt || 0));
+  const minPlayMs = Number(MIN_ARCADE_PLAY_MS[gameKey] || 0);
+  if (outcome === "win" && minPlayMs > 0 && elapsedMs < minPlayMs) {
+    return res.status(400).json({ error: "invalid_proof" });
   }
   if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "")) {
     return res.status(400).json({ error: "invalid_proof" });
@@ -1462,7 +1451,11 @@ ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
   if (!Number.isFinite(dayKey) || dayKey <= 0) return res.status(400).json({ error: "invalid_day_key" });
 
   const db = getDb();
-  const r = db.prepare("DELETE FROM ticket_quests WHERE quest_key=? AND day_key=?").run(questKey, dayKey);
+  const r = db.prepare(
+    `DELETE FROM ticket_quests
+     WHERE quest_key=? AND day_key=?
+       AND player_id IN (SELECT id FROM players WHERE party_id=?)`
+  ).run(questKey, dayKey, party.id);
 
   req.app.locals.io?.to("dm").emit("tickets:updated");
   logEvent({

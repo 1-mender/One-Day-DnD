@@ -196,6 +196,18 @@ test("match complete rejects client-provided winner", async () => {
   assert.equal(complete.data.error, "winner_locked");
 });
 
+test("match complete requires explicit outcome", async () => {
+  const { t1, matchId } = await createActiveMatch("ttt");
+
+  const complete = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: {}
+  });
+  assert.equal(complete.res.status, 400);
+  assert.equal(complete.data.error, "invalid_outcome");
+});
+
 test("match complete waits for opponent and resolves winner by paired outcomes", async () => {
   const { p1, p2, t1, t2, matchId } = await createActiveMatch("ttt");
 

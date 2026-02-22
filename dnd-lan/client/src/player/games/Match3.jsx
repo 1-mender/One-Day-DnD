@@ -276,7 +276,9 @@ export default function Match3Game({
     if (status === "playing") return;
     if (!onSubmitResult || settling || result) return;
     const maxRun = maxMatchRef.current || 0;
-    const performance = maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal";
+    const performance = status === "win"
+      ? (maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal")
+      : "normal";
     const payload = {
       score,
       target: config.target,
@@ -377,7 +379,9 @@ export default function Match3Game({
   async function retrySettlement() {
     if (!onSubmitResult) return;
     const maxRun = maxMatchRef.current || 0;
-    const performance = maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal";
+    const performance = status === "win"
+      ? (maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal")
+      : "normal";
     const payload = {
       score,
       target: config.target,

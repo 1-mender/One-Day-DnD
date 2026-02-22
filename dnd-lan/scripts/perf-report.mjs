@@ -43,6 +43,14 @@ function printTop(title, rows, count = 10) {
   }
 }
 
+function parseBudget(name, fallback = null) {
+  const raw = process.env[name];
+  if (raw == null || String(raw).trim() === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.floor(n);
+}
+
 const assets = listAssets();
 const jsAssets = assets.filter((a) => a.ext === ".js");
 const imageAssets = assets.filter((a) => imageExts.has(a.ext));
@@ -68,3 +76,28 @@ console.log("");
 printTop("top_js_chunks", jsAssets, 10);
 console.log("");
 printTop("top_image_assets", imageAssets, 10);
+
+const enforceBudget = process.env.PERF_BUDGET_ENFORCE === "1";
+const totalJsBudget = parseBudget("PERF_BUDGET_JS_TOTAL_BYTES", null);
+const largestJsBudget = parseBudget("PERF_BUDGET_LARGEST_JS_BYTES", null);
+const shouldCheck = enforceBudget || totalJsBudget != null || largestJsBudget != null;
+
+if (shouldCheck) {
+  let failed = false;
+  if (totalJsBudget != null && totalJsBytes > totalJsBudget) {
+    failed = true;
+    console.error(
+      `PERF_BUDGET_FAIL js_total_bytes=${totalJsBytes} exceeds ${totalJsBudget}`
+    );
+  }
+  if (largestJsBudget != null && (largestJs?.bytes || 0) > largestJsBudget) {
+    failed = true;
+    console.error(
+      `PERF_BUDGET_FAIL largest_js_bytes=${largestJs?.bytes || 0} exceeds ${largestJsBudget}`
+    );
+  }
+  if (!failed) {
+    console.log("PERF_BUDGET_OK");
+  }
+  if (failed) process.exit(2);
+}

@@ -36,6 +36,7 @@ export default function UnoMiniGame({
   const [aiHand, setAiHand] = useState([]);
   const [topCard, setTopCard] = useState(null);
   const [playerDraws, setPlayerDraws] = useState(0);
+  const [turns, setTurns] = useState(0);
   const [status, setStatus] = useState("playing");
   const [settling, setSettling] = useState(false);
   const [result, setResult] = useState(null);
@@ -65,6 +66,7 @@ export default function UnoMiniGame({
     setAiHand(ai);
     setTopCard(top);
     setPlayerDraws(0);
+    setTurns(0);
     setStatus("playing");
     setSettling(false);
     setResult(null);
@@ -80,7 +82,14 @@ export default function UnoMiniGame({
     if (status === "playing") return;
     if (!onSubmitResult || settling || result) return;
     const performance = status === "win" && playerDraws === 0 ? "clean" : "normal";
-    const payload = { playerDraws, handSize, outcome: status };
+    const payload = {
+      playerDraws,
+      handSize,
+      playerCardsLeft: playerHand.length,
+      aiCardsLeft: aiHand.length,
+      turns,
+      outcome: status
+    };
     const proof = makeProof("", payload);
     setSettling(true);
     setApiErr("");
@@ -88,7 +97,7 @@ export default function UnoMiniGame({
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, playerDraws, handSize]);
+  }, [status, onSubmitResult, settling, result, playerDraws, handSize, playerHand.length, aiHand.length, turns]);
 
   function reshuffleIfNeeded(nextDeck) {
     if (nextDeck.length > 0) return nextDeck;
@@ -98,6 +107,7 @@ export default function UnoMiniGame({
   function handlePlay(card, idx) {
     if (status !== "playing" || disabled || readOnly) return;
     if (!canPlay(card, topCard)) return;
+    setTurns((v) => v + 1);
     const nextHand = playerHand.slice();
     nextHand.splice(idx, 1);
     setPlayerHand(nextHand);
@@ -114,6 +124,7 @@ export default function UnoMiniGame({
     let ai = aiHand.slice();
     const playableIdx = ai.findIndex((card) => canPlay(card, newTop));
     if (playableIdx >= 0) {
+      setTurns((v) => v + 1);
       const [card] = ai.splice(playableIdx, 1);
       setAiHand(ai);
       setTopCard(card);
@@ -125,12 +136,14 @@ export default function UnoMiniGame({
     let nextDeck = reshuffleIfNeeded(deck.slice());
     const drawn = nextDeck.shift();
     ai.push(drawn);
+    setTurns((v) => v + 1);
     setDeck(nextDeck);
     setAiHand(ai);
   }
 
   function handleDraw() {
     if (status !== "playing" || disabled || readOnly) return;
+    setTurns((v) => v + 1);
     let nextDeck = reshuffleIfNeeded(deck.slice());
     const drawn = nextDeck.shift();
     setDeck(nextDeck);

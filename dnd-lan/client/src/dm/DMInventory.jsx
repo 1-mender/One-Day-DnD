@@ -217,9 +217,7 @@ export default function DMInventory() {
     if (!targets.length) return;
     setErr("");
     try {
-      for (const it of targets) {
-        await api.invDmUpdatePlayerItem(selectedId, it.id, { ...it, visibility: "hidden", tags: it.tags || [] });
-      }
+      await api.invDmBulkVisibility(selectedId, targets.map((it) => it.id), "hidden");
       await loadInv(selectedId);
       clearSelection();
     } catch (e) {
@@ -235,9 +233,7 @@ export default function DMInventory() {
     if (!window.confirm(`\u0423\u0434\u0430\u043b\u0438\u0442\u044c ${targets.length} \u043f\u0440\u0435\u0434\u043c\u0435\u0442(\u043e\u0432)?`)) return;
     setErr("");
     try {
-      for (const it of targets) {
-        await api.invDmDeletePlayerItem(selectedId, it.id);
-      }
+      await api.invDmBulkDelete(selectedId, targets.map((it) => it.id));
       await loadInv(selectedId);
       clearSelection();
     } catch (e) {

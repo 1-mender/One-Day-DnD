@@ -13,7 +13,7 @@ export async function submitArcadePlay({
   ticketsEnabled
 }) {
   if (!ticketsEnabled) {
-    throw new Error("РђСЂРєР°РґР° Р·Р°РєСЂС‹С‚Р° DM.");
+    throw new Error("Аркада закрыта DM.");
   }
 
   try {
@@ -27,9 +27,9 @@ export async function submitArcadePlay({
     });
     const result = res?.result;
     if (result?.outcome === "win") {
-      toast?.success?.(`+${result.reward} Р±РёР»РµС‚РѕРІ (x${result.multiplier})`, "РџРѕР±РµРґР°");
+      toast?.success?.(`+${result.reward} билетов (x${result.multiplier})`, "Победа");
     } else if (result) {
-      toast?.warn?.(`-${result.penalty + result.entryCost} Р±РёР»РµС‚РѕРІ`, "РџРѕСЂР°Р¶РµРЅРёРµ");
+      toast?.warn?.(`-${result.penalty + result.entryCost} билетов`, "Поражение");
     }
     return result;
   } catch (e) {

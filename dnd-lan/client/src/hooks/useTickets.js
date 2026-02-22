@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { formatError } from "../lib/formatError.js";
+import { makeProof } from "../lib/gameProof.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "./useReadOnly.js";
 
@@ -21,6 +22,9 @@ export function useTickets() {
   });
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const refreshInFlightRef = useRef(null);
+  const refreshQueuedRef = useRef(false);
+  const refreshTimerRef = useRef(null);
 
   const readOnly = useReadOnly();
 
@@ -52,28 +56,54 @@ export function useTickets() {
   }, []);
 
   const refresh = useCallback(async () => {
-    setErr("");
-    setLoading(true);
+    if (refreshInFlightRef.current) {
+      refreshQueuedRef.current = true;
+      return refreshInFlightRef.current;
+    }
+
+    const run = (async () => {
+      setErr("");
+      setLoading(true);
+      try {
+        const res = await api.ticketsMe();
+        applyPayload(res);
+      } catch (e) {
+        setErr(formatError(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    refreshInFlightRef.current = run;
     try {
-      const res = await api.ticketsMe();
-      applyPayload(res);
-    } catch (e) {
-      setErr(formatError(e));
+      await run;
     } finally {
-      setLoading(false);
+      refreshInFlightRef.current = null;
+      if (refreshQueuedRef.current) {
+        refreshQueuedRef.current = false;
+        refresh().catch(() => {});
+      }
     }
   }, [applyPayload]);
+
+  const scheduleRefresh = useCallback((delayMs = 150) => {
+    if (refreshTimerRef.current) return;
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null;
+      refresh().catch(() => {});
+    }, Math.max(0, Number(delayMs) || 0));
+  }, [refresh]);
 
   const { socket } = useSocket();
 
   useEffect(() => {
     if (!socket) return () => {};
     refresh().catch(() => {});
-    const onUpdated = () => refresh().catch(() => {});
-    const onSettings = () => refresh().catch(() => {});
-    const onQueueUpdated = () => refresh().catch(() => {});
-    const onMatchFound = () => refresh().catch(() => {});
-    const onMatchState = () => refresh().catch(() => {});
+    const onUpdated = () => scheduleRefresh(120);
+    const onSettings = () => scheduleRefresh(120);
+    const onQueueUpdated = () => scheduleRefresh(80);
+    const onMatchFound = () => scheduleRefresh(80);
+    const onMatchState = () => scheduleRefresh(80);
     socket.on("tickets:updated", onUpdated);
     socket.on("settings:updated", onSettings);
     socket.on("arcade:queue:updated", onQueueUpdated);
@@ -85,8 +115,12 @@ export function useTickets() {
       socket.off("arcade:queue:updated", onQueueUpdated);
       socket.off("arcade:match:found", onMatchFound);
       socket.off("arcade:match:state", onMatchState);
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
-  }, [refresh, socket]);
+  }, [refresh, scheduleRefresh, socket]);
 
   const play = useCallback(async (payload) => {
     const nextPayload = { ...(payload || {}) };
@@ -95,6 +129,12 @@ export function useTickets() {
       nextPayload.seed = String(issued?.seed || "");
       nextPayload.proof = String(issued?.proof || "");
     }
+    nextPayload.clientProof = makeProof(nextPayload.seed || "", {
+      gameKey: String(nextPayload.gameKey || ""),
+      outcome: String(nextPayload.outcome || ""),
+      performance: String(nextPayload.performance || "normal"),
+      payload: nextPayload.payload || {}
+    });
     const res = await api.ticketsPlay(nextPayload);
     applyPayload(res);
     return res;

@@ -1,6 +1,20 @@
 import crypto from "node:crypto";
 
 const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
+const SCRABBLE_ALPHABET = new Set(Array.from("\u0410\u0411\u0412\u0413\u0414\u0415\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042D\u042E\u042F"));
+
+function simpleHash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i += 1) {
+    h = (h * 31 + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+
+export function makePlayClientProof(seed, data) {
+  const body = `${seed || ""}:${JSON.stringify(data || {})}`;
+  return simpleHash(body);
+}
 
 function makeSeed() {
   return Math.random().toString(36).slice(2, 12);
@@ -56,7 +70,12 @@ export function createSeedStore({ ttlMs, nowFn }) {
   function issueSeed(playerId, gameKey) {
     const seed = makeSeed();
     const proof = crypto.randomBytes(16).toString("hex");
-    issuedSeeds.set(seedKey(playerId, gameKey), { seed, proof, expiresAt: nowFn() + ttlMs });
+    issuedSeeds.set(seedKey(playerId, gameKey), {
+      seed,
+      proof,
+      issuedAt: nowFn(),
+      expiresAt: nowFn() + ttlMs
+    });
     return { seed, proof };
   }
 
@@ -68,10 +87,15 @@ export function createSeedStore({ ttlMs, nowFn }) {
     if (entry.proof !== proof) return false;
     if (entry.expiresAt < nowFn()) {
       issuedSeeds.delete(key);
-      return false;
+      return null;
     }
     issuedSeeds.delete(key);
-    return true;
+    return {
+      seed: entry.seed,
+      proof: entry.proof,
+      issuedAt: Number(entry.issuedAt || 0),
+      expiresAt: Number(entry.expiresAt || 0)
+    };
   }
 
   return { issueSeed, takeSeed };
@@ -100,6 +124,7 @@ export function validateGuessPayload(payload, seed) {
 export function validateTttPayload(payload) {
   const moves = Array.isArray(payload?.moves) ? payload.moves : [];
   if (moves.length === 0) return false;
+  if (!intInRange(moves.length, 1, 9)) return false;
   const board = new Array(9).fill(null);
   const playerSymbol = payload?.playerSymbol === "O" ? "O" : "X";
   let player = "X";
@@ -122,8 +147,14 @@ export function validateTttPayload(payload) {
   const winner = lines.find((line) => line.every((idx) => board[idx] && board[idx] === board[line[0]]));
   const hasWinner = !!winner;
   const winnerSymbol = hasWinner ? board[winner[0]] : null;
-  if (payload.outcome === "win") return winnerSymbol === playerSymbol;
-  if (payload.outcome === "loss") return hasWinner && winnerSymbol !== playerSymbol;
+  if (payload.outcome === "win") {
+    if (moves.length < 5) return false;
+    return winnerSymbol === playerSymbol;
+  }
+  if (payload.outcome === "loss") {
+    if (moves.length < 6) return false;
+    return hasWinner && winnerSymbol !== playerSymbol;
+  }
   return false;
 }
 
@@ -137,21 +168,38 @@ export function validateMatch3Payload(payload, outcome, performanceKey) {
   if (!intInRange(Math.floor(score), 0, 50000) || score !== Math.floor(score)) return false;
   if (!intInRange(Math.floor(target), 60, 500) || target !== Math.floor(target)) return false;
   if (!intInRange(Math.floor(size), 4, 8) || size !== Math.floor(size)) return false;
-  if (!intInRange(Math.floor(maxRun), 0, 8) || maxRun !== Math.floor(maxRun)) return false;
-  if (!intInRange(Math.floor(movesUsed), 0, 60) || movesUsed !== Math.floor(movesUsed)) return false;
+  if (!intInRange(Math.floor(maxRun), 0, size) || maxRun !== Math.floor(maxRun)) return false;
+  if (!intInRange(Math.floor(movesUsed), 1, size * 4) || movesUsed !== Math.floor(movesUsed)) return false;
 
   if (outcome === "win" && score < target) return false;
   if (outcome === "loss" && score >= target) return false;
+  if (outcome === "loss" && performanceKey !== "normal") return false;
   if (performanceKey === "combo5" && maxRun < 5) return false;
   if (performanceKey === "combo4" && maxRun < 4) return false;
+
+  // Conservative anti-cheat ceiling based on board size and used turns.
+  const maxPlausibleScore = movesUsed * size * size * 12;
+  if (score > maxPlausibleScore) return false;
+
   return true;
 }
 
 export function validateUnoPayload(payload, outcome, performanceKey) {
   const playerDraws = Number(payload?.playerDraws);
   const handSize = Number(payload?.handSize);
+  const playerCardsLeft = Number(payload?.playerCardsLeft);
+  const aiCardsLeft = Number(payload?.aiCardsLeft);
+  const turns = Number(payload?.turns);
+
   if (!intInRange(Math.floor(playerDraws), 0, 60) || playerDraws !== Math.floor(playerDraws)) return false;
-  if (!intInRange(Math.floor(handSize), 1, 20) || handSize !== Math.floor(handSize)) return false;
+  if (!intInRange(Math.floor(handSize), 3, 12) || handSize !== Math.floor(handSize)) return false;
+  if (!intInRange(Math.floor(playerCardsLeft), 0, 40) || playerCardsLeft !== Math.floor(playerCardsLeft)) return false;
+  if (!intInRange(Math.floor(aiCardsLeft), 0, 40) || aiCardsLeft !== Math.floor(aiCardsLeft)) return false;
+  if (!intInRange(Math.floor(turns), 1, 240) || turns !== Math.floor(turns)) return false;
+  if (playerDraws > turns) return false;
+  if (outcome === "win" && (playerCardsLeft !== 0 || aiCardsLeft <= 0)) return false;
+  if (outcome === "loss" && (aiCardsLeft !== 0 || playerCardsLeft <= 0)) return false;
+  if (outcome === "loss" && performanceKey !== "normal") return false;
   if (outcome === "win" && performanceKey === "clean" && playerDraws !== 0) return false;
   return true;
 }
@@ -163,15 +211,19 @@ export function validateScrabblePayload(payload, outcome, performanceKey) {
     .filter(Boolean);
   if (!intInRange(rack.length, 3, 12)) return false;
   if (!rack.every((ch) => ch.length === 1)) return false;
+  if (!rack.every((ch) => SCRABBLE_ALPHABET.has(ch))) return false;
 
   const word = normalizeScrabbleWord(payload?.word);
   if (word.length > rack.length) return false;
+  if (word && !Array.from(word).every((ch) => SCRABBLE_ALPHABET.has(ch))) return false;
 
   if (outcome === "win") {
     if (!canFormScrabbleWord(word, rack)) return false;
     const hasRare = Array.from(word).some((ch) => SCRABBLE_RARE.has(ch));
     if (performanceKey === "long" && word.length < 6) return false;
     if (performanceKey === "rare" && !hasRare) return false;
+  } else if (performanceKey !== "normal") {
+    return false;
   }
   return true;
 }

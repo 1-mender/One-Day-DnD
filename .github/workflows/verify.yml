@@ -69,6 +69,10 @@ jobs:
 
       - name: Perf report
         run: npm run perf:report
+        env:
+          PERF_BUDGET_ENFORCE: "1"
+          PERF_BUDGET_JS_TOTAL_BYTES: "900000"
+          PERF_BUDGET_LARGEST_JS_BYTES: "450000"
 
       - name: Server audit (high+)
         run: npm --prefix server audit --omit=dev --audit-level=high
