@@ -5,6 +5,7 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { resolveJoinUrl } from "../lib/joinUrl.js";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 
 export default function Join() {
@@ -38,7 +39,7 @@ export default function Join() {
     }
   }
 
-  const joinUrl = info?.urls?.[0] || "http://<LAN-IP>:3000";
+  const joinUrl = resolveJoinUrl(info);
 
   return (
     <VintageShell layout="spread">
@@ -78,7 +79,7 @@ export default function Join() {
                 <div className="item">
                   <div className="kv">
                     <div style={{ fontWeight: 700 }}>1. Откройте адрес сервера</div>
-                    <div className="small">{info?.urls?.[0] || "Адрес выдаст мастер"}</div>
+                    <div className="small">{joinUrl || "Адрес выдаст мастер"}</div>
                   </div>
                 </div>
                 <div className="item">
@@ -107,3 +108,4 @@ export default function Join() {
     </VintageShell>
   );
 }
+

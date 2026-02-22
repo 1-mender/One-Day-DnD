@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
+import { resolveJoinUrl } from "../lib/joinUrl.js";
 import { Copy, QrCode, RefreshCcw } from "lucide-react";
 
 export default function DMOpsBar() {
@@ -89,7 +90,7 @@ export default function DMOpsBar() {
     }, { online: 0, idle: 0, offline: 0 });
   }, [players]);
 
-  const url = info?.urls?.[0] || (info?.ips?.[0] ? `http://${info.ips[0]}:${info?.port || 3000}` : "http://<LAN-IP>:3000");
+  const url = resolveJoinUrl(info);
   const joinCodeEnabled = !!info?.party?.joinCodeEnabled;
 
   const copyText = async (text, key) => {
