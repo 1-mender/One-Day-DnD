@@ -1,6 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { connectSocket } from "../socket.js";
-import { storage } from "../api.js";
+import { buildSocketAuth, connectSocket } from "../socket.js";
 
 const SocketCtx = createContext(null);
 const RECONNECT_SAMPLES_LIMIT = 50;
@@ -12,18 +11,6 @@ function normalizeSocketError(err) {
   if (err.data?.message) return String(err.data.message);
   if (err.data?.code) return String(err.data.code);
   return "connect_error";
-}
-
-function buildAuth(role) {
-  if (role === "player") {
-    const t = storage.getPlayerToken();
-    return t ? { playerToken: t } : {};
-  }
-  if (role === "waiting") {
-    const rid = storage.getJoinRequestId();
-    return rid ? { joinRequestId: rid } : {};
-  }
-  return {};
 }
 
 export function SocketProvider({ role, children }) {
@@ -45,7 +32,7 @@ export function SocketProvider({ role, children }) {
   useEffect(() => {
     roleRef.current = role;
     const s = connectSocket({ role });
-    s.auth = buildAuth(role);
+    s.auth = buildSocketAuth(role);
     socketRef.current = s;
     setSocket(s);
     reconnectSamplesRef.current = [];
@@ -148,7 +135,7 @@ export function SocketProvider({ role, children }) {
   const refreshAuth = useCallback(() => {
     const s = socketRef.current;
     if (!s) return;
-    const nextAuth = buildAuth(roleRef.current);
+    const nextAuth = buildSocketAuth(roleRef.current);
     s.auth = nextAuth;
     if (s.connected && roleRef.current === "player" && nextAuth.playerToken) {
       s.emit("auth:swap", nextAuth);

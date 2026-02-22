@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const backendPort = Number(process.env.PORT || 3000);
+const backendTarget = process.env.VITE_DEV_PROXY_TARGET || `http://127.0.0.1:${backendPort}`;
+
 export default defineConfig({
   plugins: [react()],
   build: {
@@ -23,9 +26,9 @@ export default defineConfig({
   server: {
     host: true,
     proxy: {
-      "/api": { target: "http://localhost:3000", changeOrigin: true },
-      "/uploads": { target: "http://localhost:3000", changeOrigin: true },
-      "/socket.io": { target: "http://localhost:3000", ws: true }
+      "/api": { target: backendTarget, changeOrigin: true },
+      "/uploads": { target: backendTarget, changeOrigin: true },
+      "/socket.io": { target: backendTarget, changeOrigin: true, ws: true }
     }
   }
 });

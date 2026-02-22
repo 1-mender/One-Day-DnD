@@ -2280,6 +2280,71 @@ body.arcade-modal-open{
   letter-spacing: .3px;
 }
 
+.shop-mascot-stall{
+  margin-top: 10px;
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(90,70,40,.25);
+  background:
+    radial-gradient(240px 120px at 16% -20%, rgba(255,255,255,.3), transparent 70%),
+    var(--noise),
+    linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.08));
+  box-shadow: 0 12px 22px rgba(0,0,0,.2);
+}
+
+.shop-mascot-svg{
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 6;
+}
+
+.shop-mascot-bubble{
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  max-width: min(360px, 72%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(60,45,25,.32);
+  background: rgba(255,250,240,.87);
+  box-shadow: 0 4px 10px rgba(0,0,0,.14);
+}
+
+.shop-mascot-name{
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: .9px;
+  color: #674320;
+}
+
+.shop-mascot-bubble > span:last-child{
+  font-size: 12px;
+  font-weight: 700;
+  color: #312112;
+  line-height: 1.35;
+}
+
+.shop-mascot-body{
+  transform-origin: center;
+  animation: mascot-breathe 3.6s ease-in-out infinite;
+}
+
+.shop-mascot-paw{
+  transform-origin: center;
+  animation: mascot-paw 2.8s ease-in-out infinite;
+}
+
+.shop-mascot-eye{
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: mascot-blink 5s step-end infinite;
+}
+
 .arcade-grid,
 .shop-grid{
   display:grid;
@@ -3050,6 +3115,21 @@ body.arcade-modal-open{
   100%{ transform: translateX(40%); opacity: .2; }
 }
 
+@keyframes mascot-breathe{
+  0%, 100%{ transform: translateY(0); }
+  50%{ transform: translateY(1.8px); }
+}
+
+@keyframes mascot-paw{
+  0%, 65%, 100%{ transform: translateY(0); }
+  75%{ transform: translateY(-1.4px); }
+}
+
+@keyframes mascot-blink{
+  0%, 91%, 100%{ transform: scaleY(1); }
+  92%, 94%{ transform: scaleY(.1); }
+}
+
 @media (max-width: 700px){
   .ticket-bank{
     align-items: flex-start;
@@ -3068,6 +3148,11 @@ body.arcade-modal-open{
   }
   .character-portrait{
     align-items: flex-start;
+  }
+  .shop-mascot-bubble{
+    max-width: calc(100% - 20px);
+    left: 10px;
+    top: 10px;
   }
 }
 
@@ -3218,6 +3303,11 @@ body.arcade-modal-open{
   }
   .guess-card:not(.flipped):hover .guess-inner{
     transform: none;
+  }
+  .shop-mascot-body,
+  .shop-mascot-paw,
+  .shop-mascot-eye{
+    animation: none;
   }
 }
 

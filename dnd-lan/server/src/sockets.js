@@ -115,7 +115,45 @@ export function createSocketServer(httpServer) {
   };
 
   io.use((socket, next) => {
-    // DM via cookie
+    const auth = socket.handshake.auth || {};
+    const requestedRole = String(auth.role || "").toLowerCase();
+
+    if (requestedRole === "waiting") {
+      if (auth.joinRequestId) {
+        socket.data.role = "waiting";
+        socket.data.joinRequestId = String(auth.joinRequestId);
+        return next();
+      }
+      socket.data.role = "guest";
+      return next();
+    }
+
+    if (requestedRole === "player") {
+      const token = auth.playerToken ? String(auth.playerToken) : getPlayerTokenFromSocketRequest(socket.request);
+      if (token) {
+        socket.data.role = "player";
+        socket.data.playerToken = token;
+        return next();
+      }
+      socket.data.role = "guest";
+      return next();
+    }
+
+    if (requestedRole === "dm") {
+      const dmAuth = getDmAuthFromSocketRequest(socket.request);
+      if (dmAuth.hasToken) {
+        if (dmAuth.payload) {
+          socket.data.role = "dm";
+          socket.data.dm = dmAuth.payload;
+          return next();
+        }
+        return next(new Error("dm_token_invalid"));
+      }
+      socket.data.role = "guest";
+      return next();
+    }
+
+    // Legacy fallback without explicit role.
     const dmAuth = getDmAuthFromSocketRequest(socket.request);
     if (dmAuth.hasToken) {
       if (dmAuth.payload) {
@@ -126,8 +164,6 @@ export function createSocketServer(httpServer) {
       return next(new Error("dm_token_invalid"));
     }
 
-    // Player or waiting
-    const auth = socket.handshake.auth || {};
     const playerToken = auth.playerToken ? String(auth.playerToken) : getPlayerTokenFromSocketRequest(socket.request);
     if (playerToken) {
       socket.data.role = "player";
