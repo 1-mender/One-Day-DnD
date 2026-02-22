@@ -41,6 +41,7 @@ export function initDb() {
   const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
   db.exec(schema);
   runMigrations(db, { dbPath: DB_PATH, dataDir: DATA_DIR, logger });
+  ensureColumnAwareIndexes(db);
 
   // bootstrap default party if none
   const partyCount = db.prepare("SELECT COUNT(*) AS c FROM parties").get().c;
@@ -53,6 +54,27 @@ export function initDb() {
     ).run(partyId, 0, 1, "{}", "[]", "{}");
   }
   return db;
+}
+
+function hasColumn(database, tableName, columnName) {
+  try {
+    const rows = database.prepare(`PRAGMA table_info(${tableName})`).all();
+    return rows.some((row) => String(row.name) === String(columnName));
+  } catch {
+    return false;
+  }
+}
+
+function ensureColumnAwareIndexes(database) {
+  if (hasColumn(database, "monsters", "party_id")) {
+    database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_party_name_id ON monsters(party_id, name COLLATE NOCASE, id);");
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_monsters_party_hidden_name_id ON monsters(party_id, is_hidden, name COLLATE NOCASE, id);"
+    );
+  }
+  if (hasColumn(database, "info_blocks", "party_id")) {
+    database.exec("CREATE INDEX IF NOT EXISTS idx_info_blocks_party_updated ON info_blocks(party_id, updated_at DESC);");
+  }
 }
 
 export function reloadDb() {
