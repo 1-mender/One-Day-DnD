@@ -11,13 +11,14 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
-const { initDb } = await import("../src/db.js");
+const { initDb, getDb, getPartyId } = await import("../src/db.js");
 const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { setDegraded, clearDegraded } = await import("../src/degraded.js");
 const { assertWritable } = await import("../src/writeGate.js");
 const { backupRouter } = await import("../src/routes/backup.js");
 const { authRouter } = await import("../src/routes/auth.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
+const { now, randId } = await import("../src/util.js");
 
 initDb();
 const dmUser = createDmUser("dm", "secret123");
@@ -37,6 +38,21 @@ const base = `http://127.0.0.1:${server.address().port}`;
 function dmCookie() {
   const token = signDmToken(dmUser);
   return `${process.env.DM_COOKIE}=${token}`;
+}
+
+function createPlayerToken() {
+  const db = getDb();
+  const t = now();
+  const partyId = getPartyId();
+  const playerId = db
+    .prepare("INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)")
+    .run(partyId, `Player-${randId(4)}`, "offline", t, 0, t).lastInsertRowid;
+  const token = randId(48);
+  const expiresAt = t + 24 * 60 * 60 * 1000;
+  db.prepare(
+    "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,0,0,0)"
+  ).run(token, playerId, partyId, t, expiresAt);
+  return token;
 }
 
 test.after(() => {
@@ -99,6 +115,41 @@ test("write gate allows auth logout endpoint when degraded", async () => {
     const res = await fetch(`${base}/api/auth/logout`, {
       method: "POST",
       headers: { cookie: dmCookie() }
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth player session endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const token = createPlayerToken();
+    const res = await fetch(`${base}/api/auth/player/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerToken: token })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth player logout endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const token = createPlayerToken();
+    const res = await fetch(`${base}/api/auth/player/logout`, {
+      method: "POST",
+      headers: { cookie: `player_token=${token}` }
     });
     const data = await res.json().catch(() => ({}));
     assert.notEqual(res.status, 503);

@@ -6,27 +6,85 @@ const JOIN_REQ_KEY = "dnd_join_request_id";
 const IMP_FLAG_KEY = "dnd_impersonating";
 const IMP_MODE_KEY = "dnd_imp_mode";
 
+function getLocalStorage() {
+  try {
+    return globalThis.localStorage || null;
+  } catch {
+    return null;
+  }
+}
+
+function getSessionStorage() {
+  try {
+    return globalThis.sessionStorage || null;
+  } catch {
+    return null;
+  }
+}
+
+function getStorageItem(store, key) {
+  if (!store) return null;
+  try {
+    return store.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function setStorageItem(store, key, value) {
+  if (!store) return;
+  try {
+    store.setItem(key, value);
+  } catch {
+    // ignore storage write errors
+  }
+}
+
+function removeStorageItem(store, key) {
+  if (!store) return;
+  try {
+    store.removeItem(key);
+  } catch {
+    // ignore storage write errors
+  }
+}
+
+const localStore = getLocalStorage();
+const sessionStore = getSessionStorage();
+let playerTokenMemory =
+  getStorageItem(sessionStore, PLAYER_TOKEN_KEY)
+  || getStorageItem(localStore, PLAYER_TOKEN_KEY)
+  || "";
+if (playerTokenMemory) {
+  removeStorageItem(sessionStore, PLAYER_TOKEN_KEY);
+  removeStorageItem(localStore, PLAYER_TOKEN_KEY);
+}
+
 export const storage = {
-  getPlayerToken: () => sessionStorage.getItem(PLAYER_TOKEN_KEY) || localStorage.getItem(PLAYER_TOKEN_KEY),
-  setPlayerToken: (t, scope = "local") => {
-    if (scope === "session") sessionStorage.setItem(PLAYER_TOKEN_KEY, t);
-    else localStorage.setItem(PLAYER_TOKEN_KEY, t);
+  getPlayerToken: () => playerTokenMemory,
+  setPlayerToken: (t, _scope = "memory") => {
+    playerTokenMemory = String(t || "");
+    if (!playerTokenMemory) {
+      removeStorageItem(sessionStore, PLAYER_TOKEN_KEY);
+      removeStorageItem(localStore, PLAYER_TOKEN_KEY);
+    }
   },
   clearPlayerToken: () => {
-    sessionStorage.removeItem(PLAYER_TOKEN_KEY);
-    localStorage.removeItem(PLAYER_TOKEN_KEY);
+    playerTokenMemory = "";
+    removeStorageItem(sessionStore, PLAYER_TOKEN_KEY);
+    removeStorageItem(localStore, PLAYER_TOKEN_KEY);
   },
-  getJoinRequestId: () => localStorage.getItem(JOIN_REQ_KEY),
-  setJoinRequestId: (id) => localStorage.setItem(JOIN_REQ_KEY, id),
-  clearJoinRequestId: () => localStorage.removeItem(JOIN_REQ_KEY),
+  getJoinRequestId: () => getStorageItem(localStore, JOIN_REQ_KEY),
+  setJoinRequestId: (id) => setStorageItem(localStore, JOIN_REQ_KEY, String(id || "")),
+  clearJoinRequestId: () => removeStorageItem(localStore, JOIN_REQ_KEY),
 
-  isImpersonating: () => sessionStorage.getItem(IMP_FLAG_KEY) === "1",
-  setImpersonating: (v) => sessionStorage.setItem(IMP_FLAG_KEY, v ? "1" : "0"),
-  clearImpersonating: () => sessionStorage.removeItem(IMP_FLAG_KEY),
+  isImpersonating: () => getStorageItem(sessionStore, IMP_FLAG_KEY) === "1",
+  setImpersonating: (v) => setStorageItem(sessionStore, IMP_FLAG_KEY, v ? "1" : "0"),
+  clearImpersonating: () => removeStorageItem(sessionStore, IMP_FLAG_KEY),
 
-  getImpMode: () => sessionStorage.getItem(IMP_MODE_KEY) || "ro",
-  setImpMode: (m) => sessionStorage.setItem(IMP_MODE_KEY, m === "rw" ? "rw" : "ro"),
-  clearImpMode: () => sessionStorage.removeItem(IMP_MODE_KEY)
+  getImpMode: () => getStorageItem(sessionStore, IMP_MODE_KEY) || "ro",
+  setImpMode: (m) => setStorageItem(sessionStore, IMP_MODE_KEY, m === "rw" ? "rw" : "ro"),
+  clearImpMode: () => removeStorageItem(sessionStore, IMP_MODE_KEY)
 };
 
 async function request(path, opts = {}) {
@@ -79,6 +137,25 @@ export const api = {
   dmLogout: () => request("/api/auth/logout", { method: "POST" }),
   dmMe: () => request("/api/auth/me", { method: "GET" }),
   dmChangePassword: (newPassword) => request("/api/auth/change-password", { method: "POST", body: JSON.stringify({ newPassword }) }),
+  playerSessionStart: async (playerToken) => {
+    const token = String(playerToken || storage.getPlayerToken() || "");
+    if (!token) throw new Error("player_token_required");
+    const r = await request("/api/auth/player/session", {
+      method: "POST",
+      body: JSON.stringify({ playerToken: token })
+    });
+    storage.clearPlayerToken();
+    return r;
+  },
+  playerLogout: async () => {
+    try {
+      return await request("/api/auth/player/logout", { method: "POST" });
+    } finally {
+      storage.clearPlayerToken();
+      storage.clearImpersonating();
+      storage.clearImpMode();
+    }
+  },
 
   joinRequest: (displayName, joinCode) => request("/api/party/join-request", { method: "POST", body: JSON.stringify({ displayName, joinCode }) }),
   dmRequests: () => request("/api/party/requests", { method: "GET" }),

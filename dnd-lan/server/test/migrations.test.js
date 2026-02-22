@@ -34,3 +34,12 @@ test("migration backup is created", () => {
   const files = fs.readdirSync(backupDir).filter((f) => f.endsWith(".bak"));
   assert.ok(files.length >= 1);
 });
+
+test("party scope columns exist for monsters and info_blocks", () => {
+  initDb();
+  const db = getDb();
+  const monsterCols = db.prepare("PRAGMA table_info(monsters)").all().map((row) => String(row.name));
+  const infoCols = db.prepare("PRAGMA table_info(info_blocks)").all().map((row) => String(row.name));
+  assert.ok(monsterCols.includes("party_id"));
+  assert.ok(infoCols.includes("party_id"));
+});

@@ -191,6 +191,24 @@ const MIGRATIONS = [
       database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);");
       database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);");
     }
+  },
+  {
+    version: 11,
+    name: "party_scope_monsters_info_blocks",
+    up(database) {
+      const fallbackPartyId = Number(database.prepare("SELECT id FROM parties ORDER BY id LIMIT 1").get()?.id || 0);
+      if (!fallbackPartyId) return;
+
+      addColumnIfMissing(database, "monsters", "party_id", "ALTER TABLE monsters ADD COLUMN party_id INTEGER;");
+      addColumnIfMissing(database, "info_blocks", "party_id", "ALTER TABLE info_blocks ADD COLUMN party_id INTEGER;");
+
+      database.prepare("UPDATE monsters SET party_id=? WHERE party_id IS NULL OR party_id<=0").run(fallbackPartyId);
+      database.prepare("UPDATE info_blocks SET party_id=? WHERE party_id IS NULL OR party_id<=0").run(fallbackPartyId);
+
+      database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_party_name_id ON monsters(party_id, name COLLATE NOCASE, id);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_party_hidden_name_id ON monsters(party_id, is_hidden, name COLLATE NOCASE, id);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_info_blocks_party_updated ON info_blocks(party_id, updated_at DESC);");
+    }
   }
 ];
 

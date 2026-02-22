@@ -6,7 +6,7 @@ import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
-import { isDmRequest } from "../sessionAuth.js";
+import { getRequestPartyId, isDmRequest } from "../sessionAuth.js";
 
 export const bestiaryRouter = express.Router();
 
@@ -60,12 +60,16 @@ function parseIdList(raw, max) {
   return uniq;
 }
 
-function fetchImagesByMonsterIds(db, monsterIds, limitPer = 0) {
+function fetchImagesByMonsterIds(db, partyId, monsterIds, limitPer = 0) {
   if (!monsterIds.length) return new Map();
   const placeholders = monsterIds.map(() => "?").join(",");
   const rows = db.prepare(
-    `SELECT id, monster_id, filename FROM monster_images WHERE monster_id IN (${placeholders}) ORDER BY monster_id, id`
-  ).all(...monsterIds);
+    `SELECT mi.id, mi.monster_id, mi.filename
+       FROM monster_images mi
+       JOIN monsters m ON m.id=mi.monster_id
+      WHERE m.party_id=? AND mi.monster_id IN (${placeholders})
+      ORDER BY mi.monster_id, mi.id`
+  ).all(partyId, ...monsterIds);
   const out = new Map();
   for (const r of rows) {
     const list = out.get(r.monster_id) || [];
@@ -78,9 +82,9 @@ function fetchImagesByMonsterIds(db, monsterIds, limitPer = 0) {
 
 bestiaryRouter.get("/", (req, res) => {
   const db = getDb();
-  const party = getParty();
-  const settings = getPartySettings(party.id);
   const isDm = isDmRequest(req);
+  const partyId = getRequestPartyId(req, { at: Date.now() }) || getParty().id;
+  const settings = getPartySettings(partyId);
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [], nextCursor: null });
 
@@ -92,8 +96,8 @@ bestiaryRouter.get("/", (req, res) => {
   const imagesLimitRaw = Number(req.query.imagesLimit ?? 0);
   const imagesLimit = Math.max(0, Math.min(20, Number.isFinite(imagesLimitRaw) ? imagesLimitRaw : 0));
 
-  const where = [];
-  const args = [];
+  const where = ["party_id=?"];
+  const args = [partyId];
   if (!isDm) where.push("is_hidden=0");
   if (q) {
     where.push("name LIKE ? COLLATE NOCASE");
@@ -132,7 +136,7 @@ bestiaryRouter.get("/", (req, res) => {
   }));
 
   if (includeImages && items.length) {
-    const map = fetchImagesByMonsterIds(db, items.map((m) => m.id), imagesLimit);
+    const map = fetchImagesByMonsterIds(db, partyId, items.map((m) => m.id), imagesLimit);
     for (const m of items) {
       m.images = map.get(m.id) || [];
     }
@@ -144,9 +148,9 @@ bestiaryRouter.get("/", (req, res) => {
 
 bestiaryRouter.get("/images", (req, res) => {
   const db = getDb();
-  const party = getParty();
-  const settings = getPartySettings(party.id);
   const isDm = isDmRequest(req);
+  const partyId = getRequestPartyId(req, { at: Date.now() }) || getParty().id;
+  const settings = getPartySettings(partyId);
   const ids = parseIdList(req.query.ids, MAX_IMAGE_IDS);
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ items: [] });
@@ -156,8 +160,8 @@ bestiaryRouter.get("/images", (req, res) => {
   if (!isDm) {
     const placeholders = ids.map(() => "?").join(",");
     allowedIds = db.prepare(
-      `SELECT id FROM monsters WHERE is_hidden=0 AND id IN (${placeholders})`
-    ).all(...ids).map((r) => r.id);
+      `SELECT id FROM monsters WHERE party_id=? AND is_hidden=0 AND id IN (${placeholders})`
+    ).all(partyId, ...ids).map((r) => r.id);
   }
 
   if (!allowedIds.length) return res.json({ items: [] });
@@ -165,7 +169,7 @@ bestiaryRouter.get("/images", (req, res) => {
   const limitPerRaw = Number(req.query.limitPer ?? 0);
   const limitPer = Math.max(0, Math.min(20, Number.isFinite(limitPerRaw) ? limitPerRaw : 0));
 
-  const map = fetchImagesByMonsterIds(db, allowedIds, limitPer);
+  const map = fetchImagesByMonsterIds(db, partyId, allowedIds, limitPer);
   const items = allowedIds.map((id) => ({
     monsterId: id,
     images: map.get(id) || []
@@ -176,13 +180,15 @@ bestiaryRouter.get("/images", (req, res) => {
 
 bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const b = req.body || {};
   const name = String(b.name || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
   const t = now();
   const id = db.prepare(
-    "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
+    "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
   ).run(
+    partyId,
     name,
     String(b.type || ""),
     String(b.habitat || ""),
@@ -195,7 +201,7 @@ bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
   ).lastInsertRowid;
 
   logEvent({
-    partyId: getParty().id,
+    partyId,
     type: "bestiary.created",
     actorRole: "dm",
     actorName: "DM",
@@ -211,8 +217,9 @@ bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
 
 bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const id = Number(req.params.id);
-  const cur = db.prepare("SELECT * FROM monsters WHERE id=?").get(id);
+  const cur = db.prepare("SELECT * FROM monsters WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
 
   const b = req.body || {};
@@ -220,7 +227,7 @@ bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   if (!name) return res.status(400).json({ error: "name_required" });
 
   db.prepare(
-    "UPDATE monsters SET name=?, type=?, habitat=?, cr=?, stats=?, abilities=?, description=?, is_hidden=?, updated_at=? WHERE id=?"
+    "UPDATE monsters SET name=?, type=?, habitat=?, cr=?, stats=?, abilities=?, description=?, is_hidden=?, updated_at=? WHERE id=? AND party_id=?"
   ).run(
     name,
     String(b.type ?? cur.type ?? ""),
@@ -231,16 +238,17 @@ bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
     String(b.description ?? cur.description ?? ""),
     (b.is_hidden ?? cur.is_hidden) ? 1 : 0,
     now(),
-    id
+    id,
+    partyId
   );
 
   logEvent({
-    partyId: getParty().id,
+    partyId,
     type: "bestiary.updated",
     actorRole: "dm",
     actorName: "DM",
     targetType: "monster",
-    targetId: Number(id),
+    targetId: Number(cur.id),
     message: `Изменён монстр: ${name}`,
     io: req.app.locals.io
   });
@@ -251,12 +259,14 @@ bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
 
 bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const id = Number(req.params.id);
-  const cur = db.prepare("SELECT name FROM monsters WHERE id=?").get(id);
-  const imageRows = db.prepare("SELECT filename FROM monster_images WHERE monster_id=?").all(id);
+  const cur = db.prepare("SELECT id, name FROM monsters WHERE id=? AND party_id=?").get(id, partyId);
+  if (!cur) return res.status(404).json({ error: "not_found" });
+  const imageRows = db.prepare("SELECT filename FROM monster_images WHERE monster_id=?").all(cur.id);
   const tx = db.transaction(() => {
-    db.prepare("DELETE FROM monster_images WHERE monster_id=?").run(id);
-    db.prepare("DELETE FROM monsters WHERE id=?").run(id);
+    db.prepare("DELETE FROM monster_images WHERE monster_id=?").run(cur.id);
+    db.prepare("DELETE FROM monsters WHERE id=? AND party_id=?").run(cur.id, partyId);
   });
   tx();
 
@@ -273,7 +283,7 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
     }
   }
   logEvent({
-    partyId: getParty().id,
+    partyId,
     type: "bestiary.deleted",
     actorRole: "dm",
     actorName: "DM",

@@ -11,7 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
-const { initDb, getDb } = await import("../src/db.js");
+const { initDb, getDb, getPartyId } = await import("../src/db.js");
 const { createDmUser, signDmToken } = await import("../src/auth.js");
 const { ensureUploads } = await import("../src/uploads.js");
 const { infoUploadsRouter } = await import("../src/routes/infoUploads.js");
@@ -40,10 +40,11 @@ function dmCookie() {
 
 function createMonster(name = "Goblin") {
   const db = getDb();
+  const partyId = getPartyId();
   const t = now();
   return db.prepare(
-    "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
-  ).run(name, "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
+    "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+  ).run(partyId, name, "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
 }
 
 async function upload(pathname, { field = "file", body, mime, filename = "payload.bin", cookie = dmCookie() } = {}) {

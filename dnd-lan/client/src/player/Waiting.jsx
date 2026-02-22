@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { storage } from "../api.js";
+import { api, storage } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 
@@ -12,11 +12,16 @@ export default function Waiting() {
 
   useEffect(() => {
     if (!socket) return () => {};
-    const onApproved = (p) => {
-      storage.setPlayerToken(p.playerToken);
-      storage.clearJoinRequestId();
-      setStatus("approved");
-      nav("/app", { replace: true });
+    const onApproved = async (p) => {
+      try {
+        await api.playerSessionStart(p?.playerToken);
+        storage.clearJoinRequestId();
+        setStatus("approved");
+        nav("/app", { replace: true });
+      } catch {
+        setStatus("rejected");
+        setMsg("Не удалось открыть игровую сессию.");
+      }
     };
     const onRejected = (p) => {
       setStatus("rejected");

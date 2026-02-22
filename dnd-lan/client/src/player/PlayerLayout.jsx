@@ -47,20 +47,25 @@ export default function PlayerLayout() {
       impHandledRef.current = { token, applied: false };
     }
     if (!impHandledRef.current.applied) {
-      storage.setPlayerToken(token, "session");
-      storage.setImpersonating(true);
-      storage.setImpMode("ro");
-      setImpersonating(true);
-      setImpMode("ro");
-      window.history.replaceState({}, "", window.location.pathname);
       impHandledRef.current.applied = true;
+      storage.setPlayerToken(token);
+      api.playerSessionStart(token)
+        .then(() => {
+          storage.setImpersonating(true);
+          storage.setImpMode("ro");
+          setImpersonating(true);
+          setImpMode("ro");
+          window.history.replaceState({}, "", window.location.pathname);
+          if (socket) refreshAuth();
+        })
+        .catch((e) => {
+          setErr(formatError(e));
+        });
     }
-    if (socket) refreshAuth();
   }, [location.search, refreshAuth, socket]);
 
   useEffect(() => {
     if (!socket) return () => {};
-    if (!storage.getPlayerToken()) nav("/", { replace: true });
 
     closingRef.current = false;
     hasConnectedRef.current = false;
@@ -130,7 +135,16 @@ export default function PlayerLayout() {
       .catch((e) => setNetErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
     api.me()
       .then(setMe)
-      .catch((e) => setNetErr(formatError(e, ERROR_CODES.ME_FAILED)));
+      .catch((e) => {
+        if (String(e?.message || "") === "not_authenticated") {
+          storage.clearPlayerToken();
+          storage.clearImpersonating();
+          storage.clearImpMode();
+          nav("/", { replace: true });
+          return;
+        }
+        setNetErr(formatError(e, ERROR_CODES.ME_FAILED));
+      });
 
     const shouldSend = () => !storage.isImpersonating();
     let last = 0;
@@ -186,7 +200,7 @@ export default function PlayerLayout() {
     setBusy(true);
     try {
       const r = await api.dmImpersonate(me.player.id, nextMode);
-      storage.setPlayerToken(r.playerToken, "session");
+      await api.playerSessionStart(r.playerToken);
       storage.setImpMode(nextMode);
       setImpMode(nextMode);
       refreshAuth();
@@ -228,11 +242,12 @@ export default function PlayerLayout() {
               )}
               <button
                 className="btn secondary"
-                onClick={() => {
-                  storage.clearPlayerToken();
-                  storage.clearImpersonating();
-                  storage.clearImpMode();
-                  window.location.href = "/dm/app/players";
+                onClick={async () => {
+                  try {
+                    await api.playerLogout();
+                  } finally {
+                    window.location.href = "/dm/app/players";
+                  }
                 }}
               >
                 Выйти

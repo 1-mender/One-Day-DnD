@@ -31,6 +31,7 @@ const upload = multer({
 
 function handleUpload(req, res) {
   const db = getDb();
+  const partyId = getParty().id;
   const f = req.file;
   const monsterId = Number(req.params.monsterId);
   if (!monsterId) {
@@ -38,7 +39,7 @@ function handleUpload(req, res) {
     return res.status(400).json({ error: "invalid_monsterId" });
   }
 
-  const monster = db.prepare("SELECT id FROM monsters WHERE id=?").get(monsterId);
+  const monster = db.prepare("SELECT id FROM monsters WHERE id=? AND party_id=?").get(monsterId, partyId);
   if (!monster) {
     safeUnlink(f?.path);
     return res.status(404).json({ error: "monster_not_found" });
@@ -83,7 +84,7 @@ function handleUpload(req, res) {
   };
 
   logEvent({
-    partyId: getParty().id,
+    partyId,
     type: "bestiary.image_added",
     actorRole: "dm",
     actorName: "DM",
@@ -101,8 +102,11 @@ function handleUpload(req, res) {
 
 bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const monsterId = Number(req.params.monsterId);
   if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
+  const monster = db.prepare("SELECT id FROM monsters WHERE id=? AND party_id=?").get(monsterId, partyId);
+  if (!monster) return res.status(404).json({ error: "monster_not_found" });
 
   const rows = db
     .prepare("SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images WHERE monster_id=? ORDER BY id DESC")
@@ -130,10 +134,16 @@ bestiaryImagesRouter.post("/:monsterId/image", dmAuthMiddleware, wrapMulter(uplo
 
 bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const imageId = Number(req.params.imageId);
   if (!imageId) return res.status(400).json({ error: "invalid_imageId" });
 
-  const row = db.prepare("SELECT id, monster_id, filename FROM monster_images WHERE id=?").get(imageId);
+  const row = db.prepare(
+    `SELECT mi.id, mi.monster_id, mi.filename
+       FROM monster_images mi
+       JOIN monsters m ON m.id=mi.monster_id
+      WHERE mi.id=? AND m.party_id=?`
+  ).get(imageId, partyId);
   if (!row) return res.status(404).json({ error: "not_found" });
 
   const paths = [
@@ -150,7 +160,7 @@ bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => 
 
   db.prepare("DELETE FROM monster_images WHERE id=?").run(imageId);
   logEvent({
-    partyId: getParty().id,
+    partyId,
     type: "bestiary.image_deleted",
     actorRole: "dm",
     actorName: "DM",

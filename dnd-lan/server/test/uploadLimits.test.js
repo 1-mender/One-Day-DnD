@@ -46,10 +46,11 @@ function dmCookie() {
 
 function createMonster(name = "Goblin") {
   const db = getDb();
+  const partyId = getPartyId();
   const t = now();
   return db.prepare(
-    "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
-  ).run(name, "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
+    "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+  ).run(partyId, name, "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
 }
 
 async function upload(pathname, field, sizeBytes, headers = {}, mime = "application/octet-stream") {

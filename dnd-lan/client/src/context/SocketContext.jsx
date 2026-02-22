@@ -150,7 +150,7 @@ export function SocketProvider({ role, children }) {
     if (!s) return;
     const nextAuth = buildAuth(roleRef.current);
     s.auth = nextAuth;
-    if (s.connected && roleRef.current === "player") {
+    if (s.connected && roleRef.current === "player" && nextAuth.playerToken) {
       s.emit("auth:swap", nextAuth);
       return;
     }

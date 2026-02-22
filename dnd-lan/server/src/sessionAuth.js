@@ -1,12 +1,18 @@
 import cookie from "cookie";
 import { getDmCookieName, verifyDmToken } from "./auth.js";
-import { getDb } from "./db.js";
+import { getDb, getParty } from "./db.js";
 import { now } from "./util.js";
 
+export function getPlayerCookieName() {
+  return process.env.PLAYER_COOKIE || "player_token";
+}
+
 export function getPlayerTokenFromRequest(req) {
-  const token = req?.header?.("x-player-token");
-  if (!token) return "";
-  return String(token);
+  const headerToken = req?.header?.("x-player-token");
+  if (headerToken) return String(headerToken);
+  const cookieToken = req?.cookies?.[getPlayerCookieName()];
+  if (cookieToken) return String(cookieToken);
+  return "";
 }
 
 export function getActiveSessionByToken(token, { db = getDb(), at = now() } = {}) {
@@ -36,6 +42,14 @@ export function getPlayerContextFromRequest(req, options = {}) {
   const token = getPlayerTokenFromRequest(req);
   if (!token) return null;
   return getPlayerContextByToken(token, options);
+}
+
+export function getPlayerTokenFromSocketRequest(socketRequest) {
+  const rawCookie = socketRequest?.headers?.cookie || "";
+  if (!rawCookie) return "";
+  const parsed = cookie.parse(rawCookie);
+  const token = parsed[getPlayerCookieName()];
+  return token ? String(token) : "";
 }
 
 export function getDmPayloadFromToken(token) {
@@ -72,4 +86,14 @@ export function getDmAuthFromSocketRequest(socketRequest) {
   const token = parsed[getDmCookieName()];
   if (!token) return { hasToken: false, payload: null };
   return { hasToken: true, payload: getDmPayloadFromToken(token) };
+}
+
+export function getRequestPartyId(req, options = {}) {
+  const playerContext = getPlayerContextFromRequest(req, options);
+  if (playerContext?.sess?.party_id) return Number(playerContext.sess.party_id);
+  if (getDmPayloadFromRequest(req)) {
+    const party = getParty();
+    return party?.id ? Number(party.id) : null;
+  }
+  return null;
 }

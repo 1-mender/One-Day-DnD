@@ -4,6 +4,8 @@ const BLOCKED_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 const DEGRADED_WRITE_BYPASS = new Set([
   "POST /api/auth/login",
   "POST /api/auth/logout",
+  "POST /api/auth/player/session",
+  "POST /api/auth/player/logout",
   "POST /api/backup/import"
 ]);
 

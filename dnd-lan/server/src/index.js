@@ -34,6 +34,27 @@ import { profileRouter } from "./routes/profile.js";
 import { ticketsRouter } from "./routes/tickets.js";
 
 const PORT = Number(process.env.PORT || 3000);
+const CSP_DISABLED = String(process.env.CSP_DISABLED || "0") === "1";
+
+function buildCspDirectives() {
+  const directives = {
+    defaultSrc: ["'self'"],
+    baseUri: ["'self'"],
+    objectSrc: ["'none'"],
+    frameAncestors: ["'none'"],
+    scriptSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", "data:", "blob:"],
+    fontSrc: ["'self'", "data:"],
+    connectSrc: ["'self'", "ws:", "wss:"],
+    formAction: ["'self'"],
+    manifestSrc: ["'self'"]
+  };
+  if (process.env.NODE_ENV === "production") {
+    directives.upgradeInsecureRequests = [];
+  }
+  return directives;
+}
 
 initDb();
 ensureUploads();
@@ -41,7 +62,11 @@ runBackup("startup");
 startAutoBackups();
 
 const app = express();
-app.use(helmet({ contentSecurityPolicy: false }));
+app.use(helmet({
+  contentSecurityPolicy: CSP_DISABLED
+    ? false
+    : { directives: buildCspDirectives() }
+}));
 app.use(httpLogger);
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));

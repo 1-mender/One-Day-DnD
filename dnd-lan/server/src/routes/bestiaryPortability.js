@@ -56,15 +56,22 @@ function pickParam(req, key, fallback) {
 
 bestiaryPortabilityRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const withImages = String(req.query.withImages || "1") === "1";
 
-  const monsters = db.prepare("SELECT * FROM monsters ORDER BY name COLLATE NOCASE ASC").all();
+  const monsters = db.prepare("SELECT * FROM monsters WHERE party_id=? ORDER BY name COLLATE NOCASE ASC").all(partyId);
 
   let imagesByMonster = new Map();
   if (withImages) {
     const rows = db
-      .prepare("SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images ORDER BY id DESC")
-      .all();
+      .prepare(
+        `SELECT mi.id, mi.monster_id, mi.filename, mi.original_name, mi.mime, mi.created_at
+           FROM monster_images mi
+           JOIN monsters m ON m.id=mi.monster_id
+          WHERE m.party_id=?
+          ORDER BY mi.id DESC`
+      )
+      .all(partyId);
     for (const r of rows) {
       const arr = imagesByMonster.get(r.monster_id) || [];
       arr.push({
@@ -105,6 +112,7 @@ bestiaryPortabilityRouter.get("/export", dmAuthMiddleware, (req, res) => {
 
 bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
   const db = getDb();
+  const partyId = getParty().id;
   const mode = String(pickParam(req, "mode", "merge")).toLowerCase();
   const match = String(pickParam(req, "match", "name")).toLowerCase();
   const onExisting = String(pickParam(req, "onExisting", "update")).toLowerCase();
@@ -149,7 +157,7 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
     warnings.push(`В импорте есть дубли id: ${listIds}${dupIds.size > 6 ? "…" : ""}`);
   }
 
-  const existingCount = db.prepare("SELECT COUNT(*) AS c FROM monsters").get().c;
+  const existingCount = db.prepare("SELECT COUNT(*) AS c FROM monsters WHERE party_id=?").get(partyId).c;
 
   function buildPlan() {
     const createdNames = [];
@@ -175,7 +183,7 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
       };
     }
 
-    const rows = db.prepare("SELECT id, name FROM monsters").all();
+    const rows = db.prepare("SELECT id, name FROM monsters WHERE party_id=?").all(partyId);
     const byId = new Set(rows.map((r) => r.id));
     const byName = new Map(rows.map((r) => [String(r.name || "").toLowerCase(), r.id]));
 
@@ -233,16 +241,16 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
 
   const tx = db.transaction(() => {
     if (mode === "replace") {
-      db.prepare("DELETE FROM monster_images").run();
-      db.prepare("DELETE FROM monsters").run();
+      db.prepare("DELETE FROM monsters WHERE party_id=?").run(partyId);
 
       const usedIds = new Set();
+      const occupiedIds = new Set(db.prepare("SELECT id FROM monsters").all().map((r) => Number(r.id)));
       for (const m of normalized) {
         const stmtWithId = db.prepare(
-          "INSERT INTO monsters(id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+          "INSERT INTO monsters(id, party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)"
         );
         const stmtNoId = db.prepare(
-          "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
+          "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
         );
 
         let monsterId;
@@ -253,11 +261,21 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
             warnings.push(`Дублирующий id ${m.origId} для "${m.name}": вставлен без id`);
           }
         }
-        if (useId) usedIds.add(m.origId);
+        if (useId && occupiedIds.has(m.origId)) {
+          useId = false;
+          if (warnings.length < 50) {
+            warnings.push(`id ${m.origId} is already used by another party; "${m.name}" inserted without id`);
+          }
+        }
+        if (useId) {
+          usedIds.add(m.origId);
+          occupiedIds.add(m.origId);
+        }
 
         if (useId) {
           monsterId = stmtWithId.run(
             m.origId,
+            partyId,
             m.name,
             m.type,
             m.habitat,
@@ -271,6 +289,7 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
           ).lastInsertRowid;
         } else {
           monsterId = stmtNoId.run(
+            partyId,
             m.name,
             m.type,
             m.habitat,
@@ -306,15 +325,15 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
       return;
     }
 
-    const rows = db.prepare("SELECT id, name FROM monsters").all();
+    const rows = db.prepare("SELECT id, name FROM monsters WHERE party_id=?").all(partyId);
     const byId = new Set(rows.map((r) => r.id));
     const byName = new Map(rows.map((r) => [String(r.name || "").toLowerCase(), r.id]));
 
     const upd = db.prepare(
-      "UPDATE monsters SET name=?, type=?, habitat=?, cr=?, stats=?, abilities=?, description=?, is_hidden=?, updated_at=? WHERE id=?"
+      "UPDATE monsters SET name=?, type=?, habitat=?, cr=?, stats=?, abilities=?, description=?, is_hidden=?, updated_at=? WHERE id=? AND party_id=?"
     );
     const ins = db.prepare(
-      "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
+      "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
     );
 
     const hasImg = db.prepare("SELECT 1 FROM monster_images WHERE monster_id=? AND filename=? LIMIT 1");
@@ -344,7 +363,8 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
           m.description,
           m.is_hidden,
           t,
-          foundId
+          foundId,
+          partyId
         );
         updated++;
 
@@ -365,6 +385,7 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
         }
       } else {
         const monsterId = ins.run(
+          partyId,
           m.name,
           m.type,
           m.habitat,
@@ -407,7 +428,7 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
 
   req.app.locals.io?.to("dm").emit("bestiary:updated", { import: true });
   logEvent({
-    partyId: getParty().id,
+    partyId,
     type: "bestiary.import",
     actorRole: "dm",
     actorName: "DM",

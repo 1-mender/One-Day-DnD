@@ -3,7 +3,12 @@ import { getDb } from "./db.js";
 import { now } from "./util.js";
 import { logEvent } from "./events.js";
 import { getDegradedState } from "./degraded.js";
-import { getActiveSessionByToken, getDmAuthFromSocketRequest, getPlayerBySession } from "./sessionAuth.js";
+import {
+  getActiveSessionByToken,
+  getDmAuthFromSocketRequest,
+  getPlayerBySession,
+  getPlayerTokenFromSocketRequest
+} from "./sessionAuth.js";
 
 const GRACE_MS = Number(process.env.PRESENCE_GRACE_MS || 4000);
 const activeSocketsByPlayerId = new Map();
@@ -123,9 +128,10 @@ export function createSocketServer(httpServer) {
 
     // Player or waiting
     const auth = socket.handshake.auth || {};
-    if (auth.playerToken) {
+    const playerToken = auth.playerToken ? String(auth.playerToken) : getPlayerTokenFromSocketRequest(socket.request);
+    if (playerToken) {
       socket.data.role = "player";
-      socket.data.playerToken = String(auth.playerToken);
+      socket.data.playerToken = playerToken;
       return next();
     }
     if (auth.joinRequestId) {

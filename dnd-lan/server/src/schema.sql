@@ -84,6 +84,7 @@ CREATE TABLE IF NOT EXISTS inventory_items (
 
 CREATE TABLE IF NOT EXISTS monsters (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party_id INTEGER NOT NULL,
   name TEXT NOT NULL,
   type TEXT,
   habitat TEXT,
@@ -93,7 +94,8 @@ CREATE TABLE IF NOT EXISTS monsters (
   description TEXT,
   is_hidden INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS monster_images (
@@ -108,6 +110,7 @@ CREATE TABLE IF NOT EXISTS monster_images (
 
 CREATE TABLE IF NOT EXISTS info_blocks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party_id INTEGER NOT NULL,
   title TEXT NOT NULL,
   content TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT 'note', -- lore/quest/note/other
@@ -115,7 +118,8 @@ CREATE TABLE IF NOT EXISTS info_blocks (
   selected_player_ids TEXT NOT NULL DEFAULT '[]',
   tags TEXT NOT NULL DEFAULT '[]',
   created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS events (
@@ -292,8 +296,11 @@ CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
 CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);
 CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);
+CREATE INDEX IF NOT EXISTS idx_monsters_party_name_id ON monsters(party_id, name COLLATE NOCASE, id);
+CREATE INDEX IF NOT EXISTS idx_monsters_party_hidden_name_id ON monsters(party_id, is_hidden, name COLLATE NOCASE, id);
 CREATE INDEX IF NOT EXISTS idx_monster_images_monster ON monster_images(monster_id);
 CREATE INDEX IF NOT EXISTS idx_info_blocks_title ON info_blocks(title);
+CREATE INDEX IF NOT EXISTS idx_info_blocks_party_updated ON info_blocks(party_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_party_created ON events(party_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_profiles_player ON character_profiles(player_id);

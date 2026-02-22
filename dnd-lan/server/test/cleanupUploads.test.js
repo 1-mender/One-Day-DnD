@@ -9,7 +9,7 @@ const uploadsDir = path.join(tmpDir, "uploads_test");
 process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.DND_LAN_UPLOADS_DIR = uploadsDir;
 
-const { initDb, getDb } = await import("../src/db.js");
+const { initDb, getDb, getPartyId } = await import("../src/db.js");
 const { ensureUploads } = await import("../src/uploads.js");
 const { scanAndCleanupUploads } = await import("../src/cleanupUploads.js");
 const { now } = await import("../src/util.js");
@@ -18,11 +18,12 @@ initDb();
 ensureUploads();
 
 const db = getDb();
+const partyId = getPartyId();
 const t = now();
 
 const monsterId = db.prepare(
-  "INSERT INTO monsters(name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
-).run("KeepMonster", "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
+  "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+).run(partyId, "KeepMonster", "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
 
 db.prepare(
   "INSERT INTO monster_images(monster_id, filename, original_name, mime, created_at) VALUES(?,?,?,?,?)"

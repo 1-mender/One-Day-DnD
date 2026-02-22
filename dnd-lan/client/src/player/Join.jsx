@@ -17,8 +17,9 @@ export default function Join() {
 
   useEffect(() => {
     api.serverInfo().then(setInfo).catch((e) => setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
-    // if already has token -> go app
-    if (storage.getPlayerToken()) nav("/app", { replace: true });
+    api.me()
+      .then(() => nav("/app", { replace: true }))
+      .catch(() => {});
   }, [nav]);
 
   async function submit(e) {
