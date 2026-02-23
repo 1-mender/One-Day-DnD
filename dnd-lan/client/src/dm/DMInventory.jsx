@@ -293,7 +293,7 @@ export default function DMInventory() {
   return (
     <div className="card taped">
       <div>
-        <div style={{ fontWeight: 900, fontSize: 20 }}>Инвентарь (мастер)</div>
+        <div className="u-title-xl">Инвентарь (мастер)</div>
         <div className="small">Просмотр/выдача предметов игрокам</div>
       </div>
       <hr />
@@ -304,13 +304,13 @@ export default function DMInventory() {
           {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
         </select>
         <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />Выдать</button>
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." style={{ width: "min(360px, 100%)" }} />
-        <select value={vis} onChange={(e)=>setVis(e.target.value)} style={{ width: 180 }}>
+        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." className="u-w-min-360" />
+        <select value={vis} onChange={(e)=>setVis(e.target.value)} className="u-w-180">
           <option value="">Видимость: все</option>
               <option value="public">Публичные</option>
               <option value="hidden">Скрытые</option>
         </select>
-        <select value={rarity} onChange={(e)=>setRarity(e.target.value)} style={{ width: 180 }}>
+        <select value={rarity} onChange={(e)=>setRarity(e.target.value)} className="u-w-180">
           <option value="">Редкость: все</option>
           {RARITY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -351,8 +351,8 @@ export default function DMInventory() {
         ) : null}
 
       </div>
-      <div className="small" style={{ marginTop: 10 }}>
-        <div className="row" style={{ flexWrap: "wrap" }}>
+      <div className="small u-mt-10">
+        <div className="row u-row-wrap">
           <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
           <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
           <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
@@ -360,15 +360,15 @@ export default function DMInventory() {
         </div>
       </div>
 
-      <div className="paper-note" style={{ marginTop: 12 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="paper-note u-mt-12">
+        <div className="row u-row-between-center">
           <div className="title">Активные передачи</div>
           <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
         </div>
-        <div className="small note-hint" style={{ marginTop: 6 }}>
+        <div className="small note-hint u-mt-6">
           Мастер может отменить любую ожидающую передачу.
         </div>
-        <div className="row" style={{ marginTop: 8 }}>
+        <div className="row u-mt-8">
           <input
             value={transferQ}
             onChange={(e) => setTransferQ(e.target.value)}
@@ -376,7 +376,7 @@ export default function DMInventory() {
             style={inp}
           />
         </div>
-        <div style={{ marginTop: 8 }}>
+        <div className="u-mt-8">
           {transfersLoading ? (
             <Skeleton h={80} w="100%" />
           ) : filteredTransfers.length === 0 ? (
@@ -384,9 +384,9 @@ export default function DMInventory() {
           ) : (
             <div className="list">
               {filteredTransfers.map((tr) => (
-                <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <div key={tr.id} className="item u-items-start">
+                  <div className="u-flex-1">
+                    <div className="row u-row-gap-8 u-row-wrap">
                       {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
                         <span className="badge secondary">Истекла</span>
                       ) : null}
@@ -395,16 +395,16 @@ export default function DMInventory() {
                       <span className="badge">x{tr.qty}</span>
                       <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
                     </div>
-                    <div className="small" style={{ marginTop: 6 }}>
+                    <div className="small u-mt-6">
                       Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
                     </div>
                     {tr.note ? (
-                      <div className="small" style={{ marginTop: 6 }}>
+                      <div className="small u-mt-6">
                         <b>Сообщение:</b> {tr.note}
                       </div>
                     ) : null}
                   </div>
-                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <div className="row u-row-gap-8 u-row-wrap">
                     <button className="btn danger" onClick={() => cancelTransfer(tr)} disabled={readOnly}>
                       Отменить
                     </button>
@@ -417,8 +417,8 @@ export default function DMInventory() {
       </div>
 
       <div
-        className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`}
-        style={{ marginTop: 12, height: view === "list" ? "70vh" : undefined, overflow: view === "list" ? "auto" : undefined }}
+        className={`list inv-shelf u-mt-12 ${view === "grid" ? "inv-grid" : ""}`}
+        style={{ height: view === "list" ? "70vh" : undefined, overflow: view === "list" ? "auto" : undefined }}
         ref={view === "grid" ? autoAnimateRef : listRef}
       >
         {loading ? (
@@ -516,9 +516,9 @@ export default function DMInventory() {
                 </optgroup>
               ))}
             </select>
-            <div className="badge secondary" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div className="badge secondary u-inline-center u-row-gap-8">
               {SelectedIcon ? (
-                <SelectedIcon className="inv-icon" aria-hidden="true" style={{ width: 28, height: 28 }} />
+                <SelectedIcon className="inv-icon u-icon-28" aria-hidden="true" />
               ) : (
                 <span className="small">{"\u0411\u0435\u0437 \u0438\u043a\u043e\u043d\u043a\u0438"}</span>
               )}
@@ -576,7 +576,7 @@ export default function DMInventory() {
               ? `Удалить предмет «${confirmDialog?.itemName || "без названия"}»?`
               : `Удалить ${confirmDialog?.count || 0} предмет(ов)?`}
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row u-row-gap-8">
             <button
               className="btn secondary"
               onClick={() => setConfirmDialog(null)}

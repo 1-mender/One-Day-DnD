@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
@@ -353,7 +353,7 @@ export default function DMSettings() {
 
   return (
     <div className="card taped">
-      <div style={{ fontWeight: 900, fontSize: 20 }}>Настройки</div>
+      <div className="u-title-xl">Настройки</div>
       <div className="small">Код партии, безопасность, экономика, локальная сеть и брандмауэр.</div>
       <hr />
       {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
@@ -361,16 +361,16 @@ export default function DMSettings() {
       {msg && <div className="badge ok">{msg}</div>}
 
       <div className="list">
-        <div className="title" style={{ marginTop: 6 }}>{"\u0418\u0433\u0440\u043e\u043a"}</div>
+        <div className="title u-mt-6">{"\u0418\u0433\u0440\u043e\u043a"}</div>
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Код партии (код входа)</div>
+          <div className="u-fw-800">Код партии (код входа)</div>
           <div className="small">{"\u0415\u0441\u043b\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d \u2014 \u0438\u0433\u0440\u043e\u043a\u0438 \u0432\u0432\u043e\u0434\u044f\u0442 \u043a\u043e\u0434 \u043f\u0440\u0438 \u0432\u0445\u043e\u0434\u0435."}</div>
           <hr />
-          <label className="row" style={{ gap: 10, alignItems: "center" }}>
+          <label className="row">
             <input type="checkbox" checked={joinEnabled} onChange={(e) => setJoinEnabled(e.target.checked)} disabled={readOnly} />
             <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438"}</span>
           </label>
-          <div className="row" style={{ gap: 8, marginTop: 10, alignItems: "center" }}>
+          <div className="row u-row-gap-8 u-mt-10">
             <input
               type={showJoin ? "text" : "password"}
               value={joinCode}
@@ -387,13 +387,13 @@ export default function DMSettings() {
         </div>
 
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>{"\u041f\u0440\u0435\u0441\u0435\u0442\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f"}</div>
+          <div className="u-fw-800">{"\u041f\u0440\u0435\u0441\u0435\u0442\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f"}</div>
           <div className="small">{"\u0428\u0430\u0431\u043b\u043e\u043d\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432."}</div>
           <hr />
           {presetErr ? <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{presetErr}</div> : null}
           {presetMsg ? <div className="badge ok">{presetMsg}</div> : null}
           <div className="list">
-            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+            <label className="row">
               <input
                 type="checkbox"
                 checked={presetAccess.enabled !== false}
@@ -401,7 +401,7 @@ export default function DMSettings() {
               />
               <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442\u044b \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432"}</span>
             </label>
-            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+            <label className="row">
               <input
                 type="checkbox"
                 checked={presetAccess.playerEdit !== false}
@@ -409,7 +409,7 @@ export default function DMSettings() {
               />
               <span>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0432 \u043f\u0440\u044f\u043c\u043e\u043c \u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0438"}</span>
             </label>
-            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+            <label className="row">
               <input
                 type="checkbox"
                 checked={presetAccess.playerRequest !== false}
@@ -417,7 +417,7 @@ export default function DMSettings() {
               />
               <span>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0432 \u0437\u0430\u043f\u0440\u043e\u0441\u0430\u0445"}</span>
             </label>
-            <label className="row" style={{ gap: 10, alignItems: "center" }}>
+            <label className="row">
               <input
                 type="checkbox"
                 checked={!!presetAccess.hideLocal}
@@ -426,7 +426,7 @@ export default function DMSettings() {
               <span>Скрыть локальные пресеты (только мастер)</span>
             </label>
 
-            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <div className="row u-row-gap-8 u-row-wrap">
               <button className="btn secondary" onClick={addPreset} disabled={readOnly}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442"}</button>
               <button className="btn" onClick={saveProfilePresets} disabled={readOnly || presetBusy}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
             </div>
@@ -437,11 +437,11 @@ export default function DMSettings() {
               <div className="list">
                 {profilePresets.map((preset, idx) => (
                   <div key={preset.id || `${preset.title}-${idx}`} className="paper-note">
-                    <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                    <div className="row u-row-between-center">
                       <div className="title">{"\u041f\u0440\u0435\u0441\u0435\u0442 #"}{idx + 1}</div>
                       <button className="btn danger" onClick={() => removePreset(idx)} disabled={readOnly}>{"\u0423\u0434\u0430\u043b\u0438\u0442\u044c"}</button>
                     </div>
-                    <div className="list" style={{ marginTop: 10 }}>
+                    <div className="list u-mt-10">
                       <input
                         value={preset.title || ""}
                         onChange={(e) => updatePreset(idx, { title: e.target.value })}
@@ -456,52 +456,55 @@ export default function DMSettings() {
                         maxLength={160}
                         style={inp}
                       />
-                      <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <div className="row u-row-gap-8 u-row-wrap">
                         <input
                           value={preset.data?.characterName || ""}
                           onChange={(e) => updatePresetData(idx, { characterName: e.target.value })}
                           placeholder={"\u0418\u043c\u044f \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u0436\u0430"}
                           maxLength={80}
-                          style={{ ...inp, minWidth: 220 }}
+                          style={inp}
+                          className="u-minw-220"
                         />
                         <input
                           value={preset.data?.classRole || ""}
                           onChange={(e) => updatePresetData(idx, { classRole: e.target.value })}
                           placeholder={"\u041a\u043b\u0430\u0441\u0441 / \u0440\u043e\u043b\u044c"}
                           maxLength={80}
-                          style={{ ...inp, minWidth: 220 }}
+                          style={inp}
+                          className="u-minw-220"
                         />
                         <input
                           value={preset.data?.level ?? ""}
                           onChange={(e) => updatePresetData(idx, { level: e.target.value })}
                           placeholder={"\u0423\u0440\u043e\u0432\u0435\u043d\u044c"}
-                          style={{ ...inp, minWidth: 140 }}
+                          style={inp}
+                          className="u-minw-140"
                         />
                       </div>
                       <div className="kv">
                         <div className="title">{"\u0421\u0442\u0430\u0442\u044b"}</div>
                         <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} readOnly={readOnly} />
                       </div>
-                      <div className="paper-note" style={{ marginTop: 8 }}>
+                      <div className="paper-note u-mt-8">
                         <div className="title">{"\u041f\u0440\u0435\u0432\u044c\u044e"}</div>
-                        <div className="row" style={{ alignItems: "flex-start", marginTop: 10 }}>
+                        <div className="row u-items-start u-mt-10">
                           <PolaroidFrame
                             className="sm"
                             src={preset.data?.avatarUrl || ""}
                             alt={preset.data?.characterName || preset.title}
                             fallback={(preset.data?.characterName || preset.title || "?").slice(0, 1)}
                           />
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontWeight: 900 }}>{preset.data?.characterName || "\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438"}</div>
-                            <div className="small" style={{ marginTop: 4 }}>
+                          <div className="u-minw-0">
+                            <div className="u-fw-900">{preset.data?.characterName || "\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438"}</div>
+                            <div className="small u-mt-4">
                               {preset.data?.classRole || "\u041a\u043b\u0430\u0441\u0441/\u0440\u043e\u043b\u044c"} • lvl {preset.data?.level || "?"}
                             </div>
                           </div>
                         </div>
-                        <div style={{ marginTop: 10 }}>
+                        <div className="u-mt-10">
                           <StatsView stats={preset.data?.stats || {}} />
                         </div>
-                        <div className="small bio-text" style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
+                        <div className="small bio-text u-mt-10 u-pre-wrap">
                           {preset.data?.bio || "\u0411\u0438\u043e\u0433\u0440\u0430\u0444\u0438\u044f \u043d\u0435 \u0437\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0430"}
                         </div>
                       </div>
@@ -528,12 +531,12 @@ export default function DMSettings() {
           </div>
         </div>
 
-        <div className="title" style={{ marginTop: 10 }}>{"\u0414\u041c"}</div>
+        <div className="title u-mt-10">{"\u0414\u041c"}</div>
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Смена пароля мастера</div>
+          <div className="u-fw-800">Смена пароля мастера</div>
           <div className="small">{"\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u0442\u0441\u044f \u0441\u043c\u0435\u043d\u0438\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c \u043f\u043e\u0441\u043b\u0435 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u0437\u0430\u043f\u0443\u0441\u043a\u0430."}</div>
           <hr />
-          <div className="row" style={{ gap: 8, alignItems: "center" }}>
+          <div className="row u-row-gap-8">
             <input
               type={showPass ? "text" : "password"}
               value={newPass}
@@ -556,17 +559,17 @@ export default function DMSettings() {
         </div>
 
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Локальная сеть / Брандмауэр Windows</div>
+          <div className="u-fw-800">Локальная сеть / Брандмауэр Windows</div>
           <div className="small">{"\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0441 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u043e\u0432 \u0432 \u0442\u043e\u0439 \u0436\u0435 \u0441\u0435\u0442\u0438."}</div>
           <hr />
-          <div className="paper-note" style={{ marginBottom: 10 }}>
+          <div className="paper-note u-mb-10">
             <div className="title">Локальная сеть</div>
             <div className="small">{"\u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044c, \u0447\u0442\u043e \u0432\u0441\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0432 \u043e\u0434\u043d\u043e\u0439 Wi-Fi \u0441\u0435\u0442\u0438 \u0438 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e\u0442 IP \u0441\u0435\u0440\u0432\u0435\u0440\u0430."}</div>
           </div>
-          <div className="small" style={{ lineHeight: 1.5 }}>
+          <div className="small u-line-15">
             <b>{"\u0421\u0441\u044b\u043b\u043a\u0430 \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432:"}</b> {lanUrl || "\u2014"}<br />
             <b>{"\u0415\u0441\u043b\u0438 \u043d\u0435 \u0437\u0430\u0445\u043e\u0434\u0438\u0442:"}</b>
-            <ul style={{ marginTop: 6 }}>
+            <ul className="u-mt-6">
               <li>{"\u0421\u0435\u0440\u0432\u0435\u0440 \u0434\u043e\u043b\u0436\u0435\u043d \u0441\u043b\u0443\u0448\u0430\u0442\u044c 0.0.0.0, \u0430 \u043d\u0435 \u0442\u043e\u043b\u044c\u043a\u043e localhost."}</li>
               <li>Разрешите доступ в брандмауэре для частных сетей.</li>
               <li>{"\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u043e\u0440\u0442 \u0438 \u0447\u0442\u043e \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0432 \u043e\u0434\u043d\u043e\u0439 \u0441\u0435\u0442\u0438."}</li>
@@ -575,22 +578,22 @@ export default function DMSettings() {
         </div>
 
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Резервная копия</div>
+          <div className="u-fw-800">Резервная копия</div>
           <div className="small">{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442/\u0438\u043c\u043f\u043e\u0440\u0442: app.db + uploads/ (zip)"}</div>
           <hr />
           <button className="btn secondary" onClick={exportZip}>{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442 (zip)"}</button>
-          <div style={{ marginTop: 10 }}>
+          <div className="u-mt-10">
             <input type="file" accept=".zip" onChange={importZip} disabled={readOnly} />
           </div>
         </div>
 
-        <div className="title" style={{ marginTop: 10 }}>{"\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430"}</div>
+        <div className="title u-mt-10">{"\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430"}</div>
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>{"\u0410\u0440\u043a\u0430\u0434\u0430 \u0438 \u0431\u0438\u043b\u0435\u0442\u044b"}</div>
+          <div className="u-fw-800">{"\u0410\u0440\u043a\u0430\u0434\u0430 \u0438 \u0431\u0438\u043b\u0435\u0442\u044b"}</div>
           <div className="small">{"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0438\u0433\u0440, \u043b\u0438\u043c\u0438\u0442\u043e\u0432 \u0438 \u0446\u0435\u043d."}</div>
           <hr />
-          <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <label className="row" style={{ gap: 6 }} title={RULE_TIPS.showOnlyChanged}>
+          <div className="row u-row-gap-8 u-row-wrap">
+            <label className="row u-row-gap-6" title={RULE_TIPS.showOnlyChanged}>
               <input
                 type="checkbox"
                 checked={showOnlyChanged}
@@ -619,7 +622,7 @@ export default function DMSettings() {
               {showGeneralBlock ? (
                 <>
                   {!showOnlyChanged || generalChanges.enabled ? (
-                    <label className="row" style={{ gap: 10, alignItems: "center" }} title={RULE_TIPS.arcadeEnabled}>
+                    <label className="row" title={RULE_TIPS.arcadeEnabled}>
                       <input
                         type="checkbox"
                         checked={ticketRules.enabled !== false}
@@ -682,8 +685,8 @@ export default function DMSettings() {
               {showDailyQuestBlock ? (
                 <div className="paper-note">
                   <div className="title">{"Ежедневный квест"}</div>
-                  <div className="settings-fields" style={{ marginTop: 8 }}>
-                    <label className="row" style={{ gap: 10, alignItems: "center" }} title={RULE_TIPS.dailyQuestEnabled}>
+                  <div className="settings-fields u-mt-8">
+                    <label className="row" title={RULE_TIPS.dailyQuestEnabled}>
                       <input
                         type="checkbox"
                         checked={ticketRules?.dailyQuest?.enabled !== false}
@@ -700,7 +703,7 @@ export default function DMSettings() {
                     </button>
                   </div>
 
-                  <div className="settings-fields" style={{ marginTop: 6 }}>
+                  <div className="settings-fields u-mt-6">
                     <select
                       value={ticketRules?.dailyQuest?.activeKey || ""}
                       onChange={(e) => setActiveDailyQuest(e.target.value)}
@@ -714,7 +717,7 @@ export default function DMSettings() {
                     </select>
                   </div>
 
-                  <div className="paper-note" style={{ marginTop: 8 }}>
+                  <div className="paper-note u-mt-8">
                     <div className="title">{"Превью (игрокам)"}</div>
                     {(() => {
                       const pool = ticketRules?.dailyQuest?.pool || [];
@@ -724,7 +727,7 @@ export default function DMSettings() {
                       return (
                         <div className="list">
                           <div className="small">{active.title}: {active.description}</div>
-                          <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+                          <div className="row u-row-gap-8 u-row-wrap u-mt-6">
                             <span className="badge">{"Прогресс: 0/"}{active.goal}</span>
                             <span className="badge secondary">{"Награда: "}{active.reward} {"билета"}</span>
                           </div>
@@ -733,16 +736,16 @@ export default function DMSettings() {
                     })()}
                   </div>
 
-                  <div className="settings-grid" style={{ marginTop: 8 }}>
+                  <div className="settings-grid u-mt-8">
                     {(ticketRules?.dailyQuest?.pool || []).map((q, idx) => (
                       <div key={q.key || idx} className="item settings-card">
                         <div className="settings-head">
-                          <div style={{ fontWeight: 800 }}>
+                          <div className="u-fw-800">
                             {q.title || `Квест #${idx + 1}`}
-                            {ticketRules?.dailyQuest?.activeKey === q.key ? <span className="badge ok" style={{ marginLeft: 8 }}>активен</span> : null}
+                            {ticketRules?.dailyQuest?.activeKey === q.key ? <span className="badge ok u-ml-8">активен</span> : null}
                           </div>
-                          <div className="row" style={{ gap: 8 }}>
-                            <label className="row" style={{ gap: 6 }} title={RULE_TIPS.dailyQuestEnabled}>
+                          <div className="row u-row-gap-8">
+                            <label className="row u-row-gap-6" title={RULE_TIPS.dailyQuestEnabled}>
                               <input
                                 type="checkbox"
                                 checked={q.enabled !== false}
@@ -794,15 +797,15 @@ export default function DMSettings() {
 
               <div className="paper-note">
                 <div className="title">{"\u0418\u0433\u0440\u044b"}</div>
-                <div className="settings-grid" style={{ marginTop: 8 }}>
+                <div className="settings-grid u-mt-8">
                   {showOnlyChanged && filteredGames.length === 0 ? (
                     <div className="badge warn">{"\u041d\u0435\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043d\u044b\u0445 \u043f\u0440\u0430\u0432\u0438\u043b \u0434\u043b\u044f \u0438\u0433\u0440."}</div>
                   ) : (
                     filteredGames.map(([key, g]) => (
                       <div key={key} className="item settings-card">
                         <div className="settings-head">
-                          <div style={{ fontWeight: 800 }}>{GAME_LABELS[key] || key}</div>
-                          <label className="row" style={{ gap: 6 }} title={RULE_TIPS.gameEnabled}>
+                          <div className="u-fw-800">{GAME_LABELS[key] || key}</div>
+                          <label className="row u-row-gap-6" title={RULE_TIPS.gameEnabled}>
                             <input
                               type="checkbox"
                               checked={g.enabled !== false}
@@ -885,15 +888,15 @@ export default function DMSettings() {
 
               <div className="paper-note">
                 <div className="title">{"\u0418\u043d\u0432\u0435\u043d\u0442\u0430\u0440\u044c (\u043c\u0430\u0433\u0430\u0437\u0438\u043d)"}</div>
-                <div className="settings-grid" style={{ marginTop: 8 }}>
+                <div className="settings-grid u-mt-8">
                   {showOnlyChanged && filteredShop.length === 0 ? (
                     <div className="badge warn">{"\u041d\u0435\u0442 \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u043d\u044b\u0445 \u043f\u0440\u0430\u0432\u0438\u043b \u0434\u043b\u044f \u043c\u0430\u0433\u0430\u0437\u0438\u043d\u0430."}</div>
                   ) : (
                     filteredShop.map(([key, item]) => (
                       <div key={key} className="item settings-card">
                         <div className="settings-head">
-                          <div style={{ fontWeight: 800 }}>{SHOP_LABELS[key] || key}</div>
-                          <label className="row" style={{ gap: 6 }} title={RULE_TIPS.shopEnabled}>
+                          <div className="u-fw-800">{SHOP_LABELS[key] || key}</div>
+                          <label className="row u-row-gap-6" title={RULE_TIPS.shopEnabled}>
                             <input
                               type="checkbox"
                               checked={item.enabled !== false}
@@ -942,7 +945,7 @@ export default function DMSettings() {
               ? "Сбросить прогресс ежедневного квеста на сегодня для всех игроков?"
               : "Переназначить ежедневный квест на сегодня и применить изменения сразу?"}
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row u-row-gap-8">
             <button className="btn secondary" onClick={() => setQuestConfirm(null)}>Отмена</button>
             <button className="btn danger" onClick={confirmDailyQuestAction} disabled={readOnly || ticketBusy}>
               Подтвердить
@@ -953,3 +956,4 @@ export default function DMSettings() {
     </div>
   );
 }
+

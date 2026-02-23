@@ -324,18 +324,18 @@ export default function DMBestiary() {
       <div className="two-pane" data-detail={selected ? "1" : "0"}>
         <div className="pane pane-list">
           <div className="card taped scrap-card paper-stack">
-            <div style={{ fontWeight: 900, fontSize: 20 }}>Бестиарий (мастер)</div>
+            <div className="u-title-xl">Бестиарий (мастер)</div>
             <div className="small">Каталог существ и общий лор</div>
             <hr />
             {err && <div className="badge off">Ошибка: {err}</div>}
-            <div className="row" style={{ flexWrap: "wrap" }}>
+            <div className="row u-row-wrap">
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Поиск..."
-                style={{ width: "min(360px, 100%)" }}
+                className="u-w-min-360"
               />
-              <select value={vis} onChange={(e) => setVis(e.target.value)} style={{ width: 180 }}>
+              <select value={vis} onChange={(e) => setVis(e.target.value)} className="u-w-180">
                 <option value="">Видимость: все</option>
                 <option value="public">Публичные</option>
                 <option value="hidden">Скрытые</option>
@@ -345,12 +345,11 @@ export default function DMBestiary() {
               </span>
               <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
             </div>
-            <div className="list" style={{ marginTop: 12 }}>
+            <div className="list u-list-mt-12">
               {filtered.map((m) => (
                 <div
                   key={m.id}
-                  className={`item taped${selected?.id === m.id ? " selected" : ""}`}
-                  style={{ alignItems: "stretch" }}
+                  className={`item taped u-items-stretch${selected?.id === m.id ? " selected" : ""}`}
                   onClick={() => selectMonster(m.id)}
                   role="button"
                   tabIndex={0}
@@ -362,8 +361,8 @@ export default function DMBestiary() {
                   }}
                 >
                   <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="MON" />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800 }}>
+                  <div className="u-flex-1">
+                    <div className="u-fw-800">
                       {m.name} {m.is_hidden ? <span className="badge off">скрыт</span> : null}
                     </div>
                     <div className="small">{m.type || "-"} • CR: {m.cr || "-"}</div>
@@ -380,7 +379,7 @@ export default function DMBestiary() {
               ))}
             </div>
             {nextCursor ? (
-              <div className="row" style={{ marginTop: 10 }}>
+              <div className="row u-mt-10">
                 <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
                   {loadingMore ? "Загрузка..." : "Показать ещё"}
                 </button>
@@ -393,37 +392,37 @@ export default function DMBestiary() {
           <div className="card taped scrap-card pane-sticky">
             {selected ? (
               <>
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div className="row u-row-between-center">
                   <div>
-                    <div style={{ fontWeight: 900, fontSize: 20 }}>{selected.name}</div>
+                    <div className="u-title-xl">{selected.name}</div>
                     <div className="small">{selected.type || "-"} • CR: {selected.cr || "-"}</div>
                   </div>
-                  <div className="row" style={{ gap: 8 }}>
+                  <div className="row u-row-gap-8">
                     <button className="btn secondary" onClick={() => selectMonster(0)}>Назад к списку</button>
                     <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>Редактировать</button>
                   </div>
                 </div>
                 <hr />
-                <div className="row" style={{ flexWrap: "wrap" }}>
+                <div className="row u-row-wrap">
                   {selected.habitat ? <span className="badge secondary">Среда: {selected.habitat}</span> : null}
                   <span className={`badge ${selected.is_hidden ? "off" : "ok"}`}>
                     {selected.is_hidden ? "Скрыт" : "Публичный"}
                   </span>
                 </div>
-                <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                <div className="row u-row-gap-8 u-row-wrap u-mt-8">
                   <button className="btn secondary" onClick={() => toggleMonsterHidden(selected)} disabled={readOnly}>
                     {selected.is_hidden ? "Сделать публичным" : "Скрыть"}
                   </button>
                 </div>
                 {selected.description ? (
-                  <div style={{ marginTop: 12 }}>
+                  <div className="u-mt-12">
                     <MarkdownView source={selected.description} />
                   </div>
                 ) : null}
                 {Array.isArray(selected.abilities) && selected.abilities.length ? (
-                  <div className="paper-note" style={{ marginTop: 12 }}>
+                  <div className="paper-note u-mt-12">
                     <div className="title">Способности</div>
-                    <div className="small" style={{ whiteSpace: "pre-wrap" }}>{selected.abilities.join("\n")}</div>
+                    <div className="small u-pre-wrap">{selected.abilities.join("\n")}</div>
                   </div>
                 ) : null}
               </>
@@ -432,62 +431,62 @@ export default function DMBestiary() {
             )}
           </div>
 
-          <div className="card taped scrap-card" style={{ marginTop: 12 }}>
-            <div style={{ fontWeight: 800 }}>Управление</div>
+          <div className="card taped scrap-card u-mt-12">
+            <div className="u-fw-800">Управление</div>
             <div className="small">Экспорт / импорт / видимость</div>
             <hr />
-            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <div className="row u-row-gap-8 u-row-wrap">
               <button className="btn secondary" onClick={toggleEnabled} disabled={readOnly}>
                 {enabled ? "Скрыть от игроков" : "Показать игрокам"}
               </button>
               <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
             </div>
 
-            <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+            <div className="row u-row-gap-8 u-row-center-wrap u-mt-10">
               <button className="btn secondary" onClick={doExport} disabled={portBusy}>Экспорт JSON</button>
               <input
                 ref={importRef}
                 type="file"
                 accept="application/json,.json"
-                style={{ display: "none" }}
+                className="u-hidden-input"
                 onChange={onPickImport}
               />
               <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Импорт JSON (проверка)</button>
-              <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+              <select value={portMode} onChange={(e) => setPortMode(e.target.value)} className="u-select-control">
                 <option value="merge">режим: слияние</option>
                 <option value="replace">режим: замена</option>
               </select>
-              <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+              <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} className="u-select-control">
                 <option value="name">сопоставление: по имени</option>
                 <option value="id">сопоставление: по id</option>
               </select>
-              <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
+              <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} className="u-select-control">
                 <option value="update">при совпадении: обновлять</option>
                 <option value="skip">при совпадении: пропустить</option>
               </select>
-              <label className="row" style={{ gap: 6, alignItems: "center" }}>
+              <label className="row u-row-gap-6">
                 <input type="checkbox" checked={portImagesMeta} onChange={(e) => setPortImagesMeta(e.target.checked)} />
                 <span className="small">импортировать метаданные картинок</span>
               </label>
             </div>
-            {portErr && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {portErr}</div>}
-            {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
+            {portErr && <div className="badge off u-mt-10">Ошибка: {portErr}</div>}
+            {portMsg && <div className="badge ok u-mt-10">{portMsg}</div>}
             {portPlan && (
-              <div className="card taped" style={{ marginTop: 12 }}>
-                <div style={{ fontWeight: 900 }}>План проверки</div>
-                <div className="small" style={{ marginTop: 6 }}>
+              <div className="card taped u-mt-12">
+                <div className="u-fw-900">План проверки</div>
+                <div className="small u-mt-6">
                   режим={portPlan.mode}, сопоставление={portPlan.match}, при совпадении={portPlan.onExisting}, картинки={String(portPlan.imagesMeta)}
                 </div>
-                <div style={{ marginTop: 8 }}>
+                <div className="u-mt-8">
                   <b>создано:</b> {portPlan.created} &nbsp; <b>обновлено:</b> {portPlan.updated} &nbsp; <b>пропущено:</b> {portPlan.skipped}
                   {portPlan.mode === "replace" && <span> &nbsp; • <b>будет удалено:</b> {portPlan.willDelete}</span>}
                 </div>
                 {Array.isArray(portPlan.warnings) && portPlan.warnings.length > 0 && (
-                  <div className="badge warn" style={{ display: "block", marginTop: 10 }}>
+                  <div className="badge warn u-block u-mt-10">
                     {portPlan.warnings.slice(0, 3).join(" • ")}
                   </div>
                 )}
-                <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                <div className="row u-row-gap-8 u-row-wrap u-mt-10">
                   <button className="btn" onClick={applyImport} disabled={readOnly || portBusy || !portPendingFile}>Применить</button>
                   <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={readOnly || portBusy || !portPendingFile}>Пересчитать</button>
                   <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
@@ -520,20 +519,20 @@ export default function DMBestiary() {
           </label>
           <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
 
-          <div style={{ marginTop: 10, fontWeight: 800 }}>Изображения</div>
+          <div className="u-mt-10 u-fw-800">Изображения</div>
           <div className="small">PNG/JPG/WEBP/GIF до 5MB</div>
           {!edit && <div className="small">Сначала сохраните монстра, чтобы загрузить картинки.</div>}
 
-          <div className="row" style={{ gap: 8, marginTop: 10 }}>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={onPickFile} />
+          <div className="row u-row-gap-8 u-mt-10">
+            <input ref={fileRef} type="file" accept="image/*" className="u-hidden-input" onChange={onPickFile} />
             <button className="btn" onClick={() => fileRef.current?.click()} disabled={readOnly || !edit}>+ Загрузить</button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 12, marginTop: 12 }}>
+          <div className="u-grid-auto-170">
             {images.map((img) => (
-              <div key={img.id} className="item taped" style={{ flexDirection: "column", alignItems: "center" }}>
+              <div key={img.id} className="item taped u-col-center">
                 <PolaroidFrame src={img.url} alt={img.originalName || "image"} fallback="IMG" className="lg" />
-                <button className="btn danger" style={{ width: "100%", marginTop: 8 }} onClick={() => delImage(img.id)} disabled={readOnly}>
+                <button className="btn danger u-w-full u-mt-8" onClick={() => delImage(img.id)} disabled={readOnly}>
                   Удалить
                 </button>
               </div>
@@ -557,7 +556,7 @@ export default function DMBestiary() {
           <div className="small">
             Также будут очищены связанные изображения монстров. Продолжить импорт?
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row u-row-gap-8">
             <button className="btn secondary" onClick={() => setReplaceConfirmOpen(false)} disabled={portBusy}>
               Отмена
             </button>
