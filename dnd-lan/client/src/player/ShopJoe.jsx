@@ -127,31 +127,31 @@ export default function ShopJoe() {
     <div className="card taped shop-shell tavern-shop">
       <div className="row shop-hero">
         <div className="shop-hero-copy">
-          <div className="shop-kicker">\u0422\u0435\u043c\u043d\u0430\u044f \u0442\u0430\u0432\u0435\u0440\u043d\u0430 \u2022 \u0442\u0451\u043f\u043b\u0430\u044f \u043b\u0430\u043c\u043f\u0430</div>
-          <div className="shop-title">\u041b\u0430\u0432\u043a\u0430 \u0414\u0436\u043e</div>
+          <div className="shop-kicker">{"\u0422\u0435\u043c\u043d\u0430\u044f \u0442\u0430\u0432\u0435\u0440\u043d\u0430 \u2022 \u0442\u0451\u043f\u043b\u0430\u044f \u043b\u0430\u043c\u043f\u0430"}</div>
+          <div className="shop-title">{"\u041b\u0430\u0432\u043a\u0430 \u0414\u0436\u043e"}</div>
           <div className="small">
-            \u0411\u0438\u043b\u0435\u0442\u044b \u0438\u043c\u0435\u044e\u0442 \u0446\u0435\u043d\u0443: \u0447\u0435\u043c \u0441\u0438\u043b\u044c\u043d\u0435\u0435 \u044d\u0444\u0444\u0435\u043a\u0442, \u0442\u0435\u043c \u0441\u0442\u0440\u043e\u0436\u0435 \u043b\u0438\u043c\u0438\u0442\u044b.
+            {"\u0411\u0438\u043b\u0435\u0442\u044b \u0438\u043c\u0435\u044e\u0442 \u0446\u0435\u043d\u0443: \u0447\u0435\u043c \u0441\u0438\u043b\u044c\u043d\u0435\u0435 \u044d\u0444\u0444\u0435\u043a\u0442, \u0442\u0435\u043c \u0441\u0442\u0440\u043e\u0436\u0435 \u043b\u0438\u043c\u0438\u0442\u044b."}
           </div>
         </div>
         <div className="ticket-bank">
           <div className="ticket-card">
-            <div className="ticket-label">\u0411\u0430\u043b\u0430\u043d\u0441</div>
+            <div className="ticket-label">{"\u0411\u0430\u043b\u0430\u043d\u0441"}</div>
             <div className="ticket-value">{loading ? "..." : balance}</div>
           </div>
-          <div className="ticket-meta small">\u041a\u0440\u0443\u043f\u043d\u044b\u0435 \u043f\u043e\u043a\u0443\u043f\u043a\u0438 \u043b\u0443\u0447\u0448\u0435 \u0434\u0435\u043b\u0430\u0442\u044c \u043f\u043e\u0441\u043b\u0435 \u0441\u0435\u0440\u0438\u0438 \u043f\u043e\u0431\u0435\u0434.</div>
+          <div className="ticket-meta small">{"\u041a\u0440\u0443\u043f\u043d\u044b\u0435 \u043f\u043e\u043a\u0443\u043f\u043a\u0438 \u043b\u0443\u0447\u0448\u0435 \u0434\u0435\u043b\u0430\u0442\u044c \u043f\u043e\u0441\u043b\u0435 \u0441\u0435\u0440\u0438\u0438 \u043f\u043e\u0431\u0435\u0434."}</div>
         </div>
       </div>
 
       <ShopMascotStall balance={balance} ticketsEnabled={ticketsEnabled} />
 
       <div className="shop-banner">
-        <div className="banner-title">\u041a\u0430\u0436\u0434\u044b\u0439 \u0431\u0438\u043b\u0435\u0442 \u043c\u0435\u043d\u044f\u0435\u0442 \u0438\u0441\u0442\u043e\u0440\u0438\u044e</div>
-        <div className="small">\u042d\u043f\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0443\u0441\u0438\u043b\u0435\u043d\u0438\u044f \u0440\u0435\u0434\u043a\u0438, \u0430 \u0440\u0430\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0441\u0442\u0430\u0431\u0438\u043b\u0438\u0437\u0438\u0440\u0443\u044e\u0442 \u0441\u0446\u0435\u043d\u0443.</div>
+        <div className="banner-title">{"\u041a\u0430\u0436\u0434\u044b\u0439 \u0431\u0438\u043b\u0435\u0442 \u043c\u0435\u043d\u044f\u0435\u0442 \u0438\u0441\u0442\u043e\u0440\u0438\u044e"}</div>
+        <div className="small">{"\u042d\u043f\u0438\u0447\u0435\u0441\u043a\u0438\u0435 \u0443\u0441\u0438\u043b\u0435\u043d\u0438\u044f \u0440\u0435\u0434\u043a\u0438, \u0430 \u0440\u0430\u0441\u0445\u043e\u0434\u043d\u0438\u043a\u0438 \u0441\u0442\u0430\u0431\u0438\u043b\u0438\u0437\u0438\u0440\u0443\u044e\u0442 \u0441\u0446\u0435\u043d\u0443."}</div>
       </div>
       {!ticketsEnabled ? (
-        <div className="badge off" style={{ marginTop: 8 }}>\u041b\u0430\u0432\u043a\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e \u0437\u0430\u043a\u0440\u044b\u0442\u0430 \u043c\u0430\u0441\u0442\u0435\u0440\u043e\u043c</div>
+        <div className="badge off" style={{ marginTop: 8 }}>{"\u041b\u0430\u0432\u043a\u0430 \u0432\u0440\u0435\u043c\u0435\u043d\u043d\u043e \u0437\u0430\u043a\u0440\u044b\u0442\u0430 \u043c\u0430\u0441\u0442\u0435\u0440\u043e\u043c"}</div>
       ) : null}
-      {err ? <div className="badge off" style={{ marginTop: 8 }}>\u041e\u0448\u0438\u0431\u043a\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432: {err}</div> : null}
+      {err ? <div className="badge off" style={{ marginTop: 8 }}>{"\u041e\u0448\u0438\u0431\u043a\u0430 \u0431\u0438\u043b\u0435\u0442\u043e\u0432: "}{err}</div> : null}
       <hr />
 
       <div className="list">
@@ -179,12 +179,12 @@ export default function ShopJoe() {
                     <div className="small">{item.blurb}</div>
                     <div className="shop-meta">
                       <span className="meta-chip">
-                        \u041b\u0438\u043c\u0438\u0442: {formatLimit(item.key, item.limit, dailyLimit)}
+                        {"\u041b\u0438\u043c\u0438\u0442: "}{formatLimit(item.key, item.limit, dailyLimit)}
                       </span>
                       <span className="meta-chip">{item.note}</span>
                       {dailyLimit ? (
                         <span className="meta-chip">
-                          \u0421\u0435\u0433\u043e\u0434\u043d\u044f: {usedToday}/{dailyLimit}
+                          {"\u0421\u0435\u0433\u043e\u0434\u043d\u044f: "}{usedToday}/{dailyLimit}
                         </span>
                       ) : null}
                     </div>
@@ -203,7 +203,7 @@ export default function ShopJoe() {
                         }
                         onClick={() => handleBuy(item.key)}
                       >
-                        \u041a\u0443\u043f\u0438\u0442\u044c
+                        {"\u041a\u0443\u043f\u0438\u0442\u044c"}
                       </button>
                     </div>
                   </div>
@@ -317,7 +317,7 @@ function ShopMascotStall({ balance, ticketsEnabled }) {
         <circle cx="142" cy="223" r="13" fill="#e8bf67" />
       </svg>
       <div className="shop-mascot-bubble" aria-live="polite">
-        <span className="shop-mascot-name">\u0414\u0416\u041e, \u0425\u041e\u0417\u042f\u0418\u041d \u041b\u0410\u0412\u041a\u0418</span>
+        <span className="shop-mascot-name">{"\u0414\u0416\u041e, \u0425\u041e\u0417\u042f\u0418\u041d \u041b\u0410\u0412\u041a\u0418"}</span>
         <span>{line}</span>
       </div>
     </div>
