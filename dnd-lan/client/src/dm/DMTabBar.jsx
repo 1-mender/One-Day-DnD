@@ -1,19 +1,20 @@
 import React, { useEffect, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MoreHorizontal } from "lucide-react";
+import { t } from "../i18n/index.js";
 
 const primaryItems = [
-  { to: "/dm/app/dashboard", label: "Обзор" },
-  { to: "/dm/app/lobby", label: "Лобби" },
-  { to: "/dm/app/players", label: "Игроки" },
-  { to: "/dm/app/events", label: "События" },
-  { to: "/dm/app/settings", label: "Настройки" }
+  { to: "/dm/app/dashboard", label: t("dmTabBar.dashboard") },
+  { to: "/dm/app/lobby", label: t("dmTabBar.lobby") },
+  { to: "/dm/app/players", label: t("dmTabBar.players") },
+  { to: "/dm/app/events", label: t("dmTabBar.events") },
+  { to: "/dm/app/settings", label: t("dmTabBar.settings") }
 ];
 
 const secondaryItems = [
-  { to: "/dm/app/inventory", label: "Инвентарь" },
-  { to: "/dm/app/bestiary", label: "Бестиарий" },
-  { to: "/dm/app/info", label: "Инфоблоки" }
+  { to: "/dm/app/inventory", label: t("dmTabBar.inventory") },
+  { to: "/dm/app/bestiary", label: t("dmTabBar.bestiary") },
+  { to: "/dm/app/info", label: t("dmTabBar.infoBlocks") }
 ];
 
 export default function DMTabBar() {
@@ -69,7 +70,7 @@ export default function DMTabBar() {
             onClick={() => setOpen((v) => !v)}
           >
             <MoreHorizontal className="icon" aria-hidden="true" />
-            Ещё
+            {t("common.more")}
           </button>
           {open ? (
             <div className="dm-topbar-popover" role="menu">

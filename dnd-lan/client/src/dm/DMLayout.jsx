@@ -7,6 +7,7 @@ import DMTabBar from "./DMTabBar.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import DMOpsBar from "./DMOpsBar.jsx";
 import { formatError } from "../lib/formatError.js";
+import { t } from "../i18n/index.js";
 
 export default function DMLayout() {
   const nav = useNavigate();
@@ -21,9 +22,9 @@ export default function DMLayout() {
   const degradedReason = netState?.degradedReason;
   const offlineDetails =
     socketErr === "dm_token_invalid"
-      ? "Сессия DM истекла. Выполните вход снова."
+      ? t("dmLayout.dmSessionExpired")
       : socketErr && socketErr !== "connect_error"
-        ? "Проблема с подключением к серверу."
+        ? t("dmLayout.offlineDetails")
         : "";
   const degradedDetails = netState?.degraded
     ? formatError(degradedReason || "read_only")

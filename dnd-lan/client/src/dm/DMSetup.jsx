@@ -1,9 +1,10 @@
-﻿import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { t } from "../i18n/index.js";
 
 export default function DMSetup() {
   const nav = useNavigate();
@@ -36,21 +37,21 @@ export default function DMSetup() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 900, fontSize: 22 }}>Первый запуск: создайте учётную запись мастера</div>
-          <div className="small">Используйте надёжный пароль длиной не менее 6 символов.</div>
+          <div className="u-title-xl">{t("dmSetup.title")}</div>
+          <div className="small">{t("dmSetup.subtitle")}</div>
           <hr />
           <form className="list" onSubmit={submit}>
-            <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="Логин" style={{ width: "100%" }} />
-            <input value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Пароль (минимум 6 символов)" type="password" style={{ width: "100%" }} />
+            <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("dmSetup.usernamePlaceholder")} className="u-w-full" />
+            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("dmSetup.passwordPlaceholder")} type="password" className="u-w-full" />
             <input
               value={setupSecret}
-              onChange={(e)=>setSetupSecret(e.target.value)}
-              placeholder="Секрет первичной настройки (необязательно)"
-              style={{ width: "100%" }}
+              onChange={(e) => setSetupSecret(e.target.value)}
+              placeholder={t("dmSetup.setupSecretPlaceholder")}
+              className="u-w-full"
             />
-            {err && <div className="badge off">Ошибка: {err}</div>}
-            {netErr && <div className="badge off">Сеть: {netErr}</div>}
-            <button className="btn" type="submit">Создать</button>
+            {err && <div className="badge off">{t("common.error")}: {err}</div>}
+            {netErr && <div className="badge off">{t("common.network")}: {netErr}</div>}
+            <button className="btn" type="submit">{t("dmSetup.submit")}</button>
           </form>
         </div>
       </div>

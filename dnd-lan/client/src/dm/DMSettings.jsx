@@ -1,4 +1,4 @@
-﻿import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
@@ -6,7 +6,9 @@ import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
-import Modal from "../components/Modal.jsx";
+import ConfirmModal from "../components/ConfirmModal.jsx";
+import UiVariantSwitcher from "../components/UiVariantSwitcher.jsx";
+import { t } from "../i18n/index.js";
 import {
   applyTicketGamePatch,
   applyTicketRulesPatch,
@@ -361,6 +363,10 @@ export default function DMSettings() {
       {msg && <div className="badge ok">{msg}</div>}
 
       <div className="list">
+        <div className="card taped">
+          <UiVariantSwitcher mode="inline" />
+        </div>
+
         <div className="title u-mt-6">{"\u0418\u0433\u0440\u043e\u043a"}</div>
         <div className="card taped">
           <div className="u-fw-800">Код партии (код входа)</div>
@@ -934,25 +940,14 @@ export default function DMSettings() {
         </div>
       </div>
 
-      <Modal
+      <ConfirmModal
         open={!!questConfirm}
-        title={questConfirm?.action === "reset" ? "Сбросить квест на сегодня" : "Переназначить квест на сегодня"}
-        onClose={() => setQuestConfirm(null)}
-      >
-        <div className="list">
-          <div className="small">
-            {questConfirm?.action === "reset"
-              ? "Сбросить прогресс ежедневного квеста на сегодня для всех игроков?"
-              : "Переназначить ежедневный квест на сегодня и применить изменения сразу?"}
-          </div>
-          <div className="row u-row-gap-8">
-            <button className="btn secondary" onClick={() => setQuestConfirm(null)}>Отмена</button>
-            <button className="btn danger" onClick={confirmDailyQuestAction} disabled={readOnly || ticketBusy}>
-              Подтвердить
-            </button>
-          </div>
-        </div>
-      </Modal>
+        title={questConfirm?.action === "reset" ? t("dmSettings.questResetTitle") : t("dmSettings.questReassignTitle")}
+        message={questConfirm?.action === "reset" ? t("dmSettings.questResetBody") : t("dmSettings.questReassignBody")}
+        onCancel={() => setQuestConfirm(null)}
+        onConfirm={confirmDailyQuestAction}
+        confirmDisabled={readOnly || ticketBusy}
+      />
     </div>
   );
 }

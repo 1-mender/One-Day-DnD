@@ -1,4 +1,4 @@
-﻿export const inp = { width: "100%" };
+export const inp = { width: "100%" };
 
 export const GAME_LABELS = {
   ttt: "Tic-Tac-Toe",

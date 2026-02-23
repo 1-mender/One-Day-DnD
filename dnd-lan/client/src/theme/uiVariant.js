@@ -44,9 +44,15 @@ export function setUiVariant(v) {
   emitUiVariantChanged(v);
 }
 
+export function getUiVariant() {
+  if (typeof document === "undefined") return DEFAULT_UI;
+  const current = document.documentElement.dataset.ui || "";
+  return UI_VARIANTS.includes(current) ? current : DEFAULT_UI;
+}
+
 export function cycleUiVariant() {
   if (typeof document === "undefined") return;
-  const cur = document.documentElement.dataset.ui || DEFAULT_UI;
+  const cur = getUiVariant();
   const idx = UI_VARIANTS.indexOf(cur);
   const next = UI_VARIANTS[(idx + 1) % UI_VARIANTS.length];
   setUiVariant(next);

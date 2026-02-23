@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SocketProvider } from "./context/SocketContext.jsx";
 import UiVariantSwitcher from "./components/UiVariantSwitcher.jsx";
+import { t } from "./i18n/index.js";
 
 import Join from "./player/Join.jsx";
 import Waiting from "./player/Waiting.jsx";
@@ -37,8 +38,8 @@ const withSuspense = (element) => (
 
 function PageFallback() {
   return (
-    <div className="card taped" style={{ padding: 16 }}>
-      <div className="small">Загрузка…</div>
+    <div className="card taped page-fallback-card">
+      <div className="small">{t("app.pageFallbackLoading")}</div>
     </div>
   );
 }

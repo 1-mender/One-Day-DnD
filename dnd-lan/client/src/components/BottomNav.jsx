@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MoreHorizontal } from "lucide-react";
+import { t } from "../i18n/index.js";
 
 export default function BottomNav({ items = [] }) {
   const location = useLocation();
@@ -67,11 +68,11 @@ export default function BottomNav({ items = [] }) {
               className={`bottom-nav-link bottom-nav-link-btn${secondaryActive ? " active" : ""}`.trim()}
               aria-haspopup="menu"
               aria-expanded={open ? "true" : "false"}
-              aria-label="Ещё разделы"
+              aria-label={t("bottomNav.moreAria")}
               onClick={() => setOpen((v) => !v)}
             >
               <MoreHorizontal className="icon nav-icon" aria-hidden="true" />
-              <span>Ещё</span>
+              <span>{t("common.more")}</span>
             </button>
             {open ? (
               <div className="bottom-nav-popover" role="menu">

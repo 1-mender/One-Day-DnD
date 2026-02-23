@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, storage } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
+import { t } from "../i18n/index.js";
 
 export default function Waiting() {
   const nav = useNavigate();
@@ -20,13 +21,13 @@ export default function Waiting() {
         nav("/app", { replace: true });
       } catch {
         setStatus("rejected");
-        setMsg("Не удалось открыть игровую сессию.");
+        setMsg(t("waiting.sessionOpenFailed"));
       }
     };
     const onRejected = (p) => {
       setStatus("rejected");
       storage.clearJoinRequestId();
-      setMsg(p?.banned ? "Заявка отклонена. Вы заблокированы." : "Заявка отклонена.");
+      setMsg(p?.banned ? t("waiting.rejectedBanned") : t("waiting.rejected"));
     };
     socket.on("player:approved", onApproved);
     socket.on("player:rejected", onRejected);
@@ -40,15 +41,15 @@ export default function Waiting() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 800, fontSize: 20 }}>Ожидание подтверждения</div>
-          <div className="small" style={{ marginTop: 8 }}>
-            DM должен принять вашу заявку в лобби.
+          <div className="u-title-lg">{t("waiting.title")}</div>
+          <div className="small u-mt-8">
+            {t("waiting.subtitle")}
           </div>
           <hr />
-          {status === "waiting" && <div className="badge warn">Ожидание…</div>}
+          {status === "waiting" && <div className="badge warn">{t("waiting.status")}</div>}
           {status === "rejected" && <div className="badge off">{msg}</div>}
-          <button className="btn secondary" onClick={() => nav("/", { replace: true })} style={{ marginTop: 12 }}>
-            Назад
+          <button className="btn secondary u-mt-12" onClick={() => nav("/", { replace: true })}>
+            {t("common.back")}
           </button>
         </div>
       </div>

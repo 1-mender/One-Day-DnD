@@ -1,39 +1,50 @@
 import React, { useEffect, useState } from "react";
-import { cycleUiVariant } from "../theme/uiVariant.js";
+import { cycleUiVariant, getUiVariant, setUiVariant, UI_VARIANTS } from "../theme/uiVariant.js";
+import { t } from "../i18n/index.js";
 
-function getCurrentVariant() {
-  if (typeof document === "undefined") return "";
-  return document.documentElement.dataset.ui || "";
-}
-
-export default function UiVariantSwitcher() {
-  const [variant, setVariant] = useState(getCurrentVariant);
+export default function UiVariantSwitcher({ mode = "floating" }) {
+  const [variant, setVariantState] = useState(getUiVariant);
 
   useEffect(() => {
-    setVariant(getCurrentVariant());
+    setVariantState(getUiVariant());
     const onVariantChanged = (event) => {
-      const next = String(event?.detail || getCurrentVariant() || "");
-      setVariant(next);
+      const next = String(event?.detail || getUiVariant() || "");
+      setVariantState(next);
     };
     window.addEventListener("ui-variant:changed", onVariantChanged);
     return () => window.removeEventListener("ui-variant:changed", onVariantChanged);
   }, []);
 
+  if (mode === "inline") {
+    return (
+      <div className="ui-variant-panel">
+        <div className="u-fw-800">{t("uiVariant.dmSettingsTitle")}</div>
+        <div className="small">{t("uiVariant.dmSettingsHint")}</div>
+        <div className="row u-row-gap-8 u-mt-10">
+          {UI_VARIANTS.map((it) => (
+            <button
+              key={it}
+              type="button"
+              className={`btn ${variant === it ? "" : "secondary"}`.trim()}
+              onClick={() => setUiVariant(it)}
+              aria-pressed={variant === it ? "true" : "false"}
+            >
+              {it.toUpperCase()}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
-      className="btn secondary"
+      className="btn secondary ui-variant-fab"
       onClick={cycleUiVariant}
-      title="Сменить вариант UI"
-      style={{
-        position: "fixed",
-        right: 12,
-        bottom: 12,
-        zIndex: 9999,
-        opacity: 0.92
-      }}
+      title={t("uiVariant.cycleTitle")}
     >
-      {variant ? `UI: ${variant}` : "Сменить UI"}
+      {variant ? t("uiVariant.current", { variant }) : t("uiVariant.cycleLabel")}
     </button>
   );
 }

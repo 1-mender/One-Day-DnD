@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";

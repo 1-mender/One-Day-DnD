@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from "react";
+import { t } from "../../i18n/index.js";
 
 const ToastCtx = createContext(null);
 
@@ -7,20 +8,20 @@ export function ToastProvider({ children }) {
   const idRef = useRef(1);
 
   const api = useMemo(() => {
-    const push = (t) => {
+    const push = (toastInput) => {
       const id = idRef.current++;
-      const toast = { id, kind: t.kind || "ok", title: t.title || "", message: t.message || "" };
-      setToasts((p) => [toast, ...p].slice(0, 4));
-      const ttl = t.ttlMs ?? (toast.kind === "error" ? 4500 : 2600);
-      window.setTimeout(() => setToasts((p) => p.filter((x) => x.id !== id)), ttl);
+      const toast = { id, kind: toastInput.kind || "ok", title: toastInput.title || "", message: toastInput.message || "" };
+      setToasts((prev) => [toast, ...prev].slice(0, 4));
+      const ttl = toastInput.ttlMs ?? (toast.kind === "error" ? 4500 : 2600);
+      window.setTimeout(() => setToasts((prev) => prev.filter((x) => x.id !== id)), ttl);
     };
 
     return {
-      success: (message, title = "Готово") => push({ kind: "ok", title, message }),
-      warn: (message, title = "Внимание") => push({ kind: "warn", title, message }),
-      error: (message, title = "Ошибка") => push({ kind: "error", title, message }),
-      info: (message, title = "Инфо") => push({ kind: "ok", title, message }),
-      _remove: (id) => setToasts((p) => p.filter((x) => x.id !== id))
+      success: (message, title = t("toast.successTitle")) => push({ kind: "ok", title, message }),
+      warn: (message, title = t("toast.warnTitle")) => push({ kind: "warn", title, message }),
+      error: (message, title = t("toast.errorTitle")) => push({ kind: "error", title, message }),
+      info: (message, title = t("toast.infoTitle")) => push({ kind: "ok", title, message }),
+      _remove: (id) => setToasts((prev) => prev.filter((x) => x.id !== id))
     };
   }, []);
 
@@ -28,20 +29,20 @@ export function ToastProvider({ children }) {
     <ToastCtx.Provider value={api}>
       {children}
       <div className="toast-viewport">
-        {toasts.map((t) => (
-          <div key={t.id} className={`toast ${t.kind}`} role="status" aria-live="polite">
+        {toasts.map((toast) => (
+          <div key={toast.id} className={`toast ${toast.kind}`} role="status" aria-live="polite">
             <div className="toast-head">
-              <div className="toast-title">{t.title}</div>
+              <div className="toast-title">{toast.title}</div>
               <button
                 type="button"
                 className="btn secondary"
-                aria-label="Закрыть уведомление"
-                onClick={() => api._remove(t.id)}
+                aria-label={t("toast.closeAria")}
+                onClick={() => api._remove(toast.id)}
               >
                 X
               </button>
             </div>
-            <div className="toast-msg">{t.message}</div>
+            <div className="toast-msg">{toast.message}</div>
           </div>
         ))}
       </div>

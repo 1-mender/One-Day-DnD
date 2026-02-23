@@ -3880,6 +3880,23 @@ body.arcade-modal-open{
   border-radius: 12px !important;
   width: 120px;
 }
+.page-fallback-card{ padding: 16px; }
+.error-banner-title{ font-weight: 1000; }
+.error-banner-text{ margin-top: 6px; }
+.error-banner-hint{ margin-top: 6px; opacity: .92; }
+.error-banner-action{ margin-top: 10px; }
+.ui-variant-fab{
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 9999;
+  opacity: .92;
+}
+.ui-variant-panel{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 .impersonation-banner{
   padding: 10px;
   background: #2a220f;
@@ -3889,5 +3906,21 @@ body.arcade-modal-open{
   margin-top: 12px;
   height: 70vh;
   overflow: auto;
+}
+@media (max-width: 720px){
+  html,
+  body{
+    font-size: 16px;
+  }
+  .btn,
+  input,
+  textarea,
+  select,
+  .bottom-nav-link,
+  .dm-tab,
+  .bottom-nav-popover-item,
+  .dm-topbar-popover-item{
+    min-height: 44px;
+  }
 }
 }

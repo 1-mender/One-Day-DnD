@@ -8,6 +8,7 @@ import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { Backpack, BookOpen, Gamepad2, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
+import { t } from "../i18n/index.js";
 
 export default function PlayerLayout() {
   const nav = useNavigate();
@@ -32,7 +33,7 @@ export default function PlayerLayout() {
   const degradedReason = netState?.degradedReason;
   const offlineDetails =
     socketErr && socketErr !== "connect_error"
-      ? "Проблема с подключением к серверу."
+      ? t("playerLayout.offlineDetails")
       : "";
   const degradedDetails = netState?.degraded
     ? formatError(degradedReason || ERROR_CODES.READ_ONLY)
@@ -152,9 +153,9 @@ export default function PlayerLayout() {
 
     const emitActivity = () => {
       if (!shouldSend()) return;
-      const t = Date.now();
-      if (t - last < THROTTLE_MS) return;
-      last = t;
+      const tick = Date.now();
+      if (tick - last < THROTTLE_MS) return;
+      last = tick;
       socket.emit("player:activity");
     };
 
@@ -212,14 +213,14 @@ export default function PlayerLayout() {
   }
 
   const items = [
-    { to: "/app/players", label: "Игроки", icon: Users, primary: true },
-    { to: "/app/profile", label: "Профиль", icon: UserRound, primary: true },
-    { to: "/app/inventory", label: "Инвентарь", icon: Backpack, primary: true },
-    { to: "/app/arcade", label: "Аркада", icon: Gamepad2, primary: true },
-    { to: "/app/notes", label: "Заметки", icon: StickyNote, primary: false },
-    { to: "/app/shop", label: "Магазин", icon: ShoppingBag, primary: false },
+    { to: "/app/players", label: t("playerLayout.navPlayers"), icon: Users, primary: true },
+    { to: "/app/profile", label: t("playerLayout.navProfile"), icon: UserRound, primary: true },
+    { to: "/app/inventory", label: t("playerLayout.navInventory"), icon: Backpack, primary: true },
+    { to: "/app/arcade", label: t("playerLayout.navArcade"), icon: Gamepad2, primary: true },
+    { to: "/app/notes", label: t("playerLayout.navNotes"), icon: StickyNote, primary: false },
+    { to: "/app/shop", label: t("playerLayout.navShop"), icon: ShoppingBag, primary: false }
   ];
-  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Бестиарий", icon: BookOpen, primary: false });
+  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: t("playerLayout.navBestiary"), icon: BookOpen, primary: false });
 
   return (
     <div>
@@ -229,16 +230,17 @@ export default function PlayerLayout() {
         <div className="impersonation-banner">
           <div className="row u-row-between-center">
             <div>
-              <b>Имперсонализация DM:</b> {me?.player?.displayName ? `как ${me.player.displayName}` : "как игрок"}
+              <b>{t("playerLayout.impersonationTitle")}</b> {me?.player?.displayName ? `как ${me.player.displayName}` : t("playerLayout.impersonationAsPlayer")}
               <div className="small">
-                Режим: <b>{impMode === "ro" ? "только просмотр" : "редактирование"}</b> {err ? `• ошибка: ${err}` : ""}
+                {t("playerLayout.impersonationMode")} <b>{impMode === "ro" ? t("playerLayout.impersonationModeRead") : t("playerLayout.impersonationModeWrite")}</b>
+                {err ? ` - ${t("playerLayout.impersonationError", { message: err })}` : ""}
               </div>
             </div>
             <div className="row u-row-gap-8">
               {impMode === "ro" ? (
-                <button className="btn" disabled={busy} onClick={() => setWriteMode("rw")}>Разрешить изменения</button>
+                <button className="btn" disabled={busy} onClick={() => setWriteMode("rw")}>{t("playerLayout.allowChanges")}</button>
               ) : (
-                <button className="btn secondary" disabled={busy} onClick={() => setWriteMode("ro")}>Переключить в режим чтения</button>
+                <button className="btn secondary" disabled={busy} onClick={() => setWriteMode("ro")}>{t("playerLayout.switchToReadMode")}</button>
               )}
               <button
                 className="btn secondary"
@@ -250,7 +252,7 @@ export default function PlayerLayout() {
                   }
                 }}
               >
-                Выйти
+                {t("playerLayout.exitImpersonation")}
               </button>
             </div>
           </div>
@@ -258,7 +260,7 @@ export default function PlayerLayout() {
       )}
       <VintageShell layout="spread" pageKey={location.pathname}>
         <div className="container padBottom">
-          {netErr && <div className="badge off">Ошибка сети: {netErr}</div>}
+          {netErr && <div className="badge off">{t("playerLayout.networkError", { message: netErr })}</div>}
           <Outlet context={{ socket }} />
         </div>
       </VintageShell>

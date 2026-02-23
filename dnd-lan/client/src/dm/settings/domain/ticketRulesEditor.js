@@ -1,4 +1,4 @@
-﻿export function buildGeneralChanges(ticketCur, ticketBase) {
+export function buildGeneralChanges(ticketCur, ticketBase) {
   return {
     enabled: (ticketCur?.enabled ?? true) !== (ticketBase?.enabled ?? true),
     dailyEarnCap: (ticketCur?.dailyEarnCap ?? 0) !== (ticketBase?.dailyEarnCap ?? 0),

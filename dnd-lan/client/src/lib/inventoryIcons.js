@@ -1,4 +1,4 @@
-﻿import {
+import {
   GiAxeSwing,
   GiBowieKnife,
   GiBowArrow,

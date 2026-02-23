@@ -7,6 +7,7 @@ import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { resolveJoinUrl } from "../lib/joinUrl.js";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import { t } from "../i18n/index.js";
 
 export default function Join() {
   const nav = useNavigate();
@@ -47,57 +48,57 @@ export default function Join() {
         <div className="spread-grid">
           <div className="spread-col">
             <div className="card taped panel scrap-card paper-stack">
-              <div className="u-title-xl">Подключиться к партии</div>
+              <div className="u-title-xl">{t("join.title")}</div>
               <div className="paper-note u-mt-8">
-                {info?.party?.name ? `Партия: ${info.party.name}` : "Загрузка…"}
+                {info?.party?.name ? t("join.partyName", { name: info.party.name }) : t("common.loading")}
               </div>
               <hr />
               <form onSubmit={submit} className="list">
                 <div className="kv">
-                  <div>Имя игрока/персонажа *</div>
-                  <input value={displayName} onChange={(e)=>setDisplayName(e.target.value)} placeholder="Напр. Aria / Bob" className="u-w-full" />
+                  <div>{t("join.playerNameLabel")}</div>
+                  <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("join.playerNamePlaceholder")} className="u-w-full" />
                 </div>
                 {info?.party?.joinCodeEnabled && (
                   <div className="kv">
-                    <div>Код партии</div>
-                    <input value={joinCode} onChange={(e)=>setJoinCode(e.target.value)} placeholder="Если включён DM" className="u-w-full" />
+                    <div>{t("join.joinCodeLabel")}</div>
+                    <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder={t("join.joinCodePlaceholder")} className="u-w-full" />
                   </div>
                 )}
-                {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
-                {err && <div className="badge off">Ошибка: {err}</div>}
-                <button className="btn" type="submit" disabled={readOnly}>Отправить заявку</button>
+                {readOnly ? <div className="badge warn">{t("join.readOnly")}</div> : null}
+                {err && <div className="badge off">{t("common.error")}: {err}</div>}
+                <button className="btn" type="submit" disabled={readOnly}>{t("join.submit")}</button>
               </form>
             </div>
           </div>
 
           <div className="spread-col">
             <div className="card taped scrap-card">
-              <div className="u-fw-800">Как подключиться</div>
-              <div className="small">Короткая памятка для игроков</div>
+              <div className="u-fw-800">{t("join.guideTitle")}</div>
+              <div className="small">{t("join.guideSubtitle")}</div>
               <hr />
               <div className="list">
                 <div className="item">
                   <div className="kv">
-                    <div className="u-fw-700">1. Откройте адрес сервера</div>
-                    <div className="small">{joinUrl || "Адрес выдаст мастер"}</div>
+                    <div className="u-fw-700">{t("join.step1Title")}</div>
+                    <div className="small">{joinUrl || t("join.step1Hint")}</div>
                   </div>
                 </div>
                 <div className="item">
                   <div className="kv">
-                    <div className="u-fw-700">2. Введите имя</div>
-                    <div className="small">Можно имя игрока или персонажа</div>
+                    <div className="u-fw-700">{t("join.step2Title")}</div>
+                    <div className="small">{t("join.step2Hint")}</div>
                   </div>
                 </div>
                 <div className="item">
                   <div className="kv">
-                    <div className="u-fw-700">3. Код партии (если нужен)</div>
-                    <div className="small">Запросите у мастера, если включено</div>
+                    <div className="u-fw-700">{t("join.step3Title")}</div>
+                    <div className="small">{t("join.step3Hint")}</div>
                   </div>
                 </div>
               </div>
               <div className="paper-note u-mt-10">
-                <div className="title">Совет</div>
-                <div className="small">Если не открывается — проверьте Wi‑Fi сеть и повторите.</div>
+                <div className="title">{t("join.tipTitle")}</div>
+                <div className="small">{t("join.tipBody")}</div>
               </div>
             </div>
 
@@ -108,4 +109,3 @@ export default function Join() {
     </VintageShell>
   );
 }
-

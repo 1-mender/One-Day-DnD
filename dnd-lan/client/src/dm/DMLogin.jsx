@@ -4,6 +4,7 @@ import { api } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { t } from "../i18n/index.js";
 
 export default function DMLogin() {
   const nav = useNavigate();
@@ -36,16 +37,16 @@ export default function DMLogin() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 900, fontSize: 22 }}>DM Login</div>
-          <div className="small">Локальный доступ. Пароль хранится хешированно.</div>
+          <div className="u-title-xl">{t("dmLogin.title")}</div>
+          <div className="small">{t("dmLogin.subtitle")}</div>
           <hr />
           <form className="list" onSubmit={submit}>
-            <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="username" style={{ width: "100%" }} />
-            <input value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="password" type="password" style={{ width: "100%" }} />
-            {err && <div className="badge off">Ошибка: {err}</div>}
-            {netErr && <div className="badge off">Сеть: {netErr}</div>}
-            <button className="btn" type="submit">Войти</button>
-            {!info?.hasDm && <div className="small">Нет DM? <Link to="/dm/setup">Настроить</Link></div>}
+            <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("dmLogin.usernamePlaceholder")} className="u-w-full" />
+            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("dmLogin.passwordPlaceholder")} type="password" className="u-w-full" />
+            {err && <div className="badge off">{t("common.error")}: {err}</div>}
+            {netErr && <div className="badge off">{t("common.network")}: {netErr}</div>}
+            <button className="btn" type="submit">{t("dmLogin.submit")}</button>
+            {!info?.hasDm && <div className="small">{t("dmLogin.noDm")} <Link to="/dm/setup">{t("dmLogin.setupLink")}</Link></div>}
           </form>
         </div>
       </div>
