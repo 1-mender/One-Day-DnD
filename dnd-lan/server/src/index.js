@@ -52,10 +52,11 @@ function buildCspDirectives() {
     formAction: ["'self'"],
     manifestSrc: ["'self'"]
   };
-  // LAN deployment is HTTP-first. Upgrading to HTTPS by CSP can break asset loading on mobile browsers.
-  if (String(process.env.CSP_UPGRADE_INSECURE_REQUESTS || "0") === "1") {
-    directives.upgradeInsecureRequests = [];
-  }
+  // Helmet adds `upgrade-insecure-requests` by default.
+  // LAN deployment is HTTP-first, so disable upgrade by default.
+  // Set CSP_UPGRADE_INSECURE_REQUESTS=1 only if HTTPS is configured end-to-end.
+  directives.upgradeInsecureRequests =
+    String(process.env.CSP_UPGRADE_INSECURE_REQUESTS || "0") === "1" ? [] : null;
   return directives;
 }
 

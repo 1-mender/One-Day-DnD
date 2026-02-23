@@ -8,7 +8,10 @@ export function getLanIPv4() {
       if (net.family === "IPv4" && !net.internal) ips.push(net.address);
     }
   }
-  return ips.sort((a, b) => scoreIp(a) - scoreIp(b));
+  const sorted = ips.sort((a, b) => scoreIp(a) - scoreIp(b));
+  const privateIps = sorted.filter(isPrivateIPv4);
+  // For LAN QR links prefer RFC1918 addresses. If none found, return all addresses as fallback.
+  return privateIps.length ? privateIps : sorted;
 }
 
 function scoreIp(ip) {
@@ -24,4 +27,8 @@ function isPrivate172(ip) {
   if (parts[0] !== "172") return false;
   const second = Number(parts[1]);
   return second >= 16 && second <= 31;
+}
+
+function isPrivateIPv4(ip) {
+  return ip.startsWith("192.168.") || ip.startsWith("10.") || isPrivate172(ip);
 }
