@@ -2211,6 +2211,23 @@ body.arcade-modal-open{
   font-size: 20px;
   letter-spacing: .4px;
 }
+.shop-kicker{
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.25px;
+  font-weight: 900;
+  opacity: .72;
+}
+.shop-hero{
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.shop-hero-copy{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 620px;
+}
 
 .ticket-bank{
   display:flex;
@@ -2288,6 +2305,98 @@ body.arcade-modal-open{
   letter-spacing: .3px;
 }
 
+.tavern-shop{
+  position: relative;
+  border: 1px solid rgba(146,105,62,.36);
+  color: #f6ecd8;
+  background:
+    radial-gradient(560px 240px at 10% 4%, rgba(255,194,102,.16), transparent 62%),
+    radial-gradient(420px 220px at 78% 2%, rgba(255,161,68,.11), transparent 60%),
+    radial-gradient(540px 320px at 100% -12%, rgba(56,32,18,.48), transparent 67%),
+    linear-gradient(180deg, rgba(20,12,9,.985), rgba(10,7,6,.985));
+  box-shadow: 0 28px 42px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,219,151,.09);
+}
+.tavern-shop .small{
+  color: rgba(247,231,206,.82);
+}
+.tavern-shop hr{
+  border-color: rgba(143,108,64,.34);
+}
+.tavern-shop .shop-title{
+  color: #ffe5bc;
+  text-shadow: 0 2px 14px rgba(255,150,72,.16);
+}
+.tavern-shop .shop-banner{
+  border: 1px solid rgba(146,109,66,.42);
+  background:
+    radial-gradient(260px 150px at 100% 0%, rgba(255,214,156,.2), transparent 70%),
+    linear-gradient(180deg, rgba(58,35,22,.9), rgba(24,15,10,.97));
+  box-shadow: 0 18px 30px rgba(0,0,0,.48);
+}
+.tavern-shop .banner-title{
+  color: #ffd59c;
+}
+.tavern-shop .ticket-card{
+  border: 1px dashed rgba(215,153,84,.55);
+  background:
+    radial-gradient(circle at 0% 50%, transparent 10px, rgba(0,0,0,0) 11px),
+    radial-gradient(circle at 100% 50%, transparent 10px, rgba(0,0,0,0) 11px),
+    linear-gradient(180deg, #a56f33, #6f451f);
+  color: #fff1d2;
+  box-shadow: 0 14px 24px rgba(0,0,0,.42);
+}
+.tavern-shop .ticket-label{
+  color: rgba(255,236,201,.83);
+}
+.tavern-shop .ticket-meta{
+  color: rgba(246,226,196,.77);
+}
+.tavern-shop .paper-note.tavern-section{
+  border: 1px solid rgba(146,109,66,.34);
+  background:
+    radial-gradient(300px 160px at 100% 0%, rgba(255,186,102,.09), transparent 70%),
+    linear-gradient(180deg, rgba(41,26,18,.92), rgba(20,13,9,.96));
+  box-shadow: 0 16px 26px rgba(0,0,0,.4);
+}
+.tavern-shop .paper-note.tavern-section .title{
+  color: #ffd8a5;
+}
+.tavern-shop .shop-card{
+  border: 1px solid rgba(146,109,66,.34);
+  background:
+    radial-gradient(240px 140px at 88% 0%, rgba(255,204,141,.12), transparent 65%),
+    linear-gradient(180deg, rgba(52,34,23,.92), rgba(22,15,11,.96));
+  box-shadow: 0 18px 30px rgba(0,0,0,.48);
+}
+.tavern-shop .shop-card::after{
+  opacity: .3;
+  background: radial-gradient(220px 140px at 100% 0%, rgba(255,220,156,.25), transparent 66%);
+}
+.tavern-shop .shop-item-title{
+  color: #ffe2b6;
+}
+.tavern-shop .meta-chip{
+  border-color: rgba(174,130,76,.35);
+  color: rgba(251,235,206,.92);
+  background: rgba(255,230,178,.08);
+}
+.tavern-shop .ticket-pill{
+  border-color: rgba(181,132,73,.58);
+  color: #fff0d1;
+  background: linear-gradient(180deg, #8f5d2b, #6a421f);
+}
+.tavern-shop .btn.secondary{
+  border-color: rgba(176,131,76,.45);
+  color: #fbe7c8;
+  background: linear-gradient(180deg, rgba(89,57,32,.92), rgba(56,36,22,.95));
+}
+.tavern-shop .btn.secondary:hover:not(:disabled){
+  background: linear-gradient(180deg, rgba(114,72,40,.95), rgba(69,43,25,.98));
+}
+.tavern-shop .btn.secondary:disabled{
+  opacity: .54;
+}
+
 .shop-mascot-stall{
   margin-top: 10px;
   position: relative;
@@ -2299,6 +2408,22 @@ body.arcade-modal-open{
     var(--noise),
     linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,.08));
   box-shadow: 0 12px 22px rgba(0,0,0,.2);
+}
+.tavern-shop .shop-mascot-stall{
+  border-color: rgba(145,108,64,.42);
+  background:
+    radial-gradient(420px 190px at 54% -14%, rgba(255,184,96,.2), transparent 70%),
+    linear-gradient(180deg, rgba(31,20,14,.97), rgba(11,8,6,.995));
+  box-shadow: 0 24px 38px rgba(0,0,0,.56);
+}
+.tavern-shop .shop-mascot-stall::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    radial-gradient(320px 180px at 50% 6%, rgba(255,177,84,.16), transparent 74%),
+    radial-gradient(90% 90% at 50% 50%, transparent 58%, rgba(0,0,0,.34) 100%);
 }
 
 .shop-mascot-svg{
@@ -2322,12 +2447,22 @@ body.arcade-modal-open{
   background: rgba(255,250,240,.87);
   box-shadow: 0 4px 10px rgba(0,0,0,.14);
 }
+.tavern-shop .shop-mascot-bubble{
+  border-color: rgba(149,106,58,.45);
+  background:
+    radial-gradient(110% 120% at 80% 0%, rgba(255,190,109,.14), transparent 70%),
+    rgba(35,22,14,.94);
+  box-shadow: 0 18px 30px rgba(0,0,0,.5);
+}
 
 .shop-mascot-name{
   font-size: 10px;
   font-weight: 1000;
   letter-spacing: .9px;
   color: #674320;
+}
+.tavern-shop .shop-mascot-name{
+  color: #ffd49a;
 }
 
 .shop-mascot-bubble > span:last-child{
@@ -2336,10 +2471,34 @@ body.arcade-modal-open{
   color: #312112;
   line-height: 1.35;
 }
+.tavern-shop .shop-mascot-bubble > span:last-child{
+  color: #f7e8cf;
+}
 
 .shop-mascot-body{
   transform-origin: center;
   animation: mascot-breathe 3.6s ease-in-out infinite;
+}
+.shop-mascot-face{
+  transform-origin: center;
+  animation: mascot-face-bob 2.9s ease-in-out infinite;
+}
+.shop-mascot-ear{
+  transform-origin: center;
+  animation: mascot-ear-wiggle 3.6s ease-in-out infinite;
+}
+.shop-mascot-ear-right{
+  animation-delay: .8s;
+}
+.shop-lamp{
+  transform-origin: 424px 0;
+  animation: lamp-swing 4.2s ease-in-out infinite;
+}
+.shop-lamp-glow{
+  animation: lamp-flicker 2.6s ease-in-out infinite;
+}
+.shop-mascot-cheek{
+  animation: mascot-cheek-pulse 2.8s ease-in-out infinite;
 }
 
 .shop-mascot-paw{
@@ -3137,6 +3296,29 @@ body.arcade-modal-open{
   0%, 91%, 100%{ transform: scaleY(1); }
   92%, 94%{ transform: scaleY(.1); }
 }
+@keyframes mascot-face-bob{
+  0%, 100%{ transform: translateY(0); }
+  50%{ transform: translateY(-2px); }
+}
+@keyframes mascot-ear-wiggle{
+  0%, 100%{ transform: rotate(0deg); }
+  15%{ transform: rotate(-2.2deg); }
+  30%{ transform: rotate(1.6deg); }
+}
+@keyframes lamp-swing{
+  0%, 100%{ transform: rotate(0deg); }
+  50%{ transform: rotate(2deg); }
+}
+@keyframes lamp-flicker{
+  0%, 100%{ opacity: .9; }
+  30%{ opacity: .72; }
+  60%{ opacity: .98; }
+  80%{ opacity: .78; }
+}
+@keyframes mascot-cheek-pulse{
+  0%, 100%{ opacity: .9; }
+  50%{ opacity: .66; }
+}
 
 @media (max-width: 700px){
   .ticket-bank{
@@ -3161,6 +3343,39 @@ body.arcade-modal-open{
     max-width: calc(100% - 20px);
     left: 10px;
     top: 10px;
+  }
+  .tavern-shop .shop-grid{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .tavern-shop .shop-hero{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .tavern-shop .shop-hero-copy{
+    max-width: 100%;
+  }
+  .tavern-shop .shop-mascot-svg{
+    aspect-ratio: 5 / 4;
+  }
+  .tavern-shop .shop-mascot-bubble{
+    top: auto;
+    bottom: 10px;
+    max-width: calc(100% - 16px);
+    left: 8px;
+  }
+}
+
+@media (max-width: 420px){
+  .tavern-shop .shop-title{
+    font-size: 18px;
+  }
+  .tavern-shop .shop-kicker{
+    font-size: 9px;
+  }
+  .tavern-shop .shop-mascot-bubble{
+    padding: 7px 8px;
   }
 }
 
@@ -3313,8 +3528,13 @@ body.arcade-modal-open{
     transform: none;
   }
   .shop-mascot-body,
+  .shop-mascot-face,
+  .shop-mascot-ear,
   .shop-mascot-paw,
-  .shop-mascot-eye{
+  .shop-mascot-eye,
+  .shop-lamp,
+  .shop-lamp-glow,
+  .shop-mascot-cheek{
     animation: none;
   }
 }
