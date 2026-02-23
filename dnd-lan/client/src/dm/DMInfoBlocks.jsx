@@ -169,9 +169,9 @@ export default function DMInfoBlocks() {
       <div className="two-pane" data-detail={selected ? "1" : "0"}>
         <div className="pane pane-list">
           <div className="card taped scrap-card paper-stack">
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="row u-row-between-center">
               <div>
-                <div style={{ fontWeight: 900, fontSize: 20 }}>Инфоблоки (мастер)</div>
+                <div className="u-title-xl">Инфоблоки (мастер)</div>
                 <div className="small">Доступ: только мастер / все / выбранные</div>
               </div>
               <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
@@ -179,23 +179,23 @@ export default function DMInfoBlocks() {
             <hr />
             {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
             {err && <div className="badge off">Ошибка: {err}</div>}
-            <div className="row" style={{ flexWrap: "wrap" }}>
-              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." style={{ width: "min(420px, 100%)" }} />
-              <select value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 160 }}>
+            <div className="row u-row-wrap">
+              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." className="u-w-min-420" />
+              <select value={cat} onChange={(e) => setCat(e.target.value)} className="u-w-160">
                 <option value="">Категория: все</option>
                 <option value="lore">lore</option>
                 <option value="quest">quest</option>
                 <option value="note">note</option>
                 <option value="other">other</option>
               </select>
-              <select value={acc} onChange={(e) => setAcc(e.target.value)} style={{ width: 180 }}>
+              <select value={acc} onChange={(e) => setAcc(e.target.value)} className="u-w-180">
                 <option value="">Доступ: все</option>
                 <option value="dm">Только мастер</option>
                 <option value="all">Все игроки</option>
                 <option value="selected">Выбранные</option>
               </select>
             </div>
-            <div className="list" style={{ marginTop: 12 }}>
+            <div className="list u-list-mt-12">
               {filtered.map((b) => (
                 <div
                   key={b.id}
@@ -237,31 +237,31 @@ export default function DMInfoBlocks() {
           <div className="card taped scrap-card pane-sticky">
             {selected ? (
               <>
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+                <div className="row u-row-between-center">
                   <div>
-                    <div style={{ fontWeight: 900, fontSize: 20 }}>{selected.title}</div>
+                    <div className="u-title-xl">{selected.title}</div>
                     <div className="small">{selected.category} - {selected.access}</div>
                   </div>
-                  <div className="row" style={{ gap: 8 }}>
+                  <div className="row u-row-gap-8">
                     <button className="btn secondary" onClick={() => selectBlock(0)}>Назад к списку</button>
                     <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>Редактировать</button>
                   </div>
                 </div>
                 <hr />
-                <div className="row" style={{ flexWrap: "wrap" }}>
+                <div className="row u-row-wrap">
                   {(selected.tags || []).slice(0, 4).map((t) => (
                     <span key={t} className="badge secondary">{t}</span>
                   ))}
                 </div>
                 {selected.access === "selected" ? (
-                  <div className="small" style={{ marginTop: 8 }}>
+                  <div className="small u-mt-8">
                     Видят: {(selected.selectedPlayerIds || []).map((id) => playerMap.get(id) || `#${id}`).join(", ") || "-"}
                   </div>
                 ) : null}
-                <div style={{ marginTop: 12 }}>
+                <div className="u-mt-12">
                   <MarkdownView source={selected.content || ""} />
                 </div>
-                <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 12 }}>
+                <div className="row u-row-gap-8 u-row-wrap u-mt-12">
                   <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>Показать всем</button>
                   <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>Только DM</button>
                   <button className="btn secondary" onClick={() => setAccess(selected, "selected")} disabled={readOnly}>Выбранным</button>
@@ -271,7 +271,7 @@ export default function DMInfoBlocks() {
             ) : (
               <>
                 <div className="small">Выберите блок, чтобы увидеть детали.</div>
-                <div className="paper-note" style={{ marginTop: 10 }}>
+                <div className="paper-note u-mt-10">
                   <div className="title">Подсказка</div>
                   <div className="small">Markdown поддерживается для текста и изображений.</div>
                 </div>
@@ -301,12 +301,12 @@ export default function DMInfoBlocks() {
 
           {form.access === "selected" && (
             <div className="card taped">
-              <div style={{ fontWeight: 700 }}>Кто видит</div>
-              <div className="list" style={{ marginTop: 8 }}>
+              <div className="u-fw-700">Кто видит</div>
+              <div className="list u-mt-8">
                 {players.map((p) => {
                   const checked = (form.selectedPlayerIds || []).includes(p.id);
                   return (
-                    <label key={p.id} className="small" style={{ display:"flex", gap:8, alignItems:"center" }}>
+                    <label key={p.id} className="small row u-row-gap-8">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -324,8 +324,8 @@ export default function DMInfoBlocks() {
             </div>
           )}
 
-          <div className="row" style={{ gap: 8, alignItems: "center" }}>
-            <input ref={fileRef} type="file" style={{ display: "none" }} onChange={onPickFile} />
+          <div className="row u-row-gap-8">
+            <input ref={fileRef} type="file" className="u-hidden-input" onChange={onPickFile} />
             <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
             <div className="small">Вставит markdown для картинки/файла</div>
           </div>

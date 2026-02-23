@@ -345,9 +345,9 @@ export default function DMPlayerProfile() {
 
   return (
     <div className="card taped no-stamp">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="row u-row-between-center">
         <div>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Профиль персонажа</div>
+          <div className="u-title-xl">Профиль персонажа</div>
           <div className="small">
             Игрок: <b>{player?.displayName || `#${playerId}`}</b> • Обновлён: {updatedLabel}
             {dirty ? " • есть несохранённые изменения" : ""}
@@ -361,7 +361,7 @@ export default function DMPlayerProfile() {
       </div>
       <hr />
 
-      <div className="row" style={{ gap: 8 }}>
+      <div className="row u-row-gap-8">
         <button className={`btn ${tab === "profile" ? "" : "secondary"}`} onClick={() => setTab("profile")}>Профиль</button>
         {showRequestsTab ? (
           <button className={`btn ${tab === "requests" ? "" : "secondary"}`} onClick={() => setTab("requests")}>
@@ -370,7 +370,7 @@ export default function DMPlayerProfile() {
         ) : null}
       </div>
 
-      <div style={{ marginTop: 12 }}>
+      <div className="u-mt-12">
         <ErrorBanner message={err} onRetry={load} />
 
         {loading ? (
@@ -380,7 +380,7 @@ export default function DMPlayerProfile() {
           </div>
         ) : tab === "requests" ? (
             <div className="list">
-            <div className="row" style={{ flexWrap: "wrap" }}>
+            <div className="row u-row-wrap">
               <div className="small">Фильтр запросов:</div>
               <button className={`btn ${reqStatus === "pending" ? "" : "secondary"}`} onClick={() => setReqStatus("pending")}>
                 В ожидании
@@ -404,31 +404,31 @@ export default function DMPlayerProfile() {
             ) : (
               <div className="list" ref={requestsRef}>
                 {playerRequests.map((r) => (
-                  <div key={r.id} className="item taped" style={{ alignItems: "flex-start" }}>
-                    <div style={{ flex: 1 }}>
-                      <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                  <div key={r.id} className="item taped u-items-start">
+                    <div className="u-flex-1">
+                      <div className="row u-row-gap-8">
                         {renderStatusBadge(r.status)}
-                        <div style={{ fontWeight: 900 }}>Запрос #{r.id}</div>
+                        <div className="u-fw-900">Запрос #{r.id}</div>
                       </div>
                       <div className="small">Создан: {new Date(r.createdAt).toLocaleString()}</div>
                       {r.resolvedAt ? (
                         <div className="small">Решён: {new Date(r.resolvedAt).toLocaleString()}</div>
                       ) : null}
                       {r.reason ? (
-                        <div className="small" style={{ marginTop: 6 }}>
+                        <div className="small u-mt-6">
                           <b>Причина:</b> {r.reason}
                         </div>
                       ) : null}
                       {r.dmNote ? (
-                        <div className="small" style={{ marginTop: 6 }}>
+                        <div className="small u-mt-6">
                           <b>Ответ DM:</b> {r.dmNote}
                         </div>
                       ) : null}
-                      <div style={{ marginTop: 8 }}>
+                      <div className="u-mt-8">
                         {renderChanges(r.proposedChanges)}
                       </div>
                     </div>
-                    <div style={{ minWidth: 160, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div className="u-col-minw-160">
                       <button className="btn secondary" onClick={() => applyFromRequest(r)} disabled={readOnly}><Copy className="icon" aria-hidden="true" />Скопировать в форму</button>
                       {r.status === "pending" ? (
                         <>
@@ -439,7 +439,7 @@ export default function DMPlayerProfile() {
                             disabled={readOnly}
                             maxLength={500}
                             placeholder="Ответ DM (опционально)"
-                            style={{ width: "100%" }}
+                            className="u-w-full"
                           />
                           <button className="btn" onClick={() => approve(r.id)} disabled={readOnly}>Одобрить</button>
                           <button className="btn secondary" onClick={() => reject(r.id)} disabled={readOnly}>Отклонить</button>
@@ -456,12 +456,12 @@ export default function DMPlayerProfile() {
             {notCreated ? (
               <EmptyState title="Профиль не создан" hint="Заполните поля и нажмите «Сохранить»." />
             ) : null}
-            <div className="spread-grid" style={{ marginTop: 10 }}>
+            <div className="spread-grid u-mt-10">
                 <div className="paper-note">
                   <div className="title">Данные персонажа</div>
                   {profilePresets.length ? (
-                    <div className="preset-panel" style={{ marginTop: 8 }}>
-                      <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div className="preset-panel u-mt-8">
+                      <div className="row u-row-between-baseline">
                         <div className="small">Глобальные пресеты</div>
                         <div className="small note-hint">Применяет имя, класс, уровень, статы и био.</div>
                       </div>
@@ -480,7 +480,7 @@ export default function DMPlayerProfile() {
                       </div>
                     </div>
                   ) : null}
-                  <div className="list" style={{ marginTop: 10 }}>
+                  <div className="list u-mt-10">
                     <input value={form.characterName} onChange={(e) => setForm({ ...form, characterName: e.target.value })} placeholder="Имя персонажа" maxLength={80} disabled={readOnly} style={inp} />
                     <input value={form.classRole} onChange={(e) => setForm({ ...form, classRole: e.target.value })} placeholder="Класс / роль" maxLength={80} disabled={readOnly} style={inp} />
                     <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} placeholder="Уровень" disabled={readOnly} style={inp} />
@@ -491,7 +491,7 @@ export default function DMPlayerProfile() {
                     accept="image/*"
                     onChange={handleAvatarFileChange}
                     disabled={readOnly}
-                    style={{ display: "none" }}
+                    className="u-hidden-input"
                   />
                   <button className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading || readOnly}>
                     <ImageUp className="icon" aria-hidden="true" />{uploading ? "Загрузка..." : "Загрузить аватар"}
@@ -499,7 +499,7 @@ export default function DMPlayerProfile() {
                     <div className="small note-hint">Можно вставить URL или загрузить файл (до 10MB).</div>
                     <div className="kv">
                       <div className="title"><span className="section-icon stat" aria-hidden="true" />Статы</div>
-                      <div className="row" style={{ flexWrap: "wrap" }}>
+                      <div className="row u-row-wrap">
                         {statPresets.map((p) => (
                           <button key={p.key} className="btn secondary" onClick={() => applyPreset(p)} disabled={readOnly}>
                             {p.label}
@@ -530,53 +530,53 @@ export default function DMPlayerProfile() {
               <div className="list">
                 <div className="paper-note">
                   <div className="title">Превью</div>
-                  <div className="row" style={{ alignItems: "flex-start", marginTop: 10 }}>
+                  <div className="row u-items-start u-mt-10">
                     <PolaroidFrame className="lg" src={form.avatarUrl} alt={form.characterName} fallback={(form.characterName || "?").slice(0, 1)} />
                     <div>
-                      <div style={{ fontWeight: 1000, fontSize: 18 }}>{form.characterName || "Без имени"}</div>
-                      <div className="small" style={{ marginTop: 6 }}>
+                      <div className="u-title-18">{form.characterName || "Без имени"}</div>
+                      <div className="small u-mt-6">
                         {form.classRole || "Класс/роль"} • lvl {form.level || "?"}
                       </div>
                     </div>
                   </div>
-                  <div style={{ marginTop: 12 }}>
+                  <div className="u-mt-12">
                     <StatsView stats={form.stats} />
                   </div>
-                  <div className="small bio-text" style={{ marginTop: 12, whiteSpace: "pre-wrap" }}>
+                  <div className="small bio-text u-mt-12 u-pre-wrap">
                     {form.bio || "Биография не заполнена"}
                   </div>
                 </div>
 
                 <div className="paper-note">
                   <div className="title">Права игрока</div>
-                  <div className="list" style={{ marginTop: 10 }}>
+                  <div className="list u-mt-10">
                     {editableOptions.map((opt) => (
-                      <label key={opt.key} className="row" style={{ alignItems: "center" }}>
+                      <label key={opt.key} className="row">
                         <input
                           type="checkbox"
                           checked={(form.editableFields || []).includes(opt.key)}
                           onChange={() => toggleEditable(opt.key)}
                           disabled={readOnly}
-                          style={{ width: 18, height: 18 }}
+                          className="u-check-18"
                         />
                         <span>{opt.label}</span>
                       </label>
                     ))}
-                    <label className="row" style={{ alignItems: "center" }}>
+                    <label className="row">
                       <input
                         type="checkbox"
                         checked={!!form.allowRequests}
                         onChange={() => setForm({ ...form, allowRequests: !form.allowRequests })}
                         disabled={readOnly}
-                        style={{ width: 18, height: 18 }}
+                        className="u-check-18"
                       />
                       <span>Разрешить запросы на изменение</span>
                     </label>
                   </div>
-                  <div className="small note-hint" style={{ marginTop: 6 }}>
+                  <div className="small note-hint u-mt-6">
                     Игрок сможет менять только отмеченные поля. Запросы — альтернатива для остальных правок.
                   </div>
-                  <div className="row" style={{ marginTop: 12, gap: 8 }}>
+                  <div className="row u-mt-12 u-row-gap-8">
                     <button className="btn secondary" onClick={resetForm} disabled={readOnly}>Сбросить</button>
                     <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" aria-hidden="true" />Сохранить</button>
                   </div>
@@ -596,9 +596,9 @@ function renderChanges(changes) {
   return (
     <div className="list">
       {entries.map(([k, v]) => (
-        <div key={k} className="row" style={{ alignItems: "flex-start" }}>
-          <span className="badge secondary" style={{ textTransform: "none" }}>{fieldLabels[k] || k}</span>
-          <span className="small" style={{ whiteSpace: "pre-wrap" }}>{formatValue(v)}</span>
+        <div key={k} className="row u-items-start">
+          <span className="badge secondary u-text-none">{fieldLabels[k] || k}</span>
+          <span className="small u-pre-wrap">{formatValue(v)}</span>
         </div>
       ))}
     </div>

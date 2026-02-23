@@ -3798,8 +3798,10 @@ body.arcade-modal-open{
 .u-mb-10{ margin-bottom: 10px; }
 .u-ml-8{ margin-left: 8px; }
 .u-w-full{ width: 100%; }
+.u-w-160{ width: 160px; }
 .u-w-180{ width: 180px; }
 .u-w-min-360{ width: min(360px, 100%); }
+.u-w-min-420{ width: min(420px, 100%); }
 .u-w-min-520{ width: min(520px, 100%); }
 .u-minw-0{ min-width: 0; }
 .u-minw-140{ min-width: 140px; }
@@ -3813,6 +3815,11 @@ body.arcade-modal-open{
   justify-content: space-between;
   align-items: center;
 }
+.u-row-between-baseline{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
 .u-row-center-wrap{
   display: flex;
   align-items: center;
@@ -3823,11 +3830,22 @@ body.arcade-modal-open{
 .u-items-center{ align-items: center; }
 .u-items-start{ align-items: flex-start; }
 .u-items-stretch{ align-items: stretch; }
+.u-col-minw-160{
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .u-minw-170{ min-width: 170px; }
 .u-maxw-520{ max-width: 520px; }
 .u-line-15{ line-height: 1.5; }
 .u-pre-wrap{ white-space: pre-wrap; }
 .u-block{ display: block; }
+.u-text-none{ text-transform: none; }
+.u-check-18{
+  width: 18px;
+  height: 18px;
+}
 .u-hidden-input{ display: none; }
 .u-select-control{
   padding: 10px;
@@ -3850,6 +3868,10 @@ body.arcade-modal-open{
 .u-icon-28{
   width: 28px;
   height: 28px;
+}
+.u-title-18{
+  font-weight: 1000;
+  font-size: 18px;
 }
 .u-h-70vh{ height: 70vh; }
 .u-overflow-auto{ overflow: auto; }
