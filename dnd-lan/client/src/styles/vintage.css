@@ -42,9 +42,13 @@
 
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
+html{
+  background-color: #110c09;
+}
 body{
   margin:0;
   color: var(--ink);
+  background-color: #110c09;
   background:
     radial-gradient(1200px 900px at 20% 0%, rgba(255,255,255,.08), transparent 70%),
     radial-gradient(1000px 800px at 80% 30%, rgba(255,255,255,.06), transparent 70%),
@@ -53,6 +57,10 @@ body{
   background-position: center;
   background-attachment: fixed;
   font-family: var(--font-body);
+}
+
+@media (hover: none) and (pointer: coarse){
+  body{ background-attachment: scroll; }
 }
 
 .container{ max-width: var(--page-max); margin: 0 auto; }
