@@ -42,7 +42,9 @@ function buildCspDirectives() {
     baseUri: ["'self'"],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"],
-    scriptSrc: ["'self'"],
+    // socket.io-client bundle uses Function(...) for global object detection in some environments.
+    // Without 'unsafe-eval' certain mobile browsers fail to boot the UI (white screen).
+    scriptSrc: ["'self'", "'unsafe-eval'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", "data:", "blob:"],
     fontSrc: ["'self'", "data:"],
@@ -50,7 +52,8 @@ function buildCspDirectives() {
     formAction: ["'self'"],
     manifestSrc: ["'self'"]
   };
-  if (process.env.NODE_ENV === "production") {
+  // LAN deployment is HTTP-first. Upgrading to HTTPS by CSP can break asset loading on mobile browsers.
+  if (String(process.env.CSP_UPGRADE_INSECURE_REQUESTS || "0") === "1") {
     directives.upgradeInsecureRequests = [];
   }
   return directives;

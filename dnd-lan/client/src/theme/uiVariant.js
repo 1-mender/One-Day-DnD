@@ -1,11 +1,31 @@
 export const UI_VARIANTS = ["v1", "v2", "v3"];
 const DEFAULT_UI = "v3";
 
+function safeGetUiVariant() {
+  try {
+    return localStorage.getItem("uiVariant");
+  } catch {
+    return "";
+  }
+}
+
+function safeSetUiVariant(v) {
+  try {
+    localStorage.setItem("uiVariant", v);
+  } catch {
+    // Storage may be unavailable in some mobile browser modes.
+  }
+}
+
 export function applyUiVariant() {
   if (typeof window === "undefined" || typeof document === "undefined") return;
-  const url = new URL(window.location.href);
-  const qp = url.searchParams.get("ui");
-  const saved = localStorage.getItem("uiVariant");
+  let qp = "";
+  try {
+    qp = new URL(window.location.href).searchParams.get("ui") || "";
+  } catch {
+    qp = "";
+  }
+  const saved = safeGetUiVariant();
   const v = UI_VARIANTS.includes(qp) ? qp : UI_VARIANTS.includes(saved) ? saved : DEFAULT_UI;
   document.documentElement.dataset.ui = v;
 }
@@ -13,7 +33,7 @@ export function applyUiVariant() {
 export function setUiVariant(v) {
   if (typeof document === "undefined") return;
   if (!UI_VARIANTS.includes(v)) return;
-  localStorage.setItem("uiVariant", v);
+  safeSetUiVariant(v);
   document.documentElement.dataset.ui = v;
 }
 
