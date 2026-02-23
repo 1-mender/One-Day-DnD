@@ -4,6 +4,7 @@ import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useLiteMode } from "../hooks/useLiteMode.js";
+import { t } from "../i18n/index.js";
 import {
   formatDayKey,
   formatDurationMs,
@@ -229,7 +230,7 @@ export default function Arcade() {
   async function handleQueueJoin() {
     if (queueBusy || readOnly) return;
     if (!queueGame || !queueModeKey) {
-      toast.warn("Select game mode first");
+      toast.warn(t("arcade.selectMode", null, "Select game mode first"));
       return;
     }
     setQueueBusy(true);
@@ -240,13 +241,13 @@ export default function Arcade() {
       });
       const action = res?.matchmakingAction?.status;
       if (action === "matched") {
-        toast.success("Match found");
+        toast.success(t("arcade.matchFound", null, "Match found"));
       } else {
-        toast.success("You are in queue");
+        toast.success(t("arcade.inQueue", null, "You are in queue"));
       }
     } catch (e) {
       const code = formatError(e);
-      if (String(code) === "already_in_queue") toast.warn("Queue is already active");
+      if (String(code) === "already_in_queue") toast.warn(t("arcade.queueAlready", null, "Queue is already active"));
       else toast.error(formatTicketError(code));
     } finally {
       setQueueBusy(false);
@@ -258,7 +259,7 @@ export default function Arcade() {
     setQueueBusy(true);
     try {
       await cancelMatchmaking(queueState?.id || null);
-      toast.warn("Queue canceled");
+      toast.warn(t("arcade.queueCanceled", null, "Queue canceled"));
     } catch (e) {
       toast.error(formatTicketError(formatError(e)));
     } finally {
@@ -272,11 +273,11 @@ export default function Arcade() {
     try {
       const res = await rematch(matchId);
       const status = res?.matchmakingAction?.status;
-      if (status === "matched") toast.success("Rematch started");
-      else toast.success("Rematch requested");
+      if (status === "matched") toast.success(t("arcade.rematchStarted", null, "Rematch started"));
+      else toast.success(t("arcade.rematchRequested", null, "Rematch requested"));
     } catch (e) {
       const code = formatError(e);
-      if (String(code) === "already_in_queue") toast.warn("Queue is already active");
+      if (String(code) === "already_in_queue") toast.warn(t("arcade.queueAlready", null, "Queue is already active"));
       else toast.error(formatTicketError(code));
     } finally {
       setQueueBusy(false);
@@ -289,13 +290,13 @@ export default function Arcade() {
     try {
       const res = await completeMatch(matchId, { outcome: finalOutcome });
       if (res?.awaitingOpponent) {
-        toast.warn("Result submitted, waiting for opponent");
+        toast.warn(t("arcade.awaitingOpponent", null, "Result submitted, waiting for opponent"));
         return;
       }
       const finalResult = String(res?.match?.result || finalOutcome);
-      if (finalResult === "win") toast.success("Match completed: win");
-      else if (finalResult === "loss") toast.warn("Match completed: loss");
-      else toast.warn("Match completed: draw");
+      if (finalResult === "win") toast.success(t("arcade.matchWin", null, "Match completed: win"));
+      else if (finalResult === "loss") toast.warn(t("arcade.matchLoss", null, "Match completed: loss"));
+      else toast.warn(t("arcade.matchDraw", null, "Match completed: draw"));
     } catch (e) {
       toast.error(formatTicketError(formatError(e)));
     } finally {
@@ -379,17 +380,17 @@ export default function Arcade() {
         </div>
       </div>
       <div className="paper-note arcade-queue-note" style={{ marginTop: 10 }}>
-        <div className="title">Quick Match</div>
+        <div className="title">{t("arcade.quickMatchTitle", null, "Quick Match")}</div>
         <div className="small" style={{ marginTop: 6 }}>
-          Queue, rematch, and short match history.
+          {t("arcade.quickMatchHint", null, "Queue, rematch, and short match history.")}
         </div>
         <div className="arcade-queue-row" style={{ marginTop: 8 }}>
           {queueState ? (
             <>
-              <span className="badge warn">In queue: {queueState.gameKey}/{queueState.modeKey}</span>
-              <span className="badge secondary">Wait: {formatDurationMs(queueState.waitMs)}</span>
+              <span className="badge warn">{t("arcade.inQueueLabel", null, "In queue")}: {queueState.gameKey}/{queueState.modeKey}</span>
+              <span className="badge secondary">{t("arcade.waitLabel", null, "Wait")}: {formatDurationMs(queueState.waitMs)}</span>
               <button className="btn secondary" onClick={handleQueueCancel} disabled={queueBusy || readOnly}>
-                {queueBusy ? "..." : "Cancel queue"}
+                {queueBusy ? "..." : t("arcade.cancelQueue", null, "Cancel queue")}
               </button>
             </>
           ) : (
@@ -421,39 +422,39 @@ export default function Arcade() {
                 onClick={handleQueueJoin}
                 disabled={queueBusy || readOnly || !queueGame || !queueModeKey}
               >
-                {queueBusy ? "..." : "Join queue"}
+                {queueBusy ? "..." : t("arcade.joinQueue", null, "Join queue")}
               </button>
             </>
           )}
         </div>
         <div className="small arcade-queue-meta" style={{ marginTop: 8 }}>
-          Win rate: {Math.round(Number(arcadeMetrics?.winRate || 0) * 100)}%
+          {t("arcade.winRate", null, "Win rate")}: {Math.round(Number(arcadeMetrics?.winRate || 0) * 100)}%
           {" • "}
-          Avg queue: {arcadeMetrics?.avgQueueWaitMs != null ? formatDurationMs(arcadeMetrics.avgQueueWaitMs) : "n/a"}
+          {t("arcade.avgQueue", null, "Avg queue")}: {arcadeMetrics?.avgQueueWaitMs != null ? formatDurationMs(arcadeMetrics.avgQueueWaitMs) : "n/a"}
           {" • "}
-          Matches: {Number(arcadeMetrics?.matches || 0)}
+          {t("arcade.matches", null, "Matches")}: {Number(arcadeMetrics?.matches || 0)}
         </div>
         {matchHistory.length ? (
           <div className="arcade-queue-history" style={{ marginTop: 8 }}>
             {matchHistory.slice(0, 3).map((m) => (
               <div key={`hist_${m.matchId}`} className="arcade-queue-history-item">
                 <span className="small">
-                  {m.gameKey}/{m.modeKey} • {m.status === "completed" ? m.result : "active"} {m.opponentName ? `vs ${m.opponentName}` : ""}
+                  {m.gameKey}/{m.modeKey} • {m.status === "completed" ? m.result : t("arcade.active", null, "active")} {m.opponentName ? `${t("arcade.vs", null, "vs")} ${m.opponentName}` : ""}
                 </span>
                 {m.status === "completed" ? (
                   <button className="btn secondary" onClick={() => handleRematch(m.matchId)} disabled={queueBusy || readOnly}>
-                    Rematch
+                    {t("arcade.rematch", null, "Rematch")}
                   </button>
                 ) : (
                   <div className="row" style={{ gap: 6 }}>
                     <button className="btn secondary" onClick={() => handleMatchComplete(m.matchId, "win")} disabled={queueBusy || readOnly}>
-                      Win
+                      {t("arcade.outcomeWin", null, "Win")}
                     </button>
                     <button className="btn secondary" onClick={() => handleMatchComplete(m.matchId, "loss")} disabled={queueBusy || readOnly}>
-                      Loss
+                      {t("arcade.outcomeLoss", null, "Loss")}
                     </button>
                     <button className="btn secondary" onClick={() => handleMatchComplete(m.matchId, "draw")} disabled={queueBusy || readOnly}>
-                      Draw
+                      {t("arcade.outcomeDraw", null, "Draw")}
                     </button>
                   </div>
                 )}
@@ -464,7 +465,7 @@ export default function Arcade() {
       </div>
       {dailyQuest ? (
         <div className="paper-note arcade-note" style={{ marginTop: 10 }}>
-          <div className="title">Daily quest</div>
+          <div className="title">{t("arcade.dailyQuest", null, "Daily quest")}</div>
           <div className="small" style={{ marginTop: 6 }}>
             {dailyQuest.title}: {dailyQuest.description}
           </div>
@@ -501,7 +502,7 @@ export default function Arcade() {
       ) : null}
       {err ? <div className="badge off" style={{ marginTop: 8 }}>Ошибка билетов: {err}</div> : null}
       {dailyQuest && dailyQuest.completed && !dailyQuest.rewarded ? (
-        <div className="badge ok" style={{ marginTop: 8 }}>Daily quest: готово к награде</div>
+        <div className="badge ok" style={{ marginTop: 8 }}>{t("arcade.dailyQuestReady", null, "Daily quest: ready for reward")}</div>
       ) : null}
       <hr />
 
@@ -711,22 +712,22 @@ export default function Arcade() {
       ) : (
         <Modal
           open={!!activeGame}
-          title={activeGame ? `Game: ${activeGame.title}` : ""}
+          title={activeGame ? t("arcade.gameTitle", null, `Game: ${activeGame.title}`) : ""}
           onClose={closeGame}
         >
           <div className="list arcade-play-modal">
             <div className="small note-hint">
               {activeRules
-                ? `Entry: ${formatEntry(activeRules.entryCost)} | Reward: ${activeRules.rewardMin}-${activeRules.rewardMax}`
-                : "Rules unavailable"}
+                ? t("arcade.entryReward", null, `Entry: ${formatEntry(activeRules.entryCost)} | Reward: ${activeRules.rewardMin}-${activeRules.rewardMax}`)
+                : t("arcade.rulesUnavailable", null, "Rules unavailable")}
             </div>
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>Win</button>
-              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>Loss</button>
+              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>{t("arcade.outcomeWin", null, "Win")}</button>
+              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>{t("arcade.outcomeLoss", null, "Loss")}</button>
             </div>
             {outcome === "win" ? (
               <div className="list">
-                <div className="small">Performance:</div>
+                <div className="small">{t("arcade.performance", null, "Performance:")}</div>
                 <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
                   {perfOptions.map((opt) => (
                     <button
@@ -740,11 +741,11 @@ export default function Arcade() {
                 </div>
               </div>
             ) : (
-              <div className="small">Loss applies entry cost and penalty.</div>
+              <div className="small">{t("arcade.lossPenaltyHint", null, "Loss applies entry cost and penalty.")}</div>
             )}
             {playErr ? <div className="badge off">Error: {playErr}</div> : null}
             <button className="btn" disabled={busy || readOnly} onClick={handlePlay}>
-              {busy ? "Submitting..." : "Submit result"}
+              {busy ? t("arcade.submitting", null, "Submitting...") : t("arcade.submitResult", null, "Submit result")}
             </button>
             {readOnly ? <div className="small">Режим только чтения: действия отключены.</div> : null}
           </div>
@@ -756,8 +757,8 @@ export default function Arcade() {
 
 function renderGameFallback(title, onClose) {
   return (
-    <Modal open title={title ? `Game: ${title}` : "Game"} onClose={onClose}>
-      <div className="small">Loading game...</div>
+    <Modal open title={title ? t("arcade.gameTitle", null, `Game: ${title}`) : t("arcade.game", null, "Game")} onClose={onClose}>
+      <div className="small">{t("arcade.loadingGame", null, "Loading game...")}</div>
     </Modal>
   );
 }

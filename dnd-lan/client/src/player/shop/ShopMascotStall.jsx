@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 
 const LABEL_MASCOT = "\u041c\u0430\u0441\u043a\u043e\u0442 \u0437\u0430 \u043f\u0440\u0438\u043b\u0430\u0432\u043a\u043e\u043c";
 const NAME_MASCOT = "\u0414\u0416\u041e, \u0425\u041e\u0417\u042f\u0418\u041d \u041b\u0410\u0412\u041a\u0418";

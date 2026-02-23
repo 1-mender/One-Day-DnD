@@ -33,6 +33,7 @@ export default function DMEvents() {
   const [err, setErr] = useState("");
   const [cleanupDays, setCleanupDays] = useState(30);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [eventsOffset, setEventsOffset] = useState(340);
   const toast = useToast();
   const readOnly = useReadOnly();
   const { socket } = useSocket();
@@ -110,6 +111,26 @@ export default function DMEvents() {
   }, [rows, viewMode]);
 
   const listRef = useRef(null);
+  const recalcEventsOffset = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const root = listRef.current;
+    if (!root) return;
+    const rect = root.getBoundingClientRect();
+    const nextOffset = Math.max(220, Math.round(rect.top + 16));
+    setEventsOffset(nextOffset);
+  }, []);
+
+  useEffect(() => {
+    recalcEventsOffset();
+    if (typeof window === "undefined") return () => {};
+    window.addEventListener("resize", recalcEventsOffset);
+    window.addEventListener("orientationchange", recalcEventsOffset);
+    return () => {
+      window.removeEventListener("resize", recalcEventsOffset);
+      window.removeEventListener("orientationchange", recalcEventsOffset);
+    };
+  }, [displayRows.length, recalcEventsOffset]);
+
   const rowVirtualizer = useVirtualizer({
     count: displayRows.length,
     getScrollElement: () => listRef.current,
@@ -277,7 +298,7 @@ export default function DMEvents() {
 
       {err ? <div className="badge off u-mt-10">{t("common.error")}: {err}</div> : null}
 
-      <div ref={listRef} className="list events-list">
+      <div ref={listRef} className="list events-list" style={{ "--events-offset": `${eventsOffset}px` }}>
         {displayRows.length === 0 && !busy ? (
           <div className="small">{t("dmEvents.empty")}</div>
         ) : (
@@ -368,3 +389,4 @@ function formatEventSnippet(eventItem) {
   const message = eventItem?.message || "";
   return [time, eventItem?.type, actor, target, message].filter(Boolean).join(" | ");
 }
+

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MoreHorizontal } from "lucide-react";
 import { t } from "../i18n/index.js";
+import { partitionNavItems } from "./bottomNavDomain.js";
 
 export default function BottomNav({ items = [] }) {
   const location = useLocation();
@@ -9,16 +10,7 @@ export default function BottomNav({ items = [] }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
 
-  const normalized = useMemo(
-    () => (items || []).filter((it) => it && typeof it.to === "string" && typeof it.label === "string"),
-    [items]
-  );
-
-  const hasExplicitPrimary = normalized.some((it) => it.primary === true);
-  const primary = hasExplicitPrimary
-    ? normalized.filter((it) => it.primary === true).slice(0, 4)
-    : normalized.slice(0, 4);
-  const secondary = normalized.filter((it) => !primary.includes(it));
+  const { normalized, primary, secondary } = useMemo(() => partitionNavItems(items), [items]);
 
   const isPathActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`);
   const secondaryActive = secondary.some((it) => isPathActive(it.to));

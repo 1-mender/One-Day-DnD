@@ -87,6 +87,18 @@ async function captureSnapshots(baseUrl, currentDir) {
       await page.emulateMedia({ reducedMotion: "reduce" });
       await page.addStyleTag({
         content: `
+          :root[data-e2e-visual="1"] .ui-variant-fab,
+          :root[data-e2e-visual="1"] .bottom-nav-popover,
+          :root[data-e2e-visual="1"] .dm-topbar-popover {
+            display: none !important;
+          }
+        `
+      });
+      await page.evaluate(() => {
+        document.documentElement.setAttribute("data-e2e-visual", "1");
+      });
+      await page.addStyleTag({
+        content: `
           *, *::before, *::after {
             animation: none !important;
             transition: none !important;
@@ -105,10 +117,19 @@ async function captureSnapshots(baseUrl, currentDir) {
           `
         });
       }
+      await page.evaluate(async () => {
+        if (document.fonts?.ready) await document.fonts.ready;
+      });
       await sleep(200);
       await page.screenshot({
         path: path.join(currentDir, `${testCase.name}.png`),
-        fullPage: true
+        clip: {
+          x: 0,
+          y: 0,
+          width: testCase.viewport.width,
+          height: testCase.viewport.height
+        },
+        animations: "disabled"
       });
       await context.close();
     }

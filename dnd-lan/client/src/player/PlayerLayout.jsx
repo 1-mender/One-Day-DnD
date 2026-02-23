@@ -172,9 +172,6 @@ export default function PlayerLayout() {
 
     window.addEventListener("pointerdown", emitActivity, { passive: true });
     window.addEventListener("keydown", emitActivity);
-    window.addEventListener("touchstart", emitActivity, { passive: true });
-    window.addEventListener("scroll", emitActivity, { passive: true });
-    window.addEventListener("focus", emitActivity);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
@@ -188,9 +185,6 @@ export default function PlayerLayout() {
       socket.off("settings:updated", onSettingsUpdated);
       window.removeEventListener("pointerdown", emitActivity);
       window.removeEventListener("keydown", emitActivity);
-      window.removeEventListener("touchstart", emitActivity);
-      window.removeEventListener("scroll", emitActivity);
-      window.removeEventListener("focus", emitActivity);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [nav, socket]);

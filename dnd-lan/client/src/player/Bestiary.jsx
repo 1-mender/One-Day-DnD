@@ -6,6 +6,7 @@ import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useLiteMode } from "../hooks/useLiteMode.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { t } from "../i18n/index.js";
 
 export default function Bestiary() {
   const [enabled, setEnabled] = useState(false);
@@ -74,14 +75,14 @@ export default function Bestiary() {
   const gallery = lite ? (cur?.images || []).slice(0, 1) : (cur?.images || []);
   const gridCols = lite ? "repeat(auto-fill, minmax(120px, 1fr))" : "repeat(auto-fill, minmax(170px, 1fr))";
 
-  if (!enabled) return <div className="card taped"><div className="badge warn">Бестиарий отключён DM</div></div>;
+  if (!enabled) return <div className="card taped"><div className="badge warn">{t("bestiary.disabled", null, "Бестиарий отключён DM")}</div></div>;
 
   return (
     <div className={`card taped bestiary-shell${lite ? " page-lite" : ""}`.trim()}>
-      <div style={{ fontWeight: 800, fontSize: 18 }}>Bestiary</div>
-      <div className="small">Режим только чтения для игроков</div>
+      <div style={{ fontWeight: 800, fontSize: 18 }}>{t("bestiary.title", null, "Bestiary")}</div>
+      <div className="small">{t("bestiary.readOnly", null, "Режим только чтения для игроков")}</div>
       <hr />
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по имени..." style={{ width:"100%" }} />
+        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("bestiary.search", null, "Поиск по имени...")} style={{ width:"100%" }} />
       <div className="bestiary-list" style={{ marginTop: 12 }}>
         {items.map((m) => {
           const thumb = (m.name || "??").slice(0, 2).toUpperCase();
@@ -105,7 +106,7 @@ export default function Bestiary() {
                 <div style={{ fontWeight: 700 }}>{m.name}</div>
                 <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
               </div>
-              <span className="badge">Открыть</span>
+              <span className="badge">{t("bestiary.open", null, "Открыть")}</span>
             </div>
           );
         })}
@@ -113,13 +114,13 @@ export default function Bestiary() {
       {nextCursor && (
         <div className="row" style={{ marginTop: 10 }}>
           <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? "Загрузка..." : "Показать ещё"}
+            {loadingMore ? t("common.loading") : t("bestiary.showMore", null, "Показать ещё")}
           </button>
         </div>
       )}
 
       <Modal open={open} title={cur?.name || ""} onClose={() => { setOpen(false); setCurId(null); }}>
-        <div className="small">Type: {cur?.type || "—"} • Habitat: {cur?.habitat || "—"} • CR: {cur?.cr || "—"}</div>
+        <div className="small">{t("bestiary.meta", null, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"} • CR: ${cur?.cr || "—"}`)}</div>
         <hr />
         <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12, marginBottom: 10 }}>
           {gallery.map((im) => (

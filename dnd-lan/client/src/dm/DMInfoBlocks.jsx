@@ -8,6 +8,7 @@ import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import { useQueryState } from "../hooks/useQueryState.js";
+import { t } from "../i18n/index.js";
 
 const empty = { title:"", content:"", category:"note", access:"dm", selectedPlayerIds:[], tags:[] };
 
@@ -171,28 +172,28 @@ export default function DMInfoBlocks() {
           <div className="card taped scrap-card paper-stack">
             <div className="row u-row-between-center">
               <div>
-                <div className="u-title-xl">Инфоблоки (мастер)</div>
-                <div className="small">Доступ: только мастер / все / выбранные</div>
+                <div className="u-title-xl">{t("dmInfoBlocks.title", null, "Инфоблоки (мастер)")}</div>
+                <div className="small">{t("dmInfoBlocks.subtitle", null, "Доступ: только мастер / все / выбранные")}</div>
               </div>
-              <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
+              <button className="btn" onClick={startNew} disabled={readOnly}>+ {t("dmInfoBlocks.add", null, "Добавить")}</button>
             </div>
             <hr />
-            {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
-            {err && <div className="badge off">Ошибка: {err}</div>}
+            {readOnly ? <div className="badge warn">{t("dmInfoBlocks.readOnly", null, "Режим только чтения: изменения отключены")}</div> : null}
+            {err && <div className="badge off">{t("common.error")}: {err}</div>}
             <div className="row u-row-wrap">
-              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." className="u-w-min-420" />
+              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
               <select value={cat} onChange={(e) => setCat(e.target.value)} className="u-w-160">
-                <option value="">Категория: все</option>
+                <option value="">{t("dmInfoBlocks.categoryAll", null, "Категория: все")}</option>
                 <option value="lore">lore</option>
                 <option value="quest">quest</option>
                 <option value="note">note</option>
                 <option value="other">other</option>
               </select>
               <select value={acc} onChange={(e) => setAcc(e.target.value)} className="u-w-180">
-                <option value="">Доступ: все</option>
-                <option value="dm">Только мастер</option>
-                <option value="all">Все игроки</option>
-                <option value="selected">Выбранные</option>
+                <option value="">{t("dmInfoBlocks.accessAll", null, "Доступ: все")}</option>
+                <option value="dm">{t("dmInfoBlocks.accessDm", null, "Только мастер")}</option>
+                <option value="all">{t("dmInfoBlocks.accessPlayers", null, "Все игроки")}</option>
+                <option value="selected">{t("dmInfoBlocks.accessSelected", null, "Выбранные")}</option>
               </select>
             </div>
             <div className="list u-list-mt-12">
@@ -220,11 +221,11 @@ export default function DMInfoBlocks() {
                   </div>
                   <ActionMenu
                     items={[
-                      { label: "Редактировать", onClick: () => startEdit(b), disabled: readOnly },
-                      { label: "Удалить", onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
-                      { label: "Показать всем", onClick: () => setAccess(b, "all"), disabled: readOnly },
-                      { label: "Только DM", onClick: () => setAccess(b, "dm"), disabled: readOnly },
-                      { label: "Выбранным", onClick: () => setAccess(b, "selected"), disabled: readOnly }
+                      { label: t("dmInfoBlocks.edit", null, "Редактировать"), onClick: () => startEdit(b), disabled: readOnly },
+                      { label: t("dmInfoBlocks.delete", null, "Удалить"), onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
+                      { label: t("dmInfoBlocks.showAll", null, "Показать всем"), onClick: () => setAccess(b, "all"), disabled: readOnly },
+                      { label: t("dmInfoBlocks.onlyDm", null, "Только DM"), onClick: () => setAccess(b, "dm"), disabled: readOnly },
+                      { label: t("dmInfoBlocks.onlySelected", null, "Выбранным"), onClick: () => setAccess(b, "selected"), disabled: readOnly }
                     ]}
                   />
                 </div>
@@ -244,7 +245,7 @@ export default function DMInfoBlocks() {
                   </div>
                   <div className="row u-row-gap-8">
                     <button className="btn secondary" onClick={() => selectBlock(0)}>Назад к списку</button>
-                    <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>Редактировать</button>
+                    <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>{t("dmInfoBlocks.edit", null, "Редактировать")}</button>
                   </div>
                 </div>
                 <hr />
@@ -262,10 +263,10 @@ export default function DMInfoBlocks() {
                   <MarkdownView source={selected.content || ""} />
                 </div>
                 <div className="row u-row-gap-8 u-row-wrap u-mt-12">
-                  <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>Показать всем</button>
-                  <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>Только DM</button>
-                  <button className="btn secondary" onClick={() => setAccess(selected, "selected")} disabled={readOnly}>Выбранным</button>
-                  <button className="btn danger" onClick={() => del(selected.id)} disabled={readOnly}>Удалить</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>{t("dmInfoBlocks.showAll", null, "Показать всем")}</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>{t("dmInfoBlocks.onlyDm", null, "Только DM")}</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "selected")} disabled={readOnly}>{t("dmInfoBlocks.onlySelected", null, "Выбранным")}</button>
+                  <button className="btn danger" onClick={() => del(selected.id)} disabled={readOnly}>{t("dmInfoBlocks.delete", null, "Удалить")}</button>
                 </div>
               </>
             ) : (
@@ -281,9 +282,9 @@ export default function DMInfoBlocks() {
         </div>
       </div>
 
-<Modal open={open} title={edit ? "Редактировать блок" : "Новый блок"} onClose={() => setOpen(false)}>
+<Modal open={open} title={edit ? t("dmInfoBlocks.editBlock", null, "Редактировать блок") : t("dmInfoBlocks.newBlock", null, "Новый блок")} onClose={() => setOpen(false)}>
         <div className="list">
-          {err && <div className="badge off">Ошибка: {err}</div>}
+          {err && <div className="badge off">{t("common.error")}: {err}</div>}
           <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" style={inp} />
           <div className="row">
             <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} style={inp}>
@@ -293,9 +294,9 @@ export default function DMInfoBlocks() {
               <option value="other">other</option>
             </select>
             <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} style={inp}>
-              <option value="dm">DM-only</option>
-              <option value="all">All players</option>
-              <option value="selected">Selected players</option>
+              <option value="dm">{t("dmInfoBlocks.accessDmOnly", null, "DM-only")}</option>
+              <option value="all">{t("dmInfoBlocks.accessAllPlayers", null, "All players")}</option>
+              <option value="selected">{t("dmInfoBlocks.accessSelectedPlayers", null, "Selected players")}</option>
             </select>
           </div>
 

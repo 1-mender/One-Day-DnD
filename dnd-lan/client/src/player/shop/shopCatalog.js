@@ -1,4 +1,4 @@
-﻿const BASE_SHOP_CATALOG = [
+const BASE_SHOP_CATALOG = [
   {
     key: "boosts",
     title: "Ядро усилений",

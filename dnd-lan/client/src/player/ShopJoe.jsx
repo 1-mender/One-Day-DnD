@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";

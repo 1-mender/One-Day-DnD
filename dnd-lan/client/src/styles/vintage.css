@@ -3913,10 +3913,23 @@ body.arcade-modal-open{
 }
 .ui-variant-fab{
   position: fixed;
-  right: 12px;
-  bottom: 12px;
-  z-index: 9999;
-  opacity: .92;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  z-index: 820;
+  opacity: .82;
+  max-width: min(46vw, 280px);
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+}
+@media (min-width: 901px){
+  .ui-variant-fab:hover{
+    opacity: 1;
+  }
+}
+@media (max-width: 900px){
+  .ui-variant-fab{
+    display: none !important;
+  }
 }
 .ui-variant-panel{
   display: flex;
@@ -3930,8 +3943,12 @@ body.arcade-modal-open{
 }
 .events-list{
   margin-top: 12px;
-  height: 70vh;
+  min-height: 220px;
+  height: calc(100dvh - var(--events-offset, 340px));
+  max-height: calc(100dvh - var(--events-offset, 340px));
   overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 @media (max-width: 720px){
   html,
