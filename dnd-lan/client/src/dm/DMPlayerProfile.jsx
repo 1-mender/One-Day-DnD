@@ -356,7 +356,7 @@ export default function DMPlayerProfile() {
         <div className="row">
           <button className="btn secondary" onClick={() => nav("/dm/app/players")}>Назад</button>
           <button className="btn" onClick={save} disabled={!canSave}><Save className="icon" aria-hidden="true" />Сохранить</button>
-          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+          {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
         </div>
       </div>
       <hr />

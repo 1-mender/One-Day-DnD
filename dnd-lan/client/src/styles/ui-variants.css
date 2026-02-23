@@ -1,3 +1,4 @@
+@layer variants {
 /* ===== DM layout sizing ===== */
 .dm-root .container{
   max-width: 1120px;
@@ -245,4 +246,5 @@
     white-space: nowrap;
     flex: 0 0 auto;
   }
+}
 }

@@ -48,7 +48,7 @@ export default function DMLobby() {
           <div style={{ fontWeight: 900, fontSize: 20 }}>Лобби / Подключения</div>
           <div className="small">Заявки на вход: принять / отклонить / заблокировать IP</div>
           <hr />
-          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+          {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
           {err && <div className="badge off">Ошибка: {err}</div>}
           <div className="list">
             {items.length === 0 && <div className="badge warn">Нет заявок</div>}

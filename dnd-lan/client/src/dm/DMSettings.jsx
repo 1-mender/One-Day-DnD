@@ -354,7 +354,7 @@ export default function DMSettings() {
   return (
     <div className="card taped">
       <div style={{ fontWeight: 900, fontSize: 20 }}>Настройки</div>
-      <div className="small">{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438, \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c, \u044d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430, LAN \u0438 Firewall."}</div>
+      <div className="small">Код партии, безопасность, экономика, локальная сеть и брандмауэр.</div>
       <hr />
       {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
       {err && <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{err}</div>}
@@ -363,7 +363,7 @@ export default function DMSettings() {
       <div className="list">
         <div className="title" style={{ marginTop: 6 }}>{"\u0418\u0433\u0440\u043e\u043a"}</div>
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438 (join-code)"}</div>
+          <div style={{ fontWeight: 800 }}>Код партии (код входа)</div>
           <div className="small">{"\u0415\u0441\u043b\u0438 \u0432\u043a\u043b\u044e\u0447\u0435\u043d \u2014 \u0438\u0433\u0440\u043e\u043a\u0438 \u0432\u0432\u043e\u0434\u044f\u0442 \u043a\u043e\u0434 \u043f\u0440\u0438 \u0432\u0445\u043e\u0434\u0435."}</div>
           <hr />
           <label className="row" style={{ gap: 10, alignItems: "center" }}>
@@ -423,7 +423,7 @@ export default function DMSettings() {
                 checked={!!presetAccess.hideLocal}
                 onChange={(e) => setPresetAccess({ ...presetAccess, hideLocal: e.target.checked })}
               />
-              <span>{"\u0421\u043a\u0440\u044b\u0442\u044c \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0435 \u043f\u0440\u0435\u0441\u0435\u0442\u044b (\u0442\u043e\u043b\u044c\u043a\u043e DM)"}</span>
+              <span>Скрыть локальные пресеты (только мастер)</span>
             </label>
 
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -530,7 +530,7 @@ export default function DMSettings() {
 
         <div className="title" style={{ marginTop: 10 }}>{"\u0414\u041c"}</div>
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>{"\u0421\u043c\u0435\u043d\u0430 \u043f\u0430\u0440\u043e\u043b\u044f DM"}</div>
+          <div style={{ fontWeight: 800 }}>Смена пароля мастера</div>
           <div className="small">{"\u0420\u0435\u043a\u043e\u043c\u0435\u043d\u0434\u0443\u0435\u0442\u0441\u044f \u0441\u043c\u0435\u043d\u0438\u0442\u044c \u043f\u0430\u0440\u043e\u043b\u044c \u043f\u043e\u0441\u043b\u0435 \u043f\u0435\u0440\u0432\u043e\u0433\u043e \u0437\u0430\u043f\u0443\u0441\u043a\u0430."}</div>
           <hr />
           <div className="row" style={{ gap: 8, alignItems: "center" }}>
@@ -556,11 +556,11 @@ export default function DMSettings() {
         </div>
 
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>LAN / Windows Firewall</div>
+          <div style={{ fontWeight: 800 }}>Локальная сеть / Брандмауэр Windows</div>
           <div className="small">{"\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u043d\u043e\u0441\u0442\u044c \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0441 \u0442\u0435\u043b\u0435\u0444\u043e\u043d\u043e\u0432 \u0432 \u0442\u043e\u0439 \u0436\u0435 \u0441\u0435\u0442\u0438."}</div>
           <hr />
           <div className="paper-note" style={{ marginBottom: 10 }}>
-            <div className="title">LAN</div>
+            <div className="title">Локальная сеть</div>
             <div className="small">{"\u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044c, \u0447\u0442\u043e \u0432\u0441\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0432 \u043e\u0434\u043d\u043e\u0439 Wi-Fi \u0441\u0435\u0442\u0438 \u0438 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e\u0442 IP \u0441\u0435\u0440\u0432\u0435\u0440\u0430."}</div>
           </div>
           <div className="small" style={{ lineHeight: 1.5 }}>
@@ -568,14 +568,14 @@ export default function DMSettings() {
             <b>{"\u0415\u0441\u043b\u0438 \u043d\u0435 \u0437\u0430\u0445\u043e\u0434\u0438\u0442:"}</b>
             <ul style={{ marginTop: 6 }}>
               <li>{"\u0421\u0435\u0440\u0432\u0435\u0440 \u0434\u043e\u043b\u0436\u0435\u043d \u0441\u043b\u0443\u0448\u0430\u0442\u044c 0.0.0.0, \u0430 \u043d\u0435 \u0442\u043e\u043b\u044c\u043a\u043e localhost."}</li>
-              <li>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f \u0432 Firewall \u0434\u043b\u044f Private networks."}</li>
+              <li>Разрешите доступ в брандмауэре для частных сетей.</li>
               <li>{"\u041f\u0440\u043e\u0432\u0435\u0440\u044c\u0442\u0435 \u043f\u043e\u0440\u0442 \u0438 \u0447\u0442\u043e \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430 \u0432 \u043e\u0434\u043d\u043e\u0439 \u0441\u0435\u0442\u0438."}</li>
             </ul>
           </div>
         </div>
 
         <div className="card taped">
-          <div style={{ fontWeight: 800 }}>Backup</div>
+          <div style={{ fontWeight: 800 }}>Резервная копия</div>
           <div className="small">{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442/\u0438\u043c\u043f\u043e\u0440\u0442: app.db + uploads/ (zip)"}</div>
           <hr />
           <button className="btn secondary" onClick={exportZip}>{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442 (zip)"}</button>

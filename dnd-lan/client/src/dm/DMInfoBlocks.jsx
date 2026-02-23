@@ -171,13 +171,13 @@ export default function DMInfoBlocks() {
           <div className="card taped scrap-card paper-stack">
             <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <div>
-                <div style={{ fontWeight: 900, fontSize: 20 }}>Info Blocks (DM)</div>
-                <div className="small">Доступ: только DM / все / выбранные</div>
+                <div style={{ fontWeight: 900, fontSize: 20 }}>Инфоблоки (мастер)</div>
+                <div className="small">Доступ: только мастер / все / выбранные</div>
               </div>
               <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
             </div>
             <hr />
-            {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+            {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
             {err && <div className="badge off">Ошибка: {err}</div>}
             <div className="row" style={{ flexWrap: "wrap" }}>
               <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." style={{ width: "min(420px, 100%)" }} />
@@ -190,7 +190,7 @@ export default function DMInfoBlocks() {
               </select>
               <select value={acc} onChange={(e) => setAcc(e.target.value)} style={{ width: 180 }}>
                 <option value="">Доступ: все</option>
-                <option value="dm">Только DM</option>
+                <option value="dm">Только мастер</option>
                 <option value="all">Все игроки</option>
                 <option value="selected">Выбранные</option>
               </select>

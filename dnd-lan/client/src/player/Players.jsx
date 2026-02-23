@@ -59,15 +59,15 @@ export default function Players() {
     <div className="spread-grid">
       <div className="spread-col">
         <div className="card taped scrap-card paper-stack no-stamp">
-          <div style={{ fontWeight: 1000, fontSize: 20 }}>Игроки</div>
+          <div className="u-title-xl">Игроки</div>
           <div className="small">Показаны только статусы «Онлайн» и «Нет активности» (оффлайн скрыт)</div>
           <hr />
-          <div className="row" style={{ flexWrap: "wrap" }}>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." style={{ width: "min(520px, 100%)" }} />
+          <div className="row u-row-wrap">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." className="u-w-min-520" />
             <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
           </div>
 
-          <div style={{ marginTop: 12 }}>
+          <div className="u-mt-12">
             <ErrorBanner message={err} onRetry={load} />
 
             {loading ? (
@@ -90,33 +90,33 @@ export default function Players() {
 
       <div className="spread-col">
         <div className="card taped scrap-card no-stamp">
-          <div style={{ fontWeight: 800 }}>Легенда статусов</div>
+          <div className="u-fw-800">Легенда статусов</div>
           <div className="small">Отражает текущую активность</div>
           <hr />
           <div className="list">
             <div className="item">
               <div className="kv">
-                <div style={{ fontWeight: 700 }}>Онлайн</div>
+                <div className="u-fw-700">Онлайн</div>
                 <div className="small">Игрок активен</div>
               </div>
               <PlayerStatusPill status="online" />
             </div>
             <div className="item">
               <div className="kv">
-                <div style={{ fontWeight: 700 }}>Нет активности</div>
+                <div className="u-fw-700">Нет активности</div>
                 <div className="small">Нет активности</div>
               </div>
               <PlayerStatusPill status="idle" />
             </div>
             <div className="item">
               <div className="kv">
-                <div style={{ fontWeight: 700 }}>Оффлайн</div>
+                <div className="u-fw-700">Оффлайн</div>
                 <div className="small">Отключён</div>
               </div>
               <PlayerStatusPill status="offline" />
             </div>
           </div>
-          <div className="paper-note" style={{ marginTop: 10 }}>
+          <div className="paper-note u-mt-10">
             <div className="title">Совет</div>
             <div className="small">Если статус завис — обновите страницу.</div>
           </div>

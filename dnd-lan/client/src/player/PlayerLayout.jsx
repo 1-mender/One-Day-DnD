@@ -212,29 +212,29 @@ export default function PlayerLayout() {
   }
 
   const items = [
-    { to: "/app/players", label: "Игроки", icon: Users },
-    { to: "/app/profile", label: "Профиль", icon: UserRound },
-    { to: "/app/inventory", label: "Инвентарь", icon: Backpack },
-    { to: "/app/notes", label: "Заметки", icon: StickyNote },
-    { to: "/app/arcade", label: "Аркада", icon: Gamepad2 },
-    { to: "/app/shop", label: "Магазин", icon: ShoppingBag },
+    { to: "/app/players", label: "Игроки", icon: Users, primary: true },
+    { to: "/app/profile", label: "Профиль", icon: UserRound, primary: true },
+    { to: "/app/inventory", label: "Инвентарь", icon: Backpack, primary: true },
+    { to: "/app/arcade", label: "Аркада", icon: Gamepad2, primary: true },
+    { to: "/app/notes", label: "Заметки", icon: StickyNote, primary: false },
+    { to: "/app/shop", label: "Магазин", icon: ShoppingBag, primary: false },
   ];
-  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Бестиарий", icon: BookOpen });
+  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: "Бестиарий", icon: BookOpen, primary: false });
 
   return (
     <div>
       <OfflineBanner online={!showOffline} details={offlineDetails} />
       {netState?.degraded ? <OfflineBanner online={false} details={degradedDetails} tone="readonly" /> : null}
       {impersonating && (
-        <div style={{ padding: 10, background: "#2a220f", borderBottom: "1px solid #6a5622" }}>
-          <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div className="impersonation-banner">
+          <div className="row u-row-between-center">
             <div>
               <b>Имперсонализация DM:</b> {me?.player?.displayName ? `как ${me.player.displayName}` : "как игрок"}
               <div className="small">
                 Режим: <b>{impMode === "ro" ? "только просмотр" : "редактирование"}</b> {err ? `• ошибка: ${err}` : ""}
               </div>
             </div>
-            <div className="row" style={{ gap: 8 }}>
+            <div className="row u-row-gap-8">
               {impMode === "ro" ? (
                 <button className="btn" disabled={busy} onClick={() => setWriteMode("rw")}>Разрешить изменения</button>
               ) : (

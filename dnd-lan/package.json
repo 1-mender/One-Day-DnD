@@ -15,9 +15,13 @@
     "preflight": "node scripts/preflight.mjs",
     "images:opt": "node scripts/optimize-images.mjs",
     "perf:report": "node scripts/perf-report.mjs",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "e2e:visual": "node scripts/e2e-visual.mjs"
   },
   "devDependencies": {
+    "pixelmatch": "^7.1.0",
+    "playwright": "^1.56.1",
+    "pngjs": "^7.0.0",
     "sharp": "^0.33.5"
   }
 }

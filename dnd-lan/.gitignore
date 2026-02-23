@@ -4,5 +4,7 @@ server/uploads/
 server/server/uploads/
 server/public/
 client/dist/
+artifacts/visual/current/
+artifacts/visual/diff/
 .env
 .DS_Store

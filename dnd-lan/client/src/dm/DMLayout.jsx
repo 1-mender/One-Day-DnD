@@ -6,6 +6,7 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 import DMTabBar from "./DMTabBar.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import DMOpsBar from "./DMOpsBar.jsx";
+import { formatError } from "../lib/formatError.js";
 
 export default function DMLayout() {
   const nav = useNavigate();
@@ -20,12 +21,12 @@ export default function DMLayout() {
   const degradedReason = netState?.degradedReason;
   const offlineDetails =
     socketErr === "dm_token_invalid"
-      ? "DM session expired. Please sign in again."
+      ? "Сессия DM истекла. Выполните вход снова."
       : socketErr && socketErr !== "connect_error"
-        ? `Socket error: ${socketErr}`
+        ? "Проблема с подключением к серверу."
         : "";
   const degradedDetails = netState?.degraded
-    ? `Read-only mode: ${degradedReason || "not_ready"}`
+    ? formatError(degradedReason || "read_only")
     : "";
 
   useEffect(() => {

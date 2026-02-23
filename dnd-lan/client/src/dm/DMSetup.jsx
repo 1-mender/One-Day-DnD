@@ -36,7 +36,7 @@ export default function DMSetup() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 900, fontSize: 22 }}>Первый запуск: создайте аккаунт DM</div>
+          <div style={{ fontWeight: 900, fontSize: 22 }}>Первый запуск: создайте учётную запись мастера</div>
           <div className="small">Используйте надёжный пароль длиной не менее 6 символов.</div>
           <hr />
           <form className="list" onSubmit={submit}>
@@ -45,7 +45,7 @@ export default function DMSetup() {
             <input
               value={setupSecret}
               onChange={(e)=>setSetupSecret(e.target.value)}
-              placeholder="Setup secret (необязательно)"
+              placeholder="Секрет первичной настройки (необязательно)"
               style={{ width: "100%" }}
             />
             {err && <div className="badge off">Ошибка: {err}</div>}

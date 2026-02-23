@@ -746,7 +746,7 @@ export default function Arcade() {
             <button className="btn" disabled={busy || readOnly} onClick={handlePlay}>
               {busy ? "Submitting..." : "Submit result"}
             </button>
-            {readOnly ? <div className="small">Read-only mode: actions are disabled.</div> : null}
+            {readOnly ? <div className="small">Режим только чтения: действия отключены.</div> : null}
           </div>
         </Modal>
       )}

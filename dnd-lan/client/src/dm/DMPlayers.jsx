@@ -212,19 +212,19 @@ export default function DMPlayers() {
     <div className="two-pane" data-detail={selectedPlayer ? "1" : "0"}>
       <div className="pane pane-list">
         <div className="card taped">
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Игроки</div>
+          <div className="u-title-xl">Игроки</div>
           <div className="small">Быстрый обзор статусов и действий</div>
           <hr />
           {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
           <ErrorBanner message={err} onRetry={loadAll} />
-          <div className="row" style={{ flexWrap: "wrap", marginBottom: 8 }}>
+          <div className="row u-row-wrap u-mb-8">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Поиск игрока..."
-              style={{ width: "min(360px, 100%)" }}
+              className="u-w-min-360"
             />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="u-w-180">
               <option value="all">Статус: все</option>
               <option value="online">Онлайн</option>
               <option value="idle">Нет активности</option>
@@ -263,25 +263,25 @@ export default function DMPlayers() {
         <div className="card taped pane-sticky">
           {selectedPlayer ? (
             <>
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div className="row u-row-between-center">
                 <div>
-                  <div style={{ fontWeight: 900, fontSize: 20 }}>{selectedPlayer.displayName}</div>
+                  <div className="u-title-xl">{selectedPlayer.displayName}</div>
                   <div className="small">
                     id: {selectedPlayer.id} - последняя активность: {selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"}
                   </div>
                 </div>
-                <div className="row" style={{ gap: 8 }}>
+                <div className="row u-row-gap-8">
                   <button className="btn secondary" onClick={() => selectPlayer(0)}>Назад к списку</button>
                   <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>Открыть профиль</button>
                 </div>
               </div>
               <hr />
-              <div className="row" style={{ flexWrap: "wrap" }}>
+              <div className="row u-row-wrap">
                 <PlayerStatusPill status={selectedPlayer.status} />
                 <span className="badge">Билеты: {selectedPlayer.ticketBalance ?? 0}</span>
                 <span className="badge secondary">Серия: {selectedPlayer.ticketStreak ?? 0}</span>
               </div>
-              <div className="list" style={{ marginTop: 12 }}>
+              <div className="list u-list-mt-12">
                 <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>Билеты</button>
                 <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>Изменить имя</button>
                 <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>Как игрок</button>
@@ -302,7 +302,7 @@ export default function DMPlayers() {
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             placeholder="Имя игрока"
-            style={{ width: "100%" }}
+            className="u-w-full"
             maxLength={80}
           />
           <button className="btn" onClick={saveEdit} disabled={readOnly}>Сохранить</button>
@@ -321,7 +321,7 @@ export default function DMPlayers() {
           <div className="small">
             Удалить игрока <b>{removeTarget?.displayName || "—"}</b>? Будут удалены инвентарь и профиль.
           </div>
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row u-row-gap-8">
             <button className="btn secondary" onClick={() => {
               setRemoveOpen(false);
               setRemoveTarget(null);
@@ -340,7 +340,7 @@ export default function DMPlayers() {
           </div>
           <div className="badge">Баланс: {ticketPlayer ? (tickets[ticketPlayer.id]?.balance ?? 0) : 0}</div>
           <div className="small">Серия побед: {ticketPlayer ? (tickets[ticketPlayer.id]?.streak ?? 0) : 0}</div>
-          <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <div className="row u-row-gap-6 u-row-wrap">
             <button className="btn secondary" onClick={() => setTicketDelta("1")} disabled={readOnly}>+1</button>
             <button className="btn secondary" onClick={() => setTicketDelta("3")} disabled={readOnly}>+3</button>
             <button className="btn secondary" onClick={() => setTicketDelta("-1")} disabled={readOnly}>-1</button>
@@ -350,19 +350,19 @@ export default function DMPlayers() {
             value={ticketDelta}
             onChange={(e) => setTicketDelta(e.target.value)}
             placeholder="Дельта (например 2 или -2)"
-            style={{ width: "100%" }}
+            className="u-w-full"
           />
           <input
             value={ticketSet}
             onChange={(e) => setTicketSet(e.target.value)}
             placeholder="Установить баланс (опционально)"
-            style={{ width: "100%" }}
+            className="u-w-full"
           />
           <input
             value={ticketReason}
             onChange={(e) => setTicketReason(e.target.value)}
             placeholder="Причина (опционально)"
-            style={{ width: "100%" }}
+            className="u-w-full"
             maxLength={120}
           />
           <button className="btn" onClick={applyTickets} disabled={readOnly}>Применить</button>

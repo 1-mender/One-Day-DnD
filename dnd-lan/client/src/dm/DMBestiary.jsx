@@ -33,6 +33,7 @@ export default function DMBestiary() {
   const [portImagesMeta, setPortImagesMeta] = useState(false);
   const [portPendingFile, setPortPendingFile] = useState(null);
   const [portPlan, setPortPlan] = useState(null);
+  const [replaceConfirmOpen, setReplaceConfirmOpen] = useState(false);
   const fileRef = useRef(null);
   const importRef = useRef(null);
   const { socket } = useSocket();
@@ -259,7 +260,7 @@ export default function DMBestiary() {
         dryRun: true
       });
       setPortPlan(r);
-      setPortMsg("Dry-run готов: проверьте план и нажмите «Применить».");
+      setPortMsg("Проверка готова: изучите план и нажмите «Применить».");
     } catch (e) {
       setPortPlan(null);
       setPortErr(formatError(e));
@@ -272,11 +273,14 @@ export default function DMBestiary() {
     if (readOnly) return;
     if (!portPendingFile) return;
     if (portMode === "replace") {
-      const ok = window.confirm(
-        `REPLACE удалит ${portPlan?.willDelete ?? "все"} существующих монстров (и очистит monster_images). Продолжить?`
-      );
-      if (!ok) return;
+      setReplaceConfirmOpen(true);
+      return;
     }
+    await runImport();
+  }
+
+  async function runImport() {
+    if (!portPendingFile) return;
     setPortErr("");
     setPortMsg("");
     setPortBusy(true);
@@ -288,9 +292,10 @@ export default function DMBestiary() {
         imagesMeta: portImagesMeta,
         dryRun: false
       });
-      setPortMsg(`Импорт применён: created=${r.created}, updated=${r.updated}, skipped=${r.skipped}`);
+      setPortMsg(`Импорт применён: создано=${r.created}, обновлено=${r.updated}, пропущено=${r.skipped}`);
       setPortPlan(null);
       setPortPendingFile(null);
+      setReplaceConfirmOpen(false);
       await load();
     } catch (e) {
       setPortErr(formatError(e));
@@ -319,7 +324,7 @@ export default function DMBestiary() {
       <div className="two-pane" data-detail={selected ? "1" : "0"}>
         <div className="pane pane-list">
           <div className="card taped scrap-card paper-stack">
-            <div style={{ fontWeight: 900, fontSize: 20 }}>Bestiary (DM)</div>
+            <div style={{ fontWeight: 900, fontSize: 20 }}>Бестиарий (мастер)</div>
             <div className="small">Каталог существ и общий лор</div>
             <hr />
             {err && <div className="badge off">Ошибка: {err}</div>}
@@ -359,7 +364,7 @@ export default function DMBestiary() {
                   <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="MON" />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 800 }}>
-                      {m.name} {m.is_hidden ? <span className="badge off">hidden</span> : null}
+                      {m.name} {m.is_hidden ? <span className="badge off">скрыт</span> : null}
                     </div>
                     <div className="small">{m.type || "-"} • CR: {m.cr || "-"}</div>
                     {m.habitat ? <div className="small">Среда: {m.habitat}</div> : null}
@@ -377,7 +382,7 @@ export default function DMBestiary() {
             {nextCursor ? (
               <div className="row" style={{ marginTop: 10 }}>
                 <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
-                  {loadingMore ? "Загрузка..." : "Показать еще"}
+                  {loadingMore ? "Загрузка..." : "Показать ещё"}
                 </button>
               </div>
             ) : null}
@@ -439,7 +444,7 @@ export default function DMBestiary() {
             </div>
 
             <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
-              <button className="btn secondary" onClick={doExport} disabled={portBusy}>Export JSON</button>
+              <button className="btn secondary" onClick={doExport} disabled={portBusy}>Экспорт JSON</button>
               <input
                 ref={importRef}
                 type="file"
@@ -447,14 +452,14 @@ export default function DMBestiary() {
                 style={{ display: "none" }}
                 onChange={onPickImport}
               />
-              <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Import JSON (dry-run)</button>
+              <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Импорт JSON (проверка)</button>
               <select value={portMode} onChange={(e) => setPortMode(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-                <option value="merge">merge</option>
-                <option value="replace">replace</option>
+                <option value="merge">режим: слияние</option>
+                <option value="replace">режим: замена</option>
               </select>
               <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
-                <option value="name">match: name</option>
-                <option value="id">match: id</option>
+                <option value="name">сопоставление: по имени</option>
+                <option value="id">сопоставление: по id</option>
               </select>
               <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} style={{ padding: 10, borderRadius: 12 }}>
                 <option value="update">при совпадении: обновлять</option>
@@ -469,13 +474,13 @@ export default function DMBestiary() {
             {portMsg && <div className="badge ok" style={{ marginTop: 10 }}>{portMsg}</div>}
             {portPlan && (
               <div className="card taped" style={{ marginTop: 12 }}>
-                <div style={{ fontWeight: 900 }}>Dry-run план</div>
+                <div style={{ fontWeight: 900 }}>План проверки</div>
                 <div className="small" style={{ marginTop: 6 }}>
-                  mode={portPlan.mode}, match={portPlan.match}, onExisting={portPlan.onExisting}, imagesMeta={String(portPlan.imagesMeta)}
+                  режим={portPlan.mode}, сопоставление={portPlan.match}, при совпадении={portPlan.onExisting}, картинки={String(portPlan.imagesMeta)}
                 </div>
                 <div style={{ marginTop: 8 }}>
-                  <b>created:</b> {portPlan.created} &nbsp; <b>updated:</b> {portPlan.updated} &nbsp; <b>skipped:</b> {portPlan.skipped}
-                  {portPlan.mode === "replace" && <span> &nbsp; • <b>удалит существующих:</b> {portPlan.willDelete}</span>}
+                  <b>создано:</b> {portPlan.created} &nbsp; <b>обновлено:</b> {portPlan.updated} &nbsp; <b>пропущено:</b> {portPlan.skipped}
+                  {portPlan.mode === "replace" && <span> &nbsp; • <b>будет удалено:</b> {portPlan.willDelete}</span>}
                 </div>
                 {Array.isArray(portPlan.warnings) && portPlan.warnings.length > 0 && (
                   <div className="badge warn" style={{ display: "block", marginTop: 10 }}>
@@ -534,6 +539,31 @@ export default function DMBestiary() {
               </div>
             ))}
             {edit && images.length === 0 && <div className="small">Пока нет изображений.</div>}
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        open={replaceConfirmOpen}
+        title="Подтвердите режим «замена»"
+        onClose={() => {
+          if (!portBusy) setReplaceConfirmOpen(false);
+        }}
+      >
+        <div className="list">
+          <div className="small">
+            Режим «замена» удалит текущих монстров: <b>{portPlan?.willDelete ?? "всех"}</b>.
+          </div>
+          <div className="small">
+            Также будут очищены связанные изображения монстров. Продолжить импорт?
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn secondary" onClick={() => setReplaceConfirmOpen(false)} disabled={portBusy}>
+              Отмена
+            </button>
+            <button className="btn danger" onClick={runImport} disabled={readOnly || portBusy}>
+              {portBusy ? "Импорт..." : "Подтвердить и импортировать"}
+            </button>
           </div>
         </div>
       </Modal>

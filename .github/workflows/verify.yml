@@ -48,6 +48,15 @@ jobs:
       - name: E2E smoke
         run: npm run e2e
 
+      - name: Visual regression (if baseline exists)
+        run: |
+          if ls artifacts/visual/baseline/*.png >/dev/null 2>&1; then
+            npx playwright install --with-deps chromium
+            npm run e2e:visual
+          else
+            echo "No visual baseline snapshots committed, skipping visual regression."
+          fi
+
       - name: Preflight smoke
         run: |
           set -euo pipefail

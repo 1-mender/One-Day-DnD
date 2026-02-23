@@ -45,6 +45,8 @@ export default function DMInventory() {
   const [transferQ, setTransferQ] = useState("");
   const [transfers, setTransfers] = useState([]);
   const [transfersLoading, setTransfersLoading] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const [confirmBusy, setConfirmBusy] = useState(false);
 
   const loadPlayers = useCallback(async () => {
     setErr("");
@@ -185,17 +187,14 @@ export default function DMInventory() {
     }
   }
 
-  async function delItem(item) {
+  function delItem(item) {
     if (readOnly) return;
     if (!item) return;
-    if (!window.confirm(`Удалить предмет "${item.name}"?`)) return;
-    setErr("");
-    try {
-      await api.invDmDeletePlayerItem(selectedId, item.id);
-      await loadInv(selectedId);
-    } catch (e) {
-      setErr(formatError(e));
-    }
+    setConfirmDialog({
+      mode: "single",
+      itemId: item.id,
+      itemName: item.name || ""
+    });
   }
 
   async function toggleVisibility(item) {
@@ -225,19 +224,35 @@ export default function DMInventory() {
     }
   }
 
-  async function bulkDeleteSelected() {
+  function bulkDeleteSelected() {
     if (readOnly) return;
     if (!selectedId || selectedIds.size === 0) return;
     const targets = selectedItems;
     if (!targets.length) return;
-    if (!window.confirm(`\u0423\u0434\u0430\u043b\u0438\u0442\u044c ${targets.length} \u043f\u0440\u0435\u0434\u043c\u0435\u0442(\u043e\u0432)?`)) return;
+    setConfirmDialog({
+      mode: "bulk",
+      ids: targets.map((it) => it.id),
+      count: targets.length
+    });
+  }
+
+  async function confirmDelete() {
+    if (readOnly || !confirmDialog || !selectedId) return;
     setErr("");
+    setConfirmBusy(true);
     try {
-      await api.invDmBulkDelete(selectedId, targets.map((it) => it.id));
+      if (confirmDialog.mode === "single") {
+        await api.invDmDeletePlayerItem(selectedId, confirmDialog.itemId);
+      } else {
+        await api.invDmBulkDelete(selectedId, confirmDialog.ids || []);
+        clearSelection();
+      }
       await loadInv(selectedId);
-      clearSelection();
+      setConfirmDialog(null);
     } catch (e) {
       setErr(formatError(e));
+    } finally {
+      setConfirmBusy(false);
     }
   }
 
@@ -278,12 +293,12 @@ export default function DMInventory() {
   return (
     <div className="card taped">
       <div>
-        <div style={{ fontWeight: 900, fontSize: 20 }}>Inventory (DM)</div>
+        <div style={{ fontWeight: 900, fontSize: 20 }}>Инвентарь (мастер)</div>
         <div className="small">Просмотр/выдача предметов игрокам</div>
       </div>
       <hr />
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />
-      {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+      {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
       <div className="inv-toolbar">
         <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
           {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
@@ -351,7 +366,7 @@ export default function DMInventory() {
           <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
         </div>
         <div className="small note-hint" style={{ marginTop: 6 }}>
-          DM может отменить любую ожидающую передачу.
+          Мастер может отменить любую ожидающую передачу.
         </div>
         <div className="row" style={{ marginTop: 8 }}>
           <input
@@ -545,6 +560,38 @@ export default function DMInventory() {
             style={inp}
           />
           <button className="btn" onClick={save} disabled={readOnly}>{edit ? "Сохранить" : "Выдать"}</button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!confirmDialog}
+        title={confirmDialog?.mode === "single" ? "Удалить предмет" : "Удалить выбранные предметы"}
+        onClose={() => {
+          if (!confirmBusy) setConfirmDialog(null);
+        }}
+      >
+        <div className="list">
+          <div className="small">
+            {confirmDialog?.mode === "single"
+              ? `Удалить предмет «${confirmDialog?.itemName || "без названия"}»?`
+              : `Удалить ${confirmDialog?.count || 0} предмет(ов)?`}
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button
+              className="btn secondary"
+              onClick={() => setConfirmDialog(null)}
+              disabled={confirmBusy}
+            >
+              Отмена
+            </button>
+            <button
+              className="btn danger"
+              onClick={confirmDelete}
+              disabled={readOnly || confirmBusy}
+            >
+              {confirmBusy ? "Удаление..." : "Удалить"}
+            </button>
+          </div>
         </div>
       </Modal>
     </div>

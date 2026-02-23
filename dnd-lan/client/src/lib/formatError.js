@@ -1,6 +1,7 @@
 import { ERROR_CODES, ERROR_MESSAGES_RU } from "./errorCodes.js";
 
 const CODE_RE = /^[a-z0-9_]+$/;
+const CYRILLIC_RE = /[А-Яа-яЁё]/;
 
 function normalize(raw) {
   if (raw == null) return "";
@@ -25,7 +26,8 @@ function resolveKnownMessage(raw) {
     return ERROR_MESSAGES_RU[ERROR_CODES.REQUEST_FAILED];
   }
   if (isCodeLike(code)) return "";
-  return normalized;
+  if (CYRILLIC_RE.test(normalized)) return normalized;
+  return "";
 }
 
 export function formatError(error, fallback = ERROR_CODES.REQUEST_FAILED) {

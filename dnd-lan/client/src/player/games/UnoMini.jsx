@@ -207,7 +207,7 @@ export default function UnoMiniGame({
         </div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
-        {readOnly ? <div className="badge warn">Read-only: действия отключены</div> : null}
+        {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
 
         {status !== "playing" ? (
           <div className={`uno-result ${status}`}>

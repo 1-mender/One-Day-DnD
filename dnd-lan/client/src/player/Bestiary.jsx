@@ -79,7 +79,7 @@ export default function Bestiary() {
   return (
     <div className={`card taped bestiary-shell${lite ? " page-lite" : ""}`.trim()}>
       <div style={{ fontWeight: 800, fontSize: 18 }}>Bestiary</div>
-      <div className="small">Read-only для игроков</div>
+      <div className="small">Режим только чтения для игроков</div>
       <hr />
         <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по имени..." style={{ width:"100%" }} />
       <div className="bestiary-list" style={{ marginTop: 12 }}>

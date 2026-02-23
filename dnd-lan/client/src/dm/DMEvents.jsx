@@ -205,12 +205,12 @@ export default function DMEvents() {
 
   return (
     <div className="card taped">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+      <div className="row u-row-between-center">
         <div>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>События</div>
+          <div className="u-title-xl">События</div>
           <div className="small">Минимальный журнал действий и подключений</div>
         </div>
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row u-row-gap-8">
           <button className="btn secondary" onClick={() => load(true)} disabled={busy}>Обновить</button>
           <button className="btn" onClick={exportJson} disabled={busy}>Экспорт JSON</button>
           {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
@@ -219,18 +219,18 @@ export default function DMEvents() {
 
       <hr />
 
-      <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск (тип/сообщение/роль)..." style={inp} />
-        <select value={scope} onChange={(e) => setScope(e.target.value)} style={sel}>
+      <div className="row u-row-gap-8 u-row-center-wrap">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск (тип/сообщение/роль)..." className="u-w-min-520" />
+        <select value={scope} onChange={(e) => setScope(e.target.value)}>
           {scopes.map((s) => (
             <option key={s.key} value={s.key}>{s.label}</option>
           ))}
         </select>
-        <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} style={sel}>
+        <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
           <option value="all">Все события</option>
           <option value="recent">Последние 50</option>
         </select>
-        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+        <div className="row u-row-gap-6 u-row-wrap">
           <button className={`btn ${!sinceMs ? "" : "secondary"}`} onClick={() => setSinceHours(0)}>
             Всё время
           </button>
@@ -243,38 +243,37 @@ export default function DMEvents() {
         </div>
       </div>
       {viewMode === "recent" ? (
-        <div className="badge secondary" style={{ marginTop: 8 }}>Показаны последние 50 событий</div>
+        <div className="badge secondary u-mt-8">Показаны последние 50 событий</div>
       ) : null}
-      <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 10 }}>
+      <div className="row u-row-gap-8 u-row-center-wrap u-mt-10">
         <button className="btn danger" onClick={cleanupAll} disabled={busy || readOnly}>
           Очистить всё
         </button>
-        <div className="row" style={{ gap: 8, alignItems: "center" }}>
+        <div className="row u-row-gap-8 u-row-center-wrap">
           <input
             type="number"
             min="1"
             max="3650"
             value={cleanupDays}
             onChange={(e) => setCleanupDays(e.target.value)}
-            style={{ padding: 10, borderRadius: 12, width: 120 }}
+            className="u-number-input"
             disabled={readOnly}
           />
           <button className="btn secondary" onClick={cleanupOlder} disabled={busy || readOnly}>
             Удалить старше X дней
           </button>
         </div>
-        <div className="paper-note" style={{ maxWidth: 520 }}>
+        <div className="paper-note u-maxw-520">
           <div className="title">Очистка</div>
           <div className="small">Только для DM. Автоочистка журнала (20k записей) продолжает работать как раньше.</div>
         </div>
       </div>
 
-      {err && <div className="badge off" style={{ marginTop: 10 }}>Ошибка: {err}</div>}
+      {err && <div className="badge off u-mt-10">Ошибка: {err}</div>}
 
       <div
         ref={listRef}
-        className="list"
-        style={{ marginTop: 12, height: "70vh", overflow: "auto" }}
+        className="list events-list"
       >
         {displayRows.length === 0 && !busy ? (
           <div className="small">Событий пока нет.</div>
@@ -295,20 +294,20 @@ export default function DMEvents() {
                     transform: `translateY(${vRow.start}px)`
                   }}
                 >
-                  <div className="kv" style={{ minWidth: 170 }}>
-                    <div style={{ fontWeight: 800 }}>{e._time}</div>
+                  <div className="kv u-minw-170">
+                    <div className="u-fw-800">{e._time}</div>
                     <div className="small">{e.type}</div>
                     <div className="small">
                       {e.actor_role}{e.actor_name ? ` • ${e.actor_name}` : ""}
                     </div>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700 }}>{e.message || "—"}</div>
+                  <div className="u-flex-1">
+                    <div className="u-fw-700">{e.message || "—"}</div>
                     <div className="small">
                       {e.target_type ? `цель: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
                     </div>
                   </div>
-                  <div className="row" style={{ gap: 6 }}>
+                  <div className="row u-row-gap-6">
                     <button className="btn secondary icon-btn" onClick={() => copyEvent(e)} title="Скопировать">
                       <Copy className="icon" aria-hidden="true" />
                     </button>
@@ -321,7 +320,7 @@ export default function DMEvents() {
       </div>
 
       {hasMore && viewMode !== "recent" && (
-        <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => load(false)} disabled={busy}>
+        <button className="btn secondary u-mt-12" onClick={() => load(false)} disabled={busy}>
           Загрузить ещё
         </button>
       )}
@@ -344,7 +343,7 @@ export default function DMEvents() {
                 value={confirmDialog?.phrase || ""}
                 onChange={(e) => setConfirmDialog((prev) => ({ ...(prev || {}), phrase: e.target.value }))}
                 placeholder="DELETE"
-                style={{ width: "100%" }}
+                className="u-w-full"
                 autoFocus
               />
             </>
@@ -353,7 +352,7 @@ export default function DMEvents() {
               Удалить события старше <b>{confirmDialog?.days}</b> дней?
             </div>
           )}
-          <div className="row" style={{ gap: 8 }}>
+          <div className="row u-row-gap-8">
             <button className="btn secondary" onClick={() => setConfirmDialog(null)}>Отмена</button>
             <button className="btn danger" onClick={confirmCleanup} disabled={busy || readOnly}>
               Подтвердить
@@ -370,9 +369,6 @@ function fmtTime(ts) {
   if (!Number.isFinite(d.getTime())) return "—";
   return d.toLocaleString();
 }
-
-const inp = { width: "min(520px, 100%)" };
-const sel = {};
 
 function formatEventSnippet(e) {
   const time = fmtTime(e?.created_at);

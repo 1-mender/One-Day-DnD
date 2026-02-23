@@ -313,7 +313,7 @@ export default function GuessCardGame({
         </div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
-        {readOnly ? <div className="badge warn">Read-only: действия отключены</div> : null}
+        {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
         {seedBusy ? <div className="badge warn">Loading round...</div> : null}
         {seedErr ? <div className="badge off">{seedErr}</div> : null}
 

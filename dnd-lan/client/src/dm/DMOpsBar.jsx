@@ -155,7 +155,7 @@ export default function DMOpsBar() {
       </div>
 
       {err ? (
-        <div className="badge off" style={{ marginTop: 8 }}>
+        <div className="badge off u-mt-8">
           Ошибка: {err}
         </div>
       ) : null}

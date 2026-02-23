@@ -37,6 +37,7 @@ npm run start
 - `npm run preflight` — быстрая проверка перед сессией (health/readyz/диск/минимальная запись)
 - `npm --prefix server run chaos:presence` - presence chaos test (reconnect p95 + false-offline)
 - `npm run e2e` - e2e smoke: temp server + DM setup/login + join/approve + inventory write/read
+- `npm run e2e:visual` - visual regression check (Playwright screenshots + pixel diff)
 - `npm run images:opt` - convert UI textures to webp/avif (local)
 - `npm run perf:report` - report JS bundle and image sizes from `client/dist/assets`
 
@@ -76,6 +77,20 @@ Env:
 - `E2E_READY_P95_MS` (default 300)
 - `E2E_REQUEST_TIMEOUT_MS` (default 5000)
 - `E2E_PORT` (optional fixed port)
+
+## Visual regression
+```powershell
+# 1) создать/обновить baseline
+$env:VISUAL_UPDATE_BASELINE="1"
+npm run e2e:visual
+
+# 2) обычная проверка
+Remove-Item Env:VISUAL_UPDATE_BASELINE -ErrorAction SilentlyContinue
+npm run e2e:visual
+```
+Env:
+- `VISUAL_UPDATE_BASELINE` (`1` = обновить baseline)
+- `VISUAL_MAX_DIFF_PIXELS` (по умолчанию `350`)
 
 ## Performance Baseline (2026-02-11)
 Repeatable command:
@@ -160,6 +175,7 @@ Secret rotation:
 
 ## Горячие клавиши
 - `Ctrl+Shift+U` — переключение вариантов UI (`v1`/`v2`/`v3`)
+- Также в интерфейсе есть кнопка `UI: v1|v2|v3` (правый нижний угол)
 - Можно также задать через URL: `?ui=v1|v2|v3`
 
 ## User Guide: аркада и билеты

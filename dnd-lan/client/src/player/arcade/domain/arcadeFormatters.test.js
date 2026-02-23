@@ -7,13 +7,13 @@ import {
 } from "./arcadeFormatters.js";
 
 test("formatDurationMs formats seconds and minutes", () => {
-  assert.equal(formatDurationMs(9000), "9s");
-  assert.equal(formatDurationMs(125000), "2m 05s");
+  assert.equal(formatDurationMs(9000), "9 с");
+  assert.equal(formatDurationMs(125000), "2 мин 05 с");
 });
 
-test("formatTicketError maps known code and keeps unknown", () => {
+test("formatTicketError maps known code and sanitizes unknown", () => {
   assert.equal(formatTicketError("invalid_mode"), "Выбранный режим недоступен.");
-  assert.equal(formatTicketError("custom_error"), "custom_error");
+  assert.equal(formatTicketError("custom_error"), "Не удалось выполнить действие в аркаде.");
 });
 
 test("isGameLimitReached checks per-game limit", () => {

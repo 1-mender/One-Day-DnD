@@ -26,8 +26,8 @@ export function formatDurationMs(ms) {
   const total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
   const m = Math.floor(total / 60);
   const s = total % 60;
-  if (m <= 0) return `${s}s`;
-  return `${m}m ${String(s).padStart(2, "0")}s`;
+  if (m <= 0) return `${s} с`;
+  return `${m} мин ${String(s).padStart(2, "0")} с`;
 }
 
 export function formatTicketError(code) {
@@ -49,7 +49,7 @@ export function formatTicketError(code) {
   if (c === "opponent_not_found") return "Соперник не найден.";
   if (c === "winner_locked") return "Победитель уже зафиксирован.";
   if (c === "forbidden") return "Действие недоступно.";
-  return c || "Ошибка";
+  return "Не удалось выполнить действие в аркаде.";
 }
 
 export function isGameLimitReached(gameKey, rules, usage) {

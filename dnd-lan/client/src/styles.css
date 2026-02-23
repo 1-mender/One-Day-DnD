@@ -1,3 +1,4 @@
+@layer base {
 :root { color-scheme: light; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; background: #f6ead1; }
 * { box-sizing: border-box; }
@@ -38,4 +39,5 @@ hr { border:0; border-top:1px solid #c9b087; margin: 12px 0; }
   .container { padding: 12px; }
   .card { padding: 12px; }
   .item { padding: 10px; }
+}
 }

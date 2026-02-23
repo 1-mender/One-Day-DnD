@@ -199,7 +199,7 @@ export default function TicTacToeGame({
         <div className="small arcade-game-hint">Tap any free cell. Win {roundsToWin} rounds before AI.</div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
-        {readOnly ? <div className="badge warn">Read-only: действия отключены</div> : null}
+        {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
 
         {status !== "playing" ? (
           <div className={`ttt-result ${status}`}>
