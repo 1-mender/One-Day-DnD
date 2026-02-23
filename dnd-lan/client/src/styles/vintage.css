@@ -3885,6 +3885,32 @@ body.arcade-modal-open{
 .error-banner-text{ margin-top: 6px; }
 .error-banner-hint{ margin-top: 6px; opacity: .92; }
 .error-banner-action{ margin-top: 10px; }
+.empty-state-title{
+  font-weight: 900;
+  font-size: 16px;
+}
+.empty-state-hint{
+  margin-top: 4px;
+}
+.qr-card-title{
+  font-weight: 900;
+}
+.qr-card-url{
+  margin-top: 6px;
+}
+.error-boundary-title{
+  font-weight: 1000;
+  font-size: 22px;
+}
+.error-boundary-subtitle{
+  margin-top: 6px;
+}
+.error-boundary-details{
+  margin-top: 12px;
+}
+.error-boundary-actions{
+  margin-top: 12px;
+}
 .ui-variant-fab{
   position: fixed;
   right: 12px;

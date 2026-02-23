@@ -20,8 +20,10 @@ import {
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { t } from "../i18n/index.js";
+import { ConfirmDialog, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
-const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
+const empty = { name: "", description: "", qty: 1, weight: 0, rarity: "common", tags: [], visibility: "public", iconKey: "" };
 const TRANSFER_REFRESH_MS = 30_000;
 
 export default function DMInventory() {
@@ -51,8 +53,8 @@ export default function DMInventory() {
   const loadPlayers = useCallback(async () => {
     setErr("");
     try {
-      const p = await api.dmPlayers();
-      const list = p.items || [];
+      const response = await api.dmPlayers();
+      const list = response.items || [];
       setPlayers(list);
       if (!list.length) {
         setSelectedId(0);
@@ -61,8 +63,8 @@ export default function DMInventory() {
       } else {
         setSelectedId((prev) => (prev ? prev : list[0].id));
       }
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
       setLoading(false);
     }
   }, []);
@@ -72,10 +74,10 @@ export default function DMInventory() {
     setErr("");
     setLoading(true);
     try {
-      const r = await api.invDmGetPlayer(pid);
-      setItems(r.items || []);
-    } catch (e) {
-      setErr(formatError(e));
+      const response = await api.invDmGetPlayer(pid);
+      setItems(response.items || []);
+    } catch (error) {
+      setErr(formatError(error));
     } finally {
       setLoading(false);
     }
@@ -84,8 +86,8 @@ export default function DMInventory() {
   const loadTransfers = useCallback(async () => {
     setTransfersLoading(true);
     try {
-      const r = await api.invTransferDmList("pending");
-      setTransfers(r.items || []);
+      const response = await api.invTransferDmList("pending");
+      setTransfers(response.items || []);
     } catch {
       setTransfers([]);
     } finally {
@@ -109,7 +111,7 @@ export default function DMInventory() {
   }, [loadTransfers]);
 
   useEffect(() => {
-    if (selectedId) loadInv(selectedId).catch(()=>{});
+    if (selectedId) loadInv(selectedId).catch(() => {});
   }, [selectedId]);
 
   useEffect(() => {
@@ -182,14 +184,13 @@ export default function DMInventory() {
       setForm(empty);
       setEdit(null);
       await loadInv(selectedId);
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
   function delItem(item) {
-    if (readOnly) return;
-    if (!item) return;
+    if (readOnly || !item) return;
     setConfirmDialog({
       mode: "single",
       itemId: item.id,
@@ -198,14 +199,13 @@ export default function DMInventory() {
   }
 
   async function toggleVisibility(item) {
-    if (readOnly) return;
-    if (!item) return;
+    if (readOnly || !item) return;
     const next = item.visibility === "hidden" ? "public" : "hidden";
     try {
       await api.invDmUpdatePlayerItem(selectedId, item.id, { ...item, visibility: next, tags: item.tags || [] });
       await loadInv(selectedId);
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
@@ -219,8 +219,8 @@ export default function DMInventory() {
       await api.invDmBulkVisibility(selectedId, targets.map((it) => it.id), "hidden");
       await loadInv(selectedId);
       clearSelection();
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
@@ -249,30 +249,28 @@ export default function DMInventory() {
       }
       await loadInv(selectedId);
       setConfirmDialog(null);
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     } finally {
       setConfirmBusy(false);
     }
   }
 
   async function cancelTransfer(tr) {
-    if (readOnly) return;
-    if (!tr?.id) return;
+    if (readOnly || !tr?.id) return;
     setErr("");
     try {
-      const r = await api.invTransferDmCancel(tr.id);
-      if (r?.status === "expired") {
+      const response = await api.invTransferDmCancel(tr.id);
+      if (response?.status === "expired") {
         await loadTransfers();
-        toast.warn("Передача истекла");
+        toast.warn(t("dmInventory.transferExpired"));
         return;
       }
       await loadTransfers();
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
-
 
   const filtered = useMemo(() => filterInventory(items, { q: debouncedQ, vis, rarity }), [items, debouncedQ, vis, rarity]);
   const { publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
@@ -292,95 +290,98 @@ export default function DMInventory() {
 
   return (
     <div className="card taped">
-      <div>
-        <div className="u-title-xl">Инвентарь (мастер)</div>
-        <div className="small">Просмотр/выдача предметов игрокам</div>
-      </div>
+      <PageHeader
+        title={t("dmInventory.title")}
+        subtitle={t("dmInventory.subtitle")}
+      />
       <hr />
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />
-      {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
-      <div className="inv-toolbar">
-        <select value={selectedId} onChange={(e)=>setSelectedId(Number(e.target.value))} style={inp}>
-          {players.map((p) => <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>)}
+      {readOnly ? <StatusBanner tone="warning">{t("dmInventory.readOnly")}</StatusBanner> : null}
+
+      <FilterBar className="inv-toolbar">
+        <select value={selectedId} onChange={(e) => setSelectedId(Number(e.target.value))} className="u-w-full">
+          {players.map((p) => <option key={p.id} value={p.id}>{t("dmInventory.playerOption", { name: p.displayName, id: p.id })}</option>)}
         </select>
-        <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />Выдать</button>
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." className="u-w-min-360" />
-        <select value={vis} onChange={(e)=>setVis(e.target.value)} className="u-w-180">
-          <option value="">Видимость: все</option>
-              <option value="public">Публичные</option>
-              <option value="hidden">Скрытые</option>
+        <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />{t("dmInventory.issue")}</button>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmInventory.searchPlaceholder")} className="u-w-min-360" />
+        <select value={vis} onChange={(e) => setVis(e.target.value)} className="u-w-180">
+          <option value="">{t("dmInventory.visibilityAll")}</option>
+          <option value="public">{t("dmInventory.visibilityPublic")}</option>
+          <option value="hidden">{t("dmInventory.visibilityHidden")}</option>
         </select>
-        <select value={rarity} onChange={(e)=>setRarity(e.target.value)} className="u-w-180">
-          <option value="">Редкость: все</option>
+        <select value={rarity} onChange={(e) => setRarity(e.target.value)} className="u-w-180">
+          <option value="">{t("dmInventory.rarityAll")}</option>
           {RARITY_OPTIONS.map((opt) => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
         <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
-          <List className="icon" aria-hidden="true" />Список
+          <List className="icon" aria-hidden="true" />{t("dmInventory.viewList")}
         </button>
         <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
-          <LayoutGrid className="icon" aria-hidden="true" />Плитка
+          <LayoutGrid className="icon" aria-hidden="true" />{t("dmInventory.viewGrid")}
         </button>
         <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
-          <RefreshCcw className="icon" aria-hidden="true" />Обновить
+          <RefreshCcw className="icon" aria-hidden="true" />{t("dmInventory.refresh")}
         </button>
-        <span className="badge secondary">{"\u0412\u044b\u0431\u0440\u0430\u043d\u043e: "}{selectedCount}</span>
+        <span className="badge secondary">{t("dmInventory.selectedCount", { count: selectedCount })}</span>
         <button
           className="btn secondary"
           onClick={bulkHideSelected}
           disabled={readOnly || !selectedId || selectedCount === 0}
-          title={"Скрыть выбранные"}
+          title={t("dmInventory.bulkHideTitle")}
         >
           <EyeOff className="icon" aria-hidden="true" />
-          {"Скрыть"}
+          {t("dmInventory.bulkHide")}
         </button>
         <button
           className="btn danger"
           onClick={bulkDeleteSelected}
           disabled={readOnly || !selectedId || selectedCount === 0}
-          title={"Удалить выбранные"}
+          title={t("dmInventory.bulkDeleteTitle")}
         >
           <Trash2 className="icon" aria-hidden="true" />
-          {"Удалить"}
+          {t("dmInventory.bulkDelete")}
         </button>
         {selectedCount > 0 ? (
           <button className="btn secondary" onClick={clearSelection}>
-            {"Снять выбор"}
+            {t("dmInventory.clearSelection")}
           </button>
         ) : null}
+      </FilterBar>
 
-      </div>
       <div className="small u-mt-10">
         <div className="row u-row-wrap">
-          <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
-          <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
-          <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
-          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />Вес: {totalWeightAll.toFixed(2)}</span>
+          <span className="badge"><Package className="icon" aria-hidden="true" />{t("dmInventory.totalItems", { count: filtered.length })}</span>
+          <span className="badge ok"><Eye className="icon" aria-hidden="true" />{t("dmInventory.totalPublic", { count: publicCount })}</span>
+          <span className="badge off"><EyeOff className="icon" aria-hidden="true" />{t("dmInventory.totalHidden", { count: hiddenCount })}</span>
+          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />{t("dmInventory.totalWeight", { value: totalWeightAll.toFixed(2) })}</span>
         </div>
       </div>
 
-      <div className="paper-note u-mt-12">
-        <div className="row u-row-between-center">
-          <div className="title">Активные передачи</div>
-          <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
-        </div>
-        <div className="small note-hint u-mt-6">
-          Мастер может отменить любую ожидающую передачу.
-        </div>
-        <div className="row u-mt-8">
+      <SectionCard
+        className="u-mt-12"
+        title={t("dmInventory.transfersTitle")}
+        subtitle={t("dmInventory.transfersHint")}
+        actions={(
+          <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />{t("dmInventory.refresh")}</button>
+        )}
+      >
+        <FilterBar>
           <input
             value={transferQ}
             onChange={(e) => setTransferQ(e.target.value)}
-            placeholder="Поиск по передаче..."
-            style={inp}
+            placeholder={t("dmInventory.transferSearch")}
+            className="u-w-full"
           />
-        </div>
+        </FilterBar>
         <div className="u-mt-8">
           {transfersLoading ? (
             <Skeleton h={80} w="100%" />
           ) : filteredTransfers.length === 0 ? (
-            <div className="small">{transfers.length ? "Ничего не найдено." : "Активных передач нет."}</div>
+            <div className="small">
+              {transfers.length ? t("dmInventory.transferNotFound") : t("dmInventory.transferEmpty")}
+            </div>
           ) : (
             <div className="list">
               {filteredTransfers.map((tr) => (
@@ -388,25 +389,25 @@ export default function DMInventory() {
                   <div className="u-flex-1">
                     <div className="row u-row-gap-8 u-row-wrap">
                       {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
-                        <span className="badge secondary">Истекла</span>
+                        <span className="badge secondary">{t("dmInventory.transferExpiredBadge")}</span>
                       ) : null}
-                      <span className="badge secondary">от {tr.fromName || `#${tr.fromPlayerId}`}</span>
-                      <span className="badge secondary">кому {tr.toName || `#${tr.toPlayerId}`}</span>
-                      <span className="badge">x{tr.qty}</span>
+                      <span className="badge secondary">{t("dmInventory.transferFrom", { value: tr.fromName || `#${tr.fromPlayerId}` })}</span>
+                      <span className="badge secondary">{t("dmInventory.transferTo", { value: tr.toName || `#${tr.toPlayerId}` })}</span>
+                      <span className="badge">{t("dmInventory.transferQty", { value: tr.qty })}</span>
                       <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
                     </div>
                     <div className="small u-mt-6">
-                      Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
+                      {t("dmInventory.transferItem", { value: tr.itemName || `#${tr.itemId}` })}
                     </div>
                     {tr.note ? (
                       <div className="small u-mt-6">
-                        <b>Сообщение:</b> {tr.note}
+                        <b>{t("dmInventory.transferNoteLabel")}</b> {tr.note}
                       </div>
                     ) : null}
                   </div>
                   <div className="row u-row-gap-8 u-row-wrap">
                     <button className="btn danger" onClick={() => cancelTransfer(tr)} disabled={readOnly}>
-                      Отменить
+                      {t("dmInventory.transferCancel")}
                     </button>
                   </div>
                 </div>
@@ -414,7 +415,7 @@ export default function DMInventory() {
             </div>
           )}
         </div>
-      </div>
+      </SectionCard>
 
       <div
         className={`list inv-shelf u-mt-12 ${view === "grid" ? "inv-grid" : ""}`}
@@ -428,8 +429,8 @@ export default function DMInventory() {
           </>
         ) : filtered.length === 0 ? (
           <EmptyState
-            title={hasAny ? "Ничего не найдено" : "Нет предметов у игрока"}
-            hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Выдайте предмет или выберите другого игрока."}
+            title={hasAny ? t("dmInventory.notFoundTitle") : t("dmInventory.emptyTitle")}
+            hint={hasAny ? t("dmInventory.notFoundHint") : t("dmInventory.emptyHint")}
           />
         ) : view === "list" ? (
           <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
@@ -481,33 +482,33 @@ export default function DMInventory() {
         )}
       </div>
 
-      <Modal open={open} title={edit ? "Редактировать предмет" : "Выдать предмет"} onClose={() => setOpen(false)}>
+      <Modal open={open} title={edit ? t("dmInventory.editItem") : t("dmInventory.issueItem")} onClose={() => setOpen(false)}>
         <div className="list">
-          <input value={form.name} onChange={(e)=>setForm({ ...form, name: e.target.value })} placeholder="Название*" style={inp} />
-          <textarea value={form.description} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={4} style={inp} />
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("dmInventory.formName")} className="u-w-full" />
+          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("dmInventory.formDescription")} rows={4} className="u-w-full" />
           <div className="row">
-            <input value={form.qty} onChange={(e)=>setForm({ ...form, qty: e.target.value })} placeholder="Количество" style={inp} />
-            <input value={form.weight} onChange={(e)=>setForm({ ...form, weight: e.target.value })} placeholder="Вес" style={inp} />
+            <input value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} placeholder={t("dmInventory.formQty")} className="u-w-full" />
+            <input value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder={t("dmInventory.formWeight")} className="u-w-full" />
           </div>
           <div className="row">
-            <select value={form.rarity} onChange={(e)=>setForm({ ...form, rarity: e.target.value })} style={inp}>
+            <select value={form.rarity} onChange={(e) => setForm({ ...form, rarity: e.target.value })} className="u-w-full">
               {RARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} style={inp}>
-              <option value="public">Публичные</option>
-              <option value="hidden">Скрытые</option>
+            <select value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })} className="u-w-full">
+              <option value="public">{t("dmInventory.visibilityPublic")}</option>
+              <option value="hidden">{t("dmInventory.visibilityHidden")}</option>
             </select>
           </div>
 
-          <div className="row" style={{ alignItems: "center" }}>
+          <div className="row u-items-center">
             <select
               value={form.iconKey || ""}
-              onChange={(e)=>setForm({ ...form, iconKey: e.target.value })}
-              style={inp}
+              onChange={(e) => setForm({ ...form, iconKey: e.target.value })}
+              className="u-w-full"
             >
-              <option value="">{"\u0418\u043a\u043e\u043d\u043a\u0430: \u043d\u0435\u0442"}</option>
+              <option value="">{t("dmInventory.iconNone")}</option>
               {INVENTORY_ICON_SECTIONS.map((section) => (
                 <optgroup key={section.key} label={section.label}>
                   {section.items.map((icon) => (
@@ -520,12 +521,12 @@ export default function DMInventory() {
               {SelectedIcon ? (
                 <SelectedIcon className="inv-icon u-icon-28" aria-hidden="true" />
               ) : (
-                <span className="small">{"\u0411\u0435\u0437 \u0438\u043a\u043e\u043d\u043a\u0438"}</span>
+                <span className="small">{t("dmInventory.iconNoIcon")}</span>
               )}
             </div>
           </div>
           <details className="inv-icon-picker" open>
-            <summary>Список доступных иконок</summary>
+            <summary>{t("dmInventory.iconList")}</summary>
             <div className="inv-icon-grid">
               {INVENTORY_ICON_SECTIONS.map((section) => (
                 <div key={section.key} className="inv-icon-section">
@@ -555,49 +556,31 @@ export default function DMInventory() {
           </details>
           <input
             value={(form.tags || []).join(", ")}
-            onChange={(e)=>setForm({ ...form, tags: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) })}
-            placeholder="Теги (через запятую)"
-            style={inp}
+            onChange={(e) => setForm({ ...form, tags: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+            placeholder={t("dmInventory.formTags")}
+            className="u-w-full"
           />
-          <button className="btn" onClick={save} disabled={readOnly}>{edit ? "Сохранить" : "Выдать"}</button>
+          <button className="btn" onClick={save} disabled={readOnly}>{edit ? t("common.save") : t("dmInventory.issue")}</button>
         </div>
       </Modal>
 
-      <Modal
+      <ConfirmDialog
         open={!!confirmDialog}
-        title={confirmDialog?.mode === "single" ? "Удалить предмет" : "Удалить выбранные предметы"}
-        onClose={() => {
+        title={confirmDialog?.mode === "single" ? t("dmInventory.confirmSingleTitle") : t("dmInventory.confirmBulkTitle")}
+        message={confirmDialog?.mode === "single"
+          ? t("dmInventory.confirmSingleBody", { name: confirmDialog?.itemName || t("dmInventory.noName") })
+          : t("dmInventory.confirmBulkBody", { count: confirmDialog?.count || 0 })}
+        onCancel={() => {
           if (!confirmBusy) setConfirmDialog(null);
         }}
-      >
-        <div className="list">
-          <div className="small">
-            {confirmDialog?.mode === "single"
-              ? `Удалить предмет «${confirmDialog?.itemName || "без названия"}»?`
-              : `Удалить ${confirmDialog?.count || 0} предмет(ов)?`}
-          </div>
-          <div className="row u-row-gap-8">
-            <button
-              className="btn secondary"
-              onClick={() => setConfirmDialog(null)}
-              disabled={confirmBusy}
-            >
-              Отмена
-            </button>
-            <button
-              className="btn danger"
-              onClick={confirmDelete}
-              disabled={readOnly || confirmBusy}
-            >
-              {confirmBusy ? "Удаление..." : "Удалить"}
-            </button>
-          </div>
-        </div>
-      </Modal>
+        onConfirm={confirmDelete}
+        confirmDisabled={readOnly || confirmBusy}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={confirmBusy ? t("dmInventory.deleting") : t("dmInventory.bulkDelete")}
+      />
     </div>
   );
 }
-const inp = { width: "100%" };
 
 function filterInventory(items, { q, vis, rarity }) {
   const list = items || [];

@@ -10,6 +10,8 @@ import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
+import { t } from "../i18n/index.js";
+import { ConfirmDialog, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -23,7 +25,6 @@ export default function DMPlayers() {
   const [ticketDelta, setTicketDelta] = useState("");
   const [ticketSet, setTicketSet] = useState("");
   const [ticketReason, setTicketReason] = useState("");
-  const [removeOpen, setRemoveOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [q, setQ] = useQueryState("q", "");
   const [statusFilter, setStatusFilter] = useQueryState("status", "all");
@@ -35,22 +36,22 @@ export default function DMPlayers() {
   const loadPlayers = useCallback(async () => {
     setErr("");
     try {
-      const r = await api.dmPlayers();
-      setPlayers(r.items || []);
-    } catch (e) {
-      setErr(formatError(e));
+      const response = await api.dmPlayers();
+      setPlayers(response.items || []);
+    } catch (error) {
+      setErr(formatError(error));
     }
   }, []);
 
   const loadTickets = useCallback(async () => {
     setErr("");
     try {
-      const t = await api.dmTicketsList();
+      const response = await api.dmTicketsList();
       const map = {};
-      for (const row of t.items || []) map[row.playerId] = row;
+      for (const row of response.items || []) map[row.playerId] = row;
       setTickets(map);
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }, []);
 
@@ -81,11 +82,11 @@ export default function DMPlayers() {
     if (readOnly) return;
     setErr("");
     try {
-      const r = await api.dmImpersonate(playerId, "ro");
-      const url = `/app?imp=1&token=${encodeURIComponent(r.playerToken)}`;
+      const response = await api.dmImpersonate(playerId, "ro");
+      const url = `/app?imp=1&token=${encodeURIComponent(response.playerToken)}`;
       window.open(url, "_blank", "noopener,noreferrer");
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
@@ -115,16 +116,14 @@ export default function DMPlayers() {
       setEditOpen(false);
       setEditPlayer(null);
       await loadPlayers();
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
-  async function removePlayer(player) {
-    if (readOnly) return;
-    if (!player) return;
+  function requestRemove(player) {
+    if (readOnly || !player) return;
     setRemoveTarget(player);
-    setRemoveOpen(true);
   }
 
   async function confirmRemovePlayer() {
@@ -132,11 +131,10 @@ export default function DMPlayers() {
     setErr("");
     try {
       await api.dmDeletePlayer(removeTarget.id);
-      setRemoveOpen(false);
       setRemoveTarget(null);
       await loadPlayers();
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
@@ -146,8 +144,8 @@ export default function DMPlayers() {
     try {
       await api.dmKick(playerId);
       await loadPlayers();
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
@@ -160,213 +158,207 @@ export default function DMPlayers() {
   }
 
   async function applyTickets() {
-    if (readOnly) return;
-    if (!ticketPlayer) return;
+    if (readOnly || !ticketPlayer) return;
     const delta = Number(ticketDelta || 0);
-    const setVal = ticketSet === "" ? null : Number(ticketSet);
-    if (Number.isNaN(delta) || Number.isNaN(setVal)) {
-      setErr("Неверное значение билетов.");
+    const setValue = ticketSet === "" ? null : Number(ticketSet);
+    if (Number.isNaN(delta) || Number.isNaN(setValue)) {
+      setErr(t("dmPlayers.ticketInvalidValue"));
       return;
     }
-    if (setVal == null && !delta) return;
+    if (setValue == null && !delta) return;
     setErr("");
     try {
       await api.dmTicketsAdjust({
         playerId: ticketPlayer.id,
         delta,
-        set: setVal == null ? undefined : setVal,
+        set: setValue == null ? undefined : setValue,
         reason: ticketReason
       });
       setTicketOpen(false);
       setTicketPlayer(null);
       await loadAll();
-    } catch (e) {
-      setErr(formatError(e));
+    } catch (error) {
+      setErr(formatError(error));
     }
   }
 
   const playersWithTickets = useMemo(() => {
-    return (players || []).map((p) => {
-      const t = tickets[p.id] || {};
-      return { ...p, ticketBalance: Number(t.balance || 0), ticketStreak: Number(t.streak || 0) };
+    return (players || []).map((player) => {
+      const ticketData = tickets[player.id] || {};
+      return {
+        ...player,
+        ticketBalance: Number(ticketData.balance || 0),
+        ticketStreak: Number(ticketData.streak || 0)
+      };
     });
   }, [players, tickets]);
 
   const selectedId = Number(selectedIdParam || 0);
   const selectedPlayer = useMemo(() => {
-    return playersWithTickets.find((p) => p.id === selectedId) || null;
+    return playersWithTickets.find((player) => player.id === selectedId) || null;
   }, [playersWithTickets, selectedId]);
 
   const filtered = useMemo(() => {
-    const qq = String(q || "").toLowerCase().trim();
-    return playersWithTickets.filter((p) => {
-      const status = String(p.status || "offline");
+    const query = String(q || "").toLowerCase().trim();
+    return playersWithTickets.filter((player) => {
+      const status = String(player.status || "offline");
       if (statusFilter !== "all" && status !== statusFilter) return false;
-      if (!qq) return true;
-      return String(p.displayName || "").toLowerCase().includes(qq);
+      if (!query) return true;
+      return String(player.displayName || "").toLowerCase().includes(query);
     });
   }, [playersWithTickets, q, statusFilter]);
 
   return (
     <>
-    <div className="two-pane" data-detail={selectedPlayer ? "1" : "0"}>
-      <div className="pane pane-list">
-        <div className="card taped">
-          <div className="u-title-xl">Игроки</div>
-          <div className="small">Быстрый обзор статусов и действий</div>
-          <hr />
-          {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
-          <ErrorBanner message={err} onRetry={loadAll} />
-          <div className="row u-row-wrap u-mb-8">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Поиск игрока..."
-              className="u-w-min-360"
+      <div className="two-pane" data-detail={selectedPlayer ? "1" : "0"}>
+        <div className="pane pane-list">
+          <div className="card taped">
+            <PageHeader
+              title={t("dmPlayers.title")}
+              subtitle={t("dmPlayers.subtitle")}
             />
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="u-w-180">
-              <option value="all">Статус: все</option>
-              <option value="online">Онлайн</option>
-              <option value="idle">Нет активности</option>
-              <option value="offline">Оффлайн</option>
-            </select>
-          </div>
-          <div className="list">
-            {filtered.map((p) => (
-              <PlayerDossierCard
-                key={p.id}
-                player={p}
-                ticketBalance={p.ticketBalance}
-                ticketStreak={p.ticketStreak}
-                selected={p.id === selectedId}
-                onClick={() => selectPlayer(p.id)}
-                menu={(
-                  <ActionMenu
-                    label="Действия игрока"
-                    items={[
-                      { label: "Открыть профиль", onClick: () => openProfile(p.id) },
-                      { label: "Билеты", onClick: () => openTickets(p), disabled: readOnly },
-                      { label: "Изменить имя", onClick: () => startEdit(p), disabled: readOnly },
-                      { label: "Как игрок", onClick: () => viewAs(p.id), disabled: readOnly },
-                      { label: "Отключить", onClick: () => kickPlayer(p.id), disabled: readOnly, tone: "danger" },
-                      { label: "Удалить", onClick: () => removePlayer(p), disabled: readOnly, tone: "danger" }
-                    ]}
-                  />
-                )}
+            <hr />
+            {readOnly ? <StatusBanner tone="warning">{t("dmPlayers.readOnly")}</StatusBanner> : null}
+            <ErrorBanner message={err} onRetry={loadAll} />
+            <FilterBar className="u-mb-8">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t("dmPlayers.searchPlaceholder")}
+                className="u-w-min-360"
               />
-            ))}
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="u-w-180">
+                <option value="all">{t("dmPlayers.statusAll")}</option>
+                <option value="online">{t("dmPlayers.statusOnline")}</option>
+                <option value="idle">{t("dmPlayers.statusIdle")}</option>
+                <option value="offline">{t("dmPlayers.statusOffline")}</option>
+              </select>
+            </FilterBar>
+            <div className="list">
+              {filtered.map((player) => (
+                <PlayerDossierCard
+                  key={player.id}
+                  player={player}
+                  ticketBalance={player.ticketBalance}
+                  ticketStreak={player.ticketStreak}
+                  selected={player.id === selectedId}
+                  onClick={() => selectPlayer(player.id)}
+                  menu={(
+                    <ActionMenu
+                      label={t("dmPlayers.menuLabel")}
+                      items={[
+                        { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
+                        { label: t("dmPlayers.menuTickets"), onClick: () => openTickets(player), disabled: readOnly },
+                        { label: t("dmPlayers.menuEditName"), onClick: () => startEdit(player), disabled: readOnly },
+                        { label: t("dmPlayers.menuAsPlayer"), onClick: () => viewAs(player.id), disabled: readOnly },
+                        { label: t("dmPlayers.menuKick"), onClick: () => kickPlayer(player.id), disabled: readOnly, tone: "danger" },
+                        { label: t("dmPlayers.menuDelete"), onClick: () => requestRemove(player), disabled: readOnly, tone: "danger" }
+                      ]}
+                    />
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="pane pane-detail">
+          <div className="card taped pane-sticky">
+            {selectedPlayer ? (
+              <>
+                <PageHeader
+                  title={selectedPlayer.displayName}
+                  subtitle={t("dmPlayers.playerMeta", {
+                    id: selectedPlayer.id,
+                    lastSeen: selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"
+                  })}
+                  actions={(
+                    <>
+                      <button className="btn secondary" onClick={() => selectPlayer(0)}>{t("dmPlayers.backToList")}</button>
+                      <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>{t("dmPlayers.openProfile")}</button>
+                    </>
+                  )}
+                />
+                <hr />
+                <div className="row u-row-wrap">
+                  <PlayerStatusPill status={selectedPlayer.status} />
+                  <span className="badge">{t("dmPlayers.ticketsBadge", { value: selectedPlayer.ticketBalance ?? 0 })}</span>
+                  <span className="badge secondary">{t("dmPlayers.streakBadge", { value: selectedPlayer.ticketStreak ?? 0 })}</span>
+                </div>
+                <div className="list u-list-mt-12">
+                  <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuTickets")}</button>
+                  <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuEditName")}</button>
+                  <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>{t("dmPlayers.menuAsPlayer")}</button>
+                  <button className="btn danger" onClick={() => kickPlayer(selectedPlayer.id)} disabled={readOnly}>{t("dmPlayers.menuKick")}</button>
+                  <button className="btn danger" onClick={() => requestRemove(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuDelete")}</button>
+                </div>
+              </>
+            ) : (
+              <div className="small">{t("dmPlayers.pickPlayerHint")}</div>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="pane pane-detail">
-        <div className="card taped pane-sticky">
-          {selectedPlayer ? (
-            <>
-              <div className="row u-row-between-center">
-                <div>
-                  <div className="u-title-xl">{selectedPlayer.displayName}</div>
-                  <div className="small">
-                    id: {selectedPlayer.id} - последняя активность: {selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"}
-                  </div>
-                </div>
-                <div className="row u-row-gap-8">
-                  <button className="btn secondary" onClick={() => selectPlayer(0)}>Назад к списку</button>
-                  <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>Открыть профиль</button>
-                </div>
-              </div>
-              <hr />
-              <div className="row u-row-wrap">
-                <PlayerStatusPill status={selectedPlayer.status} />
-                <span className="badge">Билеты: {selectedPlayer.ticketBalance ?? 0}</span>
-                <span className="badge secondary">Серия: {selectedPlayer.ticketStreak ?? 0}</span>
-              </div>
-              <div className="list u-list-mt-12">
-                <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>Билеты</button>
-                <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>Изменить имя</button>
-                <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>Как игрок</button>
-                <button className="btn danger" onClick={() => kickPlayer(selectedPlayer.id)} disabled={readOnly}>Отключить</button>
-                <button className="btn danger" onClick={() => removePlayer(selectedPlayer)} disabled={readOnly}>Удалить</button>
-              </div>
-            </>
-          ) : (
-            <div className="small">Выберите игрока, чтобы увидеть детали.</div>
-          )}
-        </div>
-      </div>
-    </div>
-
-  <Modal open={editOpen} title="Редактировать игрока" onClose={() => setEditOpen(false)}>
+      <Modal open={editOpen} title={t("dmPlayers.editTitle")} onClose={() => setEditOpen(false)}>
         <div className="list">
           <input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
-            placeholder="Имя игрока"
+            placeholder={t("dmPlayers.editPlaceholder")}
             className="u-w-full"
             maxLength={80}
           />
-          <button className="btn" onClick={saveEdit} disabled={readOnly}>Сохранить</button>
+          <button className="btn" onClick={saveEdit} disabled={readOnly}>{t("common.save")}</button>
         </div>
       </Modal>
 
-      <Modal
-        open={removeOpen}
-        title="Удалить игрока"
-        onClose={() => {
-          setRemoveOpen(false);
-          setRemoveTarget(null);
-        }}
-      >
-        <div className="list">
-          <div className="small">
-            Удалить игрока <b>{removeTarget?.displayName || "—"}</b>? Будут удалены инвентарь и профиль.
-          </div>
-          <div className="row u-row-gap-8">
-            <button className="btn secondary" onClick={() => {
-              setRemoveOpen(false);
-              setRemoveTarget(null);
-            }}>
-              Отмена
-            </button>
-            <button className="btn danger" onClick={confirmRemovePlayer} disabled={readOnly}>Удалить</button>
-          </div>
-        </div>
-      </Modal>
+      <ConfirmDialog
+        open={!!removeTarget}
+        title={t("dmPlayers.removeTitle")}
+        message={t("dmPlayers.removeBody", { name: removeTarget?.displayName || t("common.notAvailable") })}
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={confirmRemovePlayer}
+        confirmDisabled={readOnly}
+        confirmLabel={t("dmPlayers.menuDelete")}
+      />
 
-      <Modal open={ticketOpen} title="Билеты игрока" onClose={() => setTicketOpen(false)}>
-        <div className="list">
-          <div className="small">
-            Игрок: <b>{ticketPlayer?.displayName || "—"}</b>
-          </div>
-          <div className="badge">Баланс: {ticketPlayer ? (tickets[ticketPlayer.id]?.balance ?? 0) : 0}</div>
-          <div className="small">Серия побед: {ticketPlayer ? (tickets[ticketPlayer.id]?.streak ?? 0) : 0}</div>
-          <div className="row u-row-gap-6 u-row-wrap">
+      <Modal open={ticketOpen} title={t("dmPlayers.ticketTitle")} onClose={() => setTicketOpen(false)}>
+        <SectionCard
+          title={t("dmPlayers.ticketSectionTitle")}
+          subtitle={t("dmPlayers.ticketFor", { name: ticketPlayer?.displayName || t("common.notAvailable") })}
+        >
+          <div className="badge">{t("dmPlayers.ticketBalance", { value: ticketPlayer ? (tickets[ticketPlayer.id]?.balance ?? 0) : 0 })}</div>
+          <div className="small u-mt-6">{t("dmPlayers.ticketStreak", { value: ticketPlayer ? (tickets[ticketPlayer.id]?.streak ?? 0) : 0 })}</div>
+          <FilterBar className="u-mt-10">
             <button className="btn secondary" onClick={() => setTicketDelta("1")} disabled={readOnly}>+1</button>
             <button className="btn secondary" onClick={() => setTicketDelta("3")} disabled={readOnly}>+3</button>
             <button className="btn secondary" onClick={() => setTicketDelta("-1")} disabled={readOnly}>-1</button>
             <button className="btn secondary" onClick={() => setTicketDelta("-3")} disabled={readOnly}>-3</button>
+          </FilterBar>
+          <div className="list u-mt-10">
+            <input
+              value={ticketDelta}
+              onChange={(e) => setTicketDelta(e.target.value)}
+              placeholder={t("dmPlayers.ticketDelta")}
+              className="u-w-full"
+            />
+            <input
+              value={ticketSet}
+              onChange={(e) => setTicketSet(e.target.value)}
+              placeholder={t("dmPlayers.ticketSet")}
+              className="u-w-full"
+            />
+            <input
+              value={ticketReason}
+              onChange={(e) => setTicketReason(e.target.value)}
+              placeholder={t("dmPlayers.ticketReason")}
+              className="u-w-full"
+              maxLength={120}
+            />
+            <button className="btn" onClick={applyTickets} disabled={readOnly}>{t("dmPlayers.ticketApply")}</button>
           </div>
-          <input
-            value={ticketDelta}
-            onChange={(e) => setTicketDelta(e.target.value)}
-            placeholder="Дельта (например 2 или -2)"
-            className="u-w-full"
-          />
-          <input
-            value={ticketSet}
-            onChange={(e) => setTicketSet(e.target.value)}
-            placeholder="Установить баланс (опционально)"
-            className="u-w-full"
-          />
-          <input
-            value={ticketReason}
-            onChange={(e) => setTicketReason(e.target.value)}
-            placeholder="Причина (опционально)"
-            className="u-w-full"
-            maxLength={120}
-          />
-          <button className="btn" onClick={applyTickets} disabled={readOnly}>Применить</button>
-        </div>
+        </SectionCard>
       </Modal>
     </>
   );

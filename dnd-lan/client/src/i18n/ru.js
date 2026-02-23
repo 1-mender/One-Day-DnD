@@ -1,126 +1,293 @@
 export const ru = {
-  common: {
-    loading: "Загрузка…",
-    error: "Ошибка",
-    retry: "Повторить",
-    cancel: "Отмена",
-    confirm: "Подтвердить",
-    back: "Назад",
-    network: "Сеть",
-    more: "Ещё",
-    save: "Сохранить",
-    show: "Показать",
-    hide: "Скрыть"
+  "common": {
+    "loading": "Загрузка…",
+    "error": "Ошибка",
+    "retry": "Повторить",
+    "cancel": "Отмена",
+    "confirm": "Подтвердить",
+    "back": "Назад",
+    "network": "Сеть",
+    "more": "Ещё",
+    "save": "Сохранить",
+    "show": "Показать",
+    "hide": "Скрыть",
+    "notAvailable": "—"
   },
-  app: {
-    pageFallbackLoading: "Загрузка…"
+  "app": {
+    "pageFallbackLoading": "Загрузка…"
   },
-  uiVariant: {
-    cycleTitle: "Сменить вариант UI",
-    cycleLabel: "Сменить UI",
-    current: "UI: {variant}",
-    dmSettingsTitle: "Вариант интерфейса",
-    dmSettingsHint: "Выберите внешний вид рабочей зоны DM."
+  "uiVariant": {
+    "cycleTitle": "Сменить вариант UI",
+    "cycleLabel": "Сменить UI",
+    "current": "UI: {variant}",
+    "dmSettingsTitle": "Вариант интерфейса",
+    "dmSettingsHint": "Выберите внешний вид рабочей зоны DM."
   },
-  bottomNav: {
-    moreAria: "Ещё разделы"
+  "bottomNav": {
+    "moreAria": "Ещё разделы"
   },
-  dmTabBar: {
-    dashboard: "Обзор",
-    lobby: "Лобби",
-    players: "Игроки",
-    events: "События",
-    settings: "Настройки",
-    inventory: "Инвентарь",
-    bestiary: "Бестиарий",
-    infoBlocks: "Инфоблоки"
+  "dmTabBar": {
+    "dashboard": "Обзор",
+    "lobby": "Лобби",
+    "players": "Игроки",
+    "events": "События",
+    "settings": "Настройки",
+    "inventory": "Инвентарь",
+    "bestiary": "Бестиарий",
+    "infoBlocks": "Инфоблоки"
   },
-  dmLogin: {
-    title: "Вход DM",
-    subtitle: "Локальный доступ. Пароль хранится хешированно.",
-    usernamePlaceholder: "Логин",
-    passwordPlaceholder: "Пароль",
-    submit: "Войти",
-    noDm: "Нет DM?",
-    setupLink: "Настроить"
+  "dmLogin": {
+    "title": "Вход DM",
+    "subtitle": "Локальный доступ. Пароль хранится хешированно.",
+    "usernamePlaceholder": "Логин",
+    "passwordPlaceholder": "Пароль",
+    "submit": "Войти",
+    "noDm": "Нет DM?",
+    "setupLink": "Настроить"
   },
-  dmSetup: {
-    title: "Первый запуск: создайте учётную запись мастера",
-    subtitle: "Используйте надёжный пароль длиной не менее 6 символов.",
-    usernamePlaceholder: "Логин",
-    passwordPlaceholder: "Пароль (минимум 6 символов)",
-    setupSecretPlaceholder: "Секрет первичной настройки (необязательно)",
-    submit: "Создать"
+  "dmSetup": {
+    "title": "Первый запуск: создайте учётную запись мастера",
+    "subtitle": "Используйте надёжный пароль длиной не менее 6 символов.",
+    "usernamePlaceholder": "Логин",
+    "passwordPlaceholder": "Пароль (минимум 6 символов)",
+    "setupSecretPlaceholder": "Секрет первичной настройки (необязательно)",
+    "submit": "Создать"
   },
-  join: {
-    title: "Подключиться к партии",
-    partyName: "Партия: {name}",
-    playerNameLabel: "Имя игрока/персонажа *",
-    playerNamePlaceholder: "Напр. Aria / Bob",
-    joinCodeLabel: "Код партии",
-    joinCodePlaceholder: "Если включён DM",
-    readOnly: "Режим только чтения: изменения отключены",
-    submit: "Отправить заявку",
-    guideTitle: "Как подключиться",
-    guideSubtitle: "Короткая памятка для игроков",
-    step1Title: "1. Откройте адрес сервера",
-    step1Hint: "Адрес выдаст мастер",
-    step2Title: "2. Введите имя",
-    step2Hint: "Можно имя игрока или персонажа",
-    step3Title: "3. Код партии (если нужен)",
-    step3Hint: "Запросите у мастера, если включено",
-    tipTitle: "Совет",
-    tipBody: "Если не открывается, проверьте Wi‑Fi сеть и повторите."
+  "join": {
+    "title": "Подключиться к партии",
+    "partyName": "Партия: {name}",
+    "playerNameLabel": "Имя игрока/персонажа *",
+    "playerNamePlaceholder": "Напр. Aria / Bob",
+    "joinCodeLabel": "Код партии",
+    "joinCodePlaceholder": "Если включён DM",
+    "readOnly": "Режим только чтения: изменения отключены",
+    "submit": "Отправить заявку",
+    "guideTitle": "Как подключиться",
+    "guideSubtitle": "Короткая памятка для игроков",
+    "step1Title": "1. Откройте адрес сервера",
+    "step1Hint": "Адрес выдаст мастер",
+    "step2Title": "2. Введите имя",
+    "step2Hint": "Можно имя игрока или персонажа",
+    "step3Title": "3. Код партии (если нужен)",
+    "step3Hint": "Запросите у мастера, если включено",
+    "tipTitle": "Совет",
+    "tipBody": "Если не открывается, проверьте Wi‑Fi сеть и повторите."
   },
-  waiting: {
-    title: "Ожидание подтверждения",
-    subtitle: "DM должен принять вашу заявку в лобби.",
-    status: "Ожидание…",
-    sessionOpenFailed: "Не удалось открыть игровую сессию.",
-    rejected: "Заявка отклонена.",
-    rejectedBanned: "Заявка отклонена. Вы заблокированы."
+  "waiting": {
+    "title": "Ожидание подтверждения",
+    "subtitle": "DM должен принять вашу заявку в лобби.",
+    "status": "Ожидание…",
+    "sessionOpenFailed": "Не удалось открыть игровую сессию.",
+    "rejected": "Заявка отклонена.",
+    "rejectedBanned": "Заявка отклонена. Вы заблокированы."
   },
-  playerLayout: {
-    navPlayers: "Игроки",
-    navProfile: "Профиль",
-    navInventory: "Инвентарь",
-    navArcade: "Аркада",
-    navNotes: "Заметки",
-    navShop: "Магазин",
-    navBestiary: "Бестиарий",
-    offlineDetails: "Проблема с подключением к серверу.",
-    impersonationTitle: "Имперсонализация DM:",
-    impersonationAsPlayer: "как игрок",
-    impersonationMode: "Режим:",
-    impersonationModeRead: "только просмотр",
-    impersonationModeWrite: "редактирование",
-    impersonationError: "ошибка: {message}",
-    allowChanges: "Разрешить изменения",
-    switchToReadMode: "Переключить в режим чтения",
-    exitImpersonation: "Выйти",
-    networkError: "Ошибка сети: {message}"
+  "playerLayout": {
+    "navPlayers": "Игроки",
+    "navProfile": "Профиль",
+    "navInventory": "Инвентарь",
+    "navArcade": "Аркада",
+    "navNotes": "Заметки",
+    "navShop": "Магазин",
+    "navBestiary": "Бестиарий",
+    "offlineDetails": "Проблема с подключением к серверу.",
+    "impersonationTitle": "Имперсонализация DM:",
+    "impersonationAsPlayer": "как игрок",
+    "impersonationMode": "Режим:",
+    "impersonationModeRead": "только просмотр",
+    "impersonationModeWrite": "редактирование",
+    "impersonationError": "ошибка: {message}",
+    "allowChanges": "Разрешить изменения",
+    "switchToReadMode": "Переключить в режим чтения",
+    "exitImpersonation": "Выйти",
+    "networkError": "Ошибка сети: {message}"
   },
-  dmLayout: {
-    dmSessionExpired: "Сессия DM истекла. Выполните вход снова.",
-    offlineDetails: "Проблема с подключением к серверу."
+  "dmLayout": {
+    "dmSessionExpired": "Сессия DM истекла. Выполните вход снова.",
+    "offlineDetails": "Проблема с подключением к серверу."
   },
-  errorBanner: {
-    title: "Ошибка"
+  "errorBanner": {
+    "title": "Ошибка"
   },
-  toast: {
-    successTitle: "Готово",
-    warnTitle: "Внимание",
-    errorTitle: "Ошибка",
-    infoTitle: "Инфо",
-    closeAria: "Закрыть уведомление"
+  "toast": {
+    "successTitle": "Готово",
+    "warnTitle": "Внимание",
+    "errorTitle": "Ошибка",
+    "infoTitle": "Инфо",
+    "closeAria": "Закрыть уведомление"
   },
-  confirmDialog: {
-    defaultTitle: "Подтвердите действие"
+  "confirmDialog": {
+    "defaultTitle": "Подтвердите действие"
   },
-  dmSettings: {
-    questResetTitle: "Сбросить квест на сегодня",
-    questReassignTitle: "Переназначить квест на сегодня",
-    questResetBody: "Сбросить прогресс ежедневного квеста на сегодня для всех игроков?",
-    questReassignBody: "Переназначить ежедневный квест на сегодня и применить изменения сразу?"
+  "dmSettings": {
+    "questResetTitle": "Сбросить квест на сегодня",
+    "questReassignTitle": "Переназначить квест на сегодня",
+    "questResetBody": "Сбросить прогресс ежедневного квеста на сегодня для всех игроков?",
+    "questReassignBody": "Переназначить ежедневный квест на сегодня и применить изменения сразу?"
+  },
+  "bootstrap": {
+    "errorTitle": "Ошибка запуска приложения",
+    "errorFallbackCode": "bootstrap_failed"
+  },
+  "actionMenu": {
+    "defaultLabel": "Действия"
+  },
+  "emptyState": {
+    "defaultTitle": "Пока пусто"
+  },
+  "errorBoundary": {
+    "title": "Произошла ошибка интерфейса",
+    "subtitle": "Экран не удалось отрисовать корректно.",
+    "details": "Технические детали",
+    "reload": "Перезагрузить страницу",
+    "home": "На главную",
+    "tryAgain": "Попробовать снова",
+    "fallbackMessage": "Неизвестная ошибка"
+  },
+  "offlineBanner": {
+    "offline": "Нет соединения с сервером",
+    "readOnly": "Режим только чтения"
+  },
+  "playerStatus": {
+    "online": "В сети",
+    "idle": "Неактивен",
+    "offline": "Оффлайн"
+  },
+  "qrCard": {
+    "title": "QR для подключения",
+    "alt": "QR-код адреса сервера",
+    "fallback": "QR"
+  },
+  "dmEvents": {
+    "title": "События",
+    "subtitle": "Журнал действий и системных сообщений.",
+    "refresh": "Обновить",
+    "exportJson": "Экспорт JSON",
+    "readOnly": "Режим только чтения: очистка и экспорт ограничены.",
+    "searchPlaceholder": "Поиск по журналу",
+    "scopeAll": "Все источники",
+    "scopePlayer": "Игроки",
+    "scopeJoin": "Подключения",
+    "scopeInventory": "Инвентарь",
+    "scopeBestiary": "Бестиарий",
+    "scopeInfo": "Инфоблоки",
+    "viewAll": "Все записи",
+    "viewRecent": "Недавние",
+    "rangeAll": "За всё время",
+    "range1h": "Последний час",
+    "range24h": "24 часа",
+    "recentHint": "Показаны последние 50 записей.",
+    "cleanupTitle": "Очистка журнала",
+    "cleanupHint": "Удаляйте старые записи, чтобы журнал оставался быстрым.",
+    "cleanupAll": "Удалить всё",
+    "cleanupOlder": "Удалить старше N дней",
+    "cleanupDeleted": "Удалено записей: {count}",
+    "cleanupNeedDelete": "Введите контрольную фразу для подтверждения.",
+    "confirmDeletePhrase": "DELETE",
+    "confirmAllTitle": "Удалить весь журнал?",
+    "confirmAllBody": "Это действие необратимо. Будут удалены все события.",
+    "confirmAllTypeDelete": "Введите «{phrase}» для подтверждения.",
+    "confirmOlderTitle": "Удалить старые события?",
+    "confirmOlderBody": "Удалить события старше {days} дн.?",
+    "empty": "События не найдены.",
+    "targetLabel": "Цель:",
+    "copyButton": "Скопировать запись",
+    "copySuccess": "Событие скопировано.",
+    "copyFail": "Не удалось скопировать событие.",
+    "loadMore": "Загрузить ещё"
+  },
+  "dmInventory": {
+    "title": "Инвентарь игроков",
+    "subtitle": "Управление предметами, видимостью и передачами.",
+    "readOnly": "Режим только чтения: изменения отключены.",
+    "issue": "Выдать",
+    "issueItem": "Выдать предмет",
+    "editItem": "Редактировать предмет",
+    "refresh": "Обновить",
+    "searchPlaceholder": "Поиск по названию",
+    "visibilityAll": "Любая видимость",
+    "visibilityPublic": "Публичные",
+    "visibilityHidden": "Скрытые",
+    "rarityAll": "Любая редкость",
+    "viewList": "Список",
+    "viewGrid": "Сетка",
+    "selectedCount": "Выбрано: {count}",
+    "bulkHide": "Скрыть выбранные",
+    "bulkHideTitle": "Сделать выбранные предметы скрытыми",
+    "bulkDelete": "Удалить выбранные",
+    "bulkDeleteTitle": "Удалить выбранные предметы",
+    "clearSelection": "Снять выделение",
+    "totalItems": "Предметов: {count}",
+    "totalPublic": "Публичных: {count}",
+    "totalHidden": "Скрытых: {count}",
+    "totalWeight": "Вес: {value}",
+    "transfersTitle": "Передачи между игроками",
+    "transfersHint": "Очередь активных передач и быстрая отмена.",
+    "transferSearch": "Поиск по передачам",
+    "transferEmpty": "Активных передач нет.",
+    "transferNotFound": "По запросу ничего не найдено.",
+    "transferExpired": "Передача уже истекла.",
+    "transferExpiredBadge": "Истекла",
+    "transferFrom": "От: {value}",
+    "transferTo": "Кому: {value}",
+    "transferQty": "Кол-во: {value}",
+    "transferItem": "Предмет: {value}",
+    "transferNoteLabel": "Комментарий:",
+    "transferCancel": "Отменить передачу",
+    "confirmSingleTitle": "Удалить предмет?",
+    "confirmSingleBody": "Удалить «{name}»?",
+    "confirmBulkTitle": "Удалить выбранные предметы?",
+    "confirmBulkBody": "Удалить {count} предмет(ов)?",
+    "deleting": "Удаление...",
+    "noName": "без названия",
+    "notFoundTitle": "Ничего не найдено",
+    "notFoundHint": "Измените фильтры или строку поиска.",
+    "emptyTitle": "Инвентарь пуст",
+    "emptyHint": "Выдайте первый предмет игроку.",
+    "formName": "Название",
+    "formDescription": "Описание",
+    "formQty": "Количество",
+    "formWeight": "Вес",
+    "formTags": "Теги (через запятую)",
+    "iconNone": "Иконка: нет",
+    "iconNoIcon": "Без иконки",
+    "iconList": "Список иконок",
+    "playerOption": "{name} (#{id})"
+  },
+  "dmPlayers": {
+    "title": "Игроки",
+    "subtitle": "Список игроков, статусы и управление доступом.",
+    "readOnly": "Режим только чтения: действия DM отключены.",
+    "searchPlaceholder": "Поиск игрока",
+    "statusAll": "Все статусы",
+    "statusOnline": "В сети",
+    "statusIdle": "Неактивен",
+    "statusOffline": "Оффлайн",
+    "menuLabel": "Действия игрока",
+    "menuOpenProfile": "Открыть профиль",
+    "menuTickets": "Билеты",
+    "menuEditName": "Изменить имя",
+    "menuAsPlayer": "Открыть как игрок",
+    "menuKick": "Кикнуть",
+    "menuDelete": "Удалить",
+    "pickPlayerHint": "Выберите игрока слева, чтобы увидеть детали.",
+    "playerMeta": "ID: {id} • Последняя активность: {lastSeen}",
+    "backToList": "Назад к списку",
+    "openProfile": "Профиль",
+    "ticketsBadge": "Билеты: {value}",
+    "streakBadge": "Серия: {value}",
+    "editTitle": "Изменить имя игрока",
+    "editPlaceholder": "Имя игрока",
+    "removeTitle": "Удалить игрока?",
+    "removeBody": "Игрок «{name}» будет удален вместе с прогрессом.",
+    "ticketTitle": "Управление билетами",
+    "ticketSectionTitle": "Начисление и списание",
+    "ticketFor": "Игрок: {name}",
+    "ticketBalance": "Баланс: {value}",
+    "ticketStreak": "Серия дней: {value}",
+    "ticketDelta": "Изменение (например, 1 или -1)",
+    "ticketSet": "Установить баланс (опционально)",
+    "ticketReason": "Причина изменения",
+    "ticketApply": "Применить",
+    "ticketInvalidValue": "Некорректные числовые значения."
   }
 };

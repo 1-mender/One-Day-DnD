@@ -1,17 +1,18 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { MoreHorizontal } from "lucide-react";
+import { t } from "../../i18n/index.js";
 
 function findNextEnabledIndex(items, from, step) {
   if (!items.length) return -1;
-  let i = from;
+  let idx = from;
   for (let guard = 0; guard < items.length; guard += 1) {
-    i = (i + step + items.length) % items.length;
-    if (!items[i]?.disabled) return i;
+    idx = (idx + step + items.length) % items.length;
+    if (!items[idx]?.disabled) return idx;
   }
   return -1;
 }
 
-export default function ActionMenu({ items = [], align = "right", label = "Действия" }) {
+export default function ActionMenu({ items = [], align = "right", label = t("actionMenu.defaultLabel") }) {
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef(null);
@@ -37,9 +38,9 @@ export default function ActionMenu({ items = [], align = "right", label = "Де�
 
   useEffect(() => {
     if (!open) return () => {};
-    const onDoc = (e) => {
+    const onDoc = (event) => {
       if (!rootRef.current) return;
-      if (!rootRef.current.contains(e.target)) closeMenu();
+      if (!rootRef.current.contains(event.target)) closeMenu();
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("touchstart", onDoc, { passive: true });
@@ -64,8 +65,8 @@ export default function ActionMenu({ items = [], align = "right", label = "Де�
         type="button"
         className="btn secondary icon-btn action-menu-btn"
         ref={triggerRef}
-        onClick={(e) => {
-          e.stopPropagation();
+        onClick={(event) => {
+          event.stopPropagation();
           if (open) {
             closeMenu();
             return;
@@ -73,14 +74,14 @@ export default function ActionMenu({ items = [], align = "right", label = "Де�
           const first = findNextEnabledIndex(list, -1, 1);
           openMenu(first);
         }}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
             const first = findNextEnabledIndex(list, -1, 1);
             openMenu(first);
           }
-          if (e.key === "ArrowUp") {
-            e.preventDefault();
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
             const last = findNextEnabledIndex(list, 0, -1);
             openMenu(last);
           }
@@ -98,37 +99,37 @@ export default function ActionMenu({ items = [], align = "right", label = "Де�
           id={menuId}
           className="action-menu-list"
           role="menu"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.preventDefault();
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              event.preventDefault();
               closeMenu();
               triggerRef.current?.focus();
               return;
             }
-            if (e.key === "Tab") {
+            if (event.key === "Tab") {
               closeMenu();
               return;
             }
-            if (e.key === "ArrowDown") {
-              e.preventDefault();
+            if (event.key === "ArrowDown") {
+              event.preventDefault();
               const next = findNextEnabledIndex(list, activeIndex, 1);
               if (next >= 0) setActiveIndex(next);
               return;
             }
-            if (e.key === "ArrowUp") {
-              e.preventDefault();
+            if (event.key === "ArrowUp") {
+              event.preventDefault();
               const prev = findNextEnabledIndex(list, activeIndex, -1);
               if (prev >= 0) setActiveIndex(prev);
               return;
             }
-            if (e.key === "Home") {
-              e.preventDefault();
+            if (event.key === "Home") {
+              event.preventDefault();
               const first = findNextEnabledIndex(list, -1, 1);
               if (first >= 0) setActiveIndex(first);
               return;
             }
-            if (e.key === "End") {
-              e.preventDefault();
+            if (event.key === "End") {
+              event.preventDefault();
               const last = findNextEnabledIndex(list, 0, -1);
               if (last >= 0) setActiveIndex(last);
             }
@@ -147,8 +148,8 @@ export default function ActionMenu({ items = [], align = "right", label = "Де�
                 role="menuitem"
                 className={`action-menu-item${tone}`.trim()}
                 tabIndex={idx === activeIndex ? 0 : -1}
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={(event) => {
+                  event.stopPropagation();
                   if (item.disabled) return;
                   closeMenu();
                   item.onClick?.();

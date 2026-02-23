@@ -1,10 +1,11 @@
 import React from "react";
+import { t } from "../../i18n/index.js";
 
-export default function EmptyState({ title = "Пусто", hint = "" }) {
+export default function EmptyState({ title = t("emptyState.defaultTitle"), hint = "" }) {
   return (
     <div className="banner empty">
-      <div style={{ fontWeight: 1000 }}>{title}</div>
-      {hint ? <div className="small" style={{ marginTop: 6 }}>{hint}</div> : null}
+      <div className="empty-state-title">{title}</div>
+      {hint ? <div className="small empty-state-hint">{hint}</div> : null}
     </div>
   );
 }

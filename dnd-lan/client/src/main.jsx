@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App.jsx";
+import "./foundation/tokens.css";
 import "./styles/layers.css";
 import "./styles.css";
 import "./styles/vintage.css";
@@ -12,13 +13,14 @@ import ErrorBoundary from "./components/ui/ErrorBoundary.jsx";
 import { applyThemeAssets } from "./theme/themeAssets.js";
 import { applyUiVariant, cycleUiVariant } from "./theme/uiVariant.js";
 import "./styles/ui-variants.css";
+import { t } from "./i18n/index.js";
 
 function showBootstrapError(error) {
   const root = document.getElementById("root") || document.body;
   if (!root) return;
   const message = typeof error?.message === "string" && error.message
     ? error.message
-    : "bootstrap_failed";
+    : t("bootstrap.errorFallbackCode");
   root.innerHTML = "";
   const wrap = document.createElement("div");
   wrap.style.padding = "16px";
@@ -29,7 +31,7 @@ function showBootstrapError(error) {
   const title = document.createElement("div");
   title.style.fontWeight = "700";
   title.style.fontSize = "18px";
-  title.textContent = "Ошибка инициализации интерфейса";
+  title.textContent = t("bootstrap.errorTitle");
   const details = document.createElement("pre");
   details.style.whiteSpace = "pre-wrap";
   details.style.marginTop = "10px";

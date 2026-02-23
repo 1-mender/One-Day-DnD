@@ -9,15 +9,16 @@ import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { Copy } from "lucide-react";
-import Modal from "../components/Modal.jsx";
+import { t } from "../i18n/index.js";
+import { ConfirmDialog, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
 const scopes = [
-  { key: "", label: "Все", prefix: "" },
-  { key: "player", label: "Подключения", prefix: "player." },
-  { key: "join", label: "Лобби", prefix: "join." },
-  { key: "inv", label: "Инвентарь", prefix: "inventory." },
-  { key: "best", label: "Бестиарий", prefix: "bestiary." },
-  { key: "info", label: "Инфоблоки", prefix: "info." }
+  { key: "", labelKey: "dmEvents.scopeAll", prefix: "" },
+  { key: "player", labelKey: "dmEvents.scopePlayer", prefix: "player." },
+  { key: "join", labelKey: "dmEvents.scopeJoin", prefix: "join." },
+  { key: "inv", labelKey: "dmEvents.scopeInventory", prefix: "inventory." },
+  { key: "best", labelKey: "dmEvents.scopeBestiary", prefix: "bestiary." },
+  { key: "info", labelKey: "dmEvents.scopeInfo", prefix: "info." }
 ];
 
 export default function DMEvents() {
@@ -30,16 +31,16 @@ export default function DMEvents() {
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const toast = useToast();
   const [cleanupDays, setCleanupDays] = useState(30);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const toast = useToast();
   const readOnly = useReadOnly();
-
   const { socket } = useSocket();
+  const confirmDeletePhrase = t("dmEvents.confirmDeletePhrase");
 
   const limit = 200;
   const debouncedQ = useDebouncedValue(q, 250);
-  const prefix = scopes.find((s) => s.key === scope)?.prefix || "";
+  const prefix = scopes.find((entry) => entry.key === scope)?.prefix || "";
   const sinceMs = Number(sinceParam || 0);
   const offsetRef = useRef(0);
 
@@ -52,14 +53,14 @@ export default function DMEvents() {
     setBusy(true);
     try {
       const pageOffset = reset ? 0 : offsetRef.current;
-      const r = await api.dmEventsList({
+      const response = await api.dmEventsList({
         limit,
         offset: pageOffset,
         q: debouncedQ,
         prefix,
         since: Number.isFinite(sinceMs) && sinceMs > 0 ? sinceMs : undefined
       });
-      const next = r.items || [];
+      const next = response.items || [];
       if (reset) {
         setItems(next);
         setOffset(next.length);
@@ -72,9 +73,9 @@ export default function DMEvents() {
           return updated;
         });
       }
-      setHasMore(!!r.hasMore);
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.LOAD_FAILED));
+      setHasMore(!!response.hasMore);
+    } catch (error) {
+      setErr(formatError(error, ERROR_CODES.LOAD_FAILED));
     } finally {
       setBusy(false);
     }
@@ -98,9 +99,9 @@ export default function DMEvents() {
     };
   }, [socket]);
 
-  const rows = useMemo(() => items.map((e) => ({
-    ...e,
-    _time: fmtTime(e.created_at)
+  const rows = useMemo(() => items.map((event) => ({
+    ...event,
+    _time: fmtTime(event.created_at)
   })), [items]);
 
   const displayRows = useMemo(() => {
@@ -116,13 +117,13 @@ export default function DMEvents() {
     overscan: 8
   });
 
-  async function copyEvent(e) {
-    const text = formatEventSnippet(e);
+  async function copyEvent(eventItem) {
+    const text = formatEventSnippet(eventItem);
     try {
       await navigator.clipboard.writeText(text);
-      toast.success("Скопировано в буфер");
+      toast.success(t("dmEvents.copySuccess"));
     } catch {
-      toast.warn("Не удалось скопировать автоматически.");
+      toast.warn(t("dmEvents.copyFail"));
     }
   }
 
@@ -145,15 +146,15 @@ export default function DMEvents() {
         since: Number.isFinite(sinceMs) && sinceMs > 0 ? sinceMs : undefined
       });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `events_${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `events_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
       URL.revokeObjectURL(url);
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.EXPORT_FAILED));
+    } catch (error) {
+      setErr(formatError(error, ERROR_CODES.EXPORT_FAILED));
     } finally {
       setBusy(false);
     }
@@ -163,13 +164,13 @@ export default function DMEvents() {
     setErr("");
     setBusy(true);
     try {
-      const r = await api.dmEventsCleanup(payload);
+      const response = await api.dmEventsCleanup(payload);
       await load(true);
-      toast.success(`Удалено: ${r.deleted}`);
-    } catch (e) {
-      const msg = formatError(e, ERROR_CODES.LOAD_FAILED);
-      setErr(msg);
-      toast.error(msg);
+      toast.success(t("dmEvents.cleanupDeleted", { count: response.deleted }));
+    } catch (error) {
+      const message = formatError(error, ERROR_CODES.LOAD_FAILED);
+      setErr(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -178,11 +179,11 @@ export default function DMEvents() {
   async function confirmCleanup() {
     if (!confirmDialog || readOnly) return;
     if (confirmDialog.mode === "all") {
-      if (confirmDialog.phrase !== "DELETE") {
-        toast.warn("Введите слово DELETE для подтверждения.");
+      if (confirmDialog.phrase !== confirmDeletePhrase) {
+        toast.warn(t("dmEvents.cleanupNeedDelete"));
         return;
       }
-      await runCleanup({ mode: "all", confirm: "DELETE" });
+      await runCleanup({ mode: "all", confirm: confirmDeletePhrase });
       setConfirmDialog(null);
       return;
     }
@@ -205,85 +206,87 @@ export default function DMEvents() {
 
   return (
     <div className="card taped">
-      <div className="row u-row-between-center">
-        <div>
-          <div className="u-title-xl">События</div>
-          <div className="small">Минимальный журнал действий и подключений</div>
-        </div>
-        <div className="row u-row-gap-8">
-          <button className="btn secondary" onClick={() => load(true)} disabled={busy}>Обновить</button>
-          <button className="btn" onClick={exportJson} disabled={busy}>Экспорт JSON</button>
-          {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
-        </div>
-      </div>
-
+      <PageHeader
+        title={t("dmEvents.title")}
+        subtitle={t("dmEvents.subtitle")}
+        actions={(
+          <>
+            <button className="btn secondary" onClick={() => load(true)} disabled={busy}>{t("dmEvents.refresh")}</button>
+            <button className="btn" onClick={exportJson} disabled={busy}>{t("dmEvents.exportJson")}</button>
+          </>
+        )}
+      />
       <hr />
 
-      <div className="row u-row-gap-8 u-row-center-wrap">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск (тип/сообщение/роль)..." className="u-w-min-520" />
+      {readOnly ? <StatusBanner tone="warning">{t("dmEvents.readOnly")}</StatusBanner> : null}
+
+      <FilterBar>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmEvents.searchPlaceholder")} className="u-w-min-520" />
         <select value={scope} onChange={(e) => setScope(e.target.value)}>
-          {scopes.map((s) => (
-            <option key={s.key} value={s.key}>{s.label}</option>
+          {scopes.map((entry) => (
+            <option key={entry.key} value={entry.key}>{t(entry.labelKey)}</option>
           ))}
         </select>
         <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
-          <option value="all">Все события</option>
-          <option value="recent">Последние 50</option>
+          <option value="all">{t("dmEvents.viewAll")}</option>
+          <option value="recent">{t("dmEvents.viewRecent")}</option>
         </select>
         <div className="row u-row-gap-6 u-row-wrap">
           <button className={`btn ${!sinceMs ? "" : "secondary"}`} onClick={() => setSinceHours(0)}>
-            Всё время
+            {t("dmEvents.rangeAll")}
           </button>
           <button className={`btn ${sinceMs ? "secondary" : ""}`} onClick={() => setSinceHours(1)}>
-            За 1 час
+            {t("dmEvents.range1h")}
           </button>
           <button className={`btn ${sinceMs ? "secondary" : ""}`} onClick={() => setSinceHours(24)}>
-            За 24 часа
+            {t("dmEvents.range24h")}
           </button>
         </div>
-      </div>
+      </FilterBar>
+
       {viewMode === "recent" ? (
-        <div className="badge secondary u-mt-8">Показаны последние 50 событий</div>
+        <div className="badge secondary u-mt-8">{t("dmEvents.recentHint")}</div>
       ) : null}
-      <div className="row u-row-gap-8 u-row-center-wrap u-mt-10">
-        <button className="btn danger" onClick={cleanupAll} disabled={busy || readOnly}>
-          Очистить всё
-        </button>
-        <div className="row u-row-gap-8 u-row-center-wrap">
-          <input
-            type="number"
-            min="1"
-            max="3650"
-            value={cleanupDays}
-            onChange={(e) => setCleanupDays(e.target.value)}
-            className="u-number-input"
-            disabled={readOnly}
-          />
-          <button className="btn secondary" onClick={cleanupOlder} disabled={busy || readOnly}>
-            Удалить старше X дней
-          </button>
-        </div>
-        <div className="paper-note u-maxw-520">
-          <div className="title">Очистка</div>
-          <div className="small">Только для DM. Автоочистка журнала (20k записей) продолжает работать как раньше.</div>
-        </div>
-      </div>
 
-      {err && <div className="badge off u-mt-10">Ошибка: {err}</div>}
+      <SectionCard
+        className="u-mt-10"
+        title={t("dmEvents.cleanupTitle")}
+        subtitle={t("dmEvents.cleanupHint")}
+        actions={(
+          <FilterBar>
+            <button className="btn danger" onClick={cleanupAll} disabled={busy || readOnly}>
+              {t("dmEvents.cleanupAll")}
+            </button>
+            <div className="row u-row-gap-8 u-row-center-wrap">
+              <input
+                type="number"
+                min="1"
+                max="3650"
+                value={cleanupDays}
+                onChange={(e) => setCleanupDays(e.target.value)}
+                className="u-number-input"
+                disabled={readOnly}
+              />
+              <button className="btn secondary" onClick={cleanupOlder} disabled={busy || readOnly}>
+                {t("dmEvents.cleanupOlder")}
+              </button>
+            </div>
+          </FilterBar>
+        )}
+      />
 
-      <div
-        ref={listRef}
-        className="list events-list"
-      >
+      {err ? <div className="badge off u-mt-10">{t("common.error")}: {err}</div> : null}
+
+      <div ref={listRef} className="list events-list">
         {displayRows.length === 0 && !busy ? (
-          <div className="small">Событий пока нет.</div>
+          <div className="small">{t("dmEvents.empty")}</div>
         ) : (
           <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
             {rowVirtualizer.getVirtualItems().map((vRow) => {
-              const e = displayRows[vRow.index];
+              const eventItem = displayRows[vRow.index];
               return (
                 <div
-                  key={e.id}
+                  key={eventItem.id}
                   className="item taped"
                   style={{
                     alignItems: "flex-start",
@@ -295,20 +298,21 @@ export default function DMEvents() {
                   }}
                 >
                   <div className="kv u-minw-170">
-                    <div className="u-fw-800">{e._time}</div>
-                    <div className="small">{e.type}</div>
+                    <div className="u-fw-800">{eventItem._time}</div>
+                    <div className="small">{eventItem.type}</div>
                     <div className="small">
-                      {e.actor_role}{e.actor_name ? ` • ${e.actor_name}` : ""}
+                      {eventItem.actor_role}{eventItem.actor_name ? ` • ${eventItem.actor_name}` : ""}
                     </div>
                   </div>
                   <div className="u-flex-1">
-                    <div className="u-fw-700">{e.message || "—"}</div>
+                    <div className="u-fw-700">{eventItem.message || t("common.notAvailable")}</div>
                     <div className="small">
-                      {e.target_type ? `цель: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
+                      {eventItem.target_type ? `${t("dmEvents.targetLabel")} ${eventItem.target_type}` : ""}
+                      {eventItem.target_id ? ` #${eventItem.target_id}` : ""}
                     </div>
                   </div>
                   <div className="row u-row-gap-6">
-                    <button className="btn secondary icon-btn" onClick={() => copyEvent(e)} title="Скопировать">
+                    <button className="btn secondary icon-btn" onClick={() => copyEvent(eventItem)} title={t("dmEvents.copyButton")}>
                       <Copy className="icon" aria-hidden="true" />
                     </button>
                   </div>
@@ -319,61 +323,48 @@ export default function DMEvents() {
         )}
       </div>
 
-      {hasMore && viewMode !== "recent" && (
+      {hasMore && viewMode !== "recent" ? (
         <button className="btn secondary u-mt-12" onClick={() => load(false)} disabled={busy}>
-          Загрузить ещё
+          {t("dmEvents.loadMore")}
         </button>
-      )}
+      ) : null}
 
-      <Modal
+      <ConfirmDialog
         open={!!confirmDialog}
-        title={confirmDialog?.mode === "all" ? "Очистить весь журнал" : "Очистить старые события"}
-        onClose={() => setConfirmDialog(null)}
+        title={confirmDialog?.mode === "all" ? t("dmEvents.confirmAllTitle") : t("dmEvents.confirmOlderTitle")}
+        message={confirmDialog?.mode === "all" ? t("dmEvents.confirmAllBody") : t("dmEvents.confirmOlderBody", { days: confirmDialog?.days ?? 0 })}
+        onCancel={() => setConfirmDialog(null)}
+        onConfirm={confirmCleanup}
+        confirmLabel={t("common.confirm")}
+        confirmDisabled={busy || readOnly}
       >
-        <div className="list">
-          {confirmDialog?.mode === "all" ? (
-            <>
-              <div className="small">
-                Это действие удалит все события журнала без возможности восстановления.
-              </div>
-              <div className="small">
-                Для подтверждения введите <b>DELETE</b>.
-              </div>
-              <input
-                value={confirmDialog?.phrase || ""}
-                onChange={(e) => setConfirmDialog((prev) => ({ ...(prev || {}), phrase: e.target.value }))}
-                placeholder="DELETE"
-                className="u-w-full"
-                autoFocus
-              />
-            </>
-          ) : (
-            <div className="small">
-              Удалить события старше <b>{confirmDialog?.days}</b> дней?
-            </div>
-          )}
-          <div className="row u-row-gap-8">
-            <button className="btn secondary" onClick={() => setConfirmDialog(null)}>Отмена</button>
-            <button className="btn danger" onClick={confirmCleanup} disabled={busy || readOnly}>
-              Подтвердить
-            </button>
-          </div>
-        </div>
-      </Modal>
+        {confirmDialog?.mode === "all" ? (
+          <>
+            <div className="small">{t("dmEvents.confirmAllTypeDelete", { phrase: confirmDeletePhrase })}</div>
+            <input
+              value={confirmDialog?.phrase || ""}
+              onChange={(e) => setConfirmDialog((prev) => ({ ...(prev || {}), phrase: e.target.value }))}
+              placeholder={confirmDeletePhrase}
+              className="u-w-full"
+              autoFocus
+            />
+          </>
+        ) : null}
+      </ConfirmDialog>
     </div>
   );
 }
 
 function fmtTime(ts) {
-  const d = new Date(Number(ts || 0));
-  if (!Number.isFinite(d.getTime())) return "—";
-  return d.toLocaleString();
+  const date = new Date(Number(ts || 0));
+  if (!Number.isFinite(date.getTime())) return t("common.notAvailable");
+  return date.toLocaleString();
 }
 
-function formatEventSnippet(e) {
-  const time = fmtTime(e?.created_at);
-  const actor = e?.actor_name ? `${e.actor_role} • ${e.actor_name}` : String(e?.actor_role || "");
-  const target = e?.target_type ? `${e.target_type}${e?.target_id ? ` #${e.target_id}` : ""}` : "";
-  const message = e?.message || "";
-  return [time, e?.type, actor, target, message].filter(Boolean).join(" | ");
+function formatEventSnippet(eventItem) {
+  const time = fmtTime(eventItem?.created_at);
+  const actor = eventItem?.actor_name ? `${eventItem.actor_role} • ${eventItem.actor_name}` : String(eventItem?.actor_role || "");
+  const target = eventItem?.target_type ? `${eventItem.target_type}${eventItem?.target_id ? ` #${eventItem.target_id}` : ""}` : "";
+  const message = eventItem?.message || "";
+  return [time, eventItem?.type, actor, target, message].filter(Boolean).join(" | ");
 }
