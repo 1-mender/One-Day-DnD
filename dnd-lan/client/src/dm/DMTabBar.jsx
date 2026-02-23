@@ -2,14 +2,14 @@ import React from "react";
 import { NavLink } from "react-router-dom";
 
 const items = [
-  { to: "/dm/app/dashboard", label: "Dashboard" },
-  { to: "/dm/app/lobby", label: "Lobby" },
-  { to: "/dm/app/players", label: "Players" },
-  { to: "/dm/app/inventory", label: "Inventory" },
-  { to: "/dm/app/bestiary", label: "Bestiary" },
-  { to: "/dm/app/events", label: "Events" },
-  { to: "/dm/app/info", label: "Info Blocks" },
-  { to: "/dm/app/settings", label: "Settings" }
+  { to: "/dm/app/dashboard", label: "Обзор" },
+  { to: "/dm/app/lobby", label: "Лобби" },
+  { to: "/dm/app/players", label: "Игроки" },
+  { to: "/dm/app/inventory", label: "Инвентарь" },
+  { to: "/dm/app/bestiary", label: "Бестиарий" },
+  { to: "/dm/app/events", label: "События" },
+  { to: "/dm/app/info", label: "Инфоблоки" },
+  { to: "/dm/app/settings", label: "Настройки" }
 ];
 
 export default function DMTabBar() {

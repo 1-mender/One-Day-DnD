@@ -5,7 +5,7 @@ export default function OfflineBanner({ online, details, tone = "offline" }) {
   return (
     <div className={`offline-ribbon ${tone === "readonly" ? "readonly" : ""}`.trim()}>
       <div className="inner">
-        {tone === "readonly" ? "Read-only mode" : "Offline / Reconnecting... Check Wi-Fi and wait a few seconds."}
+        {tone === "readonly" ? "Режим только чтения" : "Нет подключения. Пытаемся восстановить связь…"}
       </div>
       {details ? <div className="inner">{details}</div> : null}
     </div>

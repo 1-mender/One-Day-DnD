@@ -9,6 +9,7 @@ import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { Copy } from "lucide-react";
+import Modal from "../components/Modal.jsx";
 
 const scopes = [
   { key: "", label: "Все", prefix: "" },
@@ -16,7 +17,7 @@ const scopes = [
   { key: "join", label: "Лобби", prefix: "join." },
   { key: "inv", label: "Инвентарь", prefix: "inventory." },
   { key: "best", label: "Бестиарий", prefix: "bestiary." },
-  { key: "info", label: "InfoBlocks", prefix: "info." }
+  { key: "info", label: "Инфоблоки", prefix: "info." }
 ];
 
 export default function DMEvents() {
@@ -31,6 +32,7 @@ export default function DMEvents() {
   const [err, setErr] = useState("");
   const toast = useToast();
   const [cleanupDays, setCleanupDays] = useState(30);
+  const [confirmDialog, setConfirmDialog] = useState(null);
   const readOnly = useReadOnly();
 
   const { socket } = useSocket();
@@ -120,7 +122,7 @@ export default function DMEvents() {
       await navigator.clipboard.writeText(text);
       toast.success("Скопировано в буфер");
     } catch {
-      window.prompt("Copy:", text);
+      toast.warn("Не удалось скопировать автоматически.");
     }
   }
 
@@ -157,21 +159,11 @@ export default function DMEvents() {
     }
   }
 
-  async function cleanupAll() {
-    if (readOnly) return;
-    const first = window.confirm("Удалить ВСЕ события журнала? Это действие нельзя отменить.");
-    if (!first) return;
-
-    const phrase = window.prompt("Для подтверждения введите слово DELETE (заглавными):", "");
-    if (phrase !== "DELETE") {
-      toast.warn("Отменено. Неверное подтверждение.");
-      return;
-    }
-
+  async function runCleanup(payload) {
     setErr("");
     setBusy(true);
     try {
-      const r = await api.dmEventsCleanup({ mode: "all", confirm: "DELETE" });
+      const r = await api.dmEventsCleanup(payload);
       await load(true);
       toast.success(`Удалено: ${r.deleted}`);
     } catch (e) {
@@ -183,45 +175,52 @@ export default function DMEvents() {
     }
   }
 
-  async function cleanupOlder() {
+  async function confirmCleanup() {
+    if (!confirmDialog || readOnly) return;
+    if (confirmDialog.mode === "all") {
+      if (confirmDialog.phrase !== "DELETE") {
+        toast.warn("Введите слово DELETE для подтверждения.");
+        return;
+      }
+      await runCleanup({ mode: "all", confirm: "DELETE" });
+      setConfirmDialog(null);
+      return;
+    }
+    if (confirmDialog.mode === "older") {
+      await runCleanup({ mode: "olderThanDays", days: confirmDialog.days });
+      setConfirmDialog(null);
+    }
+  }
+
+  function cleanupAll() {
+    if (readOnly) return;
+    setConfirmDialog({ mode: "all", phrase: "", days: 0 });
+  }
+
+  function cleanupOlder() {
     if (readOnly) return;
     const days = Math.max(1, Math.min(3650, Math.floor(Number(cleanupDays || 30))));
-    const ok = window.confirm(`Удалить события старше ${days} дней?`);
-    if (!ok) return;
-
-    setErr("");
-    setBusy(true);
-    try {
-      const r = await api.dmEventsCleanup({ mode: "olderThanDays", days });
-      await load(true);
-      toast.success(`Удалено: ${r.deleted}`);
-    } catch (e) {
-      const msg = formatError(e, ERROR_CODES.LOAD_FAILED);
-      setErr(msg);
-      toast.error(msg);
-    } finally {
-      setBusy(false);
-    }
+    setConfirmDialog({ mode: "older", phrase: "", days });
   }
 
   return (
     <div className="card taped">
       <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
         <div>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Events</div>
+          <div style={{ fontWeight: 900, fontSize: 20 }}>События</div>
           <div className="small">Минимальный журнал действий и подключений</div>
         </div>
         <div className="row" style={{ gap: 8 }}>
-          <button className="btn secondary" onClick={() => load(true)} disabled={busy}>Refresh</button>
-          <button className="btn" onClick={exportJson} disabled={busy}>Export JSON</button>
-          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+          <button className="btn secondary" onClick={() => load(true)} disabled={busy}>Обновить</button>
+          <button className="btn" onClick={exportJson} disabled={busy}>Экспорт JSON</button>
+          {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
         </div>
       </div>
 
       <hr />
 
       <div className="row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск (type/message/actor)..." style={inp} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск (тип/сообщение/роль)..." style={inp} />
         <select value={scope} onChange={(e) => setScope(e.target.value)} style={sel}>
           {scopes.map((s) => (
             <option key={s.key} value={s.key}>{s.label}</option>
@@ -266,7 +265,7 @@ export default function DMEvents() {
         </div>
         <div className="paper-note" style={{ maxWidth: 520 }}>
           <div className="title">Очистка</div>
-          <div className="small">DM-only. Retention (20k) продолжает работать как раньше.</div>
+          <div className="small">Только для DM. Автоочистка журнала (20k записей) продолжает работать как раньше.</div>
         </div>
       </div>
 
@@ -306,7 +305,7 @@ export default function DMEvents() {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700 }}>{e.message || "—"}</div>
                     <div className="small">
-                      {e.target_type ? `target: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
+                      {e.target_type ? `цель: ${e.target_type}` : ""}{e.target_id ? ` #${e.target_id}` : ""}
                     </div>
                   </div>
                   <div className="row" style={{ gap: 6 }}>
@@ -323,9 +322,45 @@ export default function DMEvents() {
 
       {hasMore && viewMode !== "recent" && (
         <button className="btn secondary" style={{ marginTop: 12 }} onClick={() => load(false)} disabled={busy}>
-          Load more
+          Загрузить ещё
         </button>
       )}
+
+      <Modal
+        open={!!confirmDialog}
+        title={confirmDialog?.mode === "all" ? "Очистить весь журнал" : "Очистить старые события"}
+        onClose={() => setConfirmDialog(null)}
+      >
+        <div className="list">
+          {confirmDialog?.mode === "all" ? (
+            <>
+              <div className="small">
+                Это действие удалит все события журнала без возможности восстановления.
+              </div>
+              <div className="small">
+                Для подтверждения введите <b>DELETE</b>.
+              </div>
+              <input
+                value={confirmDialog?.phrase || ""}
+                onChange={(e) => setConfirmDialog((prev) => ({ ...(prev || {}), phrase: e.target.value }))}
+                placeholder="DELETE"
+                style={{ width: "100%" }}
+                autoFocus
+              />
+            </>
+          ) : (
+            <div className="small">
+              Удалить события старше <b>{confirmDialog?.days}</b> дней?
+            </div>
+          )}
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn secondary" onClick={() => setConfirmDialog(null)}>Отмена</button>
+            <button className="btn danger" onClick={confirmCleanup} disabled={busy || readOnly}>
+              Подтвердить
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

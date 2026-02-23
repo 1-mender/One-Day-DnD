@@ -28,7 +28,7 @@ function showBootstrapError(error) {
   const title = document.createElement("div");
   title.style.fontWeight = "700";
   title.style.fontSize = "18px";
-  title.textContent = "UI bootstrap error";
+  title.textContent = "Ошибка инициализации интерфейса";
   const details = document.createElement("pre");
   details.style.whiteSpace = "pre-wrap";
   details.style.marginTop = "10px";

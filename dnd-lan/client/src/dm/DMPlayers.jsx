@@ -23,6 +23,8 @@ export default function DMPlayers() {
   const [ticketDelta, setTicketDelta] = useState("");
   const [ticketSet, setTicketSet] = useState("");
   const [ticketReason, setTicketReason] = useState("");
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
   const [q, setQ] = useQueryState("q", "");
   const [statusFilter, setStatusFilter] = useQueryState("status", "all");
   const [selectedIdParam, setSelectedIdParam] = useQueryState("id", "");
@@ -121,10 +123,17 @@ export default function DMPlayers() {
   async function removePlayer(player) {
     if (readOnly) return;
     if (!player) return;
-    if (!window.confirm(`Удалить игрока "${player.displayName}"? Это удалит его инвентарь и профиль.`)) return;
+    setRemoveTarget(player);
+    setRemoveOpen(true);
+  }
+
+  async function confirmRemovePlayer() {
+    if (!removeTarget) return;
     setErr("");
     try {
-      await api.dmDeletePlayer(player.id);
+      await api.dmDeletePlayer(removeTarget.id);
+      setRemoveOpen(false);
+      setRemoveTarget(null);
       await loadPlayers();
     } catch (e) {
       setErr(formatError(e));
@@ -206,7 +215,7 @@ export default function DMPlayers() {
           <div style={{ fontWeight: 900, fontSize: 20 }}>Игроки</div>
           <div className="small">Быстрый обзор статусов и действий</div>
           <hr />
-          {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+          {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
           <ErrorBanner message={err} onRetry={loadAll} />
           <div className="row" style={{ flexWrap: "wrap", marginBottom: 8 }}>
             <input
@@ -217,9 +226,9 @@ export default function DMPlayers() {
             />
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
               <option value="all">Статус: все</option>
-              <option value="online">Online</option>
-              <option value="idle">Idle</option>
-              <option value="offline">Offline</option>
+              <option value="online">Онлайн</option>
+              <option value="idle">Нет активности</option>
+              <option value="offline">Оффлайн</option>
             </select>
           </div>
           <div className="list">
@@ -233,12 +242,13 @@ export default function DMPlayers() {
                 onClick={() => selectPlayer(p.id)}
                 menu={(
                   <ActionMenu
+                    label="Действия игрока"
                     items={[
                       { label: "Открыть профиль", onClick: () => openProfile(p.id) },
                       { label: "Билеты", onClick: () => openTickets(p), disabled: readOnly },
                       { label: "Изменить имя", onClick: () => startEdit(p), disabled: readOnly },
                       { label: "Как игрок", onClick: () => viewAs(p.id), disabled: readOnly },
-                      { label: "Kick", onClick: () => kickPlayer(p.id), disabled: readOnly, tone: "danger" },
+                      { label: "Отключить", onClick: () => kickPlayer(p.id), disabled: readOnly, tone: "danger" },
                       { label: "Удалить", onClick: () => removePlayer(p), disabled: readOnly, tone: "danger" }
                     ]}
                   />
@@ -257,7 +267,7 @@ export default function DMPlayers() {
                 <div>
                   <div style={{ fontWeight: 900, fontSize: 20 }}>{selectedPlayer.displayName}</div>
                   <div className="small">
-                    id: {selectedPlayer.id} - lastSeen: {selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"}
+                    id: {selectedPlayer.id} - последняя активность: {selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"}
                   </div>
                 </div>
                 <div className="row" style={{ gap: 8 }}>
@@ -275,7 +285,7 @@ export default function DMPlayers() {
                 <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>Билеты</button>
                 <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>Изменить имя</button>
                 <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>Как игрок</button>
-                <button className="btn danger" onClick={() => kickPlayer(selectedPlayer.id)} disabled={readOnly}>Kick</button>
+                <button className="btn danger" onClick={() => kickPlayer(selectedPlayer.id)} disabled={readOnly}>Отключить</button>
                 <button className="btn danger" onClick={() => removePlayer(selectedPlayer)} disabled={readOnly}>Удалить</button>
               </div>
             </>
@@ -296,6 +306,30 @@ export default function DMPlayers() {
             maxLength={80}
           />
           <button className="btn" onClick={saveEdit} disabled={readOnly}>Сохранить</button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={removeOpen}
+        title="Удалить игрока"
+        onClose={() => {
+          setRemoveOpen(false);
+          setRemoveTarget(null);
+        }}
+      >
+        <div className="list">
+          <div className="small">
+            Удалить игрока <b>{removeTarget?.displayName || "—"}</b>? Будут удалены инвентарь и профиль.
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn secondary" onClick={() => {
+              setRemoveOpen(false);
+              setRemoveTarget(null);
+            }}>
+              Отмена
+            </button>
+            <button className="btn danger" onClick={confirmRemovePlayer} disabled={readOnly}>Удалить</button>
+          </div>
         </div>
       </Modal>
 

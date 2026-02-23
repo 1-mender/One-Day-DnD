@@ -6,6 +6,7 @@ import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import Modal from "../components/Modal.jsx";
 import {
   applyTicketGamePatch,
   applyTicketRulesPatch,
@@ -36,6 +37,7 @@ export default function DMSettings() {
   const [ticketBusy, setTicketBusy] = useState(false);
   const [ticketMsg, setTicketMsg] = useState("");
   const [ticketErr, setTicketErr] = useState("");
+  const [questConfirm, setQuestConfirm] = useState(null);
   const [profilePresets, setProfilePresets] = useState([]);
   const [presetAccess, setPresetAccess] = useState({ enabled: true, playerEdit: true, playerRequest: true, hideLocal: false });
   const [presetBusy, setPresetBusy] = useState(false);
@@ -170,46 +172,44 @@ export default function DMSettings() {
     updateTicketRules({ dailyQuest: { activeKey: key } });
   }
 
-  async function resetDailyQuestToday() {
+  function resetDailyQuestToday() {
     if (readOnly) return;
     const activeKey = ticketRules?.dailyQuest?.activeKey || "";
     if (!activeKey) {
-      setTicketErr("Нет активного daily‑quest.");
+      setTicketErr("Нет активного ежедневного квеста.");
       return;
     }
-    const ok = window.confirm("Сбросить прогресс daily‑quest на сегодня для всех игроков?");
-    if (!ok) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      await api.dmTicketsResetQuest(activeKey);
-      setTicketMsg("Daily‑quest сброшен на сегодня.");
-    } catch (e) {
-      setTicketErr(formatError(e));
-    } finally {
-      setTicketBusy(false);
-    }
+    setQuestConfirm({ action: "reset", activeKey });
   }
 
-  async function reassignDailyQuestToday() {
+  function reassignDailyQuestToday() {
     if (readOnly) return;
     const activeKey = ticketRules?.dailyQuest?.activeKey || "";
     if (!activeKey) {
-      setTicketErr("Нет активного daily‑quest.");
+      setTicketErr("Нет активного ежедневного квеста.");
       return;
     }
-    const ok = window.confirm("Переназначить daily‑quest на сегодня и применить сразу?");
-    if (!ok) return;
+    setQuestConfirm({ action: "reassign", activeKey });
+  }
+
+  async function confirmDailyQuestAction() {
+    if (!questConfirm || readOnly) return;
     setTicketErr("");
     setTicketMsg("");
     setTicketBusy(true);
     try {
-      await api.dmTicketsSetActiveQuest(activeKey);
-      setTicketMsg("Daily‑quest переназначен на сегодня.");
-      setTicketRulesBase((prev) => (
-        prev ? { ...prev, dailyQuest: { ...(prev.dailyQuest || {}), activeKey } } : prev
-      ));
+      if (questConfirm.action === "reset") {
+        await api.dmTicketsResetQuest(questConfirm.activeKey);
+        setTicketMsg("Ежедневный квест сброшен на сегодня.");
+      }
+      if (questConfirm.action === "reassign") {
+        await api.dmTicketsSetActiveQuest(questConfirm.activeKey);
+        setTicketMsg("Ежедневный квест переназначен на сегодня.");
+        setTicketRulesBase((prev) => (
+          prev ? { ...prev, dailyQuest: { ...(prev.dailyQuest || {}), activeKey: questConfirm.activeKey } } : prev
+        ));
+      }
+      setQuestConfirm(null);
     } catch (e) {
       setTicketErr(formatError(e));
     } finally {
@@ -353,10 +353,10 @@ export default function DMSettings() {
 
   return (
     <div className="card taped">
-      <div style={{ fontWeight: 900, fontSize: 20 }}>Settings</div>
-      <div className="small">{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438, \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c, \u044d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430, LAN/Firewall."}</div>
+      <div style={{ fontWeight: 900, fontSize: 20 }}>Настройки</div>
+      <div className="small">{"\u041a\u043e\u0434 \u043f\u0430\u0440\u0442\u0438\u0438, \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u043e\u0441\u0442\u044c, \u044d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430, LAN \u0438 Firewall."}</div>
       <hr />
-      {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+      {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
       {err && <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{err}</div>}
       {msg && <div className="badge ok">{msg}</div>}
 
@@ -681,7 +681,7 @@ export default function DMSettings() {
 
               {showDailyQuestBlock ? (
                 <div className="paper-note">
-                  <div className="title">{"Daily quest"}</div>
+                  <div className="title">{"Ежедневный квест"}</div>
                   <div className="settings-fields" style={{ marginTop: 8 }}>
                     <label className="row" style={{ gap: 10, alignItems: "center" }} title={RULE_TIPS.dailyQuestEnabled}>
                       <input
@@ -689,7 +689,7 @@ export default function DMSettings() {
                         checked={ticketRules?.dailyQuest?.enabled !== false}
                         onChange={(e) => updateTicketRules({ dailyQuest: { enabled: e.target.checked } })}
                       />
-                      <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c Daily quest"}</span>
+                      <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u0435\u0436\u0435\u0434\u043d\u0435\u0432\u043d\u044b\u0439 \u043a\u0432\u0435\u0441\u0442"}</span>
                     </label>
                     <button className="btn secondary" onClick={addDailyQuest}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c"}</button>
                     <button className="btn secondary" onClick={resetDailyQuestToday} disabled={readOnly || ticketBusy}>
@@ -738,8 +738,8 @@ export default function DMSettings() {
                       <div key={q.key || idx} className="item settings-card">
                         <div className="settings-head">
                           <div style={{ fontWeight: 800 }}>
-                            {q.title || `Quest #${idx + 1}`}
-                            {ticketRules?.dailyQuest?.activeKey === q.key ? <span className="badge ok" style={{ marginLeft: 8 }}>active</span> : null}
+                            {q.title || `Квест #${idx + 1}`}
+                            {ticketRules?.dailyQuest?.activeKey === q.key ? <span className="badge ok" style={{ marginLeft: 8 }}>активен</span> : null}
                           </div>
                           <div className="row" style={{ gap: 8 }}>
                             <label className="row" style={{ gap: 6 }} title={RULE_TIPS.dailyQuestEnabled}>
@@ -930,6 +930,26 @@ export default function DMSettings() {
           )}
         </div>
       </div>
+
+      <Modal
+        open={!!questConfirm}
+        title={questConfirm?.action === "reset" ? "Сбросить квест на сегодня" : "Переназначить квест на сегодня"}
+        onClose={() => setQuestConfirm(null)}
+      >
+        <div className="list">
+          <div className="small">
+            {questConfirm?.action === "reset"
+              ? "Сбросить прогресс ежедневного квеста на сегодня для всех игроков?"
+              : "Переназначить ежедневный квест на сегодня и применить изменения сразу?"}
+          </div>
+          <div className="row" style={{ gap: 8 }}>
+            <button className="btn secondary" onClick={() => setQuestConfirm(null)}>Отмена</button>
+            <button className="btn danger" onClick={confirmDailyQuestAction} disabled={readOnly || ticketBusy}>
+              Подтвердить
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

@@ -36,7 +36,7 @@ export default function Notes() {
 
   return (
     <div className="card taped">
-      <div style={{ fontWeight: 800, fontSize: 18 }}>Notes</div>
+      <div style={{ fontWeight: 800, fontSize: 18 }}>Заметки</div>
       <div className="small">Показываются только доступные вам блоки</div>
       <hr />
       <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." style={{ width:"100%" }} />

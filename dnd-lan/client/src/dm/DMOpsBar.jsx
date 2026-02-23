@@ -4,6 +4,7 @@ import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { resolveJoinUrl } from "../lib/joinUrl.js";
 import { Copy, QrCode, RefreshCcw } from "lucide-react";
+import { formatError } from "../lib/formatError.js";
 
 export default function DMOpsBar() {
   const { socket } = useSocket();
@@ -36,7 +37,7 @@ export default function DMOpsBar() {
     try {
       await Promise.all([loadInfo(), loadPlayers()]);
     } catch (e) {
-      setErr(String(e?.message || e));
+      setErr(formatError(e));
     }
   }, [loadInfo, loadPlayers]);
 
@@ -100,7 +101,7 @@ export default function DMOpsBar() {
       setCopied((prev) => ({ ...prev, [key]: true }));
       setTimeout(() => setCopied((prev) => ({ ...prev, [key]: false })), 1500);
     } catch {
-      window.prompt("Copy:", text);
+      setErr("Не удалось скопировать в буфер обмена.");
     }
   };
 
@@ -108,46 +109,46 @@ export default function DMOpsBar() {
     <div className="dm-ops">
       <div className="dm-ops-row">
         <div className="dm-ops-title">
-          {info?.party?.name ? `Party: ${info.party.name}` : "Party control"}
+          {info?.party?.name ? `Партия: ${info.party.name}` : "Управление партией"}
         </div>
         <div className="dm-ops-status">
-          <span className="badge ok">Online: {counts.online}</span>
-          <span className="badge warn">Idle: {counts.idle}</span>
-          <span className="badge off">Offline: {counts.offline}</span>
+          <span className="badge ok">Онлайн: {counts.online}</span>
+          <span className="badge warn">Нет активности: {counts.idle}</span>
+          <span className="badge off">Оффлайн: {counts.offline}</span>
         </div>
         <div className="dm-ops-actions">
-          <button className="btn secondary" onClick={load} title="Refresh">
+          <button className="btn secondary" onClick={load} title="Обновить">
             <RefreshCcw className="icon" aria-hidden="true" />
-            Refresh
+            Обновить
           </button>
         </div>
       </div>
 
       <div className="dm-ops-row">
         <div className="dm-ops-field">
-          <div className="dm-ops-label">Join URL</div>
+          <div className="dm-ops-label">Адрес подключения</div>
           <div className="dm-ops-value">{url}</div>
           <div className="dm-ops-actions">
             <button className="btn secondary" onClick={() => copyText(url, "url")}>
               <Copy className="icon" aria-hidden="true" />
-              {copied.url ? "Copied" : "Copy URL"}
+              {copied.url ? "Скопировано" : "Копировать адрес"}
             </button>
             <button className="btn secondary" onClick={() => setShowQr((v) => !v)}>
               <QrCode className="icon" aria-hidden="true" />
-              {showQr ? "Hide QR" : "QR"}
+              {showQr ? "Скрыть QR" : "QR-код"}
             </button>
           </div>
         </div>
 
         <div className="dm-ops-field">
-          <div className="dm-ops-label">Join code</div>
+          <div className="dm-ops-label">Код партии</div>
           <div className="dm-ops-value">
-            {joinCodeEnabled ? (joinCode || "-") : "Disabled"}
+            {joinCodeEnabled ? (joinCode || "-") : "Отключён"}
           </div>
           <div className="dm-ops-actions">
             <button className="btn secondary" onClick={() => copyText(joinCode, "code")} disabled={!joinCodeEnabled || !joinCode}>
               <Copy className="icon" aria-hidden="true" />
-              {copied.code ? "Copied" : "Copy code"}
+              {copied.code ? "Скопировано" : "Копировать код"}
             </button>
           </div>
         </div>
@@ -155,7 +156,7 @@ export default function DMOpsBar() {
 
       {err ? (
         <div className="badge off" style={{ marginTop: 8 }}>
-          Ops error: {err}
+          Ошибка: {err}
         </div>
       ) : null}
 

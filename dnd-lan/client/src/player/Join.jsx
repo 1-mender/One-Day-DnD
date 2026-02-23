@@ -27,7 +27,7 @@ export default function Join() {
     e.preventDefault();
     setErr("");
     if (readOnly) {
-      setErr("read_only");
+      setErr(formatError(ERROR_CODES.READ_ONLY));
       return;
     }
     try {
@@ -63,7 +63,7 @@ export default function Join() {
                     <input value={joinCode} onChange={(e)=>setJoinCode(e.target.value)} placeholder="Если включён DM" style={{ width: "100%" }} />
                   </div>
                 )}
-                {readOnly ? <div className="badge warn">Read-only: write disabled</div> : null}
+                {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
                 {err && <div className="badge off">Ошибка: {err}</div>}
                 <button className="btn" type="submit" disabled={readOnly}>Отправить заявку</button>
               </form>

@@ -1,6 +1,7 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SocketProvider } from "./context/SocketContext.jsx";
+import UiVariantSwitcher from "./components/UiVariantSwitcher.jsx";
 
 import Join from "./player/Join.jsx";
 import Waiting from "./player/Waiting.jsx";
@@ -37,45 +38,48 @@ const withSuspense = (element) => (
 function PageFallback() {
   return (
     <div className="card taped" style={{ padding: 16 }}>
-      <div className="small">Loading…</div>
+      <div className="small">Загрузка…</div>
     </div>
   );
 }
 
 export default function App() {
   return (
-    <Routes>
-      {/* Player */}
-      <Route path="/" element={<Join />} />
-      <Route path="/waiting" element={<SocketProvider role="waiting"><Waiting /></SocketProvider>} />
-      <Route path="/app" element={<SocketProvider role="player"><PlayerLayout /></SocketProvider>}>
-        <Route index element={<Navigate to="players" replace />} />
-        <Route path="players" element={withSuspense(<Players />)} />
-        <Route path="inventory" element={withSuspense(<Inventory />)} />
-        <Route path="notes" element={withSuspense(<Notes />)} />
-        <Route path="profile" element={withSuspense(<Profile />)} />
-        <Route path="arcade" element={withSuspense(<Arcade />)} />
-        <Route path="shop" element={withSuspense(<ShopJoe />)} />
-        <Route path="bestiary" element={withSuspense(<Bestiary />)} />
-      </Route>
+    <>
+      <Routes>
+        {/* Player */}
+        <Route path="/" element={<Join />} />
+        <Route path="/waiting" element={<SocketProvider role="waiting"><Waiting /></SocketProvider>} />
+        <Route path="/app" element={<SocketProvider role="player"><PlayerLayout /></SocketProvider>}>
+          <Route index element={<Navigate to="players" replace />} />
+          <Route path="players" element={withSuspense(<Players />)} />
+          <Route path="inventory" element={withSuspense(<Inventory />)} />
+          <Route path="notes" element={withSuspense(<Notes />)} />
+          <Route path="profile" element={withSuspense(<Profile />)} />
+          <Route path="arcade" element={withSuspense(<Arcade />)} />
+          <Route path="shop" element={withSuspense(<ShopJoe />)} />
+          <Route path="bestiary" element={withSuspense(<Bestiary />)} />
+        </Route>
 
-      {/* DM */}
-      <Route path="/dm" element={<DMLogin />} />
-      <Route path="/dm/setup" element={<DMSetup />} />
-      <Route path="/dm/app" element={<SocketProvider role="dm"><DMLayout /></SocketProvider>}>
-        <Route index element={<Navigate to="dashboard" replace />} />
-        <Route path="dashboard" element={withSuspense(<DMDashboard />)} />
-        <Route path="lobby" element={withSuspense(<DMLobby />)} />
-        <Route path="players" element={withSuspense(<DMPlayers />)} />
-        <Route path="players/:id/profile" element={withSuspense(<DMPlayerProfile />)} />
-        <Route path="inventory" element={withSuspense(<DMInventory />)} />
-        <Route path="bestiary" element={withSuspense(<DMBestiary />)} />
-        <Route path="events" element={withSuspense(<DMEvents />)} />
-        <Route path="info" element={withSuspense(<DMInfoBlocks />)} />
-        <Route path="settings" element={withSuspense(<DMSettings />)} />
-      </Route>
+        {/* DM */}
+        <Route path="/dm" element={<DMLogin />} />
+        <Route path="/dm/setup" element={<DMSetup />} />
+        <Route path="/dm/app" element={<SocketProvider role="dm"><DMLayout /></SocketProvider>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={withSuspense(<DMDashboard />)} />
+          <Route path="lobby" element={withSuspense(<DMLobby />)} />
+          <Route path="players" element={withSuspense(<DMPlayers />)} />
+          <Route path="players/:id/profile" element={withSuspense(<DMPlayerProfile />)} />
+          <Route path="inventory" element={withSuspense(<DMInventory />)} />
+          <Route path="bestiary" element={withSuspense(<DMBestiary />)} />
+          <Route path="events" element={withSuspense(<DMEvents />)} />
+          <Route path="info" element={withSuspense(<DMInfoBlocks />)} />
+          <Route path="settings" element={withSuspense(<DMSettings />)} />
+        </Route>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <UiVariantSwitcher />
+    </>
   );
 }

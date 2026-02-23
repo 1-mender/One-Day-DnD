@@ -1,6 +1,11 @@
 export const UI_VARIANTS = ["v1", "v2", "v3"];
 const DEFAULT_UI = "v3";
 
+function emitUiVariantChanged(variant) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent("ui-variant:changed", { detail: variant }));
+}
+
 function safeGetUiVariant() {
   try {
     return localStorage.getItem("uiVariant");
@@ -28,6 +33,7 @@ export function applyUiVariant() {
   const saved = safeGetUiVariant();
   const v = UI_VARIANTS.includes(qp) ? qp : UI_VARIANTS.includes(saved) ? saved : DEFAULT_UI;
   document.documentElement.dataset.ui = v;
+  emitUiVariantChanged(v);
 }
 
 export function setUiVariant(v) {
@@ -35,6 +41,7 @@ export function setUiVariant(v) {
   if (!UI_VARIANTS.includes(v)) return;
   safeSetUiVariant(v);
   document.documentElement.dataset.ui = v;
+  emitUiVariantChanged(v);
 }
 
 export function cycleUiVariant() {

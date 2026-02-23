@@ -29,10 +29,17 @@ export function ToastProvider({ children }) {
       {children}
       <div className="toast-viewport">
         {toasts.map((t) => (
-          <div key={t.id} className={`toast ${t.kind}`}>
+          <div key={t.id} className={`toast ${t.kind}`} role="status" aria-live="polite">
             <div className="toast-head">
               <div className="toast-title">{t.title}</div>
-              <button className="btn secondary" onClick={() => api._remove(t.id)}>X</button>
+              <button
+                type="button"
+                className="btn secondary"
+                aria-label="Закрыть уведомление"
+                onClick={() => api._remove(t.id)}
+              >
+                X
+              </button>
             </div>
             <div className="toast-msg">{t.message}</div>
           </div>

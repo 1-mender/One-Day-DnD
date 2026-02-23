@@ -1,5 +1,6 @@
 export const ERROR_CODES = {
   OFFLINE: "offline",
+  READ_ONLY: "read_only",
   REQUEST_FAILED: "request_failed",
   UPLOAD_FAILED: "upload_failed",
   EXPORT_FAILED: "export_failed",
@@ -7,4 +8,50 @@ export const ERROR_CODES = {
   LOAD_FAILED: "load_failed",
   SERVER_INFO_FAILED: "server_info_failed",
   ME_FAILED: "me_failed"
+};
+
+export const ERROR_MESSAGES_RU = {
+  offline: "Нет соединения с сервером. Проверьте сеть и попробуйте снова.",
+  read_only: "Режим только чтения: изменение данных сейчас недоступно.",
+  request_failed: "Не удалось выполнить запрос. Попробуйте ещё раз.",
+  upload_failed: "Не удалось загрузить файл.",
+  export_failed: "Не удалось выполнить экспорт.",
+  import_failed: "Не удалось выполнить импорт.",
+  load_failed: "Не удалось загрузить данные.",
+  server_info_failed: "Не удалось получить данные сервера.",
+  me_failed: "Не удалось загрузить профиль текущего игрока.",
+
+  not_authenticated: "Сессия истекла. Войдите снова.",
+  player_token_required: "Отсутствует токен игрока. Переподключитесь к партии.",
+  bad_credentials: "Неверный логин или пароль.",
+  bad_join_code: "Неверный код партии.",
+  requests_disabled: "Приём заявок в лобби временно отключён.",
+  forbidden: "Недостаточно прав для этого действия.",
+  rate_limited: "Слишком много запросов. Повторите позже.",
+  payload_too_large: "Слишком большой объём данных для отправки.",
+  unsupported_file_type: "Неподдерживаемый тип файла.",
+  file_too_large: "Файл слишком большой.",
+  invalid_input: "Некорректные входные данные.",
+  not_ready: "Сервер ещё не готов. Подождите немного и повторите.",
+
+  tickets_disabled: "Аркада и билеты сейчас отключены.",
+  game_disabled: "Эта игра сейчас недоступна.",
+  not_enough_tickets: "Недостаточно билетов для действия.",
+  daily_game_limit: "Достигнут дневной лимит попыток.",
+  daily_spend_cap: "Достигнут дневной лимит трат.",
+  invalid_performance: "Некорректный бонус за выполнение.",
+  invalid_seed: "Сессия игры устарела. Откройте игру заново.",
+  invalid_proof: "Результат игры не прошёл проверку.",
+  invalid_game: "Игра недоступна.",
+  invalid_mode: "Выбранный режим недоступен.",
+  invalid_outcome: "Некорректный результат матча.",
+  already_in_queue: "Вы уже в очереди.",
+  already_submitted: "Результат уже отправлен.",
+  match_not_found: "Матч не найден.",
+  opponent_not_found: "Соперник не найден.",
+  winner_locked: "Победитель уже зафиксирован.",
+
+  dm_user_not_found: "Учётная запись DM не найдена.",
+  setup_secret_required: "Неверный или отсутствующий setup secret.",
+  already_setup: "Первичная настройка уже выполнена."
 };

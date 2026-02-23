@@ -32,10 +32,10 @@ export default function PlayerLayout() {
   const degradedReason = netState?.degradedReason;
   const offlineDetails =
     socketErr && socketErr !== "connect_error"
-      ? `Socket error: ${socketErr}`
+      ? "Проблема с подключением к серверу."
       : "";
   const degradedDetails = netState?.degraded
-    ? `Read-only mode: ${degradedReason || "not_ready"}`
+    ? formatError(degradedReason || ERROR_CODES.READ_ONLY)
     : "";
 
   useEffect(() => {
@@ -231,14 +231,14 @@ export default function PlayerLayout() {
             <div>
               <b>Имперсонализация DM:</b> {me?.player?.displayName ? `как ${me.player.displayName}` : "как игрок"}
               <div className="small">
-                Режим: <b>{impMode === "ro" ? "READ-ONLY" : "EDIT"}</b> {err ? `• ошибка: ${err}` : ""}
+                Режим: <b>{impMode === "ro" ? "только просмотр" : "редактирование"}</b> {err ? `• ошибка: ${err}` : ""}
               </div>
             </div>
             <div className="row" style={{ gap: 8 }}>
               {impMode === "ro" ? (
                 <button className="btn" disabled={busy} onClick={() => setWriteMode("rw")}>Разрешить изменения</button>
               ) : (
-                <button className="btn secondary" disabled={busy} onClick={() => setWriteMode("ro")}>Сделать read-only</button>
+                <button className="btn secondary" disabled={busy} onClick={() => setWriteMode("ro")}>Переключить в режим чтения</button>
               )}
               <button
                 className="btn secondary"

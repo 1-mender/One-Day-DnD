@@ -12,7 +12,7 @@ test("formatDurationMs formats seconds and minutes", () => {
 });
 
 test("formatTicketError maps known code and keeps unknown", () => {
-  assert.equal(formatTicketError("invalid_mode"), "Selected mode is not available.");
+  assert.equal(formatTicketError("invalid_mode"), "Выбранный режим недоступен.");
   assert.equal(formatTicketError("custom_error"), "custom_error");
 });
 

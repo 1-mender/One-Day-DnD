@@ -36,21 +36,21 @@ export default function DMSetup() {
     <VintageShell>
       <div className="container">
         <div className="card taped panel">
-          <div style={{ fontWeight: 900, fontSize: 22 }}>First launch: create DM account</div>
-          <div className="small">Use a strong password with at least 6 characters.</div>
+          <div style={{ fontWeight: 900, fontSize: 22 }}>Первый запуск: создайте аккаунт DM</div>
+          <div className="small">Используйте надёжный пароль длиной не менее 6 символов.</div>
           <hr />
           <form className="list" onSubmit={submit}>
-            <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="username" style={{ width: "100%" }} />
-            <input value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="password (>=6)" type="password" style={{ width: "100%" }} />
+            <input value={username} onChange={(e)=>setUsername(e.target.value)} placeholder="Логин" style={{ width: "100%" }} />
+            <input value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Пароль (минимум 6 символов)" type="password" style={{ width: "100%" }} />
             <input
               value={setupSecret}
               onChange={(e)=>setSetupSecret(e.target.value)}
-              placeholder="setup secret (optional)"
+              placeholder="Setup secret (необязательно)"
               style={{ width: "100%" }}
             />
-            {err && <div className="badge off">Error: {err}</div>}
-            {netErr && <div className="badge off">Network: {netErr}</div>}
-            <button className="btn" type="submit">Create</button>
+            {err && <div className="badge off">Ошибка: {err}</div>}
+            {netErr && <div className="badge off">Сеть: {netErr}</div>}
+            <button className="btn" type="submit">Создать</button>
           </form>
         </div>
       </div>

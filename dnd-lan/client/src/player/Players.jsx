@@ -60,7 +60,7 @@ export default function Players() {
       <div className="spread-col">
         <div className="card taped scrap-card paper-stack no-stamp">
           <div style={{ fontWeight: 1000, fontSize: 20 }}>Игроки</div>
-          <div className="small">Показаны только Online/Idle (Offline скрыты)</div>
+          <div className="small">Показаны только статусы «Онлайн» и «Нет активности» (оффлайн скрыт)</div>
           <hr />
           <div className="row" style={{ flexWrap: "wrap" }}>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." style={{ width: "min(520px, 100%)" }} />
@@ -76,7 +76,7 @@ export default function Players() {
                 <div className="item"><Skeleton h={120} w="100%" /></div>
               </div>
             ) : filtered.length === 0 ? (
-              <EmptyState title="Нет онлайн игроков" hint="Offline игроки скрыты. Подключите игроков через лобби." />
+              <EmptyState title="Нет игроков онлайн" hint="Оффлайн-игроки скрыты. Подключите игроков через лобби." />
             ) : (
               <div className="list" ref={listRef}>
                 {filtered.map((p) => (
@@ -96,21 +96,21 @@ export default function Players() {
           <div className="list">
             <div className="item">
               <div className="kv">
-                <div style={{ fontWeight: 700 }}>Online</div>
+                <div style={{ fontWeight: 700 }}>Онлайн</div>
                 <div className="small">Игрок активен</div>
               </div>
               <PlayerStatusPill status="online" />
             </div>
             <div className="item">
               <div className="kv">
-                <div style={{ fontWeight: 700 }}>Idle</div>
+                <div style={{ fontWeight: 700 }}>Нет активности</div>
                 <div className="small">Нет активности</div>
               </div>
               <PlayerStatusPill status="idle" />
             </div>
             <div className="item">
               <div className="kv">
-                <div style={{ fontWeight: 700 }}>Offline</div>
+                <div style={{ fontWeight: 700 }}>Оффлайн</div>
                 <div className="small">Отключён</div>
               </div>
               <PlayerStatusPill status="offline" />
