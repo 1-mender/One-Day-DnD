@@ -209,6 +209,16 @@ const MIGRATIONS = [
       database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_party_hidden_name_id ON monsters(party_id, is_hidden, name COLLATE NOCASE, id);");
       database.exec("CREATE INDEX IF NOT EXISTS idx_info_blocks_party_updated ON info_blocks(party_id, updated_at DESC);");
     }
+  },
+  {
+    version: 12,
+    name: "inventory_layout_slots",
+    up(database) {
+      addColumnIfMissing(database, "inventory_items", "inv_container", "ALTER TABLE inventory_items ADD COLUMN inv_container TEXT NOT NULL DEFAULT 'backpack';");
+      addColumnIfMissing(database, "inventory_items", "slot_x", "ALTER TABLE inventory_items ADD COLUMN slot_x INTEGER;");
+      addColumnIfMissing(database, "inventory_items", "slot_y", "ALTER TABLE inventory_items ADD COLUMN slot_y INTEGER;");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_inventory_layout ON inventory_items(player_id, inv_container, slot_y, slot_x);");
+    }
   }
 ];
 

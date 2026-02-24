@@ -333,7 +333,12 @@ export default function DMEvents() {
                     </div>
                   </div>
                   <div className="row u-row-gap-6">
-                    <button className="btn secondary icon-btn" onClick={() => copyEvent(eventItem)} title={t("dmEvents.copyButton")}>
+                    <button
+                      className="btn secondary icon-btn"
+                      onClick={() => copyEvent(eventItem)}
+                      title={t("dmEvents.copyButton")}
+                      aria-label={t("dmEvents.copyButton")}
+                    >
                       <Copy className="icon" aria-hidden="true" />
                     </button>
                   </div>

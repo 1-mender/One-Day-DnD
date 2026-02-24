@@ -1,18 +1,18 @@
 @layer base {
 :root {
-  --fd-color-bg: #f6ead1;
-  --fd-color-surface: #f3e4c6;
-  --fd-color-surface-strong: #ead7b0;
-  --fd-color-border: rgba(80, 60, 30, 0.24);
-  --fd-color-text: #2b2216;
-  --fd-color-text-muted: rgba(43, 34, 22, 0.75);
-  --fd-color-info: #d9e8ff;
-  --fd-color-success: #d5f2d5;
-  --fd-color-warning: #f3e2b9;
-  --fd-color-danger: #f2c1c1;
+  --fd-color-bg: #f4f1e6;
+  --fd-color-surface: #faf7ee;
+  --fd-color-surface-strong: #f2ecde;
+  --fd-color-border: rgba(117, 105, 76, 0.32);
+  --fd-color-text: #2e2a1e;
+  --fd-color-text-muted: #6a624f;
+  --fd-color-info: #dbe9f4;
+  --fd-color-success: #d7ead7;
+  --fd-color-warning: #f2e3c1;
+  --fd-color-danger: #f1c6c0;
 
-  --fd-font-display: "Cinzel", ui-serif, Georgia, "Times New Roman", serif;
-  --fd-font-body: ui-serif, Georgia, "Times New Roman", serif;
+  --fd-font-display: "IM Fell English", "EB Garamond", ui-serif, Georgia, "Times New Roman", serif;
+  --fd-font-body: "EB Garamond", ui-serif, Georgia, "Times New Roman", serif;
   --fd-size-xs: 12px;
   --fd-size-sm: 14px;
   --fd-size-md: 16px;
@@ -30,8 +30,8 @@
   --fd-radius-md: 14px;
   --fd-radius-lg: 18px;
 
-  --fd-shadow-sm: 0 6px 12px rgba(0, 0, 0, 0.14);
-  --fd-shadow-md: 0 12px 22px rgba(0, 0, 0, 0.2);
+  --fd-shadow-sm: 0 8px 18px rgba(35, 33, 24, 0.12);
+  --fd-shadow-md: 0 16px 30px rgba(35, 33, 24, 0.18);
 }
 
 .fd-page-header {

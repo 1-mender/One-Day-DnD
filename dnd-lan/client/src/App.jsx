@@ -1,7 +1,6 @@
 import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SocketProvider } from "./context/SocketContext.jsx";
-import UiVariantSwitcher from "./components/UiVariantSwitcher.jsx";
 import { t } from "./i18n/index.js";
 
 import Join from "./player/Join.jsx";
@@ -14,6 +13,7 @@ import DMLayout from "./dm/DMLayout.jsx";
 
 const Players = lazy(() => import("./player/Players.jsx"));
 const Inventory = lazy(() => import("./player/Inventory.jsx"));
+const Transfers = lazy(() => import("./player/Transfers.jsx"));
 const Notes = lazy(() => import("./player/Notes.jsx"));
 const Bestiary = lazy(() => import("./player/Bestiary.jsx"));
 const Profile = lazy(() => import("./player/Profile.jsx"));
@@ -55,6 +55,7 @@ export default function App() {
           <Route index element={<Navigate to="players" replace />} />
           <Route path="players" element={withSuspense(<Players />)} />
           <Route path="inventory" element={withSuspense(<Inventory />)} />
+          <Route path="transfers" element={withSuspense(<Transfers />)} />
           <Route path="notes" element={withSuspense(<Notes />)} />
           <Route path="profile" element={withSuspense(<Profile />)} />
           <Route path="arcade" element={withSuspense(<Arcade />)} />
@@ -80,7 +81,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <UiVariantSwitcher />
     </>
   );
 }

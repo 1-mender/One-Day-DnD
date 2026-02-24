@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import InventoryItemCard, { pickInventoryIcon } from "../components/vintage/InventoryItemCard.jsx";
+import InventorySlotGrid from "./InventorySlotGrid.jsx";
 import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { Eye, EyeOff, LayoutGrid, List, Package, Plus, RefreshCcw, Scale, Send } from "lucide-react";
+import { Eye, EyeOff, Grid3x3, LayoutGrid, List, Package, Plus, RefreshCcw, Scale, Send } from "lucide-react";
 import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import EmptyState from "../components/ui/EmptyState.jsx";
 import Skeleton from "../components/ui/Skeleton.jsx";
@@ -25,9 +27,9 @@ import { useReadOnly } from "../hooks/useReadOnly.js";
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 const FAVORITE_TAG = "favorite";
 const ENV_MAX_WEIGHT = Number(import.meta.env.VITE_INVENTORY_WEIGHT_LIMIT || 0);
-const TRANSFER_REFRESH_MS = 30_000;
 
 export default function Inventory() {
+  const nav = useNavigate();
   const toast = useToast();
 
   const [q, setQ] = useQueryState("q", "");
@@ -35,11 +37,6 @@ export default function Inventory() {
   const [rarity, setRarity] = useQueryState("rarity", "");
   const [view, setView] = useQueryState("view", "list");
   const [items, setItems] = useState([]);
-  const [transfers, setTransfers] = useState([]);
-  const [transfersLoading, setTransfersLoading] = useState(false);
-  const [outbox, setOutbox] = useState([]);
-  const [outboxLoading, setOutboxLoading] = useState(false);
-  const [outboxQ, setOutboxQ] = useState("");
   const [players, setPlayers] = useState([]);
   const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
   const [open, setOpen] = useState(false);
@@ -50,11 +47,17 @@ export default function Inventory() {
   const [transferTo, setTransferTo] = useState("");
   const [transferQty, setTransferQty] = useState(1);
   const [transferNote, setTransferNote] = useState("");
+  const [splitOpen, setSplitOpen] = useState(false);
+  const [splitItem, setSplitItem] = useState(null);
+  const [splitQty, setSplitQty] = useState(1);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
   const lite = useLiteMode();
   const [listRef] = useAutoAnimate({ duration: lite ? 0 : 200 });
+  const [iconQuery, setIconQuery] = useState("");
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const [layoutSaving, setLayoutSaving] = useState(false);
 
   const readOnly = useReadOnly();
   const actionsVariant = lite || view === "grid" ? "compact" : "stack";
@@ -76,30 +79,6 @@ export default function Inventory() {
     }
   }, []);
 
-  const loadTransfers = useCallback(async () => {
-    setTransfersLoading(true);
-    try {
-      const r = await api.invTransferInbox();
-      setTransfers(r.items || []);
-    } catch {
-      setTransfers([]);
-    } finally {
-      setTransfersLoading(false);
-    }
-  }, []);
-
-  const loadOutbox = useCallback(async () => {
-    setOutboxLoading(true);
-    try {
-      const r = await api.invTransferOutbox();
-      setOutbox(r.items || []);
-    } catch {
-      setOutbox([]);
-    } finally {
-      setOutboxLoading(false);
-    }
-  }, []);
-
   const loadPlayers = useCallback(async () => {
     try {
       const [meRes, listRes] = await Promise.all([api.me(), api.players()]);
@@ -114,45 +93,32 @@ export default function Inventory() {
   useEffect(() => {
     if (!socket) return () => {};
     load().catch(() => {});
-    loadTransfers().catch(() => {});
-    loadOutbox().catch(() => {});
     const onUpdated = () => load().catch(() => {});
     const onProfile = () => load().catch(() => {});
-    const onTransfers = () => {
-      loadTransfers().catch(() => {});
-      loadOutbox().catch(() => {});
-    };
     socket.on("inventory:updated", onUpdated);
     socket.on("profile:updated", onProfile);
-    socket.on("transfers:updated", onTransfers);
     return () => {
       socket.off("inventory:updated", onUpdated);
       socket.off("profile:updated", onProfile);
-      socket.off("transfers:updated", onTransfers);
     };
-  }, [load, loadTransfers, loadOutbox, socket]);
-
-  useEffect(() => {
-    loadTransfers().catch(() => {});
-  }, [loadTransfers]);
-
-  useEffect(() => {
-    loadOutbox().catch(() => {});
-  }, [loadOutbox]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      loadTransfers().catch(() => {});
-      loadOutbox().catch(() => {});
-    }, TRANSFER_REFRESH_MS);
-    return () => clearInterval(id);
-  }, [loadTransfers, loadOutbox]);
+  }, [load, socket]);
 
   useEffect(() => {
     if (transferOpen && !transferTo && players.length) {
       setTransferTo(String(players[0].id));
     }
   }, [transferOpen, transferTo, players]);
+
+  useEffect(() => {
+    if (iconQuery) setIconPickerOpen(true);
+  }, [iconQuery]);
+
+  useEffect(() => {
+    if (!open) {
+      setIconQuery("");
+      setIconPickerOpen(false);
+    }
+  }, [open]);
 
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
@@ -162,7 +128,10 @@ export default function Inventory() {
     () => items.filter((it) => Array.isArray(it.tags) && it.tags.includes(FAVORITE_TAG)),
     [items]
   );
-  const outboxFiltered = useMemo(() => filterTransfers(outbox, outboxQ), [outbox, outboxQ]);
+  const filteredIconSections = useMemo(
+    () => filterIconSections(INVENTORY_ICON_SECTIONS, iconQuery),
+    [iconQuery]
+  );
   const hasAny = items.length > 0;
   const SelectedIcon = getInventoryIcon(form.iconKey);
 
@@ -202,6 +171,20 @@ export default function Inventory() {
     setTransferNote("");
     setTransferOpen(true);
     if (!players.length) loadPlayers().catch(() => {});
+  }
+
+  function startSplit(it) {
+    if (readOnly) return;
+    const reserved = Number(it?.reservedQty ?? it?.reserved_qty ?? 0);
+    const total = Number(it?.qty || 0);
+    const available = Math.max(0, total - reserved);
+    if (available < 2) {
+      toast.warn("Недостаточно количества для разделения");
+      return;
+    }
+    setSplitItem(it);
+    setSplitQty(1);
+    setSplitOpen(true);
   }
 
   async function save() {
@@ -266,77 +249,7 @@ export default function Inventory() {
       });
       setTransferOpen(false);
       await load();
-      await loadTransfers();
-      await loadOutbox();
       toast.success("Передача отправлена");
-    } catch (e) {
-      const msg = formatError(e);
-      setErr(msg);
-      toast.error(msg);
-    }
-  }
-
-  async function acceptTransfer(tr) {
-    if (readOnly) return;
-    setErr("");
-    try {
-      const r = await api.invTransferAccept(tr.id);
-      if (r?.status === "expired") {
-        await loadTransfers();
-        await loadOutbox();
-        await load();
-        toast.warn("Передача истекла");
-        return;
-      }
-      await loadTransfers();
-      await loadOutbox();
-      await load();
-      toast.success("Передача принята");
-    } catch (e) {
-      const msg = formatError(e);
-      setErr(msg);
-      toast.error(msg);
-    }
-  }
-
-  async function rejectTransfer(tr) {
-    if (readOnly) return;
-    setErr("");
-    try {
-      const r = await api.invTransferReject(tr.id);
-      if (r?.status === "expired") {
-        await loadTransfers();
-        await loadOutbox();
-        await load();
-        toast.warn("Передача истекла");
-        return;
-      }
-      await loadTransfers();
-      await loadOutbox();
-      await load();
-      toast.success("Передача отклонена");
-    } catch (e) {
-      const msg = formatError(e);
-      setErr(msg);
-      toast.error(msg);
-    }
-  }
-
-  async function cancelTransfer(tr) {
-    if (readOnly) return;
-    setErr("");
-    try {
-      const r = await api.invTransferCancel(tr.id);
-      if (r?.status === "expired") {
-        await loadTransfers();
-        await loadOutbox();
-        await load();
-        toast.warn("Передача истекла");
-        return;
-      }
-      await loadOutbox();
-      await load();
-      toast.success("Передача отменена");
     } catch (e) {
       const msg = formatError(e);
       setErr(msg);
@@ -371,6 +284,57 @@ export default function Inventory() {
     }
   }
 
+  async function moveLayoutItems(moves) {
+    if (readOnly || !Array.isArray(moves) || !moves.length) return;
+    const snapshot = items;
+    setLayoutSaving(true);
+    setItems((current) => applyLayoutMoves(current, moves));
+    try {
+      await api.invLayoutUpdateMine(moves);
+    } catch (e) {
+      setItems(snapshot);
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+      await load();
+    } finally {
+      setLayoutSaving(false);
+    }
+  }
+
+  async function confirmSplit() {
+    if (readOnly || !splitItem) return;
+    const reserved = Number(splitItem?.reservedQty ?? splitItem?.reserved_qty ?? 0);
+    const total = Number(splitItem?.qty || 0);
+    const available = Math.max(0, total - reserved);
+    const qty = Math.floor(Number(splitQty));
+    if (!Number.isFinite(qty) || qty < 1 || qty >= available) {
+      toast.error("Некорректное количество для разделения");
+      return;
+    }
+    setErr("");
+    try {
+      const currentPayload = toInventoryPayload(splitItem, {
+        qty: total - qty,
+        tags: Array.isArray(splitItem.tags) ? [...splitItem.tags] : []
+      });
+      await api.invUpdateMine(splitItem.id, currentPayload);
+      const newPayload = toInventoryPayload(splitItem, {
+        qty,
+        tags: Array.isArray(splitItem.tags) ? [...splitItem.tags] : []
+      }, { includeSlot: false });
+      await api.invAddMine(newPayload);
+      setSplitOpen(false);
+      setSplitItem(null);
+      await load();
+      toast.success("Стак разделен");
+    } catch (e) {
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+    }
+  }
+
   const hasWeightLimit = Number.isFinite(maxWeight) && maxWeight > 0;
   const weightRatio = hasWeightLimit ? totalWeightAll / maxWeight : 0;
   const weightStatus = hasWeightLimit ? (weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok") : "secondary";
@@ -379,19 +343,92 @@ export default function Inventory() {
     : 0;
 
   return (
-    <div className={`card taped inventory-shell${lite ? " page-lite" : ""}`.trim()}>
-      <div className="inv-head">
-        <div className="inv-head-main">
-      <div style={{ fontWeight: 800, fontSize: 18 }}>Инвентарь</div>
-      <div className="small">Вес (по фильтру): {totalWeight.toFixed(2)} {readOnly ? "• read-only" : ""}</div>
+    <div className={`card inventory-shell${lite ? " page-lite" : ""}`.trim()}>
+      <div className="inv-header">
+        <div className="inv-header-main">
+          <div className="inv-title-lg">Инвентарь</div>
+          <div className="inv-subtitle">
+            Вес (по фильтру): {totalWeight.toFixed(2)}
+            {readOnly ? <span className="badge warn">read-only</span> : null}
+          </div>
         </div>
-        <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
+        <div className="inv-header-actions">
+          <button className="btn secondary" onClick={() => nav("/app/transfers")}>Передачи</button>
+          <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
+          <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+        </div>
       </div>
-      <hr />
 
-      {favorites.length ? (
-        <div className="inv-quick-bar">
-          <div className="inv-quick-title">Избранные предметы</div>
+      <div className="inv-stats">
+        <div className="inv-stat">
+          <Package className="icon" aria-hidden="true" />
+          <div>
+            <div className="inv-stat-label">Всего</div>
+            <div className="inv-stat-value">{filtered.length}</div>
+          </div>
+        </div>
+        <div className="inv-stat">
+          <Eye className="icon" aria-hidden="true" />
+          <div>
+            <div className="inv-stat-label">Публичные</div>
+            <div className="inv-stat-value">{publicCount}</div>
+          </div>
+        </div>
+        <div className="inv-stat">
+          <EyeOff className="icon" aria-hidden="true" />
+          <div>
+            <div className="inv-stat-label">Скрытые</div>
+            <div className="inv-stat-value">{hiddenCount}</div>
+          </div>
+        </div>
+        <div className={`inv-stat ${weightStatus}`}>
+          <Scale className="icon" aria-hidden="true" />
+          <div>
+            <div className="inv-stat-label">Вес</div>
+            <div className="inv-stat-value">
+              {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="inv-panel inv-filters">
+        <div className="inv-panel-head">
+          <div className="inv-panel-title">Фильтры</div>
+          <div className="inv-view-toggle">
+            <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
+              <List className="icon" aria-hidden="true" />Список
+            </button>
+            <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
+              <LayoutGrid className="icon" aria-hidden="true" />Плитка
+            </button>
+            <button className={`btn ${view === "slots" ? "" : "secondary"}`} onClick={() => setView("slots")}>
+              <Grid3x3 className="icon" aria-hidden="true" />RPG
+            </button>
+          </div>
+        </div>
+        <div className="inv-filter-row">
+          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." />
+          <select value={vis} onChange={(e)=>setVis(e.target.value)}>
+            <option value="">Видимость: все</option>
+            <option value="public">Публичные</option>
+            <option value="hidden">Скрытые</option>
+          </select>
+          <select value={rarity} onChange={(e)=>setRarity(e.target.value)}>
+            <option value="">Редкость: все</option>
+            {RARITY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="inv-panel inv-favorites">
+        <div className="inv-panel-head">
+          <div className="inv-panel-title">Избранное</div>
+          <div className="small">Быстрые слоты предметов</div>
+        </div>
+        {favorites.length ? (
           <div className="inv-quick-list">
             {favorites.map((it) => {
               const icon = pickInventoryIcon(it);
@@ -416,153 +453,18 @@ export default function Inventory() {
               );
             })}
           </div>
-        </div>
-      ) : (
-        <div className="small inv-quick-empty">
-          Добавьте предмет в избранное, чтобы он появился в быстрых слотах.
-        </div>
-      )}
-      <div className="inv-toolbar">
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." />
-        <select value={vis} onChange={(e)=>setVis(e.target.value)}>
-          <option value="">Видимость: все</option>
-              <option value="public">Публичные</option>
-              <option value="hidden">Скрытые</option>
-        </select>
-        <select value={rarity} onChange={(e)=>setRarity(e.target.value)}>
-          <option value="">Редкость: все</option>
-          {RARITY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
-          <List className="icon" aria-hidden="true" />Список
-        </button>
-        <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
-          <LayoutGrid className="icon" aria-hidden="true" />Плитка
-        </button>
-        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+        ) : (
+          <div className="small inv-quick-empty">
+            Добавьте предмет в избранное, чтобы он появился в быстрых слотах.
+          </div>
+        )}
       </div>
 
-      <div className="small" style={{ marginTop: 10 }}>
-        <div className="row" style={{ flexWrap: "wrap" }}>
-          <span className="badge"><Package className="icon" aria-hidden="true" />Всего: {filtered.length}</span>
-          <span className="badge ok"><Eye className="icon" aria-hidden="true" />Публичные: {publicCount}</span>
-          <span className="badge off"><EyeOff className="icon" aria-hidden="true" />Скрытые: {hiddenCount}</span>
-          <span className={`badge ${weightStatus}`}>
-            <Scale className="icon" aria-hidden="true" />
-            Вес: {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
-          </span>
-          {readOnly ? <span className="badge warn">read-only</span> : null}
+      <div className="inv-panel inv-items">
+        <div className="inv-panel-head">
+          <div className="inv-panel-title">Предметы</div>
+          <div className="small">Все предметы инвентаря</div>
         </div>
-      </div>
-
-      <div className="paper-note" style={{ marginTop: 12 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div className="title">Входящие передачи</div>
-          <button className="btn secondary" onClick={loadTransfers}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
-        </div>
-        <div className="small note-hint" style={{ marginTop: 6 }}>
-          Подтвердите получение, чтобы предмет попал в инвентарь.
-        </div>
-        <div style={{ marginTop: 8 }}>
-          {transfersLoading ? (
-            <Skeleton h={80} w="100%" />
-          ) : transfers.length === 0 ? (
-            <div className="small">Нет входящих передач.</div>
-          ) : (
-            <div className="list">
-              {transfers.map((tr) => (
-                <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
-                        <span className="badge secondary">Истекла</span>
-                      ) : null}
-                      <span className="badge secondary">от {tr.fromName || `#${tr.fromPlayerId}`}</span>
-                      <span className="badge">x{tr.qty}</span>
-                      <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
-                    </div>
-                    <div className="small" style={{ marginTop: 6 }}>
-                      Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
-                    </div>
-                    {tr.note ? (
-                      <div className="small" style={{ marginTop: 6 }}>
-                        <b>Сообщение:</b> {tr.note}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <button className="btn" onClick={() => acceptTransfer(tr)} disabled={readOnly}>
-                      <Send className="icon" aria-hidden="true" />Принять
-                    </button>
-                    <button className="btn secondary" onClick={() => rejectTransfer(tr)} disabled={readOnly}>
-                      Отклонить
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="paper-note" style={{ marginTop: 12 }}>
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <div className="title">Исходящие передачи</div>
-          <button className="btn secondary" onClick={loadOutbox}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
-        </div>
-        <div className="small note-hint" style={{ marginTop: 6 }}>
-          Передачи можно отменить, пока получатель не подтвердил.
-        </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <input
-            value={outboxQ}
-            onChange={(e) => setOutboxQ(e.target.value)}
-            placeholder="Поиск в исходящих..."
-            style={inp}
-          />
-        </div>
-        <div style={{ marginTop: 8 }}>
-          {outboxLoading ? (
-            <Skeleton h={80} w="100%" />
-          ) : outboxFiltered.length === 0 ? (
-            <div className="small">{outbox.length ? "Ничего не найдено." : "Нет исходящих передач."}</div>
-          ) : (
-            <div className="list">
-              {outboxFiltered.map((tr) => (
-                <div key={tr.id} className="item" style={{ alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      {Number(tr.expiresAt || 0) > 0 && Number(tr.expiresAt) <= Date.now() ? (
-                        <span className="badge secondary">Истекла</span>
-                      ) : null}
-                      <span className="badge secondary">кому {tr.toName || `#${tr.toPlayerId}`}</span>
-                      <span className="badge">x{tr.qty}</span>
-                      <span className="small">{new Date(tr.createdAt).toLocaleString()}</span>
-                    </div>
-                    <div className="small" style={{ marginTop: 6 }}>
-                      Предмет: <b>{tr.itemName || `#${tr.itemId}`}</b>
-                    </div>
-                    {tr.note ? (
-                      <div className="small" style={{ marginTop: 6 }}>
-                        <b>Сообщение:</b> {tr.note}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <button className="btn secondary" onClick={() => cancelTransfer(tr)} disabled={readOnly}>
-                      Отменить
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
         <ErrorBanner message={err} onRetry={load} />
 
         {loading ? (
@@ -571,6 +473,25 @@ export default function Inventory() {
             <div className="item"><Skeleton h={86} w="100%" /></div>
             <div className="item"><Skeleton h={86} w="100%" /></div>
           </div>
+        ) : view === "slots" ? (
+          items.length === 0 ? (
+            <EmptyState
+              title="Инвентарь пуст"
+              hint="Добавьте предмет, чтобы начать."
+            />
+          ) : (
+            <InventorySlotGrid
+              items={items}
+              readOnly={readOnly}
+              busy={layoutSaving}
+              onMove={moveLayoutItems}
+              onItemOpen={(item) => startEdit(item)}
+              onTransferItem={(item) => startTransfer(item)}
+              onToggleFavoriteItem={(item) => toggleFavorite(item)}
+              onDeleteItem={(item) => del(item.id)}
+              onSplitItem={(item) => startSplit(item)}
+            />
+          )
         ) : filtered.length === 0 ? (
           <EmptyState
             title={hasAny ? "Ничего не найдено" : "Инвентарь пуст"}
@@ -637,34 +558,50 @@ export default function Inventory() {
               )}
             </div>
           </div>
-          <details className="inv-icon-picker" open>
-            <summary>Список доступных иконок</summary>
-            <div className="inv-icon-grid">
-              {INVENTORY_ICON_SECTIONS.map((section) => (
-                <div key={section.key} className="inv-icon-section">
-                  <div className="inv-icon-section-title">{section.label}</div>
-                  <div className="inv-icon-section-grid">
-                    {section.items.map((icon) => {
-                      const Icon = icon.Icon;
-                      const active = form.iconKey === icon.key;
-                      return (
-                        <button
-                          key={icon.key}
-                          type="button"
-                          className={`inv-icon-tile${active ? " active" : ""}`}
-                          onClick={() => setForm({ ...form, iconKey: icon.key })}
-                          title={icon.label}
-                          aria-pressed={active}
-                        >
-                          <Icon className="inv-icon" aria-hidden="true" />
-                          <span>{icon.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
+          <details
+            className="inv-icon-picker"
+            open={iconPickerOpen}
+            onToggle={(e) => setIconPickerOpen(e.currentTarget.open)}
+          >
+            <summary>Иконки предметов</summary>
+            <div className="inv-icon-toolbar">
+              <input
+                value={iconQuery}
+                onChange={(e) => setIconQuery(e.target.value)}
+                placeholder="Поиск иконок..."
+                className="inv-icon-search"
+              />
             </div>
+            {filteredIconSections.length ? (
+              <div className="inv-icon-grid">
+                {filteredIconSections.map((section) => (
+                  <div key={section.key} className="inv-icon-section">
+                    <div className="inv-icon-section-title">{section.label}</div>
+                    <div className="inv-icon-section-grid">
+                      {section.items.map((icon) => {
+                        const Icon = icon.Icon;
+                        const active = form.iconKey === icon.key;
+                        return (
+                          <button
+                            key={icon.key}
+                            type="button"
+                            className={`inv-icon-tile${active ? " active" : ""}`}
+                            onClick={() => setForm({ ...form, iconKey: icon.key })}
+                            title={icon.label}
+                            aria-pressed={active}
+                          >
+                            <Icon className="inv-icon" aria-hidden="true" />
+                            <span>{icon.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="small inv-icon-empty">Ничего не найдено.</div>
+            )}
           </details>
           <input
             value={(form.tags || []).join(", ")}
@@ -712,6 +649,28 @@ export default function Inventory() {
           </button>
         </div>
       </Modal>
+
+      <Modal open={splitOpen} title="Разделить стак" onClose={() => { setSplitOpen(false); setSplitItem(null); }}>
+        <div className="list">
+          {splitItem ? (
+            <div className="small note-hint">
+              <b>{splitItem.name}</b> • всего: {splitItem.qty}
+            </div>
+          ) : null}
+          <input
+            type="number"
+            min={1}
+            max={Math.max(1, Number(splitItem?.qty || 1) - 1)}
+            value={splitQty}
+            onChange={(e) => setSplitQty(e.target.value)}
+            placeholder="Сколько вынести в новый стак"
+            style={inp}
+          />
+          <button className="btn" onClick={confirmSplit} disabled={!splitItem}>
+            Разделить
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -740,21 +699,65 @@ function summarizeInventory(list) {
   }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
 }
 
-function filterTransfers(list, q) {
-  const items = Array.isArray(list) ? list : [];
-  const qq = String(q || "").toLowerCase().trim();
-  if (!qq) return items;
-  return items.filter((tr) => {
-    const hay = [
-      tr.itemName,
-      tr.toName,
-      tr.fromName,
-      tr.note,
-      String(tr.toPlayerId || ""),
-      String(tr.fromPlayerId || "")
-    ].filter(Boolean).join(" ").toLowerCase();
-    return hay.includes(qq);
+function applyLayoutMoves(list, moves) {
+  const items = Array.isArray(list) ? [...list] : [];
+  const map = new Map((Array.isArray(moves) ? moves : [])
+    .filter((move) => Number(move?.id) > 0)
+    .map((move) => [Number(move.id), move]));
+  if (!map.size) return items;
+  return items.map((item) => {
+    const patch = map.get(Number(item?.id));
+    if (!patch) return item;
+    return {
+      ...item,
+      container: patch.container,
+      inv_container: patch.container,
+      slotX: Number(patch.slotX),
+      slotY: Number(patch.slotY),
+      slot_x: Number(patch.slotX),
+      slot_y: Number(patch.slotY)
+    };
   });
+}
+
+function toInventoryPayload(item, override = {}, opts = {}) {
+  const includeSlot = opts.includeSlot !== false;
+  const tags = override.tags ?? item?.tags ?? [];
+  const payload = {
+    name: override.name ?? item?.name ?? "",
+    description: override.description ?? item?.description ?? "",
+    imageUrl: override.imageUrl ?? item?.imageUrl ?? item?.image_url ?? "",
+    qty: Number(override.qty ?? item?.qty ?? 1),
+    weight: Number(override.weight ?? item?.weight ?? 0),
+    rarity: override.rarity ?? item?.rarity ?? "common",
+    visibility: override.visibility ?? item?.visibility ?? "public",
+    tags: Array.isArray(tags) ? tags : [],
+    container: override.container ?? item?.container ?? item?.inv_container
+  };
+  if (includeSlot) {
+    const slotX = Number(override.slotX ?? item?.slotX ?? item?.slot_x);
+    const slotY = Number(override.slotY ?? item?.slotY ?? item?.slot_y);
+    if (Number.isInteger(slotX) && Number.isInteger(slotY) && slotX >= 0 && slotY >= 0) {
+      payload.slotX = slotX;
+      payload.slotY = slotY;
+    }
+  }
+  return payload;
+}
+
+function filterIconSections(sections, query) {
+  const list = Array.isArray(sections) ? sections : [];
+  const q = String(query || "").toLowerCase().trim();
+  if (!q) return list;
+  return list
+    .map((section) => {
+      const items = (section.items || []).filter((icon) => {
+        const hay = `${icon.label || ""} ${icon.key || ""}`.toLowerCase();
+        return hay.includes(q);
+      });
+      return items.length ? { ...section, items } : null;
+    })
+    .filter(Boolean);
 }
 
 

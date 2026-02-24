@@ -49,6 +49,25 @@ export default function Join() {
           <div className="spread-col">
             <div className="card taped panel scrap-card paper-stack">
               <div className="u-title-xl">{t("join.title")}</div>
+              <div className="progress-steps" aria-label="Прогресс подключения">
+                <div className="progress-step active" aria-current="step">
+                  <span className="progress-dot" aria-hidden="true" />
+                  <span className="progress-label">Заявка</span>
+                </div>
+                <span className="progress-line" aria-hidden="true" />
+                <div className="progress-step">
+                  <span className="progress-dot" aria-hidden="true" />
+                  <span className="progress-label">Одобрение DM</span>
+                </div>
+                <span className="progress-line" aria-hidden="true" />
+                <div className="progress-step">
+                  <span className="progress-dot" aria-hidden="true" />
+                  <span className="progress-label">Вход</span>
+                </div>
+              </div>
+              <div className="small progress-hint">
+                После отправки заявки мастер (DM) подтвердит вход.
+              </div>
               <div className="paper-note u-mt-8">
                 {info?.party?.name ? t("join.partyName", { name: info.party.name }) : t("common.loading")}
               </div>

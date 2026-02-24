@@ -16,13 +16,6 @@ export const ru = {
   "app": {
     "pageFallbackLoading": "Загрузка…"
   },
-  "uiVariant": {
-    "cycleTitle": "Сменить вариант UI",
-    "cycleLabel": "Сменить UI",
-    "current": "UI: {variant}",
-    "dmSettingsTitle": "Вариант интерфейса",
-    "dmSettingsHint": "Выберите внешний вид рабочей зоны DM."
-  },
   "bottomNav": {
     "moreAria": "Ещё разделы"
   },
@@ -86,6 +79,7 @@ export const ru = {
     "navProfile": "Профиль",
     "navInventory": "Инвентарь",
     "navArcade": "Аркада",
+    "navTransfers": "Передачи",
     "navNotes": "Заметки",
     "navShop": "Магазин",
     "navBestiary": "Бестиарий",

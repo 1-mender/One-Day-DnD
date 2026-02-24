@@ -431,15 +431,19 @@ export default function Profile() {
   );
 
   return (
-    <div className="card taped no-stamp">
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Профиль персонажа</div>
-          <div className="small">
+    <div className="card profile-shell" aria-busy={loading ? "true" : "false"}>
+      <div className="profile-header">
+        <div className="profile-header-main">
+          <div className="profile-title">Профиль персонажа</div>
+          <div className="profile-meta small">
             {readOnly ? "read-only (имперсонализация)" : "Твой профиль"} • Обновлён: {updatedLabel}
           </div>
         </div>
-        <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+        <div className="profile-header-actions">
+          <button className="btn secondary" onClick={load}>
+            <RefreshCcw className="icon" aria-hidden="true" />Обновить
+          </button>
+        </div>
       </div>
       <hr />
 
@@ -454,18 +458,20 @@ export default function Profile() {
         <EmptyState title="Профиль ещё не создан" hint="DM должен создать ваш character profile." />
       ) : (
         <>
-          <div className="spread-grid">
-            <div className="paper-note character-card">
-              <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <div className="spread-grid profile-grid">
+            <div className="paper-note character-card profile-card">
+              <div className="profile-card-head">
                 <div className="title">Визитка</div>
                 {canEdit("avatarUrl") ? (
-                  <button className="btn secondary" onClick={() => openEdit("avatar")}><ImageUp className="icon" aria-hidden="true" />Редактировать</button>
+                  <button className="btn secondary" onClick={() => openEdit("avatar")}>
+                    <ImageUp className="icon" aria-hidden="true" />Редактировать
+                  </button>
                 ) : null}
               </div>
-              <div className="small note-hint" style={{ marginTop: 6 }}>
+              <div className="small note-hint profile-hint">
                 Редактирование доступно, если DM разрешил поле.
               </div>
-              <div className="character-hero">
+              <div className="character-hero profile-hero">
                 <div className="character-portrait">
                   <PolaroidFrame className="lg character-polaroid" src={profile.avatarUrl} alt={profile.characterName} fallback={(profile.characterName || "?").slice(0, 1)} />
                   <div className="character-tags">
@@ -473,7 +479,7 @@ export default function Profile() {
                     <span className="badge">lvl {profile.level ?? "?"}</span>
                   </div>
                 </div>
-                <div className="character-info">
+                <div className="character-info profile-info">
                   <div className="character-nameplate">{profile.characterName || "Без имени"}</div>
                   <div className="small character-sub">
                     Разрешено редактировать: {editableFields.length ? editableFields.join(", ") : "нет"}
@@ -484,33 +490,35 @@ export default function Profile() {
                     <span className={`badge ${raceBonus > 0 ? "ok" : raceBonus < 0 ? "off" : "secondary"}`}>{raceBonusLabel}</span>
                   </div>
                   {canEditBasic ? (
-                    <button className="btn secondary" style={{ marginTop: 10 }} onClick={() => openEdit("basic")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
+                    <button className="btn secondary profile-action" onClick={() => openEdit("basic")}>
+                      <PencilLine className="icon" aria-hidden="true" />Редактировать
+                    </button>
                   ) : null}
                 </div>
               </div>
             </div>
 
-            <div className="list">
-              <div className="paper-note">
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+            <div className="list profile-side">
+              <div className="paper-note profile-section">
+                <div className="profile-section-head">
                   <div className="title"><span className="section-icon stat" aria-hidden="true" />Статы</div>
                   {canEdit("stats") ? (
                     <button className="btn secondary" onClick={() => openEdit("stats")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
                   ) : null}
                 </div>
-                <div style={{ marginTop: 10 }}>
+                <div className="profile-section-body">
                   <StatsView stats={profile.stats} />
                 </div>
               </div>
 
-              <div className="paper-note">
-                <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+              <div className="paper-note profile-section">
+                <div className="profile-section-head">
                   <div className="title"><span className="section-icon bio" aria-hidden="true" />Биография</div>
                   {canEdit("bio") ? (
                     <button className="btn secondary" onClick={() => openEdit("bio")}><PencilLine className="icon" aria-hidden="true" />Редактировать</button>
                   ) : null}
                 </div>
-                <div className="small bio-text" style={{ marginTop: 10, whiteSpace: "pre-wrap" }}>
+                <div className="small bio-text profile-bio">
                   {profile.bio || "Пока пусто"}
                 </div>
               </div>

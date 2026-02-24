@@ -6,13 +6,11 @@ import "./foundation/tokens.css";
 import "./styles/layers.css";
 import "./styles.css";
 import "./styles/vintage.css";
-import "@fontsource/cinzel";
-import "@fontsource/special-elite";
+import "./styles/cartographer.css";
+import "@fontsource/eb-garamond";
+import "@fontsource/im-fell-english";
 import { ToastProvider } from "./components/ui/ToastProvider.jsx";
 import ErrorBoundary from "./components/ui/ErrorBoundary.jsx";
-import { applyThemeAssets } from "./theme/themeAssets.js";
-import { applyUiVariant, cycleUiVariant } from "./theme/uiVariant.js";
-import "./styles/ui-variants.css";
 import { t } from "./i18n/index.js";
 
 function showBootstrapError(error) {
@@ -24,9 +22,9 @@ function showBootstrapError(error) {
   root.innerHTML = "";
   const wrap = document.createElement("div");
   wrap.style.padding = "16px";
-  wrap.style.fontFamily = "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  wrap.style.background = "#f6ead1";
-  wrap.style.color = "#2b2216";
+  wrap.style.fontFamily = "\"EB Garamond\", \"IM Fell English\", ui-serif, Georgia, serif";
+  wrap.style.background = "#f4f1e6";
+  wrap.style.color = "#2e2a1e";
   wrap.style.minHeight = "100vh";
   const title = document.createElement("div");
   title.style.fontWeight = "700";
@@ -43,21 +41,10 @@ function showBootstrapError(error) {
 
 let bootOk = true;
 try {
-  applyThemeAssets();
-  applyUiVariant();
 } catch (e) {
   bootOk = false;
   showBootstrapError(e);
   console.error("[bootstrap] init failed", e);
-}
-
-if (bootOk && typeof window !== "undefined") {
-  window.addEventListener("keydown", (e) => {
-    if (e.ctrlKey && e.shiftKey && e.code === "KeyU") {
-      e.preventDefault();
-      cycleUiVariant();
-    }
-  });
 }
 
 if (bootOk) {

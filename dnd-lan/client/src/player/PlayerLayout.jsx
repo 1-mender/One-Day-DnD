@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav.jsx";
 import OfflineBanner from "../components/OfflineBanner.jsx";
@@ -7,8 +7,9 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useSocket } from "../context/SocketContext.jsx";
-import { Backpack, BookOpen, Gamepad2, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
+import { Backpack, BookOpen, Gamepad2, Send, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
 import { t } from "../i18n/index.js";
+import { getNavUsageSummary, trackNavUsage } from "./navUsageMetrics.js";
 
 export default function PlayerLayout() {
   const nav = useNavigate();
@@ -26,6 +27,10 @@ export default function PlayerLayout() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [netErr, setNetErr] = useState("");
+  const [transferBadge, setTransferBadge] = useState(0);
+  const [transferPromoted, setTransferPromoted] = useState(
+    () => getNavUsageSummary().decision.promoteTransfers
+  );
 
   const { socket, refreshAuth, netState } = useSocket();
   const OFFLINE_BANNER_DELAY_MS = 2000;
@@ -38,6 +43,20 @@ export default function PlayerLayout() {
   const degradedDetails = netState?.degraded
     ? formatError(degradedReason || ERROR_CODES.READ_ONLY)
     : "";
+
+  const loadTransferBadge = useCallback(async () => {
+    try {
+      const [inbox, outbox] = await Promise.all([
+        api.invTransferInbox(),
+        api.invTransferOutbox()
+      ]);
+      const inboxCount = Array.isArray(inbox?.items) ? inbox.items.length : 0;
+      const outboxCount = Array.isArray(outbox?.items) ? outbox.items.length : 0;
+      setTransferBadge(inboxCount + outboxCount);
+    } catch {
+      setTransferBadge(0);
+    }
+  }, []);
 
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
@@ -64,6 +83,11 @@ export default function PlayerLayout() {
         });
     }
   }, [location.search, refreshAuth, socket]);
+
+  useEffect(() => {
+    const { decision } = trackNavUsage(location.pathname);
+    setTransferPromoted(decision.promoteTransfers);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!socket) return () => {};
@@ -130,6 +154,7 @@ export default function PlayerLayout() {
     socket.on("player:kicked", onKicked);
     socket.on("player:sessionInvalid", onSessionInvalid);
     socket.on("settings:updated", onSettingsUpdated);
+    socket.on("transfers:updated", loadTransferBadge);
 
     api.serverInfo()
       .then((inf) => setBestiaryEnabled(!!inf.settings?.bestiaryEnabled))
@@ -146,6 +171,7 @@ export default function PlayerLayout() {
         }
         setNetErr(formatError(e, ERROR_CODES.ME_FAILED));
       });
+    loadTransferBadge().catch(() => {});
 
     const shouldSend = () => !storage.isImpersonating();
     let last = 0;
@@ -183,11 +209,12 @@ export default function PlayerLayout() {
       socket.off("player:kicked", onKicked);
       socket.off("player:sessionInvalid", onSessionInvalid);
       socket.off("settings:updated", onSettingsUpdated);
+      socket.off("transfers:updated", loadTransferBadge);
       window.removeEventListener("pointerdown", emitActivity);
       window.removeEventListener("keydown", emitActivity);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [nav, socket]);
+  }, [loadTransferBadge, nav, socket]);
 
   async function setWriteMode(nextMode) {
     if (!impersonating || !me?.player?.id) return;
@@ -210,7 +237,8 @@ export default function PlayerLayout() {
     { to: "/app/players", label: t("playerLayout.navPlayers"), icon: Users, primary: true },
     { to: "/app/profile", label: t("playerLayout.navProfile"), icon: UserRound, primary: true },
     { to: "/app/inventory", label: t("playerLayout.navInventory"), icon: Backpack, primary: true },
-    { to: "/app/arcade", label: t("playerLayout.navArcade"), icon: Gamepad2, primary: true },
+    { to: "/app/arcade", label: t("playerLayout.navArcade"), icon: Gamepad2, primary: !transferPromoted },
+    { to: "/app/transfers", label: t("playerLayout.navTransfers"), icon: Send, primary: transferPromoted, badge: transferBadge },
     { to: "/app/notes", label: t("playerLayout.navNotes"), icon: StickyNote, primary: false },
     { to: "/app/shop", label: t("playerLayout.navShop"), icon: ShoppingBag, primary: false }
   ];

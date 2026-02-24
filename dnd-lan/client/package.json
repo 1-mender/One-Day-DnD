@@ -13,8 +13,9 @@
     "test:watch": "node --test --watch"
   },
   "dependencies": {
-    "@fontsource/cinzel": "^5.2.8",
-    "@fontsource/special-elite": "^5.2.8",
+    "@dnd-kit/core": "^6.3.1",
+    "@fontsource/eb-garamond": "^5.2.7",
+    "@fontsource/im-fell-english": "^5.2.6",
     "@formkit/auto-animate": "^0.9.0",
     "@radix-ui/colors": "^1.0.0",
     "@tanstack/react-virtual": "^3.10.4",

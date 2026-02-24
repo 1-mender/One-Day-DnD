@@ -289,7 +289,7 @@ export default function DMInventory() {
   });
 
   return (
-    <div className="card taped">
+    <div className="card dm-inv-shell" data-has-selection={selectedCount > 0 ? "true" : "false"}>
       <PageHeader
         title={t("dmInventory.title")}
         subtitle={t("dmInventory.subtitle")}
@@ -298,65 +298,82 @@ export default function DMInventory() {
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />
       {readOnly ? <StatusBanner tone="warning">{t("dmInventory.readOnly")}</StatusBanner> : null}
 
-      <FilterBar className="inv-toolbar">
-        <select value={selectedId} onChange={(e) => setSelectedId(Number(e.target.value))} className="u-w-full">
-          {players.map((p) => <option key={p.id} value={p.id}>{t("dmInventory.playerOption", { name: p.displayName, id: p.id })}</option>)}
-        </select>
-        <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />{t("dmInventory.issue")}</button>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmInventory.searchPlaceholder")} className="u-w-min-360" />
-        <select value={vis} onChange={(e) => setVis(e.target.value)} className="u-w-180">
-          <option value="">{t("dmInventory.visibilityAll")}</option>
-          <option value="public">{t("dmInventory.visibilityPublic")}</option>
-          <option value="hidden">{t("dmInventory.visibilityHidden")}</option>
-        </select>
-        <select value={rarity} onChange={(e) => setRarity(e.target.value)} className="u-w-180">
-          <option value="">{t("dmInventory.rarityAll")}</option>
-          {RARITY_OPTIONS.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-        <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
-          <List className="icon" aria-hidden="true" />{t("dmInventory.viewList")}
-        </button>
-        <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
-          <LayoutGrid className="icon" aria-hidden="true" />{t("dmInventory.viewGrid")}
-        </button>
-        <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
-          <RefreshCcw className="icon" aria-hidden="true" />{t("dmInventory.refresh")}
-        </button>
-        <span className="badge secondary">{t("dmInventory.selectedCount", { count: selectedCount })}</span>
-        <button
-          className="btn secondary"
-          onClick={bulkHideSelected}
-          disabled={readOnly || !selectedId || selectedCount === 0}
-          title={t("dmInventory.bulkHideTitle")}
-        >
-          <EyeOff className="icon" aria-hidden="true" />
-          {t("dmInventory.bulkHide")}
-        </button>
-        <button
-          className="btn danger"
-          onClick={bulkDeleteSelected}
-          disabled={readOnly || !selectedId || selectedCount === 0}
-          title={t("dmInventory.bulkDeleteTitle")}
-        >
-          <Trash2 className="icon" aria-hidden="true" />
-          {t("dmInventory.bulkDelete")}
-        </button>
-        {selectedCount > 0 ? (
-          <button className="btn secondary" onClick={clearSelection}>
-            {t("dmInventory.clearSelection")}
-          </button>
-        ) : null}
-      </FilterBar>
-
-      <div className="small u-mt-10">
-        <div className="row u-row-wrap">
-          <span className="badge"><Package className="icon" aria-hidden="true" />{t("dmInventory.totalItems", { count: filtered.length })}</span>
-          <span className="badge ok"><Eye className="icon" aria-hidden="true" />{t("dmInventory.totalPublic", { count: publicCount })}</span>
-          <span className="badge off"><EyeOff className="icon" aria-hidden="true" />{t("dmInventory.totalHidden", { count: hiddenCount })}</span>
-          <span className="badge secondary"><Scale className="icon" aria-hidden="true" />{t("dmInventory.totalWeight", { value: totalWeightAll.toFixed(2) })}</span>
+      <div className="dm-inv-panels">
+        <div className="dm-inv-panel">
+          <div className="dm-inv-panel-title">Игрок</div>
+          <FilterBar>
+            <select value={selectedId} onChange={(e) => setSelectedId(Number(e.target.value))} className="u-w-full">
+              {players.map((p) => <option key={p.id} value={p.id}>{t("dmInventory.playerOption", { name: p.displayName, id: p.id })}</option>)}
+            </select>
+            <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />{t("dmInventory.issue")}</button>
+            <button className="btn secondary" onClick={() => loadInv(selectedId)} disabled={!selectedId}>
+              <RefreshCcw className="icon" aria-hidden="true" />{t("dmInventory.refresh")}
+            </button>
+          </FilterBar>
         </div>
+
+        <div className="dm-inv-panel">
+          <div className="dm-inv-panel-title">Фильтры</div>
+          <FilterBar>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmInventory.searchPlaceholder")} className="u-w-min-360" />
+            <select value={vis} onChange={(e) => setVis(e.target.value)} className="u-w-180">
+              <option value="">{t("dmInventory.visibilityAll")}</option>
+              <option value="public">{t("dmInventory.visibilityPublic")}</option>
+              <option value="hidden">{t("dmInventory.visibilityHidden")}</option>
+            </select>
+            <select value={rarity} onChange={(e) => setRarity(e.target.value)} className="u-w-180">
+              <option value="">{t("dmInventory.rarityAll")}</option>
+              {RARITY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </FilterBar>
+          <div className="dm-inv-view">
+            <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
+              <List className="icon" aria-hidden="true" />{t("dmInventory.viewList")}
+            </button>
+            <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
+              <LayoutGrid className="icon" aria-hidden="true" />{t("dmInventory.viewGrid")}
+            </button>
+          </div>
+        </div>
+
+        <div className="dm-inv-panel">
+          <div className="dm-inv-panel-title">Выбор</div>
+          <FilterBar>
+            <span className="badge secondary">{t("dmInventory.selectedCount", { count: selectedCount })}</span>
+            <button
+              className="btn secondary"
+              onClick={bulkHideSelected}
+              disabled={readOnly || !selectedId || selectedCount === 0}
+              title={t("dmInventory.bulkHideTitle")}
+            >
+              <EyeOff className="icon" aria-hidden="true" />
+              {t("dmInventory.bulkHide")}
+            </button>
+            <button
+              className="btn danger"
+              onClick={bulkDeleteSelected}
+              disabled={readOnly || !selectedId || selectedCount === 0}
+              title={t("dmInventory.bulkDeleteTitle")}
+            >
+              <Trash2 className="icon" aria-hidden="true" />
+              {t("dmInventory.bulkDelete")}
+            </button>
+            {selectedCount > 0 ? (
+              <button className="btn secondary" onClick={clearSelection}>
+                {t("dmInventory.clearSelection")}
+              </button>
+            ) : null}
+          </FilterBar>
+        </div>
+      </div>
+
+      <div className="dm-inv-stats">
+        <span className="badge"><Package className="icon" aria-hidden="true" />{t("dmInventory.totalItems", { count: filtered.length })}</span>
+        <span className="badge ok"><Eye className="icon" aria-hidden="true" />{t("dmInventory.totalPublic", { count: publicCount })}</span>
+        <span className="badge off"><EyeOff className="icon" aria-hidden="true" />{t("dmInventory.totalHidden", { count: hiddenCount })}</span>
+        <span className="badge secondary"><Scale className="icon" aria-hidden="true" />{t("dmInventory.totalWeight", { value: totalWeightAll.toFixed(2) })}</span>
       </div>
 
       <SectionCard
@@ -418,7 +435,7 @@ export default function DMInventory() {
       </SectionCard>
 
       <div
-        className={`list inv-shelf u-mt-12 ${view === "grid" ? "inv-grid" : ""}`}
+        className={`list inv-shelf dm-inv-list ${view === "grid" ? "inv-grid" : ""}`}
         style={{ height: view === "list" ? "70vh" : undefined, overflow: view === "list" ? "auto" : undefined }}
         ref={view === "grid" ? autoAnimateRef : listRef}
       >

@@ -11,6 +11,15 @@ export const inventoryRouter = express.Router();
 const TRANSFER_MAX_QTY = 9999;
 const TRANSFER_NOTE_MAX = 140;
 const TRANSFER_TTL_MS = Number(process.env.INVENTORY_TRANSFER_TTL_MS || 3 * 24 * 60 * 60 * 1000);
+const INVENTORY_CONTAINER_BACKPACK = "backpack";
+const INVENTORY_CONTAINER_HOTBAR = "hotbar";
+const INVENTORY_CONTAINER_EQUIPMENT = "equipment";
+const INVENTORY_LAYOUT = {
+  [INVENTORY_CONTAINER_BACKPACK]: { cols: 6, rows: 100 },
+  [INVENTORY_CONTAINER_HOTBAR]: { cols: 6, rows: 1 },
+  [INVENTORY_CONTAINER_EQUIPMENT]: { cols: 4, rows: 1 }
+};
+const INVENTORY_SLOT_MAX = 99;
 
 function toFiniteNumber(value, fallback) {
   const n = Number(value);
@@ -94,17 +103,165 @@ function normalizeIdList(input, max = 300) {
   return out;
 }
 
+function normalizeInventoryContainer(value) {
+  const key = String(value || "").trim().toLowerCase();
+  return Object.prototype.hasOwnProperty.call(INVENTORY_LAYOUT, key)
+    ? key
+    : INVENTORY_CONTAINER_BACKPACK;
+}
+
+function normalizeSlotCoord(value) {
+  const n = Math.floor(toFiniteNumber(value, NaN));
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || n > INVENTORY_SLOT_MAX) return null;
+  return n;
+}
+
+function isValidSlot(container, slotX, slotY) {
+  const spec = INVENTORY_LAYOUT[container];
+  return !!spec
+    && Number.isInteger(slotX)
+    && Number.isInteger(slotY)
+    && slotX >= 0
+    && slotX < spec.cols
+    && slotY >= 0
+    && slotY < spec.rows;
+}
+
+function makeSlotKey(container, slotX, slotY) {
+  return `${container}:${slotX}:${slotY}`;
+}
+
+function allocateNextSlot(occupied, container = INVENTORY_CONTAINER_BACKPACK) {
+  const normalizedContainer = normalizeInventoryContainer(container);
+  const spec = INVENTORY_LAYOUT[normalizedContainer] || INVENTORY_LAYOUT[INVENTORY_CONTAINER_BACKPACK];
+  for (let y = 0; y < spec.rows; y += 1) {
+    for (let x = 0; x < spec.cols; x += 1) {
+      const key = makeSlotKey(normalizedContainer, x, y);
+      if (!occupied.has(key)) return { container: normalizedContainer, slotX: x, slotY: y };
+    }
+  }
+  return { container: normalizedContainer, slotX: 0, slotY: 0 };
+}
+
+function getRequestedSlot(body) {
+  const hasSlotX = body && (Object.prototype.hasOwnProperty.call(body, "slotX") || Object.prototype.hasOwnProperty.call(body, "slot_x"));
+  const hasSlotY = body && (Object.prototype.hasOwnProperty.call(body, "slotY") || Object.prototype.hasOwnProperty.call(body, "slot_y"));
+  if (!hasSlotX && !hasSlotY) return null;
+  if (!hasSlotX || !hasSlotY) return { error: "invalid_slot" };
+  const container = normalizeInventoryContainer(body?.container ?? body?.inv_container);
+  const slotX = normalizeSlotCoord(body?.slotX ?? body?.slot_x);
+  const slotY = normalizeSlotCoord(body?.slotY ?? body?.slot_y);
+  if (!isValidSlot(container, slotX, slotY)) return { error: "invalid_slot" };
+  return { container, slotX, slotY };
+}
+
+function findItemAtSlot(db, playerId, container, slotX, slotY, excludeItemId = null) {
+  const normalizedContainer = normalizeInventoryContainer(container);
+  if (!isValidSlot(normalizedContainer, slotX, slotY)) return null;
+  if (excludeItemId) {
+    return db.prepare(
+      "SELECT id FROM inventory_items WHERE player_id=? AND inv_container=? AND slot_x=? AND slot_y=? AND id<>? LIMIT 1"
+    ).get(playerId, normalizedContainer, slotX, slotY, excludeItemId);
+  }
+  return db.prepare(
+    "SELECT id FROM inventory_items WHERE player_id=? AND inv_container=? AND slot_x=? AND slot_y=? LIMIT 1"
+  ).get(playerId, normalizedContainer, slotX, slotY);
+}
+
+function ensurePlayerLayoutSlots(db, playerId) {
+  const rows = db.prepare(
+    "SELECT id, inv_container, slot_x, slot_y FROM inventory_items WHERE player_id=? ORDER BY id DESC"
+  ).all(playerId);
+  const occupied = new Set();
+  const updates = [];
+
+  for (const row of rows) {
+    const container = normalizeInventoryContainer(row.inv_container);
+    const slotX = normalizeSlotCoord(row.slot_x);
+    const slotY = normalizeSlotCoord(row.slot_y);
+    const valid = isValidSlot(container, slotX, slotY);
+    const key = valid ? makeSlotKey(container, slotX, slotY) : "";
+    if (valid && !occupied.has(key)) {
+      occupied.add(key);
+      if (container !== row.inv_container) {
+        updates.push({ id: Number(row.id), container, slotX, slotY });
+      }
+      continue;
+    }
+    const next = allocateNextSlot(occupied, container);
+    occupied.add(makeSlotKey(next.container, next.slotX, next.slotY));
+    updates.push({ id: Number(row.id), ...next });
+  }
+
+  if (!updates.length) return;
+  const t = now();
+  const stmt = db.prepare(
+    "UPDATE inventory_items SET inv_container=?, slot_x=?, slot_y=?, updated_at=? WHERE id=?"
+  );
+  const tx = db.transaction(() => {
+    for (const move of updates) {
+      stmt.run(move.container, move.slotX, move.slotY, t, move.id);
+    }
+  });
+  tx();
+}
+
+function getNextInventorySlot(db, playerId, container = INVENTORY_CONTAINER_BACKPACK) {
+  const rows = db.prepare(
+    "SELECT inv_container, slot_x, slot_y FROM inventory_items WHERE player_id=?"
+  ).all(playerId);
+  const occupied = new Set();
+  for (const row of rows) {
+    const c = normalizeInventoryContainer(row.inv_container);
+    const x = normalizeSlotCoord(row.slot_x);
+    const y = normalizeSlotCoord(row.slot_y);
+    if (!isValidSlot(c, x, y)) continue;
+    occupied.add(makeSlotKey(c, x, y));
+  }
+  return allocateNextSlot(occupied, normalizeInventoryContainer(container));
+}
+
+function mapInventoryRow(row) {
+  return {
+    ...row,
+    imageUrl: row.image_url || "",
+    tags: jsonParse(row.tags, []),
+    reservedQty: Number(row.reserved_qty || 0),
+    container: normalizeInventoryContainer(row.inv_container),
+    slotX: normalizeSlotCoord(row.slot_x),
+    slotY: normalizeSlotCoord(row.slot_y)
+  };
+}
+
+function parseLayoutMoves(input, max = 300) {
+  if (!Array.isArray(input)) return { ok: false, error: "invalid_moves" };
+  if (!input.length) return { ok: false, error: "empty_moves" };
+  const out = [];
+  const seenIds = new Set();
+  for (const raw of input) {
+    const id = Number(raw?.id);
+    const container = normalizeInventoryContainer(raw?.container ?? raw?.inv_container);
+    const slotX = normalizeSlotCoord(raw?.slotX ?? raw?.slot_x);
+    const slotY = normalizeSlotCoord(raw?.slotY ?? raw?.slot_y);
+    if (!Number.isInteger(id) || id <= 0) return { ok: false, error: "invalid_id" };
+    if (seenIds.has(id)) return { ok: false, error: "duplicate_item_id" };
+    if (!isValidSlot(container, slotX, slotY)) return { ok: false, error: "invalid_slot" };
+    seenIds.add(id);
+    out.push({ id, container, slotX, slotY });
+    if (out.length > max) return { ok: false, error: "too_many_moves" };
+  }
+  return { ok: true, moves: out };
+}
+
 inventoryRouter.get("/mine", (req, res) => {
   const sess = authPlayer(req);
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
   const db = getDb();
-  const items = db.prepare("SELECT * FROM inventory_items WHERE player_id=? ORDER BY id DESC").all(sess.player_id)
-    .map((r) => ({
-      ...r,
-      imageUrl: r.image_url || "",
-      tags: jsonParse(r.tags, []),
-      reservedQty: Number(r.reserved_qty || 0)
-    }));
+  ensurePlayerLayoutSlots(db, sess.player_id);
+  const items = db.prepare(
+    "SELECT * FROM inventory_items WHERE player_id=? ORDER BY inv_container ASC, slot_y ASC, slot_x ASC, id DESC"
+  ).all(sess.player_id).map(mapInventoryRow);
   const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
   res.json({ items, weightLimit: limitInfo.limit, weightLimitBase: limitInfo.base, weightLimitRace: limitInfo.race, weightLimitBonus: limitInfo.bonus });
 });
@@ -112,8 +269,10 @@ inventoryRouter.get("/mine", (req, res) => {
 inventoryRouter.get("/player/:playerId", dmAuthMiddleware, (req, res) => {
   const pid = Number(req.params.playerId);
   const db = getDb();
-  const items = db.prepare("SELECT * FROM inventory_items WHERE player_id=? ORDER BY id DESC").all(pid)
-    .map((r) => ({ ...r, imageUrl: r.image_url || "", tags: jsonParse(r.tags, []), reservedQty: Number(r.reserved_qty || 0) }));
+  ensurePlayerLayoutSlots(db, pid);
+  const items = db.prepare(
+    "SELECT * FROM inventory_items WHERE player_id=? ORDER BY inv_container ASC, slot_y ASC, slot_x ASC, id DESC"
+  ).all(pid).map(mapInventoryRow);
   res.json({ items });
 });
 
@@ -135,10 +294,17 @@ inventoryRouter.post("/mine", (req, res) => {
   const imageUrl = String(b.imageUrl || b.image_url || "");
   const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
   if (!checkWeightLimit(db, sess.player_id, qty, weight, res, null, null, limitInfo.limit)) return;
+  ensurePlayerLayoutSlots(db, sess.player_id);
+  const requestedContainer = normalizeInventoryContainer(b.container ?? b.inv_container);
+  const requestedSlot = getRequestedSlot(b);
+  if (requestedSlot?.error) return res.status(400).json({ error: requestedSlot.error });
+  const slot = requestedSlot || getNextInventorySlot(db, sess.player_id, requestedContainer);
+  const occupiedBy = findItemAtSlot(db, sess.player_id, slot.container, slot.slotX, slot.slotY);
+  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
 
   const t = now();
   const id = db.prepare(
-    "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+    "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
   ).run(
     sess.player_id,
     name,
@@ -149,6 +315,9 @@ inventoryRouter.post("/mine", (req, res) => {
     rarity,
     JSON.stringify(tags),
     visibility,
+    slot.container,
+    slot.slotX,
+    slot.slotY,
     t,
     sess.impersonated ? "dm" : "player"
   ).lastInsertRowid;
@@ -177,6 +346,7 @@ inventoryRouter.put("/mine/:id", (req, res) => {
   if (!ensureWritable(sess, res)) return;
   const db = getDb();
   const itemId = Number(req.params.id);
+  ensurePlayerLayoutSlots(db, sess.player_id);
   const existing = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(itemId, sess.player_id);
   if (!existing) return res.status(404).json({ error: "not_found" });
 
@@ -191,13 +361,35 @@ inventoryRouter.put("/mine/:id", (req, res) => {
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(existing.tags, []);
   const desc = String(b.description ?? existing.description ?? "");
   const imageUrl = String(b.imageUrl ?? b.image_url ?? existing.image_url ?? "");
+  const container = normalizeInventoryContainer(b.container ?? b.inv_container ?? existing.inv_container);
+  const slotX = normalizeSlotCoord(b.slotX ?? b.slot_x ?? existing.slot_x);
+  const slotY = normalizeSlotCoord(b.slotY ?? b.slot_y ?? existing.slot_y);
+  if (!isValidSlot(container, slotX, slotY)) return res.status(400).json({ error: "invalid_slot" });
+  const occupiedBy = findItemAtSlot(db, sess.player_id, container, slotX, slotY, itemId);
+  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
   const reservedQty = Number(existing.reserved_qty || 0);
   if (qty < reservedQty) return res.status(400).json({ error: "reserved_qty_exceeded" });
   const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
   if (!checkWeightLimit(db, sess.player_id, qty, weight, res, itemId, null, limitInfo.limit)) return;
 
-  db.prepare("UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, updated_at=?, updated_by=? WHERE id=?")
-    .run(name, desc, imageUrl || null, qty, weight, rarity, JSON.stringify(tags), visibility, now(), sess.impersonated ? "dm" : "player", itemId);
+  db.prepare(
+    "UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=?"
+  ).run(
+    name,
+    desc,
+    imageUrl || null,
+    qty,
+    weight,
+    rarity,
+    JSON.stringify(tags),
+    visibility,
+    container,
+    slotX,
+    slotY,
+    now(),
+    sess.impersonated ? "dm" : "player",
+    itemId
+  );
 
   logEvent({
     partyId: sess.party_id,
@@ -215,6 +407,74 @@ inventoryRouter.put("/mine/:id", (req, res) => {
   req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
   req.app.locals.io?.to("dm").emit("inventory:updated");
   res.json({ ok: true });
+});
+
+inventoryRouter.post("/mine/layout", (req, res) => {
+  const sess = authPlayer(req);
+  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  if (!ensureWritable(sess, res)) return;
+  const parsed = parseLayoutMoves(req.body?.moves, 500);
+  if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+  const db = getDb();
+  ensurePlayerLayoutSlots(db, sess.player_id);
+  const moves = parsed.moves;
+  const placeholders = moves.map(() => "?").join(",");
+  const ids = moves.map((move) => move.id);
+  const rows = db.prepare(
+    `SELECT id, inv_container, slot_x, slot_y
+     FROM inventory_items
+     WHERE player_id=?
+       AND id IN (${placeholders})`
+  ).all(sess.player_id, ...ids);
+  if (rows.length !== moves.length) return res.status(404).json({ error: "not_found" });
+
+  const byId = new Map(rows.map((row) => [Number(row.id), row]));
+  const occupied = new Map();
+  const movedIds = new Set(moves.map((move) => move.id));
+
+  const allRows = db.prepare(
+    "SELECT id, inv_container, slot_x, slot_y FROM inventory_items WHERE player_id=?"
+  ).all(sess.player_id);
+  for (const row of allRows) {
+    const id = Number(row.id);
+    if (movedIds.has(id)) continue;
+    const container = normalizeInventoryContainer(row.inv_container);
+    const slotX = normalizeSlotCoord(row.slot_x);
+    const slotY = normalizeSlotCoord(row.slot_y);
+    if (!isValidSlot(container, slotX, slotY)) continue;
+    occupied.set(makeSlotKey(container, slotX, slotY), id);
+  }
+
+  for (const move of moves) {
+    const key = makeSlotKey(move.container, move.slotX, move.slotY);
+    if (occupied.has(key)) return res.status(409).json({ error: "slot_occupied", itemId: occupied.get(key) });
+    occupied.set(key, move.id);
+  }
+
+  const t = now();
+  const stmt = db.prepare(
+    "UPDATE inventory_items SET inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=? AND player_id=?"
+  );
+  const tx = db.transaction(() => {
+    for (const move of moves) {
+      const existing = byId.get(move.id);
+      if (!existing) continue;
+      stmt.run(
+        move.container,
+        move.slotX,
+        move.slotY,
+        t,
+        sess.impersonated ? "dm" : "player",
+        move.id,
+        sess.player_id
+      );
+    }
+  });
+  tx();
+
+  req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
+  req.app.locals.io?.to("dm").emit("inventory:updated");
+  res.json({ ok: true, updated: moves.length });
 });
 
 inventoryRouter.delete("/mine/:id", (req, res) => {
@@ -266,10 +526,32 @@ inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
   const imageUrl = String(b.imageUrl || b.image_url || "");
   const limitInfo = getInventoryLimitForPlayer(db, pid);
   if (!checkWeightLimit(db, pid, qty, weight, res, null, null, limitInfo.limit)) return;
+  ensurePlayerLayoutSlots(db, pid);
+  const requestedContainer = normalizeInventoryContainer(b.container ?? b.inv_container);
+  const requestedSlot = getRequestedSlot(b);
+  if (requestedSlot?.error) return res.status(400).json({ error: requestedSlot.error });
+  const slot = requestedSlot || getNextInventorySlot(db, pid, requestedContainer);
+  const occupiedBy = findItemAtSlot(db, pid, slot.container, slot.slotX, slot.slotY);
+  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
 
   const ins2 = db.prepare(
-    "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
-  ).run(pid, name, desc, imageUrl || null, qty, weight, rarity, JSON.stringify(tags), visibility, now(), "dm");
+    "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  ).run(
+    pid,
+    name,
+    desc,
+    imageUrl || null,
+    qty,
+    weight,
+    rarity,
+    JSON.stringify(tags),
+    visibility,
+    slot.container,
+    slot.slotX,
+    slot.slotY,
+    now(),
+    "dm"
+  );
 
   logEvent({
     partyId: player.party_id,
@@ -295,6 +577,7 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
   if (!pid || !itemId) return res.status(400).json({ error: "invalid_id" });
 
   const db = getDb();
+  ensurePlayerLayoutSlots(db, pid);
   const existing = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(itemId, pid);
   if (!existing) return res.status(404).json({ error: "not_found" });
 
@@ -309,13 +592,35 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(existing.tags, []);
   const desc = String(b.description ?? existing.description ?? "");
   const imageUrl = String(b.imageUrl ?? b.image_url ?? existing.image_url ?? "");
+  const container = normalizeInventoryContainer(b.container ?? b.inv_container ?? existing.inv_container);
+  const slotX = normalizeSlotCoord(b.slotX ?? b.slot_x ?? existing.slot_x);
+  const slotY = normalizeSlotCoord(b.slotY ?? b.slot_y ?? existing.slot_y);
+  if (!isValidSlot(container, slotX, slotY)) return res.status(400).json({ error: "invalid_slot" });
+  const occupiedBy = findItemAtSlot(db, pid, container, slotX, slotY, itemId);
+  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
   const reservedQty = Number(existing.reserved_qty || 0);
   if (qty < reservedQty) return res.status(400).json({ error: "reserved_qty_exceeded" });
   const limitInfo = getInventoryLimitForPlayer(db, pid);
   if (!checkWeightLimit(db, pid, qty, weight, res, itemId, null, limitInfo.limit)) return;
 
-  db.prepare("UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, updated_at=?, updated_by=? WHERE id=?")
-    .run(name, desc, imageUrl || null, qty, weight, rarity, JSON.stringify(tags), visibility, now(), "dm", itemId);
+  db.prepare(
+    "UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=?"
+  ).run(
+    name,
+    desc,
+    imageUrl || null,
+    qty,
+    weight,
+    rarity,
+    JSON.stringify(tags),
+    visibility,
+    container,
+    slotX,
+    slotY,
+    now(),
+    "dm",
+    itemId
+  );
 
   const p = db.prepare("SELECT party_id FROM players WHERE id=?").get(pid);
   logEvent({
@@ -671,9 +976,11 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
       db.prepare("UPDATE inventory_items SET qty=?, reserved_qty=?, updated_at=? WHERE id=?")
         .run(newQty, Math.max(0, newReserved), t, item.id);
     }
+    ensurePlayerLayoutSlots(db, sess.player_id);
+    const slot = getNextInventorySlot(db, sess.player_id, INVENTORY_CONTAINER_BACKPACK);
 
     db.prepare(
-      "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
+      "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     ).run(
       sess.player_id,
       item.name,
@@ -684,6 +991,9 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
       item.rarity || "common",
       item.tags || "[]",
       item.visibility || "public",
+      slot.container,
+      slot.slotX,
+      slot.slotY,
       t,
       "transfer"
     );

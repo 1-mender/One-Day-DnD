@@ -7,7 +7,6 @@ import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import ConfirmModal from "../components/ConfirmModal.jsx";
-import UiVariantSwitcher from "../components/UiVariantSwitcher.jsx";
 import { t } from "../i18n/index.js";
 import {
   applyTicketGamePatch,
@@ -363,10 +362,6 @@ export default function DMSettings() {
       {msg && <div className="badge ok">{msg}</div>}
 
       <div className="list">
-        <div className="card taped">
-          <UiVariantSwitcher mode="inline" />
-        </div>
-
         <div className="title u-mt-6">{"\u0418\u0433\u0440\u043e\u043a"}</div>
         <div className="card taped">
           <div className="u-fw-800">Код партии (код входа)</div>

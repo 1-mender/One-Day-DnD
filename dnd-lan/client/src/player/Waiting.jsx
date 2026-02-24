@@ -42,8 +42,27 @@ export default function Waiting() {
       <div className="container">
         <div className="card taped panel">
           <div className="u-title-lg">{t("waiting.title")}</div>
+          <div className="progress-steps" aria-label="Прогресс подключения">
+            <div className="progress-step complete">
+              <span className="progress-dot" aria-hidden="true" />
+              <span className="progress-label">Заявка</span>
+            </div>
+            <span className="progress-line" aria-hidden="true" />
+            <div className="progress-step active" aria-current="step">
+              <span className="progress-dot" aria-hidden="true" />
+              <span className="progress-label">Одобрение DM</span>
+            </div>
+            <span className="progress-line" aria-hidden="true" />
+            <div className="progress-step">
+              <span className="progress-dot" aria-hidden="true" />
+              <span className="progress-label">Вход</span>
+            </div>
+          </div>
           <div className="small u-mt-8">
             {t("waiting.subtitle")}
+          </div>
+          <div className="small progress-hint">
+            Ждём подтверждения от мастера. Как только DM одобрит заявку, вы автоматически попадёте в приложение.
           </div>
           <hr />
           {status === "waiting" && <div className="badge warn">{t("waiting.status")}</div>}

@@ -205,6 +205,8 @@ export const api = {
   invAddMine: (item) => request("/api/inventory/mine", { method: "POST", body: JSON.stringify(item) }),
   invUpdateMine: (id, item) => request(`/api/inventory/mine/${id}`, { method: "PUT", body: JSON.stringify(item) }),
   invDeleteMine: (id) => request(`/api/inventory/mine/${id}`, { method: "DELETE" }),
+  invLayoutUpdateMine: (moves) =>
+    request("/api/inventory/mine/layout", { method: "POST", body: JSON.stringify({ moves }) }),
   invDmGetPlayer: (playerId) => request(`/api/inventory/player/${playerId}`, { method: "GET" }),
   invDmAddToPlayer: (playerId, item) => request(`/api/inventory/dm/player/${playerId}`, { method: "POST", body: JSON.stringify(item) }),
   invDmUpdatePlayerItem: (playerId, itemId, item) =>

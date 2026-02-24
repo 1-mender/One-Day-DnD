@@ -77,6 +77,9 @@ CREATE TABLE IF NOT EXISTS inventory_items (
   rarity TEXT NOT NULL DEFAULT 'common',
   tags TEXT NOT NULL DEFAULT '[]',
   visibility TEXT NOT NULL DEFAULT 'public', -- public/hidden
+  inv_container TEXT NOT NULL DEFAULT 'backpack',
+  slot_x INTEGER,
+  slot_y INTEGER,
   updated_at INTEGER NOT NULL,
   updated_by TEXT NOT NULL DEFAULT 'player', -- player/dm
   FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
@@ -291,6 +294,7 @@ CREATE TABLE IF NOT EXISTS arcade_match_players (
 
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_layout ON inventory_items(player_id, inv_container, slot_y, slot_x);
 CREATE INDEX IF NOT EXISTS idx_transfers_inbox ON item_transfers(to_player_id, status);
 CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
