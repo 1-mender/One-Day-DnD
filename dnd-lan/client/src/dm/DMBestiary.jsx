@@ -333,9 +333,10 @@ export default function DMBestiary() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Поиск..."
+                aria-label="Поиск монстров"
                 className="u-w-min-360"
               />
-              <select value={vis} onChange={(e) => setVis(e.target.value)} className="u-w-180">
+              <select value={vis} onChange={(e) => setVis(e.target.value)} aria-label="Фильтр видимости монстров" className="u-w-180">
                 <option value="">Видимость: все</option>
                 <option value="public">Публичные</option>
                 <option value="hidden">Скрытые</option>
@@ -449,18 +450,19 @@ export default function DMBestiary() {
                 type="file"
                 accept="application/json,.json"
                 className="u-hidden-input"
+                aria-label="Импорт бестиария из JSON"
                 onChange={onPickImport}
               />
               <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Импорт JSON (проверка)</button>
-              <select value={portMode} onChange={(e) => setPortMode(e.target.value)} className="u-select-control">
+              <select value={portMode} onChange={(e) => setPortMode(e.target.value)} aria-label="Режим импорта бестиария" className="u-select-control">
                 <option value="merge">режим: слияние</option>
                 <option value="replace">режим: замена</option>
               </select>
-              <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} className="u-select-control">
+              <select value={portMatch} onChange={(e) => setPortMatch(e.target.value)} aria-label="Сопоставление при импорте" className="u-select-control">
                 <option value="name">сопоставление: по имени</option>
                 <option value="id">сопоставление: по id</option>
               </select>
-              <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} className="u-select-control">
+              <select value={portOnExisting} onChange={(e) => setPortOnExisting(e.target.value)} aria-label="Действие при совпадении монстров" className="u-select-control">
                 <option value="update">при совпадении: обновлять</option>
                 <option value="skip">при совпадении: пропустить</option>
               </select>
@@ -500,17 +502,18 @@ export default function DMBestiary() {
       <Modal open={open} title={edit ? "Редактировать" : "Новый монстр"} onClose={() => setOpen(false)}>
         <div className="list">
           {err && <div className="badge off">Ошибка: {err}</div>}
-          <input value={form.name||""} onChange={(e)=>setForm({ ...form, name: e.target.value })} placeholder="Имя*" style={inp} />
+          <input value={form.name||""} onChange={(e)=>setForm({ ...form, name: e.target.value })} placeholder="Имя*" aria-label="Имя монстра" style={inp} />
           <div className="row">
-            <input value={form.type||""} onChange={(e)=>setForm({ ...form, type: e.target.value })} placeholder="Тип" style={inp} />
-            <input value={form.habitat||""} onChange={(e)=>setForm({ ...form, habitat: e.target.value })} placeholder="Среда" style={inp} />
+            <input value={form.type||""} onChange={(e)=>setForm({ ...form, type: e.target.value })} placeholder="Тип" aria-label="Тип монстра" style={inp} />
+            <input value={form.habitat||""} onChange={(e)=>setForm({ ...form, habitat: e.target.value })} placeholder="Среда" aria-label="Среда обитания" style={inp} />
           </div>
-          <input value={form.cr||""} onChange={(e)=>setForm({ ...form, cr: e.target.value })} placeholder="CR (число/строка)" style={inp} />
-          <textarea value={form.description||""} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание (markdown)" rows={5} style={inp} />
+          <input value={form.cr||""} onChange={(e)=>setForm({ ...form, cr: e.target.value })} placeholder="CR (число/строка)" aria-label="CR монстра" style={inp} />
+          <textarea value={form.description||""} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание (markdown)" aria-label="Описание монстра" rows={5} style={inp} />
           <textarea
             value={(form.abilitiesText ?? (Array.isArray(form.abilities) ? form.abilities.join("\n") : ""))}
             onChange={(e)=>setForm({ ...form, abilitiesText: e.target.value })}
             placeholder="Способности (по одной на строку)"
+            aria-label="Способности монстра"
             rows={4}
             style={inp}
           />
@@ -524,7 +527,7 @@ export default function DMBestiary() {
           {!edit && <div className="small">Сначала сохраните монстра, чтобы загрузить картинки.</div>}
 
           <div className="row u-row-gap-8 u-mt-10">
-            <input ref={fileRef} type="file" accept="image/*" className="u-hidden-input" onChange={onPickFile} />
+            <input ref={fileRef} type="file" accept="image/*" className="u-hidden-input" aria-label="Загрузить изображение монстра" onChange={onPickFile} />
             <button className="btn" onClick={() => fileRef.current?.click()} disabled={readOnly || !edit}>+ Загрузить</button>
           </div>
 

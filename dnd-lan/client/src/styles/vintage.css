@@ -1041,13 +1041,32 @@ body.arcade-modal-open{
     flex-wrap: wrap;
   }
   .bottom-nav-inner{
-    justify-content: center;
-    flex-wrap: wrap;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+  .bottom-nav-link,
+  .bottom-nav-more{
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: none;
   }
   .bottom-nav-link{
-    flex: 1 0 calc(33.333% - 8px);
-    max-width: calc(33.333% - 8px);
-    white-space: normal;
+    white-space: nowrap;
+  }
+  .bottom-nav-link > span{
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bottom-nav-link-btn{
+    min-width: 0;
+  }
+  .bottom-nav-popover{
+    right: 0;
+    left: auto;
+    max-width: min(92vw, 320px);
   }
   .card .row{
     flex-direction: column;
@@ -1590,15 +1609,22 @@ body.arcade-modal-open{
   .paper-note::before{ display:none; }
   .row{ flex-wrap: wrap; }
   .bottom-nav-inner{
-    overflow-x: auto;
-    justify-content: flex-start;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    overflow: visible;
+    justify-content: space-between;
+    gap: 6px;
   }
-  .bottom-nav-inner::-webkit-scrollbar{ display:none; }
-  .bottom-nav-link{
-    flex: 0 0 auto;
-    min-width: 92px;
+  .bottom-nav-link,
+  .bottom-nav-more{
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .bottom-nav-link-btn{
+    min-width: 0;
+  }
+  .bottom-nav-popover{
+    right: 0;
+    left: auto;
+    max-width: min(92vw, 320px);
   }
   input, textarea, select, .btn{
     min-height: 44px;
@@ -2365,41 +2391,45 @@ body.arcade-modal-open{
 
 .tavern-shop{
   position: relative;
-  border: 1px solid rgba(146,105,62,.36);
-  color: #f6ecd8;
+  --shop-ink: #f4e9d1;
+  --shop-muted: rgba(239, 223, 196, 0.86);
+  --shop-line: rgba(184, 152, 104, 0.34);
+  --shop-surface-top: rgba(57, 45, 31, 0.9);
+  --shop-surface-bottom: rgba(30, 24, 17, 0.94);
+  border: 1px solid var(--shop-line);
+  color: var(--shop-ink);
   background:
-    radial-gradient(560px 240px at 10% 4%, rgba(255,194,102,.16), transparent 62%),
-    radial-gradient(420px 220px at 78% 2%, rgba(255,161,68,.11), transparent 60%),
-    radial-gradient(540px 320px at 100% -12%, rgba(56,32,18,.48), transparent 67%),
-    linear-gradient(180deg, rgba(20,12,9,.985), rgba(10,7,6,.985));
-  box-shadow: 0 28px 42px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,219,151,.09);
+    radial-gradient(560px 240px at 8% 0%, rgba(217, 176, 108, 0.2), transparent 62%),
+    radial-gradient(460px 260px at 82% 0%, rgba(155, 188, 124, 0.14), transparent 64%),
+    linear-gradient(180deg, rgba(49, 39, 28, 0.97), rgba(23, 18, 13, 0.99));
+  box-shadow: 0 26px 40px rgba(0,0,0,.56), inset 0 1px 0 rgba(255,226,164,.12);
 }
 .tavern-shop .small{
-  color: rgba(247,231,206,.82);
+  color: var(--shop-muted);
 }
 .tavern-shop hr{
-  border-color: rgba(143,108,64,.34);
+  border-color: rgba(181,143,97,.33);
 }
 .tavern-shop .shop-title{
-  color: #ffe5bc;
-  text-shadow: 0 2px 14px rgba(255,150,72,.16);
+  color: #ffe9c2;
+  text-shadow: 0 2px 14px rgba(245,182,95,.26);
 }
 .tavern-shop .shop-banner{
-  border: 1px solid rgba(146,109,66,.42);
+  border: 1px solid rgba(186,147,96,.42);
   background:
-    radial-gradient(260px 150px at 100% 0%, rgba(255,214,156,.2), transparent 70%),
-    linear-gradient(180deg, rgba(58,35,22,.9), rgba(24,15,10,.97));
+    radial-gradient(280px 160px at 100% 0%, rgba(247,204,136,.23), transparent 70%),
+    linear-gradient(180deg, rgba(68,51,34,.9), rgba(31,24,16,.97));
   box-shadow: 0 18px 30px rgba(0,0,0,.48);
 }
 .tavern-shop .banner-title{
-  color: #ffd59c;
+  color: #ffe0ab;
 }
 .tavern-shop .ticket-card{
-  border: 1px dashed rgba(215,153,84,.55);
+  border: 1px dashed rgba(220,169,95,.58);
   background:
     radial-gradient(circle at 0% 50%, transparent 10px, rgba(0,0,0,0) 11px),
     radial-gradient(circle at 100% 50%, transparent 10px, rgba(0,0,0,0) 11px),
-    linear-gradient(180deg, #a56f33, #6f451f);
+    linear-gradient(180deg, #9a7a45, #5f4828);
   color: #fff1d2;
   box-shadow: 0 14px 24px rgba(0,0,0,.42);
 }
@@ -2410,46 +2440,46 @@ body.arcade-modal-open{
   color: rgba(246,226,196,.77);
 }
 .tavern-shop .paper-note.tavern-section{
-  border: 1px solid rgba(146,109,66,.34);
+  border: 1px solid var(--shop-line);
   background:
-    radial-gradient(300px 160px at 100% 0%, rgba(255,186,102,.09), transparent 70%),
-    linear-gradient(180deg, rgba(41,26,18,.92), rgba(20,13,9,.96));
+    radial-gradient(320px 170px at 100% 0%, rgba(243,194,115,.13), transparent 70%),
+    linear-gradient(180deg, var(--shop-surface-top), var(--shop-surface-bottom));
   box-shadow: 0 16px 26px rgba(0,0,0,.4);
 }
 .tavern-shop .paper-note.tavern-section .title{
   color: #ffd8a5;
 }
 .tavern-shop .shop-card{
-  border: 1px solid rgba(146,109,66,.34);
+  border: 1px solid var(--shop-line);
   background:
-    radial-gradient(240px 140px at 88% 0%, rgba(255,204,141,.12), transparent 65%),
-    linear-gradient(180deg, rgba(52,34,23,.92), rgba(22,15,11,.96));
+    radial-gradient(250px 150px at 88% 0%, rgba(251,212,146,.16), transparent 66%),
+    linear-gradient(180deg, rgba(66,50,35,.92), rgba(30,24,17,.96));
   box-shadow: 0 18px 30px rgba(0,0,0,.48);
 }
 .tavern-shop .shop-card::after{
-  opacity: .3;
-  background: radial-gradient(220px 140px at 100% 0%, rgba(255,220,156,.25), transparent 66%);
+  opacity: .34;
+  background: radial-gradient(220px 140px at 100% 0%, rgba(255,226,170,.28), transparent 66%);
 }
 .tavern-shop .shop-item-title{
   color: #ffe2b6;
 }
 .tavern-shop .meta-chip{
-  border-color: rgba(174,130,76,.35);
+  border-color: rgba(188,146,92,.38);
   color: rgba(251,235,206,.92);
-  background: rgba(255,230,178,.08);
+  background: rgba(255,230,178,.1);
 }
 .tavern-shop .ticket-pill{
-  border-color: rgba(181,132,73,.58);
+  border-color: rgba(194,151,89,.6);
   color: #fff0d1;
-  background: linear-gradient(180deg, #8f5d2b, #6a421f);
+  background: linear-gradient(180deg, #8d7041, #5d4829);
 }
 .tavern-shop .btn.secondary{
-  border-color: rgba(176,131,76,.45);
+  border-color: rgba(171,146,96,.5);
   color: #fbe7c8;
-  background: linear-gradient(180deg, rgba(89,57,32,.92), rgba(56,36,22,.95));
+  background: linear-gradient(180deg, rgba(90,101,70,.94), rgba(55,64,43,.96));
 }
 .tavern-shop .btn.secondary:hover:not(:disabled){
-  background: linear-gradient(180deg, rgba(114,72,40,.95), rgba(69,43,25,.98));
+  background: linear-gradient(180deg, rgba(104,116,79,.96), rgba(65,75,50,.98));
 }
 .tavern-shop .btn.secondary:disabled{
   opacity: .54;
@@ -2468,10 +2498,10 @@ body.arcade-modal-open{
   box-shadow: 0 12px 22px rgba(0,0,0,.2);
 }
 .tavern-shop .shop-mascot-stall{
-  border-color: rgba(145,108,64,.42);
+  border-color: rgba(182,145,94,.42);
   background:
-    radial-gradient(420px 190px at 54% -14%, rgba(255,184,96,.2), transparent 70%),
-    linear-gradient(180deg, rgba(31,20,14,.97), rgba(11,8,6,.995));
+    radial-gradient(420px 190px at 54% -14%, rgba(241,189,105,.24), transparent 70%),
+    linear-gradient(180deg, rgba(43,33,23,.97), rgba(18,14,10,.995));
   box-shadow: 0 24px 38px rgba(0,0,0,.56);
 }
 .tavern-shop .shop-mascot-stall::before{
@@ -2480,7 +2510,7 @@ body.arcade-modal-open{
   inset:0;
   pointer-events:none;
   background:
-    radial-gradient(320px 180px at 50% 6%, rgba(255,177,84,.16), transparent 74%),
+    radial-gradient(320px 180px at 50% 6%, rgba(255,188,106,.2), transparent 74%),
     radial-gradient(90% 90% at 50% 50%, transparent 58%, rgba(0,0,0,.34) 100%);
 }
 
@@ -2506,10 +2536,10 @@ body.arcade-modal-open{
   box-shadow: 0 4px 10px rgba(0,0,0,.14);
 }
 .tavern-shop .shop-mascot-bubble{
-  border-color: rgba(149,106,58,.45);
+  border-color: rgba(184,141,88,.46);
   background:
-    radial-gradient(110% 120% at 80% 0%, rgba(255,190,109,.14), transparent 70%),
-    rgba(35,22,14,.94);
+    radial-gradient(120% 130% at 80% 0%, rgba(251,208,136,.2), transparent 70%),
+    rgba(44,33,22,.93);
   box-shadow: 0 18px 30px rgba(0,0,0,.5);
 }
 
@@ -2549,7 +2579,7 @@ body.arcade-modal-open{
   animation-delay: .8s;
 }
 .shop-lamp{
-  transform-origin: 424px 0;
+  transform-origin: 500px 0;
   animation: lamp-swing 4.2s ease-in-out infinite;
 }
 .shop-lamp-glow{
@@ -4026,6 +4056,11 @@ body.arcade-modal-open{
 
 .inv-slot-handle:active{
   cursor: grabbing;
+}
+
+.inv-slot-handle.split-armed{
+  border-color: rgba(58, 117, 52, .55);
+  background: rgba(184, 224, 168, .52);
 }
 
 .inv-slot-handle:disabled{

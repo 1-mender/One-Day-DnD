@@ -169,6 +169,37 @@ function findItemAtSlot(db, playerId, container, slotX, slotY, excludeItemId = n
   ).get(playerId, normalizedContainer, slotX, slotY);
 }
 
+function collectItemTokens(item) {
+  const tags = Array.isArray(item?.tags)
+    ? item.tags
+    : jsonParse(item?.tags, []);
+  const all = [
+    item?.name,
+    item?.description,
+    item?.rarity,
+    ...(Array.isArray(tags) ? tags : [])
+  ].filter(Boolean);
+  return all.map((part) => String(part).toLowerCase());
+}
+
+function allowedEquipmentSlotsForItem(item) {
+  const text = collectItemTokens(item).join(" ");
+  const has = (list) => list.some((word) => text.includes(word));
+  if (has(["armor", "armour", "брон", "доспех", "кольч", "латы", "helmet", "helm", "шлем"])) return [2];
+  if (has(["shield", "щит", "buckler"])) return [1];
+  if (has(["sword", "blade", "axe", "bow", "spear", "staff", "wand", "weapon", "меч", "топор", "лук", "копь", "посох", "жезл", "оруж"])) return [0];
+  if (has(["ring", "amulet", "jewel", "accessory", "кольц", "амулет", "ожерель", "талисман", "кулон"])) return [3];
+  return [];
+}
+
+function isPlacementAllowedForItem(item, container, slotX) {
+  const normalizedContainer = normalizeInventoryContainer(container);
+  if (normalizedContainer !== INVENTORY_CONTAINER_EQUIPMENT) return true;
+  const allowed = allowedEquipmentSlotsForItem(item);
+  if (!allowed.length) return false;
+  return allowed.includes(Number(slotX));
+}
+
 function ensurePlayerLayoutSlots(db, playerId) {
   const rows = db.prepare(
     "SELECT id, inv_container, slot_x, slot_y FROM inventory_items WHERE player_id=? ORDER BY id DESC"
@@ -301,6 +332,9 @@ inventoryRouter.post("/mine", (req, res) => {
   const slot = requestedSlot || getNextInventorySlot(db, sess.player_id, requestedContainer);
   const occupiedBy = findItemAtSlot(db, sess.player_id, slot.container, slot.slotX, slot.slotY);
   if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
+  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, slot.container, slot.slotX)) {
+    return res.status(400).json({ error: "invalid_equipment_slot" });
+  }
 
   const t = now();
   const id = db.prepare(
@@ -367,6 +401,9 @@ inventoryRouter.put("/mine/:id", (req, res) => {
   if (!isValidSlot(container, slotX, slotY)) return res.status(400).json({ error: "invalid_slot" });
   const occupiedBy = findItemAtSlot(db, sess.player_id, container, slotX, slotY, itemId);
   if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
+  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, container, slotX)) {
+    return res.status(400).json({ error: "invalid_equipment_slot" });
+  }
   const reservedQty = Number(existing.reserved_qty || 0);
   if (qty < reservedQty) return res.status(400).json({ error: "reserved_qty_exceeded" });
   const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
@@ -421,7 +458,7 @@ inventoryRouter.post("/mine/layout", (req, res) => {
   const placeholders = moves.map(() => "?").join(",");
   const ids = moves.map((move) => move.id);
   const rows = db.prepare(
-    `SELECT id, inv_container, slot_x, slot_y
+    `SELECT id, inv_container, slot_x, slot_y, name, description, rarity, tags
      FROM inventory_items
      WHERE player_id=?
        AND id IN (${placeholders})`
@@ -446,6 +483,11 @@ inventoryRouter.post("/mine/layout", (req, res) => {
   }
 
   for (const move of moves) {
+    const item = byId.get(move.id);
+    if (!item) return res.status(404).json({ error: "not_found" });
+    if (!isPlacementAllowedForItem(item, move.container, move.slotX)) {
+      return res.status(400).json({ error: "invalid_equipment_slot", itemId: move.id });
+    }
     const key = makeSlotKey(move.container, move.slotX, move.slotY);
     if (occupied.has(key)) return res.status(409).json({ error: "slot_occupied", itemId: occupied.get(key) });
     occupied.set(key, move.id);
@@ -475,6 +517,165 @@ inventoryRouter.post("/mine/layout", (req, res) => {
   req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
   req.app.locals.io?.to("dm").emit("inventory:updated");
   res.json({ ok: true, updated: moves.length });
+});
+
+inventoryRouter.post("/mine/:id/split", (req, res) => {
+  const sess = authPlayer(req);
+  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  if (!ensureWritable(sess, res)) return;
+  const itemId = Number(req.params.id);
+  if (!itemId) return res.status(400).json({ error: "invalid_id" });
+
+  const qty = Math.floor(toFiniteNumber(req.body?.qty, NaN));
+  if (!Number.isFinite(qty) || qty < 1) return res.status(400).json({ error: "invalid_qty" });
+  const db = getDb();
+  const requestedSlot = getRequestedSlot(req.body || {});
+  if (requestedSlot?.error) return res.status(400).json({ error: requestedSlot.error });
+  const preferredContainer = normalizeInventoryContainer(req.body?.container ?? req.body?.inv_container);
+
+  ensurePlayerLayoutSlots(db, sess.player_id);
+  const tx = db.transaction(() => {
+    const existing = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(itemId, sess.player_id);
+    if (!existing) transferError("not_found", 404);
+    const totalQty = Number(existing.qty || 0);
+    const reservedQty = Number(existing.reserved_qty || 0);
+    const available = Math.max(0, totalQty - reservedQty);
+    if (qty >= available) transferError("invalid_qty", 400, { available });
+
+    let slot = requestedSlot;
+    if (!slot) {
+      slot = getNextInventorySlot(db, sess.player_id, preferredContainer || existing.inv_container || INVENTORY_CONTAINER_BACKPACK);
+    }
+    if (!isPlacementAllowedForItem(existing, slot.container, slot.slotX)) {
+      transferError("invalid_equipment_slot", 400);
+    }
+    if (
+      normalizeInventoryContainer(existing.inv_container) === normalizeInventoryContainer(slot.container)
+      && Number(existing.slot_x) === Number(slot.slotX)
+      && Number(existing.slot_y) === Number(slot.slotY)
+    ) {
+      transferError("invalid_slot", 400);
+    }
+    const occupiedBy = findItemAtSlot(db, sess.player_id, slot.container, slot.slotX, slot.slotY, existing.id);
+    if (occupiedBy) transferError("slot_occupied", 409, { itemId: Number(occupiedBy.id) });
+
+    const t = now();
+    db.prepare("UPDATE inventory_items SET qty=?, updated_at=?, updated_by=? WHERE id=? AND player_id=?")
+      .run(totalQty - qty, t, sess.impersonated ? "dm" : "player", itemId, sess.player_id);
+
+    const splitId = db.prepare(
+      "INSERT INTO inventory_items(player_id, name, description, image_url, qty, reserved_qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+    ).run(
+      sess.player_id,
+      existing.name,
+      existing.description || "",
+      existing.image_url || null,
+      qty,
+      0,
+      Number(existing.weight || 0),
+      existing.rarity || "common",
+      existing.tags || "[]",
+      existing.visibility || "public",
+      slot.container,
+      slot.slotX,
+      slot.slotY,
+      t,
+      sess.impersonated ? "dm" : "player"
+    ).lastInsertRowid;
+
+    return { splitId: Number(splitId), slot };
+  });
+
+  try {
+    const out = tx();
+    req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("inventory:updated");
+    return res.json({ ok: true, id: out.splitId, slot: out.slot });
+  } catch (e) {
+    if (e?.code) return res.status(e.status || 400).json({ error: e.code, ...(e.extra || {}) });
+    throw e;
+  }
+});
+
+inventoryRouter.post("/mine/:id/quick-equip", (req, res) => {
+  const sess = authPlayer(req);
+  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  if (!ensureWritable(sess, res)) return;
+  const itemId = Number(req.params.id);
+  if (!itemId) return res.status(400).json({ error: "invalid_id" });
+
+  const db = getDb();
+  ensurePlayerLayoutSlots(db, sess.player_id);
+  const tx = db.transaction(() => {
+    const item = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(itemId, sess.player_id);
+    if (!item) transferError("not_found", 404);
+
+    const allowed = allowedEquipmentSlotsForItem(item);
+    if (!allowed.length) transferError("not_equipable", 400);
+
+    const currentContainer = normalizeInventoryContainer(item.inv_container);
+    const currentX = normalizeSlotCoord(item.slot_x);
+    const currentY = normalizeSlotCoord(item.slot_y);
+    if (currentContainer === INVENTORY_CONTAINER_EQUIPMENT && currentY === 0 && allowed.includes(currentX)) {
+      return { idempotent: true, slotX: currentX, slotY: 0 };
+    }
+
+    let targetSlotX = null;
+    let occupant = null;
+    for (const slotX of allowed) {
+      const existing = findItemAtSlot(db, sess.player_id, INVENTORY_CONTAINER_EQUIPMENT, slotX, 0, item.id);
+      if (!existing) {
+        targetSlotX = slotX;
+        occupant = null;
+        break;
+      }
+      if (targetSlotX == null) {
+        targetSlotX = slotX;
+        occupant = existing;
+      }
+    }
+    if (targetSlotX == null) transferError("equip_slot_not_found", 400);
+
+    const t = now();
+    if (occupant?.id) {
+      const fallback = getNextInventorySlot(db, sess.player_id, INVENTORY_CONTAINER_BACKPACK);
+      db.prepare(
+        "UPDATE inventory_items SET inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=? AND player_id=?"
+      ).run(
+        fallback.container,
+        fallback.slotX,
+        fallback.slotY,
+        t,
+        sess.impersonated ? "dm" : "player",
+        Number(occupant.id),
+        sess.player_id
+      );
+    }
+
+    db.prepare(
+      "UPDATE inventory_items SET inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=? AND player_id=?"
+    ).run(
+      INVENTORY_CONTAINER_EQUIPMENT,
+      targetSlotX,
+      0,
+      t,
+      sess.impersonated ? "dm" : "player",
+      itemId,
+      sess.player_id
+    );
+
+    return { idempotent: false, slotX: targetSlotX, slotY: 0, swappedItemId: occupant?.id ? Number(occupant.id) : null };
+  });
+
+  try {
+    const out = tx();
+    req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
+    req.app.locals.io?.to("dm").emit("inventory:updated");
+    return res.json({ ok: true, ...out });
+  } catch (e) {
+    if (e?.code) return res.status(e.status || 400).json({ error: e.code, ...(e.extra || {}) });
+    throw e;
+  }
 });
 
 inventoryRouter.delete("/mine/:id", (req, res) => {
@@ -533,6 +734,9 @@ inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
   const slot = requestedSlot || getNextInventorySlot(db, pid, requestedContainer);
   const occupiedBy = findItemAtSlot(db, pid, slot.container, slot.slotX, slot.slotY);
   if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
+  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, slot.container, slot.slotX)) {
+    return res.status(400).json({ error: "invalid_equipment_slot" });
+  }
 
   const ins2 = db.prepare(
     "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
@@ -598,6 +802,9 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
   if (!isValidSlot(container, slotX, slotY)) return res.status(400).json({ error: "invalid_slot" });
   const occupiedBy = findItemAtSlot(db, pid, container, slotX, slotY, itemId);
   if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
+  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, container, slotX)) {
+    return res.status(400).json({ error: "invalid_equipment_slot" });
+  }
   const reservedQty = Number(existing.reserved_qty || 0);
   if (qty < reservedQty) return res.status(400).json({ error: "reserved_qty_exceeded" });
   const limitInfo = getInventoryLimitForPlayer(db, pid);

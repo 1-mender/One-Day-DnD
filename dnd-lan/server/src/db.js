@@ -66,6 +66,15 @@ function hasColumn(database, tableName, columnName) {
 }
 
 function ensureColumnAwareIndexes(database) {
+  if (
+    hasColumn(database, "inventory_items", "inv_container")
+    && hasColumn(database, "inventory_items", "slot_x")
+    && hasColumn(database, "inventory_items", "slot_y")
+  ) {
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_inventory_layout ON inventory_items(player_id, inv_container, slot_y, slot_x);"
+    );
+  }
   if (hasColumn(database, "monsters", "party_id")) {
     database.exec("CREATE INDEX IF NOT EXISTS idx_monsters_party_name_id ON monsters(party_id, name COLLATE NOCASE, id);");
     database.exec(

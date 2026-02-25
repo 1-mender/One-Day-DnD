@@ -20,7 +20,8 @@
     "e2e": "node scripts/e2e.mjs",
     "e2e:visual": "node scripts/e2e-visual.mjs",
     "e2e:shop": "node scripts/e2e-shop-doubleclick.mjs",
-    "e2e:transfers": "node scripts/e2e-transfers.mjs"
+    "e2e:transfers": "node scripts/e2e-transfers.mjs",
+    "e2e:rpg": "node scripts/e2e-inventory-rpg.mjs"
   },
   "devDependencies": {
     "pixelmatch": "^7.1.0",

@@ -439,6 +439,7 @@ export default function DMPlayerProfile() {
                             disabled={readOnly}
                             maxLength={500}
                             placeholder="Ответ DM (опционально)"
+                            aria-label="Ответ DM по запросу"
                             className="u-w-full"
                           />
                           <button className="btn" onClick={() => approve(r.id)} disabled={readOnly}>Одобрить</button>
@@ -481,15 +482,16 @@ export default function DMPlayerProfile() {
                     </div>
                   ) : null}
                   <div className="list u-mt-10">
-                    <input value={form.characterName} onChange={(e) => setForm({ ...form, characterName: e.target.value })} placeholder="Имя персонажа" maxLength={80} disabled={readOnly} style={inp} />
-                    <input value={form.classRole} onChange={(e) => setForm({ ...form, classRole: e.target.value })} placeholder="Класс / роль" maxLength={80} disabled={readOnly} style={inp} />
-                    <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} placeholder="Уровень" disabled={readOnly} style={inp} />
-                  <input value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} placeholder="URL аватара" maxLength={512} disabled={readOnly} style={inp} />
+                    <input value={form.characterName} onChange={(e) => setForm({ ...form, characterName: e.target.value })} placeholder="Имя персонажа" aria-label="Имя персонажа" maxLength={80} disabled={readOnly} style={inp} />
+                    <input value={form.classRole} onChange={(e) => setForm({ ...form, classRole: e.target.value })} placeholder="Класс / роль" aria-label="Класс или роль" maxLength={80} disabled={readOnly} style={inp} />
+                    <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} placeholder="Уровень" aria-label="Уровень" disabled={readOnly} style={inp} />
+                  <input value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} placeholder="URL аватара" aria-label="URL аватара" maxLength={512} disabled={readOnly} style={inp} />
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     onChange={handleAvatarFileChange}
+                    aria-label="Загрузка аватара"
                     disabled={readOnly}
                     className="u-hidden-input"
                   />
@@ -510,6 +512,7 @@ export default function DMPlayerProfile() {
                       <select
                         value={getRaceValue(form.stats)}
                         onChange={(e) => setForm({ ...form, stats: setRaceInStats(form.stats, e.target.value) })}
+                        aria-label="Раса"
                         disabled={readOnly}
                         style={inp}
                       >
@@ -521,7 +524,7 @@ export default function DMPlayerProfile() {
                     </div>
                     <div className="kv">
                       <div className="title"><span className="section-icon bio" aria-hidden="true" />Биография</div>
-                    <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={6} maxLength={2000} placeholder="Биография (до 2000 символов)" disabled={readOnly} style={inp} />
+                    <textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} rows={6} maxLength={2000} placeholder="Биография (до 2000 символов)" aria-label="Биография" disabled={readOnly} style={inp} />
                     <div className="small">{String(form.bio || "").length}/2000</div>
                   </div>
                 </div>

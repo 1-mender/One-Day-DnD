@@ -49,24 +49,24 @@ export default function Join() {
           <div className="spread-col">
             <div className="card taped panel scrap-card paper-stack">
               <div className="u-title-xl">{t("join.title")}</div>
-              <div className="progress-steps" aria-label="Прогресс подключения">
+              <div className="progress-steps" aria-label={t("join.progressAria")}>
                 <div className="progress-step active" aria-current="step">
                   <span className="progress-dot" aria-hidden="true" />
-                  <span className="progress-label">Заявка</span>
+                  <span className="progress-label">{t("join.progressStepRequest")}</span>
                 </div>
                 <span className="progress-line" aria-hidden="true" />
                 <div className="progress-step">
                   <span className="progress-dot" aria-hidden="true" />
-                  <span className="progress-label">Одобрение DM</span>
+                  <span className="progress-label">{t("join.progressStepApprove")}</span>
                 </div>
                 <span className="progress-line" aria-hidden="true" />
                 <div className="progress-step">
                   <span className="progress-dot" aria-hidden="true" />
-                  <span className="progress-label">Вход</span>
+                  <span className="progress-label">{t("join.progressStepEnter")}</span>
                 </div>
               </div>
               <div className="small progress-hint">
-                После отправки заявки мастер (DM) подтвердит вход.
+                {t("join.progressHint")}
               </div>
               <div className="paper-note u-mt-8">
                 {info?.party?.name ? t("join.partyName", { name: info.party.name }) : t("common.loading")}
@@ -75,12 +75,24 @@ export default function Join() {
               <form onSubmit={submit} className="list">
                 <div className="kv">
                   <div>{t("join.playerNameLabel")}</div>
-                  <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder={t("join.playerNamePlaceholder")} className="u-w-full" />
+                  <input
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder={t("join.playerNamePlaceholder")}
+                    aria-label={t("join.playerNameLabel")}
+                    className="u-w-full"
+                  />
                 </div>
                 {info?.party?.joinCodeEnabled && (
                   <div className="kv">
                     <div>{t("join.joinCodeLabel")}</div>
-                    <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} placeholder={t("join.joinCodePlaceholder")} className="u-w-full" />
+                    <input
+                      value={joinCode}
+                      onChange={(e) => setJoinCode(e.target.value)}
+                      placeholder={t("join.joinCodePlaceholder")}
+                      aria-label={t("join.joinCodeLabel")}
+                      className="u-w-full"
+                    />
                   </div>
                 )}
                 {readOnly ? <div className="badge warn">{t("join.readOnly")}</div> : null}

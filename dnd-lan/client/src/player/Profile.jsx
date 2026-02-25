@@ -628,6 +628,7 @@ export default function Profile() {
                   value={draft.characterName}
                   onChange={(e) => setDraft({ ...draft, characterName: e.target.value })}
                   placeholder="Имя персонажа"
+                  aria-label="Имя персонажа"
                   maxLength={80}
                   style={inp}
                 />
@@ -637,6 +638,7 @@ export default function Profile() {
                   value={draft.classRole}
                   onChange={(e) => setDraft({ ...draft, classRole: e.target.value })}
                   placeholder="Класс / роль"
+                  aria-label="Класс или роль"
                   maxLength={80}
                   style={inp}
                 />
@@ -646,6 +648,7 @@ export default function Profile() {
                   value={draft.level}
                   onChange={(e) => setDraft({ ...draft, level: e.target.value })}
                   placeholder="Уровень"
+                  aria-label="Уровень"
                   style={inp}
                 />
               ) : null}
@@ -658,6 +661,7 @@ export default function Profile() {
               <select
                 value={getRaceValue(draft.stats)}
                 onChange={(e) => setDraft({ ...draft, stats: setRaceInStats(draft.stats, e.target.value) })}
+                aria-label="Раса"
                 style={inp}
               >
                 {RACE_OPTIONS.map((opt) => (
@@ -676,6 +680,7 @@ export default function Profile() {
                 rows={8}
                 maxLength={2000}
                 placeholder="Биография (до 2000 символов)"
+                aria-label="Биография"
                 style={inp}
               />
               <div className="small">{String(draft.bio || "").length}/2000</div>
@@ -689,6 +694,7 @@ export default function Profile() {
                 value={draft.avatarUrl}
                 onChange={(e) => setDraft({ ...draft, avatarUrl: e.target.value })}
                 placeholder="URL аватара"
+                aria-label="URL аватара"
                 maxLength={512}
                 style={inp}
               />
@@ -697,6 +703,7 @@ export default function Profile() {
                 type="file"
                 accept="image/*"
                 onChange={handleAvatarFileChange}
+                aria-label="Загрузить аватар"
                 style={{ display: "none" }}
               />
               <button className="btn secondary" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
@@ -740,6 +747,7 @@ export default function Profile() {
             rows={3}
             maxLength={500}
             placeholder="Причина запроса (опционально, до 500 символов)"
+            aria-label="Причина запроса"
             style={inp}
           />
           <div className="small">{String(requestReason || "").length}/500</div>
@@ -747,6 +755,7 @@ export default function Profile() {
             value={requestDraft.characterName}
             onChange={(e) => setRequestDraft({ ...requestDraft, characterName: e.target.value })}
             placeholder="Имя персонажа"
+            aria-label="Имя персонажа"
             maxLength={80}
             style={inp}
           />
@@ -754,6 +763,7 @@ export default function Profile() {
             value={requestDraft.classRole}
             onChange={(e) => setRequestDraft({ ...requestDraft, classRole: e.target.value })}
             placeholder="Класс / роль"
+            aria-label="Класс или роль"
             maxLength={80}
             style={inp}
           />
@@ -761,11 +771,13 @@ export default function Profile() {
             value={requestDraft.level}
             onChange={(e) => setRequestDraft({ ...requestDraft, level: e.target.value })}
             placeholder="Уровень"
+            aria-label="Уровень"
             style={inp}
           />
           <select
             value={getRaceValue(requestDraft.stats)}
             onChange={(e) => setRequestDraft({ ...requestDraft, stats: setRaceInStats(requestDraft.stats, e.target.value) })}
+            aria-label="Раса"
             style={inp}
           >
             {RACE_OPTIONS.map((opt) => (
@@ -779,6 +791,7 @@ export default function Profile() {
             rows={6}
             maxLength={2000}
             placeholder="Биография (до 2000 символов)"
+            aria-label="Биография"
             style={inp}
           />
           <div className="small">{String(requestDraft.bio || "").length}/2000</div>
@@ -786,6 +799,7 @@ export default function Profile() {
             value={requestDraft.avatarUrl}
             onChange={(e) => setRequestDraft({ ...requestDraft, avatarUrl: e.target.value })}
             placeholder="URL аватара"
+            aria-label="URL аватара"
             maxLength={512}
             style={inp}
           />

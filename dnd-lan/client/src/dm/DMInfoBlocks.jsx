@@ -181,15 +181,15 @@ export default function DMInfoBlocks() {
             {readOnly ? <div className="badge warn">{t("dmInfoBlocks.readOnly", null, "Режим только чтения: изменения отключены")}</div> : null}
             {err && <div className="badge off">{t("common.error")}: {err}</div>}
             <div className="row u-row-wrap">
-              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
-              <select value={cat} onChange={(e) => setCat(e.target.value)} className="u-w-160">
+              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} aria-label={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
+              <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t("dmInfoBlocks.categoryAll", null, "Категория: все")} className="u-w-160">
                 <option value="">{t("dmInfoBlocks.categoryAll", null, "Категория: все")}</option>
                 <option value="lore">lore</option>
                 <option value="quest">quest</option>
                 <option value="note">note</option>
                 <option value="other">other</option>
               </select>
-              <select value={acc} onChange={(e) => setAcc(e.target.value)} className="u-w-180">
+              <select value={acc} onChange={(e) => setAcc(e.target.value)} aria-label={t("dmInfoBlocks.accessAll", null, "Доступ: все")} className="u-w-180">
                 <option value="">{t("dmInfoBlocks.accessAll", null, "Доступ: все")}</option>
                 <option value="dm">{t("dmInfoBlocks.accessDm", null, "Только мастер")}</option>
                 <option value="all">{t("dmInfoBlocks.accessPlayers", null, "Все игроки")}</option>
@@ -285,15 +285,15 @@ export default function DMInfoBlocks() {
 <Modal open={open} title={edit ? t("dmInfoBlocks.editBlock", null, "Редактировать блок") : t("dmInfoBlocks.newBlock", null, "Новый блок")} onClose={() => setOpen(false)}>
         <div className="list">
           {err && <div className="badge off">{t("common.error")}: {err}</div>}
-          <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" style={inp} />
+          <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" aria-label="Заголовок инфоблока" style={inp} />
           <div className="row">
-            <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} style={inp}>
+            <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} aria-label="Категория инфоблока" style={inp}>
               <option value="lore">lore</option>
               <option value="quest">quest</option>
               <option value="note">note</option>
               <option value="other">other</option>
             </select>
-            <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} style={inp}>
+            <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} aria-label="Доступ к инфоблоку" style={inp}>
               <option value="dm">{t("dmInfoBlocks.accessDmOnly", null, "DM-only")}</option>
               <option value="all">{t("dmInfoBlocks.accessAllPlayers", null, "All players")}</option>
               <option value="selected">{t("dmInfoBlocks.accessSelectedPlayers", null, "Selected players")}</option>
@@ -326,7 +326,7 @@ export default function DMInfoBlocks() {
           )}
 
           <div className="row u-row-gap-8">
-            <input ref={fileRef} type="file" className="u-hidden-input" onChange={onPickFile} />
+            <input ref={fileRef} type="file" className="u-hidden-input" aria-label="Загрузить файл в инфоблок" onChange={onPickFile} />
             <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
             <div className="small">Вставит markdown для картинки/файла</div>
           </div>
@@ -336,6 +336,7 @@ export default function DMInfoBlocks() {
             value={form.content||""}
             onChange={(e)=>setForm({ ...form, content: e.target.value })}
             placeholder="Содержание (markdown/текст)"
+            aria-label="Содержание инфоблока"
             rows={8}
             style={inp}
           />
@@ -343,6 +344,7 @@ export default function DMInfoBlocks() {
             value={form.tagsText ?? (form.tags || []).join(", ")}
             onChange={(e)=>setForm({ ...form, tagsText: e.target.value })}
             placeholder="Теги (через запятую)"
+            aria-label="Теги инфоблока через запятую"
             style={inp}
           />
           <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>

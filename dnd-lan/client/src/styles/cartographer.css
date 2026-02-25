@@ -405,6 +405,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   border-color: rgba(117, 105, 76, 0.34);
 }
 
+.inv-slot-handle.split-armed{
+  border-color: rgba(86, 126, 74, 0.56);
+  background: rgba(165, 198, 137, 0.3);
+}
+
 .u-title-xl,
 .u-title-lg{
   font-family: var(--font-display);

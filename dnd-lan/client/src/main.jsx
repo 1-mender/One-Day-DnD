@@ -39,29 +39,19 @@ function showBootstrapError(error) {
   root.appendChild(wrap);
 }
 
-let bootOk = true;
 try {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <ErrorBoundary>
+        <ToastProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </ToastProvider>
+      </ErrorBoundary>
+    </React.StrictMode>
+  );
 } catch (e) {
-  bootOk = false;
   showBootstrapError(e);
-  console.error("[bootstrap] init failed", e);
-}
-
-if (bootOk) {
-  try {
-    ReactDOM.createRoot(document.getElementById("root")).render(
-      <React.StrictMode>
-        <ErrorBoundary>
-          <ToastProvider>
-            <BrowserRouter>
-              <App />
-            </BrowserRouter>
-          </ToastProvider>
-        </ErrorBoundary>
-      </React.StrictMode>
-    );
-  } catch (e) {
-    showBootstrapError(e);
-    console.error("[bootstrap] render failed", e);
-  }
+  console.error("[bootstrap] render failed", e);
 }

@@ -82,7 +82,13 @@ export default function Bestiary() {
       <div style={{ fontWeight: 800, fontSize: 18 }}>{t("bestiary.title", null, "Bestiary")}</div>
       <div className="small">{t("bestiary.readOnly", null, "Режим только чтения для игроков")}</div>
       <hr />
-        <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("bestiary.search", null, "Поиск по имени...")} style={{ width:"100%" }} />
+        <input
+          value={q}
+          onChange={(e)=>setQ(e.target.value)}
+          placeholder={t("bestiary.search", null, "Поиск по имени...")}
+          aria-label="Поиск монстров по имени"
+          style={{ width:"100%" }}
+        />
       <div className="bestiary-list" style={{ marginTop: 12 }}>
         {items.map((m) => {
           const thumb = (m.name || "??").slice(0, 2).toUpperCase();

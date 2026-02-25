@@ -225,9 +225,10 @@ export default function DMPlayers() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder={t("dmPlayers.searchPlaceholder")}
+                aria-label={t("dmPlayers.searchPlaceholder")}
                 className="u-w-min-360"
               />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="u-w-180">
+              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label={t("dmPlayers.statusAll")} className="u-w-180">
                 <option value="all">{t("dmPlayers.statusAll")}</option>
                 <option value="online">{t("dmPlayers.statusOnline")}</option>
                 <option value="idle">{t("dmPlayers.statusIdle")}</option>
@@ -306,6 +307,7 @@ export default function DMPlayers() {
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
             placeholder={t("dmPlayers.editPlaceholder")}
+            aria-label={t("dmPlayers.editPlaceholder")}
             className="u-w-full"
             maxLength={80}
           />
@@ -341,18 +343,21 @@ export default function DMPlayers() {
               value={ticketDelta}
               onChange={(e) => setTicketDelta(e.target.value)}
               placeholder={t("dmPlayers.ticketDelta")}
+              aria-label={t("dmPlayers.ticketDelta")}
               className="u-w-full"
             />
             <input
               value={ticketSet}
               onChange={(e) => setTicketSet(e.target.value)}
               placeholder={t("dmPlayers.ticketSet")}
+              aria-label={t("dmPlayers.ticketSet")}
               className="u-w-full"
             />
             <input
               value={ticketReason}
               onChange={(e) => setTicketReason(e.target.value)}
               placeholder={t("dmPlayers.ticketReason")}
+              aria-label={t("dmPlayers.ticketReason")}
               className="u-w-full"
               maxLength={120}
             />

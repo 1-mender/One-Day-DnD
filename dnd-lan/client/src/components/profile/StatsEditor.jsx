@@ -102,6 +102,7 @@ export function StatsEditor({ value, onChange, readOnly = false }) {
               value={row.key}
               onChange={(e) => updateRow(idx, { key: e.target.value })}
               placeholder="ключ"
+              aria-label={`Ключ стата ${idx + 1}`}
               maxLength={KEY_MAX}
               disabled={readOnly}
               style={{ width: 120 }}
@@ -111,6 +112,7 @@ export function StatsEditor({ value, onChange, readOnly = false }) {
             value={row.value}
             onChange={(e) => updateRow(idx, { value: e.target.value })}
             placeholder="значение"
+            aria-label={`Значение стата ${row.key || idx + 1}`}
             maxLength={VALUE_MAX}
             disabled={readOnly}
             style={{ flex: 1 }}

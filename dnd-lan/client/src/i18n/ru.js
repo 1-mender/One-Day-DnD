@@ -48,6 +48,11 @@ export const ru = {
   },
   "join": {
     "title": "Подключиться к партии",
+    "progressAria": "Прогресс подключения",
+    "progressStepRequest": "Заявка",
+    "progressStepApprove": "Одобрение DM",
+    "progressStepEnter": "Вход",
+    "progressHint": "После отправки заявки мастер (DM) подтвердит вход.",
     "partyName": "Партия: {name}",
     "playerNameLabel": "Имя игрока/персонажа *",
     "playerNamePlaceholder": "Напр. Aria / Bob",
@@ -68,8 +73,13 @@ export const ru = {
   },
   "waiting": {
     "title": "Ожидание подтверждения",
+    "progressAria": "Прогресс подключения",
+    "progressHint": "Ждём подтверждения от мастера. Как только DM одобрит заявку, вы автоматически попадёте в приложение.",
     "subtitle": "DM должен принять вашу заявку в лобби.",
     "status": "Ожидание…",
+    "checkStatus": "Проверить статус",
+    "checking": "Проверяю...",
+    "networkIssue": "Не удалось проверить статус. Проверьте соединение и попробуйте снова.",
     "sessionOpenFailed": "Не удалось открыть игровую сессию.",
     "rejected": "Заявка отклонена.",
     "rejectedBanned": "Заявка отклонена. Вы заблокированы."

@@ -242,13 +242,13 @@ export default function DMEvents() {
       {readOnly ? <StatusBanner tone="warning">{t("dmEvents.readOnly")}</StatusBanner> : null}
 
       <FilterBar>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmEvents.searchPlaceholder")} className="u-w-min-520" />
-        <select value={scope} onChange={(e) => setScope(e.target.value)}>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmEvents.searchPlaceholder")} aria-label="Поиск по журналу событий" className="u-w-min-520" />
+        <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Фильтр источника событий">
           {scopes.map((entry) => (
             <option key={entry.key} value={entry.key}>{t(entry.labelKey)}</option>
           ))}
         </select>
-        <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
+        <select value={viewMode} onChange={(e) => setViewMode(e.target.value)} aria-label="Режим просмотра журнала">
           <option value="all">{t("dmEvents.viewAll")}</option>
           <option value="recent">{t("dmEvents.viewRecent")}</option>
         </select>
@@ -285,6 +285,7 @@ export default function DMEvents() {
                 max="3650"
                 value={cleanupDays}
                 onChange={(e) => setCleanupDays(e.target.value)}
+                aria-label="Удалить события старше N дней"
                 className="u-number-input"
                 disabled={readOnly}
               />
@@ -371,6 +372,7 @@ export default function DMEvents() {
               value={confirmDialog?.phrase || ""}
               onChange={(e) => setConfirmDialog((prev) => ({ ...(prev || {}), phrase: e.target.value }))}
               placeholder={confirmDeletePhrase}
+              aria-label="Подтверждение удаления событий"
               className="u-w-full"
               autoFocus
             />

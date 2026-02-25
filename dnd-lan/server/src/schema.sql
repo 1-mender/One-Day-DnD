@@ -294,7 +294,6 @@ CREATE TABLE IF NOT EXISTS arcade_match_players (
 
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_layout ON inventory_items(player_id, inv_container, slot_y, slot_x);
 CREATE INDEX IF NOT EXISTS idx_transfers_inbox ON item_transfers(to_player_id, status);
 CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);

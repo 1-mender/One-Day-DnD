@@ -2,6 +2,8 @@ import React, { useEffect, useId, useRef, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { MoreHorizontal } from "lucide-react";
 import { t } from "../i18n/index.js";
+import { getFocusable } from "../components/modalA11y.js";
+import { getPopoverTabTarget } from "../components/navPopoverA11y.js";
 
 const primaryItems = [
   { to: "/dm/app/dashboard", label: t("dmTabBar.dashboard") },
@@ -24,6 +26,7 @@ export default function DMTabBar() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const rootRef = useRef(null);
   const toggleRef = useRef(null);
+  const menuRef = useRef(null);
   const itemRefs = useRef([]);
   const menuId = useId();
 
@@ -32,7 +35,7 @@ export default function DMTabBar() {
 
   useEffect(() => {
     itemRefs.current = itemRefs.current.slice(0, secondaryItems.length);
-  }, [secondaryItems.length]);
+  }, []);
 
   useEffect(() => {
     if (!open) return () => {};
@@ -43,13 +46,16 @@ export default function DMTabBar() {
     const onKey = (event) => {
       if (event.key === "Escape") setOpen(false);
     };
+    const onScroll = () => setOpen(false);
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("touchstart", onDoc, { passive: true });
     document.addEventListener("keydown", onKey);
+    window.addEventListener("scroll", onScroll, true);
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("touchstart", onDoc);
       document.removeEventListener("keydown", onKey);
+      window.removeEventListener("scroll", onScroll, true);
     };
   }, [open]);
 
@@ -67,6 +73,22 @@ export default function DMTabBar() {
     if (!node) return;
     window.requestAnimationFrame(() => node.focus());
   }, [activeIndex, open]);
+
+  useEffect(() => {
+    if (!open) return () => {};
+    const onFocusIn = (event) => {
+      const menu = menuRef.current;
+      if (!menu) return;
+      if (menu.contains(event.target)) return;
+      const focusable = getFocusable(menu);
+      const fallback = focusable[0] || menu;
+      fallback.focus?.({ preventScroll: true });
+    };
+    document.addEventListener("focusin", onFocusIn);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+    };
+  }, [open]);
 
   useEffect(() => {
     setOpen(false);
@@ -118,6 +140,8 @@ export default function DMTabBar() {
               id={menuId}
               className="dm-topbar-popover"
               role="menu"
+              ref={menuRef}
+              tabIndex={-1}
               onKeyDown={(event) => {
                 if (event.key === "Escape") {
                   event.preventDefault();
@@ -126,7 +150,14 @@ export default function DMTabBar() {
                   return;
                 }
                 if (event.key === "Tab") {
-                  setOpen(false);
+                  const menu = menuRef.current;
+                  if (!menu) return;
+                  const focusable = getFocusable(menu);
+                  const active = menu.contains(document.activeElement) ? document.activeElement : null;
+                  const target = getPopoverTabTarget(focusable, active, event.shiftKey);
+                  if (!target) return;
+                  event.preventDefault();
+                  target.focus?.({ preventScroll: true });
                   return;
                 }
                 if (!secondaryItems.length) return;

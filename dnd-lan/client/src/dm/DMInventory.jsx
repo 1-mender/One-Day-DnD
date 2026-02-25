@@ -302,7 +302,7 @@ export default function DMInventory() {
         <div className="dm-inv-panel">
           <div className="dm-inv-panel-title">Игрок</div>
           <FilterBar>
-            <select value={selectedId} onChange={(e) => setSelectedId(Number(e.target.value))} className="u-w-full">
+            <select value={selectedId} onChange={(e) => setSelectedId(Number(e.target.value))} aria-label="Выбор игрока" className="u-w-full">
               {players.map((p) => <option key={p.id} value={p.id}>{t("dmInventory.playerOption", { name: p.displayName, id: p.id })}</option>)}
             </select>
             <button className="btn" onClick={startAdd} disabled={readOnly || !selectedId}><Plus className="icon" aria-hidden="true" />{t("dmInventory.issue")}</button>
@@ -315,13 +315,13 @@ export default function DMInventory() {
         <div className="dm-inv-panel">
           <div className="dm-inv-panel-title">Фильтры</div>
           <FilterBar>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmInventory.searchPlaceholder")} className="u-w-min-360" />
-            <select value={vis} onChange={(e) => setVis(e.target.value)} className="u-w-180">
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmInventory.searchPlaceholder")} aria-label="Поиск предметов игрока" className="u-w-min-360" />
+            <select value={vis} onChange={(e) => setVis(e.target.value)} aria-label="Фильтр видимости предметов" className="u-w-180">
               <option value="">{t("dmInventory.visibilityAll")}</option>
               <option value="public">{t("dmInventory.visibilityPublic")}</option>
               <option value="hidden">{t("dmInventory.visibilityHidden")}</option>
             </select>
-            <select value={rarity} onChange={(e) => setRarity(e.target.value)} className="u-w-180">
+            <select value={rarity} onChange={(e) => setRarity(e.target.value)} aria-label="Фильтр редкости предметов" className="u-w-180">
               <option value="">{t("dmInventory.rarityAll")}</option>
               {RARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -389,6 +389,7 @@ export default function DMInventory() {
             value={transferQ}
             onChange={(e) => setTransferQ(e.target.value)}
             placeholder={t("dmInventory.transferSearch")}
+            aria-label={t("dmInventory.transferSearch")}
             className="u-w-full"
           />
         </FilterBar>
@@ -501,19 +502,19 @@ export default function DMInventory() {
 
       <Modal open={open} title={edit ? t("dmInventory.editItem") : t("dmInventory.issueItem")} onClose={() => setOpen(false)}>
         <div className="list">
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("dmInventory.formName")} className="u-w-full" />
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("dmInventory.formDescription")} rows={4} className="u-w-full" />
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder={t("dmInventory.formName")} aria-label={t("dmInventory.formName")} className="u-w-full" />
+          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("dmInventory.formDescription")} aria-label={t("dmInventory.formDescription")} rows={4} className="u-w-full" />
           <div className="row">
-            <input value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} placeholder={t("dmInventory.formQty")} className="u-w-full" />
-            <input value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder={t("dmInventory.formWeight")} className="u-w-full" />
+            <input value={form.qty} onChange={(e) => setForm({ ...form, qty: e.target.value })} placeholder={t("dmInventory.formQty")} aria-label={t("dmInventory.formQty")} className="u-w-full" />
+            <input value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder={t("dmInventory.formWeight")} aria-label={t("dmInventory.formWeight")} className="u-w-full" />
           </div>
           <div className="row">
-            <select value={form.rarity} onChange={(e) => setForm({ ...form, rarity: e.target.value })} className="u-w-full">
+            <select value={form.rarity} onChange={(e) => setForm({ ...form, rarity: e.target.value })} aria-label={t("dmInventory.rarityAll")} className="u-w-full">
               {RARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <select value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })} className="u-w-full">
+            <select value={form.visibility} onChange={(e) => setForm({ ...form, visibility: e.target.value })} aria-label={t("dmInventory.visibilityAll")} className="u-w-full">
               <option value="public">{t("dmInventory.visibilityPublic")}</option>
               <option value="hidden">{t("dmInventory.visibilityHidden")}</option>
             </select>
@@ -523,6 +524,7 @@ export default function DMInventory() {
             <select
               value={form.iconKey || ""}
               onChange={(e) => setForm({ ...form, iconKey: e.target.value })}
+              aria-label={t("dmInventory.iconList")}
               className="u-w-full"
             >
               <option value="">{t("dmInventory.iconNone")}</option>
@@ -575,6 +577,7 @@ export default function DMInventory() {
             value={(form.tags || []).join(", ")}
             onChange={(e) => setForm({ ...form, tags: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
             placeholder={t("dmInventory.formTags")}
+            aria-label={t("dmInventory.formTags")}
             className="u-w-full"
           />
           <button className="btn" onClick={save} disabled={readOnly}>{edit ? t("common.save") : t("dmInventory.issue")}</button>

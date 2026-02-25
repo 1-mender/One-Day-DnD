@@ -41,12 +41,26 @@ export default function DMSetup() {
           <div className="small">{t("dmSetup.subtitle")}</div>
           <hr />
           <form className="list" onSubmit={submit}>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("dmSetup.usernamePlaceholder")} className="u-w-full" />
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("dmSetup.passwordPlaceholder")} type="password" className="u-w-full" />
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder={t("dmSetup.usernamePlaceholder")}
+              aria-label={t("dmSetup.usernamePlaceholder")}
+              className="u-w-full"
+            />
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("dmSetup.passwordPlaceholder")}
+              aria-label={t("dmSetup.passwordPlaceholder")}
+              type="password"
+              className="u-w-full"
+            />
             <input
               value={setupSecret}
               onChange={(e) => setSetupSecret(e.target.value)}
               placeholder={t("dmSetup.setupSecretPlaceholder")}
+              aria-label={t("dmSetup.setupSecretPlaceholder")}
               className="u-w-full"
             />
             {err && <div className="badge off">{t("common.error")}: {err}</div>}

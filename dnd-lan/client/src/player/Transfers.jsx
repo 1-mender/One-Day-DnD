@@ -8,7 +8,7 @@ import { useToast } from "../components/ui/ToastProvider.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import { formatError } from "../lib/formatError.js";
-import { RefreshCcw, Send } from "lucide-react";
+import { ChevronDown, RefreshCcw, Send } from "lucide-react";
 
 const REFRESH_MS = 30_000;
 
@@ -25,36 +25,42 @@ export default function Transfers() {
   const [outboxLoading, setOutboxLoading] = useState(true);
   const [inboxQ, setInboxQ] = useState("");
   const [outboxQ, setOutboxQ] = useState("");
+  const [inboxOpen, setInboxOpen] = useState(true);
+  const [outboxOpen, setOutboxOpen] = useState(false);
 
-  const loadInbox = useCallback(async () => {
-    setInboxLoading(true);
+  const loadInbox = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setInboxLoading(true);
     try {
       const response = await api.invTransferInbox();
       setInbox(Array.isArray(response?.items) ? response.items : []);
     } catch (error) {
-      setErr(formatError(error));
-      setInbox([]);
+      if (!silent) {
+        setErr(formatError(error));
+        setInbox([]);
+      }
     } finally {
-      setInboxLoading(false);
+      if (!silent) setInboxLoading(false);
     }
   }, []);
 
-  const loadOutbox = useCallback(async () => {
-    setOutboxLoading(true);
+  const loadOutbox = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setOutboxLoading(true);
     try {
       const response = await api.invTransferOutbox();
       setOutbox(Array.isArray(response?.items) ? response.items : []);
     } catch (error) {
-      setErr(formatError(error));
-      setOutbox([]);
+      if (!silent) {
+        setErr(formatError(error));
+        setOutbox([]);
+      }
     } finally {
-      setOutboxLoading(false);
+      if (!silent) setOutboxLoading(false);
     }
   }, []);
 
-  const loadAll = useCallback(async () => {
-    setErr("");
-    await Promise.all([loadInbox(), loadOutbox()]);
+  const loadAll = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setErr("");
+    await Promise.all([loadInbox({ silent }), loadOutbox({ silent })]);
   }, [loadInbox, loadOutbox]);
 
   useEffect(() => {
@@ -63,7 +69,7 @@ export default function Transfers() {
 
   useEffect(() => {
     if (!socket) return () => {};
-    const onTransfers = () => loadAll().catch(() => {});
+    const onTransfers = () => loadAll({ silent: true }).catch(() => {});
     socket.on("transfers:updated", onTransfers);
     return () => {
       socket.off("transfers:updated", onTransfers);
@@ -72,7 +78,7 @@ export default function Transfers() {
 
   useEffect(() => {
     const id = setInterval(() => {
-      loadAll().catch(() => {});
+      loadAll({ silent: true }).catch(() => {});
     }, REFRESH_MS);
     return () => clearInterval(id);
   }, [loadAll]);
@@ -87,7 +93,7 @@ export default function Transfers() {
       } else {
         toast.success("Передача принята");
       }
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (error) {
       const message = formatError(error);
       setErr(message);
@@ -105,7 +111,7 @@ export default function Transfers() {
       } else {
         toast.success("Передача отклонена");
       }
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (error) {
       const message = formatError(error);
       setErr(message);
@@ -123,7 +129,7 @@ export default function Transfers() {
       } else {
         toast.success("Передача отменена");
       }
-      await loadAll();
+      await loadAll({ silent: true });
     } catch (error) {
       const message = formatError(error);
       setErr(message);
@@ -133,6 +139,22 @@ export default function Transfers() {
 
   const inboxFiltered = useMemo(() => filterTransfers(inbox, inboxQ), [inbox, inboxQ]);
   const outboxFiltered = useMemo(() => filterTransfers(outbox, outboxQ), [outbox, outboxQ]);
+
+  useEffect(() => {
+    if (String(inboxQ || "").trim()) setInboxOpen(true);
+  }, [inboxQ]);
+
+  useEffect(() => {
+    if (String(outboxQ || "").trim()) setOutboxOpen(true);
+  }, [outboxQ]);
+
+  useEffect(() => {
+    if (!inboxLoading && inbox.length === 0 && !String(inboxQ || "").trim()) setInboxOpen(false);
+  }, [inboxLoading, inbox.length, inboxQ]);
+
+  useEffect(() => {
+    if (!outboxLoading && outbox.length === 0 && !String(outboxQ || "").trim()) setOutboxOpen(false);
+  }, [outboxLoading, outbox.length, outboxQ]);
 
   return (
     <div className="card inventory-shell">
@@ -155,72 +177,104 @@ export default function Transfers() {
       <ErrorBanner message={err} onRetry={loadAll} />
 
       <div className="inv-transfer-grid">
-        <div className="inv-panel inv-transfer">
+        <div className={`inv-panel inv-transfer inv-accordion${inboxOpen ? " open" : ""}`.trim()}>
           <div className="inv-panel-head">
-            <div className="inv-panel-title">Входящие передачи</div>
-            <span className="badge secondary">{inboxLoading ? "..." : inbox.length}</span>
+            <button
+              type="button"
+              className="inv-accordion-toggle"
+              onClick={() => setInboxOpen((prev) => !prev)}
+              aria-expanded={inboxOpen ? "true" : "false"}
+              aria-controls="transfer-inbox-body"
+            >
+              <span className="inv-panel-title">Входящие передачи</span>
+              <ChevronDown className="icon" aria-hidden="true" />
+            </button>
+            <span className="badge secondary" aria-label={`Входящие: ${inboxLoading ? "загрузка" : inbox.length}`}>
+              {inboxLoading ? "..." : inbox.length}
+            </span>
           </div>
-          <input
-            value={inboxQ}
-            onChange={(event) => setInboxQ(event.target.value)}
-            placeholder="Поиск во входящих..."
-          />
-          <div className="inv-panel-body">
-            {inboxLoading ? (
-              <Skeleton h={90} w="100%" />
-            ) : inboxFiltered.length === 0 ? (
-              <EmptyState
-                title={inbox.length ? "Ничего не найдено" : "Нет входящих передач"}
-                hint={inbox.length ? "Измените поисковый запрос." : "Когда игрок отправит предмет, он появится здесь."}
+          <div className="inv-accordion-body" data-open={inboxOpen ? "true" : "false"} id="transfer-inbox-body">
+            <div className="inv-accordion-content">
+              <input
+                value={inboxQ}
+                onChange={(event) => setInboxQ(event.target.value)}
+                placeholder="Поиск во входящих..."
+                aria-label="Поиск во входящих передачах"
               />
-            ) : (
-              <div className="list">
-                {inboxFiltered.map((transfer) => (
-                  <TransferItem
-                    key={transfer.id}
-                    transfer={transfer}
-                    side="inbox"
-                    readOnly={readOnly}
-                    onAccept={() => acceptTransfer(transfer)}
-                    onReject={() => rejectTransfer(transfer)}
+              <div className="inv-panel-body">
+                {inboxLoading ? (
+                  <Skeleton h={90} w="100%" />
+                ) : inboxFiltered.length === 0 ? (
+                  <EmptyState
+                    title={inbox.length ? "Ничего не найдено" : "Нет входящих передач"}
+                    hint={inbox.length ? "Измените поисковый запрос." : "Когда игрок отправит предмет, он появится здесь."}
                   />
-                ))}
+                ) : (
+                  <div className="list">
+                    {inboxFiltered.map((transfer) => (
+                      <TransferItem
+                        key={transfer.id}
+                        transfer={transfer}
+                        side="inbox"
+                        readOnly={readOnly}
+                        onAccept={() => acceptTransfer(transfer)}
+                        onReject={() => rejectTransfer(transfer)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        <div className="inv-panel inv-transfer">
+        <div className={`inv-panel inv-transfer inv-accordion${outboxOpen ? " open" : ""}`.trim()}>
           <div className="inv-panel-head">
-            <div className="inv-panel-title">Исходящие передачи</div>
-            <span className="badge secondary">{outboxLoading ? "..." : outbox.length}</span>
+            <button
+              type="button"
+              className="inv-accordion-toggle"
+              onClick={() => setOutboxOpen((prev) => !prev)}
+              aria-expanded={outboxOpen ? "true" : "false"}
+              aria-controls="transfer-outbox-body"
+            >
+              <span className="inv-panel-title">Исходящие передачи</span>
+              <ChevronDown className="icon" aria-hidden="true" />
+            </button>
+            <span className="badge secondary" aria-label={`Исходящие: ${outboxLoading ? "загрузка" : outbox.length}`}>
+              {outboxLoading ? "..." : outbox.length}
+            </span>
           </div>
-          <input
-            value={outboxQ}
-            onChange={(event) => setOutboxQ(event.target.value)}
-            placeholder="Поиск в исходящих..."
-          />
-          <div className="inv-panel-body">
-            {outboxLoading ? (
-              <Skeleton h={90} w="100%" />
-            ) : outboxFiltered.length === 0 ? (
-              <EmptyState
-                title={outbox.length ? "Ничего не найдено" : "Нет исходящих передач"}
-                hint={outbox.length ? "Измените поисковый запрос." : "Создайте передачу из карточки предмета в инвентаре."}
+          <div className="inv-accordion-body" data-open={outboxOpen ? "true" : "false"} id="transfer-outbox-body">
+            <div className="inv-accordion-content">
+              <input
+                value={outboxQ}
+                onChange={(event) => setOutboxQ(event.target.value)}
+                placeholder="Поиск в исходящих..."
+                aria-label="Поиск в исходящих передачах"
               />
-            ) : (
-              <div className="list">
-                {outboxFiltered.map((transfer) => (
-                  <TransferItem
-                    key={transfer.id}
-                    transfer={transfer}
-                    side="outbox"
-                    readOnly={readOnly}
-                    onCancel={() => cancelTransfer(transfer)}
+              <div className="inv-panel-body">
+                {outboxLoading ? (
+                  <Skeleton h={90} w="100%" />
+                ) : outboxFiltered.length === 0 ? (
+                  <EmptyState
+                    title={outbox.length ? "Ничего не найдено" : "Нет исходящих передач"}
+                    hint={outbox.length ? "Измените поисковый запрос." : "Создайте передачу из карточки предмета в инвентаре."}
                   />
-                ))}
+                ) : (
+                  <div className="list">
+                    {outboxFiltered.map((transfer) => (
+                      <TransferItem
+                        key={transfer.id}
+                        transfer={transfer}
+                        side="outbox"
+                        readOnly={readOnly}
+                        onCancel={() => cancelTransfer(transfer)}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
@@ -254,16 +308,16 @@ function TransferItem({ transfer, side, readOnly, onAccept, onReject, onCancel }
       </div>
       {side === "inbox" ? (
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <button className="btn" onClick={onAccept} disabled={readOnly}>
+          <button className="btn" onClick={onAccept} disabled={readOnly || expired}>
             <Send className="icon" aria-hidden="true" />Принять
           </button>
-          <button className="btn secondary" onClick={onReject} disabled={readOnly}>
+          <button className="btn secondary" onClick={onReject} disabled={readOnly || expired}>
             Отклонить
           </button>
         </div>
       ) : (
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <button className="btn secondary" onClick={onCancel} disabled={readOnly}>
+          <button className="btn secondary" onClick={onCancel} disabled={readOnly || expired}>
             Отменить
           </button>
         </div>
@@ -288,4 +342,3 @@ function filterTransfers(list, q) {
     return hay.includes(qq);
   });
 }
-

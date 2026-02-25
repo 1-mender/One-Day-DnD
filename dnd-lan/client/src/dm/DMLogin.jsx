@@ -41,8 +41,21 @@ export default function DMLogin() {
           <div className="small">{t("dmLogin.subtitle")}</div>
           <hr />
           <form className="list" onSubmit={submit}>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder={t("dmLogin.usernamePlaceholder")} className="u-w-full" />
-            <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("dmLogin.passwordPlaceholder")} type="password" className="u-w-full" />
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder={t("dmLogin.usernamePlaceholder")}
+              aria-label={t("dmLogin.usernamePlaceholder")}
+              className="u-w-full"
+            />
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t("dmLogin.passwordPlaceholder")}
+              aria-label={t("dmLogin.passwordPlaceholder")}
+              type="password"
+              className="u-w-full"
+            />
             {err && <div className="badge off">{t("common.error")}: {err}</div>}
             {netErr && <div className="badge off">{t("common.network")}: {netErr}</div>}
             <button className="btn" type="submit">{t("dmLogin.submit")}</button>

@@ -377,6 +377,7 @@ export default function DMSettings() {
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
               placeholder={"\u041d\u0430\u043f\u0440\u0438\u043c\u0435\u0440: 1234"}
+              aria-label="Код партии"
               style={inp}
               disabled={!joinEnabled}
             />
@@ -447,6 +448,7 @@ export default function DMSettings() {
                         value={preset.title || ""}
                         onChange={(e) => updatePreset(idx, { title: e.target.value })}
                         placeholder={"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u0435\u0441\u0435\u0442\u0430"}
+                        aria-label="Название пресета профиля"
                         maxLength={80}
                         style={inp}
                       />
@@ -454,6 +456,7 @@ export default function DMSettings() {
                         value={preset.subtitle || ""}
                         onChange={(e) => updatePreset(idx, { subtitle: e.target.value })}
                         placeholder={"\u041f\u043e\u0434\u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a / \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"}
+                        aria-label="Подзаголовок пресета"
                         maxLength={160}
                         style={inp}
                       />
@@ -462,6 +465,7 @@ export default function DMSettings() {
                           value={preset.data?.characterName || ""}
                           onChange={(e) => updatePresetData(idx, { characterName: e.target.value })}
                           placeholder={"\u0418\u043c\u044f \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u0436\u0430"}
+                          aria-label="Имя персонажа в пресете"
                           maxLength={80}
                           style={inp}
                           className="u-minw-220"
@@ -470,6 +474,7 @@ export default function DMSettings() {
                           value={preset.data?.classRole || ""}
                           onChange={(e) => updatePresetData(idx, { classRole: e.target.value })}
                           placeholder={"\u041a\u043b\u0430\u0441\u0441 / \u0440\u043e\u043b\u044c"}
+                          aria-label="Класс или роль в пресете"
                           maxLength={80}
                           style={inp}
                           className="u-minw-220"
@@ -478,6 +483,7 @@ export default function DMSettings() {
                           value={preset.data?.level ?? ""}
                           onChange={(e) => updatePresetData(idx, { level: e.target.value })}
                           placeholder={"\u0423\u0440\u043e\u0432\u0435\u043d\u044c"}
+                          aria-label="Уровень в пресете"
                           style={inp}
                           className="u-minw-140"
                         />
@@ -515,12 +521,14 @@ export default function DMSettings() {
                         rows={5}
                         maxLength={2000}
                         placeholder={"\u0411\u0438\u043e\u0433\u0440\u0430\u0444\u0438\u044f"}
+                        aria-label="Биография в пресете"
                         style={inp}
                       />
                       <input
                         value={preset.data?.avatarUrl || ""}
                         onChange={(e) => updatePresetData(idx, { avatarUrl: e.target.value })}
                         placeholder={"URL \u0430\u0432\u0430\u0442\u0430\u0440\u0430"}
+                        aria-label="URL аватара в пресете"
                         maxLength={512}
                         style={inp}
                       />
@@ -543,6 +551,7 @@ export default function DMSettings() {
               value={newPass}
               onChange={(e) => setNewPass(e.target.value)}
               placeholder={"\u041d\u043e\u0432\u044b\u0439 \u043f\u0430\u0440\u043e\u043b\u044c"}
+              aria-label="Новый пароль DM"
               style={inp}
             />
             <input
@@ -550,6 +559,7 @@ export default function DMSettings() {
               value={newPass2}
               onChange={(e) => setNewPass2(e.target.value)}
               placeholder={"\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c"}
+              aria-label="Повторите новый пароль DM"
               style={inp}
             />
             <button className="btn secondary" onClick={() => setShowPass((v) => !v)}>
@@ -584,7 +594,7 @@ export default function DMSettings() {
           <hr />
           <button className="btn secondary" onClick={exportZip}>{"\u042d\u043a\u0441\u043f\u043e\u0440\u0442 (zip)"}</button>
           <div className="u-mt-10">
-            <input type="file" accept=".zip" onChange={importZip} disabled={readOnly} />
+            <input type="file" accept=".zip" onChange={importZip} aria-label="Импорт резервной копии zip" disabled={readOnly} />
           </div>
         </div>
 
@@ -642,6 +652,7 @@ export default function DMSettings() {
                           value={ticketRules.dailyEarnCap ?? 0}
                           onChange={(e) => updateTicketRules({ dailyEarnCap: Number(e.target.value) || 0 })}
                           placeholder={"\u0414\u043d\u0435\u0432\u043d\u043e\u0439 \u043b\u0438\u043c\u0438\u0442"}
+                          aria-label="Дневной лимит билетов"
                           title={RULE_TIPS.dailyEarnCap}
                         />
                       ) : null}
@@ -652,6 +663,7 @@ export default function DMSettings() {
                           value={ticketRules.streak?.max ?? 0}
                           onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), max: Number(e.target.value) || 0 } })}
                           placeholder={"\u0421\u0435\u0440\u0438\u044f max"}
+                          aria-label="Максимум серии побед"
                           title={RULE_TIPS.streakMax}
                         />
                       ) : null}
@@ -663,6 +675,7 @@ export default function DMSettings() {
                           value={ticketRules.streak?.step ?? 0}
                           onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), step: Number(e.target.value) || 0 } })}
                           placeholder={"\u0421\u0435\u0440\u0438\u044f \u0448\u0430\u0433"}
+                          aria-label="Шаг бонуса серии"
                           title={RULE_TIPS.streakStep}
                         />
                       ) : null}
@@ -673,6 +686,7 @@ export default function DMSettings() {
                           value={ticketRules.streak?.flatBonus ?? 0}
                           onChange={(e) => updateTicketRules({ streak: { ...(ticketRules.streak || {}), flatBonus: Number(e.target.value) || 0 } })}
                           placeholder={"\u0411\u043e\u043d\u0443\u0441 \u0441\u0435\u0440\u0438\u0438"}
+                          aria-label="Фиксированный бонус серии"
                           title={RULE_TIPS.streakFlatBonus}
                         />
                       ) : null}
@@ -708,6 +722,7 @@ export default function DMSettings() {
                     <select
                       value={ticketRules?.dailyQuest?.activeKey || ""}
                       onChange={(e) => setActiveDailyQuest(e.target.value)}
+                      aria-label="Активный ежедневный квест"
                       title={RULE_TIPS.dailyQuestTitle}
                     >
                       {(ticketRules?.dailyQuest?.pool || []).map((q) => (
@@ -762,6 +777,7 @@ export default function DMSettings() {
                             value={q.title || ""}
                             onChange={(e) => updateDailyQuest(idx, { title: e.target.value })}
                             placeholder={"\u0417\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a"}
+                            aria-label="Заголовок ежедневного квеста"
                             maxLength={80}
                             title={RULE_TIPS.dailyQuestTitle}
                           />
@@ -769,6 +785,7 @@ export default function DMSettings() {
                             value={q.description || ""}
                             onChange={(e) => updateDailyQuest(idx, { description: e.target.value })}
                             placeholder={"\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"}
+                            aria-label="Описание ежедневного квеста"
                             maxLength={160}
                             title={RULE_TIPS.dailyQuestDescription}
                           />
@@ -778,6 +795,7 @@ export default function DMSettings() {
                             value={q.goal ?? 2}
                             onChange={(e) => updateDailyQuest(idx, { goal: Number(e.target.value) || 1 })}
                             placeholder={"\u0426\u0435\u043b\u044c"}
+                            aria-label="Цель ежедневного квеста"
                             title={RULE_TIPS.dailyQuestGoal}
                           />
                           <input
@@ -786,6 +804,7 @@ export default function DMSettings() {
                             value={q.reward ?? 0}
                             onChange={(e) => updateDailyQuest(idx, { reward: Number(e.target.value) || 0 })}
                             placeholder={"\u041d\u0430\u0433\u0440\u0430\u0434\u0430"}
+                            aria-label="Награда ежедневного квеста"
                             title={RULE_TIPS.dailyQuestReward}
                           />
                         </div>
@@ -822,6 +841,7 @@ export default function DMSettings() {
                             value={g.entryCost ?? 0}
                             onChange={(e) => updateTicketGame(key, { entryCost: Number(e.target.value) || 0 })}
                             placeholder={"\u0412\u0445\u043e\u0434"}
+                            aria-label={`Стоимость входа: ${GAME_LABELS[key] || key}`}
                             title={RULE_TIPS.entryCost}
                           />
                           <input
@@ -830,6 +850,7 @@ export default function DMSettings() {
                             value={g.rewardMin ?? 0}
                             onChange={(e) => updateTicketGame(key, { rewardMin: Number(e.target.value) || 0 })}
                             placeholder={"\u041c\u0438\u043d"}
+                            aria-label={`Минимальная награда: ${GAME_LABELS[key] || key}`}
                             title={RULE_TIPS.rewardMin}
                           />
                           <input
@@ -838,6 +859,7 @@ export default function DMSettings() {
                             value={g.rewardMax ?? 0}
                             onChange={(e) => updateTicketGame(key, { rewardMax: Number(e.target.value) || 0 })}
                             placeholder={"\u041c\u0430\u043a\u0441"}
+                            aria-label={`Максимальная награда: ${GAME_LABELS[key] || key}`}
                             title={RULE_TIPS.rewardMax}
                           />
                           <input
@@ -846,6 +868,7 @@ export default function DMSettings() {
                             value={g.lossPenalty ?? 0}
                             onChange={(e) => updateTicketGame(key, { lossPenalty: Number(e.target.value) || 0 })}
                             placeholder={"\u0428\u0442\u0440\u0430\u0444"}
+                            aria-label={`Штраф за поражение: ${GAME_LABELS[key] || key}`}
                             title={RULE_TIPS.lossPenalty}
                           />
                           <input
@@ -854,6 +877,7 @@ export default function DMSettings() {
                             value={g.dailyLimit ?? 0}
                             onChange={(e) => updateTicketGame(key, { dailyLimit: Number(e.target.value) || 0 })}
                             placeholder={"\u041b\u0438\u043c\u0438\u0442/\u0434\u0435\u043d\u044c"}
+                            aria-label={`Дневной лимит: ${GAME_LABELS[key] || key}`}
                             title={RULE_TIPS.dailyLimit}
                           />
                         </div>
@@ -862,6 +886,7 @@ export default function DMSettings() {
                             value={g.ui?.difficulty ?? ""}
                             onChange={(e) => updateTicketGame(key, { ui: { difficulty: e.target.value } })}
                             placeholder={"\u0421\u043b\u043e\u0436\u043d\u043e\u0441\u0442\u044c"}
+                            aria-label={`UI сложность: ${GAME_LABELS[key] || key}`}
                             maxLength={40}
                             title={RULE_TIPS.uiDifficulty}
                           />
@@ -869,6 +894,7 @@ export default function DMSettings() {
                             value={g.ui?.risk ?? ""}
                             onChange={(e) => updateTicketGame(key, { ui: { risk: e.target.value } })}
                             placeholder={"\u0420\u0438\u0441\u043a"}
+                            aria-label={`UI риск: ${GAME_LABELS[key] || key}`}
                             maxLength={40}
                             title={RULE_TIPS.uiRisk}
                           />
@@ -876,6 +902,7 @@ export default function DMSettings() {
                             value={g.ui?.time ?? ""}
                             onChange={(e) => updateTicketGame(key, { ui: { time: e.target.value } })}
                             placeholder={"\u0412\u0440\u0435\u043c\u044f"}
+                            aria-label={`UI время: ${GAME_LABELS[key] || key}`}
                             maxLength={40}
                             title={RULE_TIPS.uiTime}
                           />
@@ -913,6 +940,7 @@ export default function DMSettings() {
                             value={item.price ?? 0}
                             onChange={(e) => updateTicketShop(key, { price: Number(e.target.value) || 0 })}
                             placeholder={"\u0426\u0435\u043d\u0430"}
+                            aria-label={`Цена товара: ${SHOP_LABELS[key] || key}`}
                             title={RULE_TIPS.shopPrice}
                           />
                           <input
@@ -921,6 +949,7 @@ export default function DMSettings() {
                             value={item.dailyLimit ?? 0}
                             onChange={(e) => updateTicketShop(key, { dailyLimit: Number(e.target.value) || 0 })}
                             placeholder={"\u041b\u0438\u043c\u0438\u0442/\u0434\u0435\u043d\u044c"}
+                            aria-label={`Дневной лимит товара: ${SHOP_LABELS[key] || key}`}
                             title={RULE_TIPS.shopDailyLimit}
                           />
                         </div>

@@ -63,7 +63,13 @@ export default function Players() {
           <div className="small">Показаны только статусы «Онлайн» и «Нет активности» (оффлайн скрыт)</div>
           <hr />
           <div className="row u-row-wrap">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Поиск игроков..." className="u-w-min-520" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Поиск игроков..."
+              aria-label="Поиск игроков"
+              className="u-w-min-520"
+            />
             <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
           </div>
 

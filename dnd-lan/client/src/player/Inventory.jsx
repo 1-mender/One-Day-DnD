@@ -23,6 +23,7 @@ import {
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import { getItemAvailableQty, getSplitInputMax } from "./inventoryDomain.js";
 
 const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
 const FAVORITE_TAG = "favorite";
@@ -50,6 +51,7 @@ export default function Inventory() {
   const [splitOpen, setSplitOpen] = useState(false);
   const [splitItem, setSplitItem] = useState(null);
   const [splitQty, setSplitQty] = useState(1);
+  const [splitTarget, setSplitTarget] = useState(null);
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
@@ -158,9 +160,7 @@ export default function Inventory() {
   }
   function startTransfer(it) {
     if (readOnly) return;
-    const reserved = Number(it?.reservedQty ?? it?.reserved_qty ?? 0);
-    const total = Number(it?.qty || 0);
-    const available = Math.max(0, total - reserved);
+    const available = getItemAvailableQty(it);
     if (available <= 0) {
       toast.warn("Нет доступного количества для передачи");
       return;
@@ -173,17 +173,22 @@ export default function Inventory() {
     if (!players.length) loadPlayers().catch(() => {});
   }
 
-  function startSplit(it) {
+  function startSplit(it, targetSlot = null) {
     if (readOnly) return;
-    const reserved = Number(it?.reservedQty ?? it?.reserved_qty ?? 0);
-    const total = Number(it?.qty || 0);
-    const available = Math.max(0, total - reserved);
+    const available = getItemAvailableQty(it);
     if (available < 2) {
       toast.warn("Недостаточно количества для разделения");
       return;
     }
     setSplitItem(it);
     setSplitQty(1);
+    setSplitTarget(targetSlot && Number.isInteger(targetSlot.slotX) && Number.isInteger(targetSlot.slotY)
+      ? {
+          container: String(targetSlot.container || "backpack"),
+          slotX: Number(targetSlot.slotX),
+          slotY: Number(targetSlot.slotY)
+        }
+      : null);
     setSplitOpen(true);
   }
 
@@ -227,8 +232,13 @@ export default function Inventory() {
   async function sendTransfer() {
     if (readOnly || !transferItem) return;
     const qty = Number(transferQty);
+    const available = getItemAvailableQty(transferItem);
     if (!Number.isFinite(qty) || qty < 1 || qty > 9999) {
       toast.error("Некорректное количество");
+      return;
+    }
+    if (qty > available) {
+      toast.error("Количество превышает доступное");
       return;
     }
     if (!transferTo) {
@@ -302,11 +312,24 @@ export default function Inventory() {
     }
   }
 
+  async function quickEquip(it) {
+    if (readOnly || !it?.id) return;
+    setErr("");
+    try {
+      const result = await api.invQuickEquipMine(it.id);
+      if (result?.idempotent) toast.info("Уже экипировано");
+      else toast.success("Экипировано");
+      await load();
+    } catch (e) {
+      const msg = formatError(e);
+      setErr(msg);
+      toast.error(msg);
+    }
+  }
+
   async function confirmSplit() {
     if (readOnly || !splitItem) return;
-    const reserved = Number(splitItem?.reservedQty ?? splitItem?.reserved_qty ?? 0);
-    const total = Number(splitItem?.qty || 0);
-    const available = Math.max(0, total - reserved);
+    const available = getItemAvailableQty(splitItem);
     const qty = Math.floor(Number(splitQty));
     if (!Number.isFinite(qty) || qty < 1 || qty >= available) {
       toast.error("Некорректное количество для разделения");
@@ -314,18 +337,16 @@ export default function Inventory() {
     }
     setErr("");
     try {
-      const currentPayload = toInventoryPayload(splitItem, {
-        qty: total - qty,
-        tags: Array.isArray(splitItem.tags) ? [...splitItem.tags] : []
-      });
-      await api.invUpdateMine(splitItem.id, currentPayload);
-      const newPayload = toInventoryPayload(splitItem, {
-        qty,
-        tags: Array.isArray(splitItem.tags) ? [...splitItem.tags] : []
-      }, { includeSlot: false });
-      await api.invAddMine(newPayload);
+      const payload = { qty };
+      if (splitTarget && Number.isInteger(splitTarget.slotX) && Number.isInteger(splitTarget.slotY)) {
+        payload.container = splitTarget.container;
+        payload.slotX = splitTarget.slotX;
+        payload.slotY = splitTarget.slotY;
+      }
+      await api.invSplitMine(splitItem.id, payload);
       setSplitOpen(false);
       setSplitItem(null);
+      setSplitTarget(null);
       await load();
       toast.success("Стак разделен");
     } catch (e) {
@@ -338,9 +359,9 @@ export default function Inventory() {
   const hasWeightLimit = Number.isFinite(maxWeight) && maxWeight > 0;
   const weightRatio = hasWeightLimit ? totalWeightAll / maxWeight : 0;
   const weightStatus = hasWeightLimit ? (weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok") : "secondary";
-  const transferAvailable = transferItem
-    ? Math.max(0, Number(transferItem.qty || 0) - Number(transferItem.reservedQty ?? transferItem.reserved_qty ?? 0))
-    : 0;
+  const transferAvailable = transferItem ? getItemAvailableQty(transferItem) : 0;
+  const transferInputMax = Math.max(1, Math.min(9999, transferAvailable || 1));
+  const splitAvailable = splitItem ? getItemAvailableQty(splitItem) : 0;
 
   return (
     <div className={`card inventory-shell${lite ? " page-lite" : ""}`.trim()}>
@@ -408,13 +429,18 @@ export default function Inventory() {
           </div>
         </div>
         <div className="inv-filter-row">
-          <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск по названию..." />
-          <select value={vis} onChange={(e)=>setVis(e.target.value)}>
+          <input
+            value={q}
+            onChange={(e)=>setQ(e.target.value)}
+            placeholder="Поиск по названию..."
+            aria-label="Поиск предметов по названию"
+          />
+          <select value={vis} onChange={(e)=>setVis(e.target.value)} aria-label="Фильтр по видимости">
             <option value="">Видимость: все</option>
             <option value="public">Публичные</option>
             <option value="hidden">Скрытые</option>
           </select>
-          <select value={rarity} onChange={(e)=>setRarity(e.target.value)}>
+          <select value={rarity} onChange={(e)=>setRarity(e.target.value)} aria-label="Фильтр по редкости">
             <option value="">Редкость: все</option>
             {RARITY_OPTIONS.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -474,14 +500,14 @@ export default function Inventory() {
             <div className="item"><Skeleton h={86} w="100%" /></div>
           </div>
         ) : view === "slots" ? (
-          items.length === 0 ? (
+          filtered.length === 0 ? (
             <EmptyState
-              title="Инвентарь пуст"
-              hint="Добавьте предмет, чтобы начать."
+              title={hasAny ? "Ничего не найдено" : "Инвентарь пуст"}
+              hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
             />
           ) : (
             <InventorySlotGrid
-              items={items}
+              items={filtered}
               readOnly={readOnly}
               busy={layoutSaving}
               onMove={moveLayoutItems}
@@ -489,7 +515,14 @@ export default function Inventory() {
               onTransferItem={(item) => startTransfer(item)}
               onToggleFavoriteItem={(item) => toggleFavorite(item)}
               onDeleteItem={(item) => del(item.id)}
-              onSplitItem={(item) => startSplit(item)}
+              onSplitItem={(item, targetSlot, targetItem) => {
+                if (targetItem) {
+                  toast.warn("Для разделения нужен пустой слот");
+                  return;
+                }
+                startSplit(item, targetSlot);
+              }}
+              onQuickEquipItem={(item) => quickEquip(item)}
             />
           )
         ) : filtered.length === 0 ? (
@@ -519,19 +552,19 @@ export default function Inventory() {
 
       <Modal open={open} title={edit ? "Редактировать предмет" : "Новый предмет"} onClose={() => setOpen(false)}>
         <div className="list">
-          <input value={form.name} onChange={(e)=>setForm({ ...form, name: e.target.value })} placeholder="Название*" style={inp} />
-          <textarea value={form.description} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание" rows={4} style={inp} />
+          <input value={form.name} onChange={(e)=>setForm({ ...form, name: e.target.value })} placeholder="Название*" aria-label="Название предмета" style={inp} />
+          <textarea value={form.description} onChange={(e)=>setForm({ ...form, description: e.target.value })} placeholder="Описание" aria-label="Описание предмета" rows={4} style={inp} />
           <div className="row">
-            <input value={form.qty} onChange={(e)=>setForm({ ...form, qty: e.target.value })} placeholder="Количество" style={inp} />
-            <input value={form.weight} onChange={(e)=>setForm({ ...form, weight: e.target.value })} placeholder="Вес" style={inp} />
+            <input value={form.qty} onChange={(e)=>setForm({ ...form, qty: e.target.value })} placeholder="Количество" aria-label="Количество предмета" style={inp} />
+            <input value={form.weight} onChange={(e)=>setForm({ ...form, weight: e.target.value })} placeholder="Вес" aria-label="Вес предмета" style={inp} />
           </div>
           <div className="row">
-            <select value={form.rarity} onChange={(e)=>setForm({ ...form, rarity: e.target.value })} style={inp}>
+            <select value={form.rarity} onChange={(e)=>setForm({ ...form, rarity: e.target.value })} aria-label="Редкость" style={inp}>
               {RARITY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} style={inp}>
+            <select value={form.visibility} onChange={(e)=>setForm({ ...form, visibility: e.target.value })} aria-label="Видимость" style={inp}>
               <option value="public">Публичные</option>
               <option value="hidden">Скрытые</option>
             </select>
@@ -540,6 +573,7 @@ export default function Inventory() {
             <select
               value={form.iconKey || ""}
               onChange={(e)=>setForm({ ...form, iconKey: e.target.value })}
+              aria-label="Иконка предмета"
               style={inp}>
               <option value="">{"\u0418\u043a\u043e\u043d\u043a\u0430: \u043d\u0435\u0442"}</option>
               {INVENTORY_ICON_SECTIONS.map((section) => (
@@ -569,6 +603,7 @@ export default function Inventory() {
                 value={iconQuery}
                 onChange={(e) => setIconQuery(e.target.value)}
                 placeholder="Поиск иконок..."
+                aria-label="Поиск иконок предмета"
                 className="inv-icon-search"
               />
             </div>
@@ -607,6 +642,7 @@ export default function Inventory() {
             value={(form.tags || []).join(", ")}
             onChange={(e)=>setForm({ ...form, tags: e.target.value.split(",").map(s=>s.trim()).filter(Boolean) })}
             placeholder="Теги (через запятую)"
+            aria-label="Теги предмета через запятую"
             style={inp}
           />
           <button className="btn" onClick={save}>Сохранить</button>
@@ -620,7 +656,7 @@ export default function Inventory() {
               <b>{transferItem.name}</b> • доступно: {transferAvailable}
             </div>
           ) : null}
-          <select value={transferTo} onChange={(e) => setTransferTo(e.target.value)} style={inp}>
+          <select value={transferTo} onChange={(e) => setTransferTo(e.target.value)} aria-label="Получатель передачи" style={inp}>
             <option value="">Выберите получателя</option>
             {players.map((p) => (
               <option key={p.id} value={p.id}>{p.displayName} (id:{p.id})</option>
@@ -629,10 +665,11 @@ export default function Inventory() {
           <input
             type="number"
             min={1}
-            max={9999}
+            max={transferInputMax}
             value={transferQty}
             onChange={(e) => setTransferQty(e.target.value)}
             placeholder="Количество"
+            aria-label="Количество для передачи"
             style={inp}
           />
           <textarea
@@ -641,6 +678,7 @@ export default function Inventory() {
             rows={3}
             maxLength={140}
             placeholder="Сообщение (до 140 символов)"
+            aria-label="Сообщение к передаче"
             style={inp}
           />
           <div className="small">{String(transferNote || "").length}/140</div>
@@ -650,20 +688,26 @@ export default function Inventory() {
         </div>
       </Modal>
 
-      <Modal open={splitOpen} title="Разделить стак" onClose={() => { setSplitOpen(false); setSplitItem(null); }}>
+      <Modal open={splitOpen} title="Разделить стак" onClose={() => { setSplitOpen(false); setSplitItem(null); setSplitTarget(null); }}>
         <div className="list">
           {splitItem ? (
             <div className="small note-hint">
-              <b>{splitItem.name}</b> • всего: {splitItem.qty}
+              <b>{splitItem.name}</b> • доступно: {splitAvailable}
+            </div>
+          ) : null}
+          {splitTarget ? (
+            <div className="small note-hint">
+              Целевой слот: {splitTarget.container}:{splitTarget.slotX}:{splitTarget.slotY}
             </div>
           ) : null}
           <input
             type="number"
             min={1}
-            max={Math.max(1, Number(splitItem?.qty || 1) - 1)}
+            max={getSplitInputMax(splitItem)}
             value={splitQty}
             onChange={(e) => setSplitQty(e.target.value)}
             placeholder="Сколько вынести в новый стак"
+            aria-label="Количество для разделения стака"
             style={inp}
           />
           <button className="btn" onClick={confirmSplit} disabled={!splitItem}>
@@ -718,31 +762,6 @@ function applyLayoutMoves(list, moves) {
       slot_y: Number(patch.slotY)
     };
   });
-}
-
-function toInventoryPayload(item, override = {}, opts = {}) {
-  const includeSlot = opts.includeSlot !== false;
-  const tags = override.tags ?? item?.tags ?? [];
-  const payload = {
-    name: override.name ?? item?.name ?? "",
-    description: override.description ?? item?.description ?? "",
-    imageUrl: override.imageUrl ?? item?.imageUrl ?? item?.image_url ?? "",
-    qty: Number(override.qty ?? item?.qty ?? 1),
-    weight: Number(override.weight ?? item?.weight ?? 0),
-    rarity: override.rarity ?? item?.rarity ?? "common",
-    visibility: override.visibility ?? item?.visibility ?? "public",
-    tags: Array.isArray(tags) ? tags : [],
-    container: override.container ?? item?.container ?? item?.inv_container
-  };
-  if (includeSlot) {
-    const slotX = Number(override.slotX ?? item?.slotX ?? item?.slot_x);
-    const slotY = Number(override.slotY ?? item?.slotY ?? item?.slot_y);
-    if (Number.isInteger(slotX) && Number.isInteger(slotY) && slotX >= 0 && slotY >= 0) {
-      payload.slotX = slotX;
-      payload.slotY = slotY;
-    }
-  }
-  return payload;
 }
 
 function filterIconSections(sections, query) {

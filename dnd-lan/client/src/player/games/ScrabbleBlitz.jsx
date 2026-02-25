@@ -149,6 +149,7 @@ export default function ScrabbleBlitzGame({
             value={word}
             onChange={(e) => setWord(e.target.value)}
             placeholder="Введи слово"
+            aria-label="Слово из доступных букв"
             disabled={disabled || readOnly || status !== "playing"}
           />
           <button className="btn" onClick={handleSubmit} disabled={disabled || readOnly || status !== "playing" || !normalizedWord}>

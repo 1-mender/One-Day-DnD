@@ -39,7 +39,13 @@ export default function Notes() {
       <div style={{ fontWeight: 800, fontSize: 18 }}>Заметки</div>
       <div className="small">Показываются только доступные вам блоки</div>
       <hr />
-      <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Поиск..." style={{ width:"100%" }} />
+      <input
+        value={q}
+        onChange={(e)=>setQ(e.target.value)}
+        placeholder="Поиск..."
+        aria-label="Поиск заметок"
+        style={{ width:"100%" }}
+      />
       <div className="list" style={{ marginTop: 12 }}>
         {filtered.map((b) => (
           <div

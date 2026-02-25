@@ -163,3 +163,83 @@ test("layout endpoint supports hotbar/equipment containers", async () => {
   assert.equal(invalid.res.status, 400);
   assert.equal(invalid.data.error, "invalid_slot");
 });
+
+test("split endpoint creates second stack in target slot", async () => {
+  const playerId = createPlayer("Split Hero");
+  const token = createSession(playerId);
+
+  const created = await api("/api/inventory/mine", {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: { name: "Sword", qty: 4, weight: 1 }
+  });
+  assert.equal(created.res.status, 200);
+
+  const state = await api("/api/inventory/mine", { headers: { "x-player-token": token } });
+  const sword = state.data.items.find((it) => it.name === "Sword");
+  assert.ok(sword);
+
+  const split = await api(`/api/inventory/mine/${sword.id}/split`, {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: { qty: 2, container: "hotbar", slotX: 2, slotY: 0 }
+  });
+  assert.equal(split.res.status, 200);
+  assert.ok(split.data.id);
+
+  const after = await api("/api/inventory/mine", { headers: { "x-player-token": token } });
+  const swords = after.data.items.filter((it) => it.name === "Sword");
+  assert.equal(swords.length, 2);
+  const source = swords.find((it) => it.id === sword.id);
+  const splitItem = swords.find((it) => it.id === split.data.id);
+  assert.equal(source.qty, 2);
+  assert.equal(splitItem.qty, 2);
+  assert.equal(splitItem.container, "hotbar");
+  assert.equal(splitItem.slotX, 2);
+});
+
+test("quick-equip uses type rules and swaps equipped item", async () => {
+  const playerId = createPlayer("Equip Hero");
+  const token = createSession(playerId);
+
+  const sword = await api("/api/inventory/mine", {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: { name: "Sword", qty: 1, weight: 1 }
+  });
+  const axe = await api("/api/inventory/mine", {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: { name: "Axe", qty: 1, weight: 1 }
+  });
+  const potion = await api("/api/inventory/mine", {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: { name: "Potion", qty: 1, weight: 1 }
+  });
+  assert.equal(sword.res.status, 200);
+  assert.equal(axe.res.status, 200);
+  assert.equal(potion.res.status, 200);
+
+  const equipSword = await api(`/api/inventory/mine/${sword.data.id}/quick-equip`, {
+    method: "POST",
+    headers: { "x-player-token": token }
+  });
+  assert.equal(equipSword.res.status, 200);
+  assert.equal(equipSword.data.slotX, 0);
+
+  const equipAxe = await api(`/api/inventory/mine/${axe.data.id}/quick-equip`, {
+    method: "POST",
+    headers: { "x-player-token": token }
+  });
+  assert.equal(equipAxe.res.status, 200);
+  assert.equal(equipAxe.data.slotX, 0);
+  assert.ok(equipAxe.data.swappedItemId);
+
+  const failPotion = await api(`/api/inventory/mine/${potion.data.id}/quick-equip`, {
+    method: "POST",
+    headers: { "x-player-token": token }
+  });
+  assert.equal(failPotion.res.status, 400);
+  assert.equal(failPotion.data.error, "not_equipable");
+});

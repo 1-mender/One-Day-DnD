@@ -398,6 +398,7 @@ export default function Arcade() {
               <select
                 value={queueGame?.key || ""}
                 onChange={(e) => setQueueGameKey(e.target.value)}
+                aria-label="Игра для очереди матчмейкинга"
                 disabled={queueBusy || readOnly || !queueReadyGames.length}
               >
                 {queueReadyGames.map((g) => (

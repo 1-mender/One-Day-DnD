@@ -207,6 +207,10 @@ export const api = {
   invDeleteMine: (id) => request(`/api/inventory/mine/${id}`, { method: "DELETE" }),
   invLayoutUpdateMine: (moves) =>
     request("/api/inventory/mine/layout", { method: "POST", body: JSON.stringify({ moves }) }),
+  invSplitMine: (id, payload) =>
+    request(`/api/inventory/mine/${id}/split`, { method: "POST", body: JSON.stringify(payload || {}) }),
+  invQuickEquipMine: (id) =>
+    request(`/api/inventory/mine/${id}/quick-equip`, { method: "POST" }),
   invDmGetPlayer: (playerId) => request(`/api/inventory/player/${playerId}`, { method: "GET" }),
   invDmAddToPlayer: (playerId, item) => request(`/api/inventory/dm/player/${playerId}`, { method: "POST", body: JSON.stringify(item) }),
   invDmUpdatePlayerItem: (playerId, itemId, item) =>
