@@ -7,6 +7,7 @@ import { useSocket } from "../context/SocketContext.jsx";
 import { useLiteMode } from "../hooks/useLiteMode.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { t } from "../i18n/index.js";
+import useOnScreen from "../hooks/useOnScreen.js";
 
 export default function Bestiary() {
   const [enabled, setEnabled] = useState(false);
@@ -37,7 +38,8 @@ export default function Bestiary() {
     setEnabled(!!r.enabled);
     setItems(r.items || []);
     setNextCursor(r.nextCursor || null);
-    await attachImages(r.items || [], 1);
+    // load thumbnails for first batch to show initial images quickly
+    await attachImages((r.items || []).slice(0, 12), 1);
   }, [attachImages, dq]);
 
   const loadMore = useCallback(async () => {
@@ -48,7 +50,8 @@ export default function Bestiary() {
       setEnabled(!!r.enabled);
       setItems((prev) => [...prev, ...(r.items || [])]);
       setNextCursor(r.nextCursor || null);
-      await attachImages(r.items || [], 1);
+      // attach thumbnails for next page's leading items
+      await attachImages((r.items || []).slice(0, 12), 1);
     } finally {
       setLoadingMore(false);
     }
@@ -93,27 +96,18 @@ export default function Bestiary() {
         {items.map((m) => {
           const thumb = (m.name || "??").slice(0, 2).toUpperCase();
           return (
-            <div
+            <MonsterCard
               key={m.id}
-              className="item taped bestiary-card"
-              style={{ cursor:"pointer", alignItems: "stretch" }}
-              onClick={async () => {
+              m={m}
+              lite={lite}
+              thumb={thumb}
+              onOpen={async () => {
                 setCurId(m.id);
                 setOpen(true);
                 await attachImages([m], 12);
               }}
-            >
-              {lite ? (
-                <div className="bestiary-thumb" aria-hidden="true">{thumb}</div>
-              ) : (
-                <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" className="sm" />
-              )}
-              <div className="kv" style={{ flex: 1 }}>
-                <div style={{ fontWeight: 700 }}>{m.name}</div>
-                <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
-              </div>
-              <span className="badge">{t("bestiary.open", null, "Открыть")}</span>
-            </div>
+              attachImages={attachImages}
+            />
           );
         })}
       </div>
@@ -135,6 +129,38 @@ export default function Bestiary() {
         </div>
         <MarkdownView source={cur?.description} />
       </Modal>
+    </div>
+  );
+}
+
+function MonsterCard({ m, lite, thumb, onOpen, attachImages }) {
+  // lazy-load images for this monster when it enters viewport
+  // use a small threshold so images load slightly before visible
+  const [ref, visible] = useOnScreen({ root: null, rootMargin: "100px", threshold: 0.1 });
+
+  useEffect(() => {
+    if (visible && !(m.images && m.images.length)) {
+      attachImages([m], 1).catch(() => {});
+    }
+  }, [visible, m, attachImages]);
+
+  return (
+    <div
+      ref={ref}
+      className="item taped bestiary-card"
+      style={{ cursor: "pointer", alignItems: "stretch" }}
+      onClick={onOpen}
+    >
+      {lite ? (
+        <div className="bestiary-thumb" aria-hidden="true">{thumb}</div>
+      ) : (
+        <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" className="sm" />
+      )}
+      <div className="kv" style={{ flex: 1 }}>
+        <div style={{ fontWeight: 700 }}>{m.name}</div>
+        <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
+      </div>
+      <span className="badge">{t("bestiary.open", null, "Открыть")}</span>
     </div>
   );
 }

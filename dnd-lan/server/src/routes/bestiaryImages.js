@@ -1,6 +1,7 @@
 import express from "express";
 import path from "node:path";
 import fs from "node:fs";
+import sharp from "sharp";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
@@ -12,7 +13,9 @@ import { DANGEROUS_UPLOAD_MIMES, finalizeUploadedFile, safeUnlink } from "../upl
 export const bestiaryImagesRouter = express.Router();
 
 const UPLOAD_DIR = path.join(uploadsDir, "bestiary");
+const THUMB_DIR = path.join(UPLOAD_DIR, "thumbs");
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(THUMB_DIR, { recursive: true });
 const MAX_IMAGES_PER_MONSTER = Number(process.env.BESTIARY_IMAGE_MAX_COUNT || 20);
 const ALLOWED_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
@@ -29,7 +32,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-function handleUpload(req, res) {
+async function handleUpload(req, res) {
   const db = getDb();
   const partyId = getParty().id;
   const f = req.file;
@@ -78,10 +81,24 @@ function handleUpload(req, res) {
     id: imageId,
     monsterId,
     url: `/uploads/bestiary/${normalized.filename}`,
+    thumbUrl: null,
     originalName: f.originalname || "",
     mime: normalized.mime,
     createdAt: t
   };
+
+  // Generate thumbnail (best-effort). Name: <filename>.thumb.webp
+  try {
+    const thumbName = `${normalized.filename}.thumb.webp`;
+    const thumbPath = path.join(THUMB_DIR, thumbName);
+    await sharp(path.join(UPLOAD_DIR, normalized.filename))
+      .resize({ width: 320, withoutEnlargement: true })
+      .webp({ quality: 75 })
+      .toFile(thumbPath);
+    image.thumbUrl = `/uploads/bestiary/thumbs/${thumbName}`;
+  } catch (err) {
+    // ignore thumbnail errors
+  }
 
   logEvent({
     partyId,
@@ -115,12 +132,61 @@ bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
       id: r.id,
       monsterId: r.monster_id,
       url: `/uploads/bestiary/${r.filename}`,
+      thumbUrl: fs.existsSync(path.join(THUMB_DIR, `${r.filename}.thumb.webp`))
+        ? `/uploads/bestiary/thumbs/${r.filename}.thumb.webp`
+        : null,
       originalName: r.original_name,
       mime: r.mime,
       createdAt: r.created_at
     }));
 
   res.json({ items: rows });
+});
+
+// Batch images by monster ids: GET /api/bestiary/images?ids=1,2,3&limitPer=1
+bestiaryImagesRouter.get("/images", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const partyId = getParty().id;
+  const idsParam = String(req.query.ids || "").trim();
+  if (!idsParam) return res.status(400).json({ error: "ids_required" });
+  const ids = idsParam.split(",").map((s) => Number(s)).filter(Boolean);
+  if (!ids.length) return res.status(400).json({ error: "ids_required" });
+
+  const limitPer = Number(req.query.limitPer || 0) || 0;
+
+  // validate that monsters belong to party
+  const placeholders = ids.map(() => "?").join(",");
+  const monsters = db.prepare(`SELECT id FROM monsters WHERE id IN (${placeholders}) AND party_id=?`).all(...ids, partyId).map((m) => m.id);
+  if (!monsters.length) return res.json({ items: {} });
+
+  // fetch images; order by monster_id, id DESC so we can slice per monster if needed
+  const rows = db.prepare(
+    `SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images WHERE monster_id IN (${placeholders}) ORDER BY monster_id, id DESC`
+  ).all(...ids);
+
+  const grouped = {};
+  for (const r of rows) {
+    if (!grouped[r.monster_id]) grouped[r.monster_id] = [];
+    grouped[r.monster_id].push({
+      id: r.id,
+      monsterId: r.monster_id,
+      url: `/uploads/bestiary/${r.filename}`,
+      thumbUrl: fs.existsSync(path.join(THUMB_DIR, `${r.filename}.thumb.webp`))
+        ? `/uploads/bestiary/thumbs/${r.filename}.thumb.webp`
+        : null,
+      originalName: r.original_name,
+      mime: r.mime,
+      createdAt: r.created_at
+    });
+  }
+
+  if (limitPer > 0) {
+    for (const k of Object.keys(grouped)) {
+      grouped[k] = grouped[k].slice(0, limitPer);
+    }
+  }
+
+  res.json({ items: grouped });
 });
 
 bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
