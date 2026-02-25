@@ -91,6 +91,7 @@ export default function Modal({ open, title, children, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
+        aria-label={!title ? t("common.dialog", null, "Dialog") : undefined}
         tabIndex={-1}
         onKeyDown={onDialogKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
@@ -99,7 +100,7 @@ export default function Modal({ open, title, children, onClose }) {
           <div id={title ? titleId : undefined} className="vintage-modal-title">{title || ""}</div>
           <button type="button" className="btn secondary" onClick={onClose} aria-label={t("common.close", null, "Close")}>X</button>
         </div>
-        <div className="vintage-modal-body">{children}</div>
+        <div className="vintage-modal-body" role="document">{children}</div>
       </div>
     </div>
   );

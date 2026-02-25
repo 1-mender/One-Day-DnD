@@ -22,8 +22,18 @@ export default function ActionMenu({ items = [], align = "right", label = t("act
   const menuId = useId();
 
   const closeMenu = () => {
+    // close and, if focus was inside the menu, restore focus to the trigger
     setOpen(false);
     setActiveIndex(-1);
+    try {
+      const root = rootRef.current;
+      const active = typeof document !== "undefined" ? document.activeElement : null;
+      if (root && active && root.contains(active)) {
+        triggerRef.current?.focus?.({ preventScroll: true });
+      }
+    } catch (e) {
+      // ignore
+    }
   };
 
   const openMenu = (initialIndex = 0) => {
@@ -99,6 +109,7 @@ export default function ActionMenu({ items = [], align = "right", label = t("act
           id={menuId}
           className="action-menu-list"
           role="menu"
+          aria-label={label}
           onKeyDown={(event) => {
             if (event.key === "Escape") {
               event.preventDefault();
@@ -148,6 +159,7 @@ export default function ActionMenu({ items = [], align = "right", label = t("act
                 role="menuitem"
                 className={`action-menu-item${tone}`.trim()}
                 tabIndex={idx === activeIndex ? 0 : -1}
+                aria-disabled={item.disabled ? "true" : "false"}
                 onClick={(event) => {
                   event.stopPropagation();
                   if (item.disabled) return;

@@ -90,7 +90,7 @@ export default function BottomNav({ items = [] }) {
   if (!normalized.length) return null;
 
   return (
-    <div className="bottom-nav">
+    <nav className="bottom-nav" role="navigation" aria-label={t("bottomNav.ariaLabel", null, "Bottom navigation")}>
       <div className="bottom-nav-inner" ref={rootRef}>
         {primary.map((it) => (
           <NavLink
@@ -219,6 +219,7 @@ export default function BottomNav({ items = [] }) {
           </div>
         ) : null}
       </div>
-    </div>
+      </div>
+    </nav>
   );
 }
