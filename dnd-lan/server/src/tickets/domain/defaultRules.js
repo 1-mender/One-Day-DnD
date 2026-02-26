@@ -1,8 +1,8 @@
 const DEFAULT_DAILY_QUEST = {
   enabled: true,
   key: "daily_mix",
-  title: "Game Mix",
-  description: "Play 2 different games today",
+  title: "Игровой микс",
+  description: "Сыграй сегодня в 2 разные игры",
   goal: 2,
   reward: 2
 };
@@ -25,13 +25,13 @@ export const DEFAULT_TICKET_RULES = {
       lossPenalty: 0,
       dailyLimit: 10,
       ui: {
-        difficulty: "Easy",
-        risk: "Low",
+        difficulty: "ЛЕГКО",
+        risk: "Низкий",
         time: "2-4 min"
       },
       performance: {
-        normal: { label: "Win", multiplier: 1 },
-        sweep: { label: "Win 2-0", multiplier: 1.15 }
+        normal: { label: "Победа", multiplier: 1 },
+        sweep: { label: "Победа 2-0", multiplier: 1.15 }
       }
     },
     guess: {
@@ -42,14 +42,14 @@ export const DEFAULT_TICKET_RULES = {
       lossPenalty: 1,
       dailyLimit: 8,
       ui: {
-        difficulty: "Medium",
-        risk: "Medium",
+        difficulty: "СРЕДНЕ",
+        risk: "Средний",
         time: "3-5 min"
       },
       performance: {
-        first: { label: "First attempt", multiplier: 1.2 },
-        second: { label: "Second attempt", multiplier: 1.05 },
-        third: { label: "Third attempt", multiplier: 1 }
+        first: { label: "С первой попытки", multiplier: 1.2 },
+        second: { label: "Со второй попытки", multiplier: 1.05 },
+        third: { label: "С третьей попытки", multiplier: 1 }
       }
     },
     match3: {
@@ -60,14 +60,14 @@ export const DEFAULT_TICKET_RULES = {
       lossPenalty: 1,
       dailyLimit: 6,
       ui: {
-        difficulty: "Medium",
-        risk: "Medium",
+        difficulty: "СРЕДНЕ",
+        risk: "Средний",
         time: "4-6 min"
       },
       performance: {
-        normal: { label: "Combo 3", multiplier: 1 },
-        combo4: { label: "Combo 4+", multiplier: 1.1 },
-        combo5: { label: "Combo 5+", multiplier: 1.2 }
+        normal: { label: "Комбо 3", multiplier: 1 },
+        combo4: { label: "Комбо 4+", multiplier: 1.1 },
+        combo5: { label: "Комбо 5+", multiplier: 1.2 }
       }
     },
     uno: {
@@ -78,13 +78,13 @@ export const DEFAULT_TICKET_RULES = {
       lossPenalty: 1,
       dailyLimit: 5,
       ui: {
-        difficulty: "Medium",
-        risk: "Medium",
+        difficulty: "СРЕДНЕ",
+        risk: "Средний",
         time: "5-7 min"
       },
       performance: {
-        normal: { label: "Win", multiplier: 1 },
-        clean: { label: "No penalties", multiplier: 1.15 }
+        normal: { label: "Победа", multiplier: 1 },
+        clean: { label: "Без штрафов", multiplier: 1.15 }
       }
     },
     scrabble: {
@@ -95,14 +95,14 @@ export const DEFAULT_TICKET_RULES = {
       lossPenalty: 2,
       dailyLimit: 5,
       ui: {
-        difficulty: "Hard",
-        risk: "High",
+        difficulty: "СЛОЖНО",
+        risk: "Высокий",
         time: "2-3 min"
       },
       performance: {
-        normal: { label: "Word completed", multiplier: 1 },
-        long: { label: "6+ letters", multiplier: 1.2 },
-        rare: { label: "Rare letter", multiplier: 1.1 }
+        normal: { label: "Слово собрано", multiplier: 1 },
+        long: { label: "6+ букв", multiplier: 1.2 },
+        rare: { label: "Редкая буква", multiplier: 1.1 }
       }
     }
   },

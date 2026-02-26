@@ -20,6 +20,7 @@ export default function Bestiary() {
   const [loadingMore, setLoadingMore] = useState(false);
   const { socket } = useSocket();
   const lite = useLiteMode();
+  const isNarrowScreen = useIsNarrowScreen();
   const dq = useDebouncedValue(q, 250);
 
   const attachImages = useCallback(async (list, limitPer = 1) => {
@@ -83,7 +84,7 @@ export default function Bestiary() {
 
   const cur = useMemo(() => items.find((m) => m.id === curId) || null, [curId, items]);
   const gallery = lite ? (cur?.images || []).slice(0, 1) : (cur?.images || []);
-  const gridCols = lite ? "repeat(auto-fill, minmax(120px, 1fr))" : "repeat(auto-fill, minmax(170px, 1fr))";
+  const gridCols = lite || isNarrowScreen ? "repeat(auto-fill, minmax(120px, 1fr))" : "repeat(auto-fill, minmax(170px, 1fr))";
 
   if (!enabled) return <div className="card taped"><div className="badge warn">{t("bestiary.disabled", null, "Бестиарий отключён DM")}</div></div>;
 
@@ -100,16 +101,38 @@ export default function Bestiary() {
           style={{ width:"100%" }}
         />
       <div className="bestiary-list" style={{ marginTop: 12 }}>
-        <VirtualizedList
-          items={items}
-          lite={lite}
-          onOpen={async (m) => {
-            setCurId(m.id);
-            setOpen(true);
-            await attachImages([m], 12);
-          }}
-          attachImages={attachImages}
-        />
+        {isNarrowScreen ? (
+          <div className="list">
+            {items.map((m) => {
+              const thumb = (m.name || "??").slice(0, 2).toUpperCase();
+              return (
+                <MonsterCard
+                  key={m.id}
+                  m={m}
+                  lite={lite}
+                  thumb={thumb}
+                  onOpen={async () => {
+                    setCurId(m.id);
+                    setOpen(true);
+                    await attachImages([m], 12);
+                  }}
+                  attachImages={attachImages}
+                />
+              );
+            })}
+          </div>
+        ) : (
+          <VirtualizedList
+            items={items}
+            lite={lite}
+            onOpen={async (m) => {
+              setCurId(m.id);
+              setOpen(true);
+              await attachImages([m], 12);
+            }}
+            attachImages={attachImages}
+          />
+        )}
       </div>
       {nextCursor && (
         <div className="row" style={{ marginTop: 10 }}>
@@ -131,6 +154,24 @@ export default function Bestiary() {
       </Modal>
     </div>
   );
+}
+
+function useIsNarrowScreen(maxWidth = 720) {
+  const [isNarrow, setIsNarrow] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(`(max-width: ${maxWidth}px)`).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return () => {};
+    const media = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const apply = () => setIsNarrow(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [maxWidth]);
+
+  return isNarrow;
 }
 
 function VirtualizedList({ items, lite, onOpen, attachImages }) {

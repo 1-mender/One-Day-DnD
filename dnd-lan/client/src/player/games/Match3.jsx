@@ -440,7 +440,7 @@ export default function Match3Game({
         <div className="match3-progress">
           <div className="match3-progress-bar" style={{ width: `${progress}%` }} />
         </div>
-        <div className="small arcade-game-hint">Target remaining: {targetLeft}</div>
+        <div className="small arcade-game-hint">До цели осталось: {targetLeft}</div>
 
         <div
           className={`match3-board${shake ? " shake" : ""}`}
@@ -456,7 +456,7 @@ export default function Match3Game({
                 className={`match3-tile ${tile?.color || "empty"}${tile?.blocked ? " blocked" : ""}${isSelected ? " selected" : ""}${isMatched ? " matched" : ""}`}
                 onClick={() => handleSelect(idx)}
                 disabled={busy || status !== "playing" || disabled || readOnly || tile?.blocked}
-                aria-label={`Tile ${idx + 1}${tile?.blocked ? " blocked" : ""}${tile?.color ? ` ${tile.color}` : ""}`}
+                aria-label={`Клетка ${idx + 1}${tile?.blocked ? " заблокирована" : ""}${tile?.color ? ` ${tile.color}` : ""}`}
               >
                 <span className="match3-gem" />
               </button>

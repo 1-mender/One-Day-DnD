@@ -132,15 +132,15 @@ export default function ScrabbleBlitzGame({
           </div>
         </div>
 
-        <div className="scrabble-rack" role="list" aria-label="Letter rack">
+        <div className="scrabble-rack" role="list" aria-label="Набор букв">
           {rack.map((letter, idx) => (
             <span key={`${letter}-${idx}`} className="scrabble-tile" role="listitem">{letter}</span>
           ))}
         </div>
         <div className={`small scrabble-word-state ${normalizedWord ? (isWordPlayable ? "ok" : "bad") : ""}`}>
           {normalizedWord
-            ? (isWordPlayable ? "Valid composition" : "Word must use rack letters and be at least 3 chars")
-            : "Compose a word from your rack"}
+            ? (isWordPlayable ? "Слово можно составить" : "Слово должно состоять из этих букв и быть не короче 3 символов")
+            : "Собери слово из доступных букв"}
         </div>
 
         <div className="scrabble-input">

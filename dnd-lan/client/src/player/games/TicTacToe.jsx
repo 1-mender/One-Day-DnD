@@ -190,13 +190,13 @@ export default function TicTacToeGame({
               className={`ttt-cell ${cell ? "filled" : ""}${winnerLine?.includes(idx) ? " win-cell" : ""}`}
               onClick={() => handlePick(idx)}
               disabled={status !== "playing" || disabled || readOnly || !!cell}
-              aria-label={`Cell ${idx + 1}${cell ? ` ${cell}` : ""}`}
+              aria-label={`Клетка ${idx + 1}${cell ? ` ${cell}` : ""}`}
             >
               {cell || ""}
             </button>
           ))}
         </div>
-        <div className="small arcade-game-hint">Tap any free cell. Win {roundsToWin} rounds before AI.</div>
+        <div className="small arcade-game-hint">Нажимай на свободные клетки. Выиграй {roundsToWin} раунда раньше ИИ.</div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}

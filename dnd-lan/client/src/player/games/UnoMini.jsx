@@ -157,7 +157,7 @@ export default function UnoMiniGame({
       <div className="uno-panel">
         <div className="uno-head">
           <div>
-            <div className="uno-title">Uno-мини</div>
+            <div className="uno-title">Уно-мини</div>
             <div className="small">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
           </div>
           <button className="btn secondary" onClick={onClose}>Выйти</button>
@@ -179,7 +179,7 @@ export default function UnoMiniGame({
         </div>
 
         <div className="uno-top-card">
-          <span className={`uno-card ${topCard?.color || ""}`} title="Top card">{topCard?.value || "?"}</span>
+          <span className={`uno-card ${topCard?.color || ""}`} title="Верхняя карта">{topCard?.value || "?"}</span>
         </div>
 
         <div className="uno-hand">
@@ -190,15 +190,15 @@ export default function UnoMiniGame({
               className={`uno-card ${card.color}${playableByIndex[idx] ? " playable" : ""}`}
               onClick={() => handlePlay(card, idx)}
               disabled={!playableByIndex[idx] || disabled || readOnly}
-              title={playableByIndex[idx] ? "Playable card" : "Card does not match top card"}
-              aria-label={`Card ${card.color} ${card.value}`}
+              title={playableByIndex[idx] ? "Карту можно сыграть" : "Карта не совпадает с верхней"}
+              aria-label={`Карта ${card.color} ${card.value}`}
             >
               {card.value}
             </button>
           ))}
         </div>
 
-        <div className="small arcade-game-hint">Playable cards: {playableCount}. Draw if you cannot play.</div>
+        <div className="small arcade-game-hint">Доступно карт для хода: {playableCount}. Если не можешь ходить, добери карту.</div>
 
         <div className="row" style={{ gap: 8, marginTop: 8 }}>
           <button className="btn secondary" onClick={handleDraw} disabled={disabled || readOnly}>

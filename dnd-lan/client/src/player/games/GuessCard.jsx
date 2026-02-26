@@ -96,9 +96,9 @@ export default function GuessCardGame({
   const hints = useMemo(() => {
     if (!target) return [];
     return [
-      `Color: ${target.color === "red" ? "red" : "black"}`,
-      `Suit: ${SUIT_LABELS[target.suit]}`,
-      `Rank: ${target.rank}`
+      `Цвет: ${target.color === "red" ? "красная" : "чёрная"}`,
+      `Масть: ${SUIT_LABELS[target.suit]}`,
+      `Ранг: ${target.rank}`
     ];
   }, [target]);
 
@@ -119,7 +119,7 @@ export default function GuessCardGame({
       setSeedProof("");
       setDeck([]);
       setTarget(null);
-      setSeedErr("Failed to load new round seed. Try again.");
+      setSeedErr("Не удалось загрузить seed раунда. Попробуйте ещё раз.");
     } finally {
       setSeedBusy(false);
     }
@@ -247,7 +247,7 @@ export default function GuessCardGame({
         <div className="guess-head">
           <div>
             <div className="guess-title">Угадай карту</div>
-            <div className="small">Mode: {modeLabel} | Entry: {entryLabel} | Reward: {rewardRange}</div>
+            <div className="small">Режим: {modeLabel} | Вход: {entryLabel} | Награда: {rewardRange}</div>
           </div>
           <button className="btn secondary" onClick={onClose}>Выйти</button>
         </div>
@@ -281,7 +281,7 @@ export default function GuessCardGame({
           ))}
         </div>
         <div className="small arcade-game-hint">
-          Pick carefully: {Math.max(0, modeConfig.maxAttempts - attempt + 1)} attempt(s) left.
+          Выбирай внимательно: осталось попыток {Math.max(0, modeConfig.maxAttempts - attempt + 1)}.
         </div>
 
         <div
@@ -297,7 +297,7 @@ export default function GuessCardGame({
                 className={`guess-card${flipped ? " flipped" : ""}${missId === card.id ? " miss" : ""}`}
                 onClick={() => handlePick(card)}
                 disabled={busy || seedBusy || !seed || !seedProof || status !== "playing" || disabled || readOnly}
-                aria-label={`Card ${card.rank} ${SUIT_SYMBOLS[card.suit]}`}
+                aria-label={`Карта ${card.rank} ${SUIT_SYMBOLS[card.suit]}`}
                 data-revealed={flipped ? "true" : "false"}
               >
                 <div className="guess-inner">
@@ -314,7 +314,7 @@ export default function GuessCardGame({
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
-        {seedBusy ? <div className="badge warn">Loading round...</div> : null}
+        {seedBusy ? <div className="badge warn">Загрузка раунда...</div> : null}
         {seedErr ? <div className="badge off">{seedErr}</div> : null}
 
         {status !== "playing" ? (
@@ -336,7 +336,7 @@ export default function GuessCardGame({
             <div className="row" style={{ gap: 8 }}>
               {result && !settling ? (
                 <button className="btn" onClick={() => requestSeed().catch(() => {})} disabled={seedBusy}>
-                  Play again
+                  Сыграть снова
                 </button>
               ) : null}
               <button className="btn secondary" onClick={onClose}>Закрыть</button>

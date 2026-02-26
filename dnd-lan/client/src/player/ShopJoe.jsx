@@ -30,6 +30,11 @@ export default function ShopJoe() {
   const balance = Number(state?.balance || 0);
   const ticketsEnabled = rules?.enabled !== false;
   const catalog = React.useMemo(() => buildShopCatalog(rules?.shop), [rules?.shop]);
+  const itemTitleMap = React.useMemo(() => buildItemTitleMap(catalog), [catalog]);
+  const purchaseSummary = React.useMemo(
+    () => buildPurchaseSummary(usage, itemTitleMap),
+    [usage, itemTitleMap]
+  );
 
   function toastPurchaseError(error) {
     const message = formatError(error);
@@ -56,7 +61,12 @@ export default function ShopJoe() {
     try {
       const res = await purchase({ itemKey });
       const price = res?.result?.price ?? rules?.shop?.[itemKey]?.price ?? 0;
-      toast.success(`-${price} ${ticketWord(price)}`, "Покупка оформлена");
+      const itemTitle = itemTitleMap[itemKey] || toHumanLabel(itemKey);
+      const nextBalance = Number.isFinite(Number(res?.state?.balance))
+        ? Number(res.state.balance)
+        : Math.max(0, balance - Number(price || 0));
+      const receipt = `Товар: ${itemTitle} • Списано: ${priceLabel(price)} • Остаток: ${nextBalance} ${ticketWord(nextBalance)}`;
+      toast.success(receipt, "Чек лавки Джо");
     } catch (e) {
       toastPurchaseError(e);
     } finally {
@@ -84,7 +94,11 @@ export default function ShopJoe() {
         </div>
       </div>
 
-      <ShopMascotStall balance={balance} ticketsEnabled={ticketsEnabled} />
+      <ShopMascotStall
+        balance={balance}
+        ticketsEnabled={ticketsEnabled}
+        purchaseSummary={purchaseSummary}
+      />
 
       <div className="shop-banner">
         <div className="banner-title">{"Каждый билет меняет историю"}</div>
@@ -173,6 +187,42 @@ export default function ShopJoe() {
       </div>
     </div>
   );
+}
+
+function buildItemTitleMap(catalog) {
+  const map = {};
+  for (const section of Array.isArray(catalog) ? catalog : []) {
+    for (const item of Array.isArray(section?.items) ? section.items : []) {
+      if (!item?.key) continue;
+      map[item.key] = String(item.title || "").trim() || toHumanLabel(item.key);
+    }
+  }
+  return map;
+}
+
+function buildPurchaseSummary(usage, itemTitleMap) {
+  const rows = Object.entries(usage?.purchasesToday || {})
+    .map(([key, raw]) => [String(key), Math.max(0, Number(raw || 0))])
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const totalPurchases = rows.reduce((acc, [, count]) => acc + count, 0);
+  const uniqueItems = rows.length;
+  const topItemKey = rows[0]?.[0] || "";
+  const topItemCount = rows[0]?.[1] || 0;
+  return {
+    totalPurchases,
+    uniqueItems,
+    topItemKey,
+    topItemCount,
+    topItemTitle: topItemKey ? (itemTitleMap[topItemKey] || toHumanLabel(topItemKey)) : ""
+  };
+}
+
+function toHumanLabel(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[\s_]+/g, " ")
+    .replace(/^\w/, (ch) => ch.toUpperCase());
 }
 
 function resolvePrice(itemKey, fallback, rules) {
