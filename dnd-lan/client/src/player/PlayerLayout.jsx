@@ -12,7 +12,7 @@ import { t } from "../i18n/index.js";
 import { getNavUsageSummary, trackNavUsage } from "./navUsageMetrics.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
-const OPTIONAL_NAV_BASE_ORDER = ["/app/notes", "/app/bestiary", "/app/shop", "/app/transfers", "/app/arcade"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/notes", "/app/transfers", "/app/shop", "/app/bestiary", "/app/arcade"];
 const ROUTE_TO_ICON = {
   "/app/players": Users,
   "/app/profile": UserRound,
@@ -267,26 +267,7 @@ export default function PlayerLayout() {
         return optionalOrder.indexOf(a) - optionalOrder.indexOf(b);
       });
 
-    const selectedOptional = optionalSorted.slice(0, 2);
-    const activeRoute = optionalOrder.find((route) => location.pathname === route || location.pathname.startsWith(`${route}/`)) || null;
-
-    if (activeRoute && !selectedOptional.includes(activeRoute)) {
-      if (selectedOptional.length < 2) selectedOptional.push(activeRoute);
-      else selectedOptional[selectedOptional.length - 1] = activeRoute;
-    }
-
-    if (transferBadge > 0 && optionalOrder.includes("/app/transfers") && !selectedOptional.includes("/app/transfers")) {
-      if (selectedOptional.length < 2) {
-        selectedOptional.push("/app/transfers");
-      } else {
-        const replaceIndex = activeRoute
-          ? selectedOptional.findIndex((route) => route !== activeRoute)
-          : selectedOptional.length - 1;
-        selectedOptional[replaceIndex >= 0 ? replaceIndex : selectedOptional.length - 1] = "/app/transfers";
-      }
-    }
-
-    const selectedRoutes = [...CORE_NAV_ROUTES, ...selectedOptional];
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalSorted];
     return selectedRoutes.map((to) => ({
       to,
       label: t(ROUTE_TO_LABEL[to]),
@@ -294,7 +275,7 @@ export default function PlayerLayout() {
       badge: to === "/app/transfers" ? transferBadge : 0,
       primary: true
     }));
-  }, [bestiaryEnabled, location.pathname, navSummary, transferBadge]);
+  }, [bestiaryEnabled, navSummary, transferBadge]);
 
   return (
     <div>

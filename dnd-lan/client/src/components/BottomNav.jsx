@@ -4,7 +4,8 @@ import { t } from "../i18n/index.js";
 import { partitionNavItems } from "./bottomNavDomain.js";
 
 export default function BottomNav({ items = [] }) {
-  const { normalized, primary } = useMemo(() => partitionNavItems(items, 5), [items]);
+  const maxPrimary = Math.max(1, Array.isArray(items) ? items.length : 1);
+  const { normalized, primary } = useMemo(() => partitionNavItems(items, maxPrimary), [items, maxPrimary]);
 
   if (!normalized.length) return null;
 

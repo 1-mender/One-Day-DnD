@@ -11,6 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { GripVertical, MoreHorizontal } from "lucide-react";
 import { pickInventoryIcon } from "../components/vintage/InventoryItemCard.jsx";
+import ActionSheet from "../components/ui/ActionSheet.jsx";
 
 const CONTAINERS = [
   { key: "equipment", label: "Экипировка", cols: 4, rows: 1, minRows: 1 },
@@ -41,6 +42,7 @@ export default function InventorySlotGrid({
   const [splitArmedId, setSplitArmedId] = useState(null);
   const [dragMode, setDragMode] = useState("move");
   const [selectedMoveId, setSelectedMoveId] = useState(null);
+  const [touchLiteMode, setTouchLiteMode] = useState(touchOptimized);
 
   const normalizedItems = useMemo(() => normalizeItems(items), [items]);
   const itemsById = useMemo(() => new Map(normalizedItems.map((item) => [item.id, item])), [normalizedItems]);
@@ -51,8 +53,20 @@ export default function InventorySlotGrid({
     }
     return map;
   }, [normalizedItems]);
-  const rowsByContainer = useMemo(() => buildRowsByContainer(normalizedItems), [normalizedItems]);
+  const rowsByContainer = useMemo(
+    () => buildRowsByContainer(normalizedItems, touchOptimized && touchLiteMode),
+    [normalizedItems, touchLiteMode, touchOptimized]
+  );
+  const itemsCountByContainer = useMemo(() => {
+    const byContainer = {};
+    for (const container of CONTAINERS) byContainer[container.key] = 0;
+    for (const item of normalizedItems) {
+      byContainer[item.container] = (byContainer[item.container] || 0) + 1;
+    }
+    return byContainer;
+  }, [normalizedItems]);
   const activeItem = activeId != null ? itemsById.get(activeId) : null;
+  const selectedMoveItem = selectedMoveId != null ? itemsById.get(selectedMoveId) : null;
   const moveItemByKeyboard = async (item, deltaX, deltaY) => {
     if (readOnly || busy || typeof onMove !== "function" || !item) return;
     const container = normalizeContainer(item.container);
@@ -125,15 +139,47 @@ export default function InventorySlotGrid({
     }
   }, [itemsById, selectedMoveId, touchOptimized]);
 
+  useEffect(() => {
+    if (!touchOptimized) {
+      setTouchLiteMode(false);
+      return;
+    }
+    setTouchLiteMode(true);
+  }, [touchOptimized]);
+
   return (
-    <div className={`inv-slot-board-wrap${touchOptimized ? " touch-optimized" : ""}`.trim()}>
+    <div className={`inv-slot-board-wrap${touchOptimized ? " touch-optimized" : ""}${touchOptimized && touchLiteMode ? " touch-lite" : ""}`.trim()}>
       <div className="small inv-slot-hint">
         {touchOptimized ? (
-          <>RPG-сетка (тач): выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните целевой слот.</>
+          <>RPG-сетка (тач): включен Lite-режим. Выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните целевой слот.</>
         ) : (
           <>RPG-сетка: перетаскивайте за <GripVertical className="icon" aria-hidden="true" />, контекст через <MoreHorizontal className="icon" aria-hidden="true" />, клавиатура: Alt + стрелки.</>
         )}
       </div>
+      {touchOptimized ? (
+        <div className="inv-slot-mobile-mode">
+          <button
+            type="button"
+            className={`btn ${touchLiteMode ? "" : "secondary"}`.trim()}
+            onClick={() => setTouchLiteMode(true)}
+          >
+            Lite
+          </button>
+          <button
+            type="button"
+            className={`btn ${touchLiteMode ? "secondary" : ""}`.trim()}
+            onClick={() => setTouchLiteMode(false)}
+          >
+            Классика
+          </button>
+        </div>
+      ) : null}
+      {touchOptimized && selectedMoveItem ? (
+        <div className="inv-slot-touch-state">
+          <span>Перемещение: <b>{selectedMoveItem.name || "Без названия"}</b>. Тапните слот назначения.</span>
+          <button type="button" className="btn secondary" onClick={() => setSelectedMoveId(null)}>Отмена</button>
+        </div>
+      ) : null}
 
       <DndContext
         sensors={sensors}
@@ -203,6 +249,8 @@ export default function InventorySlotGrid({
               onQuickEquipItem={onQuickEquipItem}
               onKeyboardMoveItem={moveItemByKeyboard}
               touchOptimized={touchOptimized}
+              touchLiteMode={touchLiteMode}
+              hasItems={(itemsCountByContainer[container.key] || 0) > 0}
               selectedMoveId={selectedMoveId}
               onToggleMoveSelection={toggleMoveSelection}
               onTapTargetSlot={moveSelectedByTap}
@@ -235,6 +283,8 @@ function ContainerGrid({
   onQuickEquipItem,
   onKeyboardMoveItem,
   touchOptimized,
+  touchLiteMode,
+  hasItems,
   selectedMoveId,
   onToggleMoveSelection,
   onTapTargetSlot,
@@ -242,43 +292,71 @@ function ContainerGrid({
   onArmSplit,
   onCancelSplitArm
 }) {
+  const displayCols = touchLiteMode ? getTouchLiteCols(container.key) : container.cols;
+  const minCell = touchLiteMode ? 104 : touchOptimized ? 92 : 0;
+  const gridMinWidth = touchOptimized ? (displayCols * minCell + (displayCols - 1) * 10) : null;
+  const gridNode = (
+    <div
+      className="inv-slot-grid"
+      style={{
+        gridTemplateColumns: touchOptimized
+          ? `repeat(${displayCols}, minmax(${minCell}px, 1fr))`
+          : `repeat(${container.cols}, minmax(0, 1fr))`,
+        minWidth: gridMinWidth ? `${gridMinWidth}px` : undefined
+      }}
+    >
+      {Array.from({ length: rows * container.cols }).map((_, index) => {
+        const slotX = index % container.cols;
+        const slotY = Math.floor(index / container.cols);
+        const key = makeSlotKey(container.key, slotX, slotY);
+        const item = itemBySlot.get(key) || null;
+        return (
+          <SlotCell
+            key={key}
+            container={container.key}
+            slotX={slotX}
+            slotY={slotY}
+            item={item}
+            readOnly={readOnly}
+            onItemOpen={onItemOpen}
+            onTransferItem={onTransferItem}
+            onToggleFavoriteItem={onToggleFavoriteItem}
+            onDeleteItem={onDeleteItem}
+            onSplitItem={onSplitItem}
+            onQuickEquipItem={onQuickEquipItem}
+            onKeyboardMoveItem={onKeyboardMoveItem}
+            touchOptimized={touchOptimized}
+            touchLiteMode={touchLiteMode}
+            selectedMoveId={selectedMoveId}
+            onToggleMoveSelection={onToggleMoveSelection}
+            onTapTargetSlot={onTapTargetSlot}
+            splitArmedId={splitArmedId}
+            onArmSplit={onArmSplit}
+            onCancelSplitArm={onCancelSplitArm}
+          />
+        );
+      })}
+    </div>
+  );
+
+  if (touchLiteMode && container.key !== "backpack") {
+    return (
+      <details className="inv-slot-zone touch-collapsed" open={hasItems}>
+        <summary className="inv-slot-zone-head">
+          <h4>{container.label}</h4>
+          <span className="badge secondary">{hasItems ? "есть предметы" : "пусто"}</span>
+        </summary>
+        {gridNode}
+      </details>
+    );
+  }
+
   return (
-    <section className="inv-slot-zone">
+    <section className={`inv-slot-zone${touchOptimized ? " touch-optimized" : ""}`.trim()}>
       <div className="inv-slot-zone-head">
         <h4>{container.label}</h4>
       </div>
-      <div className="inv-slot-grid" style={{ gridTemplateColumns: `repeat(${container.cols}, minmax(0, 1fr))` }}>
-        {Array.from({ length: rows * container.cols }).map((_, index) => {
-          const slotX = index % container.cols;
-          const slotY = Math.floor(index / container.cols);
-          const key = makeSlotKey(container.key, slotX, slotY);
-          const item = itemBySlot.get(key) || null;
-          return (
-            <SlotCell
-              key={key}
-              container={container.key}
-              slotX={slotX}
-              slotY={slotY}
-              item={item}
-              readOnly={readOnly}
-              onItemOpen={onItemOpen}
-              onTransferItem={onTransferItem}
-              onToggleFavoriteItem={onToggleFavoriteItem}
-              onDeleteItem={onDeleteItem}
-              onSplitItem={onSplitItem}
-              onQuickEquipItem={onQuickEquipItem}
-              onKeyboardMoveItem={onKeyboardMoveItem}
-              touchOptimized={touchOptimized}
-              selectedMoveId={selectedMoveId}
-              onToggleMoveSelection={onToggleMoveSelection}
-              onTapTargetSlot={onTapTargetSlot}
-              splitArmedId={splitArmedId}
-              onArmSplit={onArmSplit}
-              onCancelSplitArm={onCancelSplitArm}
-            />
-          );
-        })}
-      </div>
+      {gridNode}
     </section>
   );
 }
@@ -297,6 +375,7 @@ function SlotCell({
   onQuickEquipItem,
   onKeyboardMoveItem,
   touchOptimized,
+  touchLiteMode,
   selectedMoveId,
   onToggleMoveSelection,
   onTapTargetSlot,
@@ -310,7 +389,7 @@ function SlotCell({
   return (
     <div
       ref={setNodeRef}
-      className={`inv-slot-cell${isOver ? " active" : ""}${item ? " occupied" : ""}${tapTargetArmed ? " tap-target-armed" : ""}`.trim()}
+      className={`inv-slot-cell${isOver ? " active" : ""}${item ? " occupied" : ""}${tapTargetArmed ? " tap-target-armed" : ""}${touchLiteMode ? " touch-lite" : ""}`.trim()}
       data-slot={`${container}:${slotX}:${slotY}`}
       onClick={(event) => {
         if (!tapTargetArmed) return;
@@ -330,6 +409,7 @@ function SlotCell({
           onQuickEquipItem={onQuickEquipItem}
           onKeyboardMoveItem={onKeyboardMoveItem}
           touchOptimized={touchOptimized}
+          touchLiteMode={touchLiteMode}
           moveSelectionActive={selectedMoveId != null}
           selectedForMove={selectedMoveId === item.id}
           onToggleMoveSelection={onToggleMoveSelection}
@@ -357,6 +437,7 @@ function SlotItem({
   onQuickEquipItem,
   onKeyboardMoveItem,
   touchOptimized = false,
+  touchLiteMode = false,
   moveSelectionActive = false,
   selectedForMove = false,
   onToggleMoveSelection,
@@ -387,7 +468,7 @@ function SlotItem({
   };
 
   useEffect(() => {
-    if (!menuOpen) return () => {};
+    if (!menuOpen || touchOptimized) return () => {};
     const onPointerDown = (event) => {
       if (menuRef.current?.contains(event.target)) return;
       if (menuBtnRef.current?.contains(event.target)) return;
@@ -409,12 +490,12 @@ function SlotItem({
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, touchOptimized]);
 
   return (
     <div
       ref={setNodeRef}
-      className={`inv-slot-item${isDragging || dragging ? " dragging" : ""}${selectedForMove ? " selected-for-move" : ""}`.trim()}
+      className={`inv-slot-item${isDragging || dragging ? " dragging" : ""}${selectedForMove ? " selected-for-move" : ""}${touchLiteMode ? " touch-lite" : ""}`.trim()}
       style={style}
       aria-label={`${item.name || "Предмет"} x${qty}`}
       onContextMenu={(event) => {
@@ -526,7 +607,7 @@ function SlotItem({
           <MoreHorizontal className="icon" aria-hidden="true" />
         </button>
       </div>
-      {menuOpen ? (
+      {menuOpen && !touchOptimized ? (
         <div
           className="inv-slot-menu"
           ref={menuRef}
@@ -557,6 +638,30 @@ function SlotItem({
           <button type="button" className="danger" onClick={() => { onDeleteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>Удалить</button>
         </div>
       ) : null}
+      {touchOptimized ? (
+        <ActionSheet open={menuOpen} title={item.name || "Действия"} onClose={() => setMenuOpen(false)}>
+          <div className="action-sheet-actions">
+            <button type="button" className="action-sheet-item" onClick={() => { onOpen?.(item); setMenuOpen(false); }}>
+              <span>Редактировать</span>
+            </button>
+            <button type="button" className="action-sheet-item" onClick={() => { onQuickEquipItem?.(item); setMenuOpen(false); }} disabled={readOnly}>
+              <span>Быстро экипировать</span>
+            </button>
+            <button type="button" className="action-sheet-item" onClick={() => { onTransferItem?.(item); setMenuOpen(false); }} disabled={readOnly || availableQty <= 0}>
+              <span>Передать</span>
+            </button>
+            <button type="button" className="action-sheet-item" onClick={() => { onSplitItem?.(item); setMenuOpen(false); }} disabled={readOnly || !canSplit}>
+              <span>Разделить стак</span>
+            </button>
+            <button type="button" className="action-sheet-item" onClick={() => { onToggleFavoriteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>
+              <span>Избранное</span>
+            </button>
+            <button type="button" className="action-sheet-item danger" onClick={() => { onDeleteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>
+              <span>Удалить</span>
+            </button>
+          </div>
+        </ActionSheet>
+      ) : null}
     </div>
   );
 }
@@ -582,18 +687,28 @@ function normalizeItems(list) {
   return out;
 }
 
-function buildRowsByContainer(items) {
+function buildRowsByContainer(items, touchLiteMode = false) {
   const rowsByContainer = {};
   for (const container of CONTAINERS) {
     const maxY = items
       .filter((item) => item.container === container.key)
       .reduce((acc, item) => Math.max(acc, item.slotY), -1);
     const rows = container.dynamicRows
-      ? Math.max(container.minRows, maxY + 2)
+      ? (
+        touchLiteMode
+          ? Math.max(2, maxY + 1)
+          : Math.max(container.minRows, maxY + 2)
+      )
       : Math.max(container.minRows, container.rows);
     rowsByContainer[container.key] = rows;
   }
   return rowsByContainer;
+}
+
+function getTouchLiteCols(containerKey) {
+  if (containerKey === "equipment") return 2;
+  if (containerKey === "hotbar") return 3;
+  return 3;
 }
 
 function normalizeContainer(value) {

@@ -460,11 +460,19 @@ body.arcade-modal-open{
   border: 1px solid rgba(110,90,55,.40);
   box-shadow: var(--shadow2);
   display:flex;
-  justify-content:space-between;
+  justify-content:flex-start;
   gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.bottom-nav-inner::-webkit-scrollbar{
+  display: none;
 }
 .bottom-nav-link{
-  flex: 1;
+  flex: 0 0 auto;
+  min-width: 88px;
   text-decoration:none;
   border-radius: 14px;
   padding: 10px 8px;
@@ -1089,17 +1097,14 @@ body.arcade-modal-open{
     flex-wrap: wrap;
   }
   .bottom-nav-inner{
-    justify-content: space-between;
+    justify-content: flex-start;
     flex-wrap: nowrap;
     gap: 6px;
   }
-  .bottom-nav-link,
-  .bottom-nav-more{
-    flex: 1 1 0;
-    min-width: 0;
-    max-width: none;
-  }
   .bottom-nav-link{
+    flex: 0 0 auto;
+    min-width: 84px;
+    max-width: none;
     white-space: nowrap;
   }
   .bottom-nav-link > span{
@@ -1107,14 +1112,6 @@ body.arcade-modal-open{
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .bottom-nav-link-btn{
-    min-width: 0;
-  }
-  .bottom-nav-popover{
-    right: 0;
-    left: auto;
-    max-width: min(92vw, 320px);
   }
   .card .row{
     flex-direction: column;
@@ -1657,22 +1654,14 @@ body.arcade-modal-open{
   .paper-note::before{ display:none; }
   .row{ flex-wrap: wrap; }
   .bottom-nav-inner{
-    overflow: visible;
-    justify-content: space-between;
+    overflow-x: auto;
+    overflow-y: hidden;
+    justify-content: flex-start;
     gap: 6px;
   }
-  .bottom-nav-link,
-  .bottom-nav-more{
-    flex: 1 1 0;
-    min-width: 0;
-  }
-  .bottom-nav-link-btn{
-    min-width: 0;
-  }
-  .bottom-nav-popover{
-    right: 0;
-    left: auto;
-    max-width: min(92vw, 320px);
+  .bottom-nav-link{
+    flex: 0 0 auto;
+    min-width: 84px;
   }
   input, textarea, select, .btn{
     min-height: 44px;
@@ -3947,6 +3936,12 @@ body.arcade-modal-open{
   gap: 6px;
 }
 
+.inv-slot-mobile-mode{
+  display: inline-flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .inv-slot-zones{
   display: grid;
   gap: 14px;
@@ -3957,6 +3952,15 @@ body.arcade-modal-open{
   border-radius: 14px;
   padding: 10px;
   background: rgba(255,255,255,.22);
+}
+
+.inv-slot-zone.touch-optimized{
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.inv-slot-zone.touch-collapsed{
+  overflow: hidden;
 }
 
 .inv-slot-zone-head{
@@ -3972,9 +3976,35 @@ body.arcade-modal-open{
   font-weight: 900;
 }
 
+.inv-slot-zone.touch-collapsed > summary{
+  list-style: none;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+
+.inv-slot-zone.touch-collapsed > summary::-webkit-details-marker{
+  display: none;
+}
+
+.inv-slot-zone.touch-collapsed[open] > summary{
+  margin-bottom: 8px;
+}
+
 .inv-slot-grid{
   display: grid;
   gap: 10px;
+}
+
+.inv-slot-touch-state{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(70,55,30,.25);
+  background: rgba(255,255,255,.4);
 }
 
 .inv-slot-cell{
@@ -3994,6 +4024,10 @@ body.arcade-modal-open{
 
 .inv-slot-cell.tap-target-armed{
   border-color: rgba(69, 114, 56, .48);
+}
+
+.inv-slot-cell.touch-lite{
+  min-height: 102px;
 }
 
 .inv-slot-cell.occupied{
@@ -4029,6 +4063,10 @@ body.arcade-modal-open{
 
 .inv-slot-item.selected-for-move{
   box-shadow: 0 0 0 2px rgba(58, 117, 52, .48), 0 10px 20px rgba(20, 30, 12, .26);
+}
+
+.inv-slot-item.touch-lite{
+  padding: 10px;
 }
 
 .inv-slot-open{
@@ -4068,6 +4106,17 @@ body.arcade-modal-open{
   line-height: 1.2;
   max-height: 2.4em;
   overflow: hidden;
+}
+
+.inv-slot-board-wrap.touch-lite .inv-slot-name{
+  font-size: 11px;
+  line-height: 1.25;
+  max-height: 2.5em;
+}
+
+.inv-slot-board-wrap.touch-lite .inv-slot-icon{
+  width: 20px;
+  height: 20px;
 }
 
 .inv-slot-meta{
