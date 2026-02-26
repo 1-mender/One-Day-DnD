@@ -219,7 +219,6 @@ export default function BottomNav({ items = [] }) {
           </div>
         ) : null}
       </div>
-      </div>
     </nav>
   );
 }

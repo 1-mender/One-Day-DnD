@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
@@ -8,6 +8,7 @@ import { useLiteMode } from "../hooks/useLiteMode.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { t } from "../i18n/index.js";
 import useOnScreen from "../hooks/useOnScreen.js";
+import { useVirtualizer } from "@tanstack/react-virtual";
 
 export default function Bestiary() {
   const [enabled, setEnabled] = useState(false);
@@ -26,8 +27,14 @@ export default function Bestiary() {
     if (!ids.length) return;
     try {
       const r = await api.bestiaryImagesBatch(ids, { limitPer });
-      const map = new Map((r.items || []).map((x) => [x.monsterId, x.images || []]));
-      setItems((prev) => prev.map((m) => (map.has(m.id) ? { ...m, images: map.get(m.id) } : m)));
+      // support both grouped (object) and legacy array shapes
+      const map = new Map();
+      if (Array.isArray(r.items)) {
+        for (const x of r.items) map.set(x.monsterId || x.id, x.images || []);
+      } else if (r.items && typeof r.items === "object") {
+        for (const [k, arr] of Object.entries(r.items)) map.set(Number(k), arr || []);
+      }
+      if (map.size) setItems((prev) => prev.map((m) => (map.has(m.id) ? { ...m, images: map.get(m.id) } : m)));
     } catch {
       // ignore
     }
@@ -93,23 +100,16 @@ export default function Bestiary() {
           style={{ width:"100%" }}
         />
       <div className="bestiary-list" style={{ marginTop: 12 }}>
-        {items.map((m) => {
-          const thumb = (m.name || "??").slice(0, 2).toUpperCase();
-          return (
-            <MonsterCard
-              key={m.id}
-              m={m}
-              lite={lite}
-              thumb={thumb}
-              onOpen={async () => {
-                setCurId(m.id);
-                setOpen(true);
-                await attachImages([m], 12);
-              }}
-              attachImages={attachImages}
-            />
-          );
-        })}
+        <VirtualizedList
+          items={items}
+          lite={lite}
+          onOpen={async (m) => {
+            setCurId(m.id);
+            setOpen(true);
+            await attachImages([m], 12);
+          }}
+          attachImages={attachImages}
+        />
       </div>
       {nextCursor && (
         <div className="row" style={{ marginTop: 10 }}>
@@ -129,6 +129,45 @@ export default function Bestiary() {
         </div>
         <MarkdownView source={cur?.description} />
       </Modal>
+    </div>
+  );
+}
+
+function VirtualizedList({ items, lite, onOpen, attachImages }) {
+  const parentRef = useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 140,
+    overscan: 6
+  });
+
+  const virtualItems = rowVirtualizer.getVirtualItems();
+
+  useEffect(() => {
+    if (!virtualItems.length) return;
+    const toLoad = [];
+    for (const vi of virtualItems) {
+      const m = items[vi.index];
+      if (m && !(m.images && m.images.length)) toLoad.push(m);
+    }
+    if (toLoad.length) attachImages(toLoad, 1).catch(() => {});
+  }, [virtualItems, items, attachImages]);
+
+  return (
+    <div ref={parentRef} style={{ height: 600, overflow: "auto" }}>
+      <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
+        {virtualItems.map((vi) => {
+          const m = items[vi.index];
+          if (!m) return null;
+          const thumb = (m.name || "??").slice(0, 2).toUpperCase();
+          return (
+            <div key={m.id} style={{ position: "absolute", top: vi.start, left: 0, width: "100%", height: vi.size }}>
+              <MonsterCard m={m} lite={lite} thumb={thumb} onOpen={() => onOpen(m)} attachImages={attachImages} />
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -154,7 +193,7 @@ function MonsterCard({ m, lite, thumb, onOpen, attachImages }) {
       {lite ? (
         <div className="bestiary-thumb" aria-hidden="true">{thumb}</div>
       ) : (
-        <PolaroidFrame src={m.images?.[0]?.url} alt={m.name} fallback="МОН" className="sm" />
+        <PolaroidFrame src={m.images?.[0]?.thumbUrl || m.images?.[0]?.url} alt={m.name} fallback="МОН" className="sm" />
       )}
       <div className="kv" style={{ flex: 1 }}>
         <div style={{ fontWeight: 700 }}>{m.name}</div>
