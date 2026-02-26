@@ -23,10 +23,17 @@ import {
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
-import { getItemAvailableQty, getSplitInputMax } from "./inventoryDomain.js";
+import {
+  EMPTY_INVENTORY_FORM,
+  FAVORITE_TAG,
+  applyLayoutMoves,
+  filterIconSections,
+  filterInventory,
+  getItemAvailableQty,
+  getSplitInputMax,
+  summarizeInventory
+} from "./inventoryDomain.js";
 
-const empty = { name:"", description:"", qty:1, weight:0, rarity:"common", tags:[], visibility:"public", iconKey:"" };
-const FAVORITE_TAG = "favorite";
 const ENV_MAX_WEIGHT = Number(import.meta.env.VITE_INVENTORY_WEIGHT_LIMIT || 0);
 
 export default function Inventory() {
@@ -42,7 +49,7 @@ export default function Inventory() {
   const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(EMPTY_INVENTORY_FORM);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferItem, setTransferItem] = useState(null);
   const [transferTo, setTransferTo] = useState("");
@@ -140,7 +147,7 @@ export default function Inventory() {
   function startAdd() {
     if (readOnly) return;
     setEdit(null);
-    setForm(empty);
+    setForm(EMPTY_INVENTORY_FORM);
     setOpen(true);
   }
   function startEdit(it) {
@@ -720,64 +727,3 @@ export default function Inventory() {
 }
 
 const inp = { width: "100%" };
-
-function filterInventory(items, { q, vis, rarity }) {
-  const list = items || [];
-  const qq = String(q || "").toLowerCase().trim();
-  return list.filter((it) => {
-    if (vis && String(it.visibility) !== vis) return false;
-    if (rarity && String(it.rarity || "") !== rarity) return false;
-    if (!qq) return true;
-    return String(it.name || "").toLowerCase().includes(qq);
-  });
-}
-
-function summarizeInventory(list) {
-  return (list || []).reduce((acc, it) => {
-    const qty = Number(it.qty) || 1;
-    const weight = Number(it.weight) || 0;
-    acc.totalWeight += weight * qty;
-    if (String(it.visibility) === "hidden") acc.hiddenCount += 1;
-    else acc.publicCount += 1;
-    return acc;
-  }, { totalWeight: 0, publicCount: 0, hiddenCount: 0 });
-}
-
-function applyLayoutMoves(list, moves) {
-  const items = Array.isArray(list) ? [...list] : [];
-  const map = new Map((Array.isArray(moves) ? moves : [])
-    .filter((move) => Number(move?.id) > 0)
-    .map((move) => [Number(move.id), move]));
-  if (!map.size) return items;
-  return items.map((item) => {
-    const patch = map.get(Number(item?.id));
-    if (!patch) return item;
-    return {
-      ...item,
-      container: patch.container,
-      inv_container: patch.container,
-      slotX: Number(patch.slotX),
-      slotY: Number(patch.slotY),
-      slot_x: Number(patch.slotX),
-      slot_y: Number(patch.slotY)
-    };
-  });
-}
-
-function filterIconSections(sections, query) {
-  const list = Array.isArray(sections) ? sections : [];
-  const q = String(query || "").toLowerCase().trim();
-  if (!q) return list;
-  return list
-    .map((section) => {
-      const items = (section.items || []).filter((icon) => {
-        const hay = `${icon.label || ""} ${icon.key || ""}`.toLowerCase();
-        return hay.includes(q);
-      });
-      return items.length ? { ...section, items } : null;
-    })
-    .filter(Boolean);
-}
-
-
-

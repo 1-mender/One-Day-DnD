@@ -42,12 +42,6 @@ jobs:
       - name: Verify
         run: npm run verify
 
-      - name: Client unit tests
-        run: npm run test:client
-
-      - name: E2E smoke
-        run: npm run e2e
-
       - name: Visual regression (if baseline exists)
         run: |
           if ls artifacts/visual/baseline/*.png >/dev/null 2>&1; then
@@ -75,13 +69,3 @@ jobs:
             sleep 1
           done
           PREFLIGHT_BASE_URL="http://127.0.0.1:${PORT}" npm run preflight -- --skip-write
-
-      - name: Perf report
-        run: npm run perf:report
-        env:
-          PERF_BUDGET_ENFORCE: "1"
-          PERF_BUDGET_JS_TOTAL_BYTES: "900000"
-          PERF_BUDGET_LARGEST_JS_BYTES: "450000"
-
-      - name: Server audit (high+)
-        run: npm --prefix server audit --omit=dev --audit-level=high

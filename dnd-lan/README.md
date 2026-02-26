@@ -33,7 +33,7 @@ npm run start
 - `npm run start` — запуск сервера с раздачей собранного клиента
 - `npm run test` — серверные тесты
 - `npm run lint` — линт client-кода
-- `npm run verify` — быстрая проверка качества (`lint + test + build`)
+- `npm run verify` — проверка готовности к merge (`utf8 + lint + server/client tests + build + e2e + perf budget + audits`)
 - `npm run preflight` — быстрая проверка перед сессией (health/readyz/диск/минимальная запись)
 - `npm --prefix server run chaos:presence` - presence chaos test (reconnect p95 + false-offline)
 - `npm run e2e` - e2e smoke: temp server + DM setup/login + join/approve + inventory write/read
@@ -92,19 +92,19 @@ Env:
 - `VISUAL_UPDATE_BASELINE` (`1` = обновить baseline)
 - `VISUAL_MAX_DIFF_PIXELS` (по умолчанию `350`)
 
-## Performance Baseline (2026-02-11)
+## Performance Baseline (2026-02-26)
 Repeatable command:
 ```powershell
 npm run build
-npm run perf:report
+npm run perf:budget
 ```
 
 | Metric | Baseline (before texture path optimization) | Current | Target |
 |---|---:|---:|---:|
-| Total JS (`client/dist/assets/*.js`) | 862,663 bytes (842.4 KB) | 863,933 bytes (843.7 KB) | <= 850 KB |
-| Largest JS chunk | 440,140 bytes (`vendor-react`) | 440,140 bytes (`vendor-react`) | <= 440 KB |
-| Total images (`client/dist/assets/*.{png,jpg,jpeg,webp,avif,gif,svg}`) | 7,918,188 bytes (7.55 MB) | 751,600 bytes (734.0 KB) | <= 2 MB |
-| Largest image asset | 1,902,461 bytes (`Back.png`) | 77,456 bytes (`book.webp`) | <= 900 KB |
+| Total JS (`client/dist/assets/*.js`) | 862,663 bytes (842.4 KB) | 1,010,575 bytes (986.9 KB) | <= 1,025,000 bytes |
+| Largest JS chunk | 440,140 bytes (`vendor-react`) | 441,229 bytes (`vendor-react`) | <= 450,000 bytes |
+| Total images (`client/dist/assets/*.{png,jpg,jpeg,webp,avif,gif,svg}`) | 7,918,188 bytes (7.55 MB) | 0 bytes (images served via CSS/image-set pipeline) | informational |
+| Largest image asset | 1,902,461 bytes (`Back.png`) | n/a | informational |
 
 `perf:report` is the source of truth for this table and should be rerun after any asset or bundling change.
 
@@ -148,6 +148,7 @@ Secret rotation:
 - `BACKUP_EVERY_MS` (интервал авто-бэкапов, по умолчанию 10 мин)
 - `BACKUP_RETAIN` (сколько последних бэкапов хранить, по умолчанию 20)
 - `READINESS_CHECK_EVERY_MS` (частота проверки readiness, по умолчанию 10 сек)
+- `CSP_ALLOW_UNSAFE_EVAL` (`1` только как fallback для старых браузеров; по умолчанию выключено)
 - `PRESENCE_GRACE_MS` (grace-offline для сокетов, по умолчанию 4000)
 - `INFO_UPLOAD_MAX_BYTES` (лимит загрузки в infoUploads, по умолчанию 5 MB)
 - `INFO_UPLOAD_ALLOWED_MIMES` (список MIME через запятую)

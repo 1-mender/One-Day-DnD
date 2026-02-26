@@ -51,9 +51,49 @@ function parseBudget(name, fallback = null) {
   return Math.floor(n);
 }
 
+function parseCliBudget(raw, fallback = null) {
+  if (raw == null || String(raw).trim() === "") return fallback;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return fallback;
+  return Math.floor(n);
+}
+
+function parseCliArgs(argv) {
+  const out = {
+    enforce: false,
+    jsTotal: null,
+    largestJs: null,
+    imageTotal: null,
+    largestImage: null
+  };
+  for (const arg of argv) {
+    if (arg === "--enforce") {
+      out.enforce = true;
+      continue;
+    }
+    if (arg.startsWith("--js-total=")) {
+      out.jsTotal = parseCliBudget(arg.slice("--js-total=".length), out.jsTotal);
+      continue;
+    }
+    if (arg.startsWith("--largest-js=")) {
+      out.largestJs = parseCliBudget(arg.slice("--largest-js=".length), out.largestJs);
+      continue;
+    }
+    if (arg.startsWith("--image-total=")) {
+      out.imageTotal = parseCliBudget(arg.slice("--image-total=".length), out.imageTotal);
+      continue;
+    }
+    if (arg.startsWith("--largest-image=")) {
+      out.largestImage = parseCliBudget(arg.slice("--largest-image=".length), out.largestImage);
+    }
+  }
+  return out;
+}
+
 const assets = listAssets();
 const jsAssets = assets.filter((a) => a.ext === ".js");
 const imageAssets = assets.filter((a) => imageExts.has(a.ext));
+const cli = parseCliArgs(process.argv.slice(2));
 
 const totalJsBytes = jsAssets.reduce((sum, a) => sum + a.bytes, 0);
 const totalImageBytes = imageAssets.reduce((sum, a) => sum + a.bytes, 0);
@@ -78,9 +118,16 @@ console.log("");
 printTop("top_image_assets", imageAssets, 10);
 
 const enforceBudget = process.env.PERF_BUDGET_ENFORCE === "1";
-const totalJsBudget = parseBudget("PERF_BUDGET_JS_TOTAL_BYTES", null);
-const largestJsBudget = parseBudget("PERF_BUDGET_LARGEST_JS_BYTES", null);
-const shouldCheck = enforceBudget || totalJsBudget != null || largestJsBudget != null;
+const totalJsBudget = parseBudget("PERF_BUDGET_JS_TOTAL_BYTES", cli.jsTotal);
+const largestJsBudget = parseBudget("PERF_BUDGET_LARGEST_JS_BYTES", cli.largestJs);
+const totalImageBudget = parseBudget("PERF_BUDGET_IMAGE_TOTAL_BYTES", cli.imageTotal);
+const largestImageBudget = parseBudget("PERF_BUDGET_LARGEST_IMAGE_BYTES", cli.largestImage);
+const shouldCheck = cli.enforce
+  || enforceBudget
+  || totalJsBudget != null
+  || largestJsBudget != null
+  || totalImageBudget != null
+  || largestImageBudget != null;
 
 if (shouldCheck) {
   let failed = false;
@@ -94,6 +141,18 @@ if (shouldCheck) {
     failed = true;
     console.error(
       `PERF_BUDGET_FAIL largest_js_bytes=${largestJs?.bytes || 0} exceeds ${largestJsBudget}`
+    );
+  }
+  if (totalImageBudget != null && totalImageBytes > totalImageBudget) {
+    failed = true;
+    console.error(
+      `PERF_BUDGET_FAIL image_total_bytes=${totalImageBytes} exceeds ${totalImageBudget}`
+    );
+  }
+  if (largestImageBudget != null && (largestImage?.bytes || 0) > largestImageBudget) {
+    failed = true;
+    console.error(
+      `PERF_BUDGET_FAIL largest_image_bytes=${largestImage?.bytes || 0} exceeds ${largestImageBudget}`
     );
   }
   if (!failed) {

@@ -19,6 +19,14 @@ import {
   isShopChanged
 } from "./settings/domain/ticketRulesEditor.js";
 import { GAME_LABELS, inp, RULE_TIPS, SHOP_LABELS } from "./settings/domain/settingsConstants.js";
+import {
+  DEFAULT_PRESET_ACCESS,
+  addProfilePresetItem,
+  normalizePresetAccess,
+  removeProfilePresetItem,
+  updateProfilePresetData,
+  updateProfilePresetItem
+} from "./settings/domain/presetsEditor.js";
 
 export default function DMSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -40,7 +48,7 @@ export default function DMSettings() {
   const [ticketErr, setTicketErr] = useState("");
   const [questConfirm, setQuestConfirm] = useState(null);
   const [profilePresets, setProfilePresets] = useState([]);
-  const [presetAccess, setPresetAccess] = useState({ enabled: true, playerEdit: true, playerRequest: true, hideLocal: false });
+  const [presetAccess, setPresetAccess] = useState(DEFAULT_PRESET_ACCESS);
   const [presetBusy, setPresetBusy] = useState(false);
   const [presetMsg, setPresetMsg] = useState("");
   const [presetErr, setPresetErr] = useState("");
@@ -63,12 +71,7 @@ export default function DMSettings() {
       setTicketRules(tr?.rules || null);
       setTicketRulesBase(tr?.rules || null);
       setProfilePresets(Array.isArray(presets?.presets) ? presets.presets : []);
-      setPresetAccess({
-        enabled: presets?.access?.enabled !== false,
-        playerEdit: presets?.access?.playerEdit !== false,
-        playerRequest: presets?.access?.playerRequest !== false,
-        hideLocal: !!presets?.access?.hideLocal
-      });
+      setPresetAccess(normalizePresetAccess(presets?.access));
     } catch (e) {
       setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
     }
@@ -265,37 +268,19 @@ export default function DMSettings() {
   }
 
   function addPreset() {
-    setProfilePresets((prev) => ([
-      ...(prev || []),
-      {
-        title: "Новый пресет",
-        subtitle: "",
-        data: {
-          characterName: "",
-          classRole: "",
-          level: "",
-          stats: {},
-          bio: "",
-          avatarUrl: ""
-        }
-      }
-    ]));
+    setProfilePresets((prev) => addProfilePresetItem(prev));
   }
 
   function removePreset(idx) {
-    setProfilePresets((prev) => (prev || []).filter((_, i) => i !== idx));
+    setProfilePresets((prev) => removeProfilePresetItem(prev, idx));
   }
 
   function updatePreset(idx, patch) {
-    setProfilePresets((prev) => (prev || []).map((p, i) => (i === idx ? { ...p, ...(patch || {}) } : p)));
+    setProfilePresets((prev) => updateProfilePresetItem(prev, idx, patch));
   }
 
   function updatePresetData(idx, patch) {
-    setProfilePresets((prev) => (prev || []).map((p, i) => (
-      i === idx
-        ? { ...p, data: { ...(p.data || {}), ...(patch || {}) } }
-        : p
-    )));
+    setProfilePresets((prev) => updateProfilePresetData(prev, idx, patch));
   }
 
   async function saveProfilePresets() {

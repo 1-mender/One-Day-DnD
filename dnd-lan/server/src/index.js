@@ -37,14 +37,14 @@ const PORT = Number(process.env.PORT || 3000);
 const CSP_DISABLED = String(process.env.CSP_DISABLED || "0") === "1";
 
 function buildCspDirectives() {
+  const allowUnsafeEval = String(process.env.CSP_ALLOW_UNSAFE_EVAL || "0") === "1";
   const directives = {
     defaultSrc: ["'self'"],
     baseUri: ["'self'"],
     objectSrc: ["'none'"],
     frameAncestors: ["'none'"],
-    // socket.io-client bundle uses Function(...) for global object detection in some environments.
-    // Without 'unsafe-eval' certain mobile browsers fail to boot the UI (white screen).
-    scriptSrc: ["'self'", "'unsafe-eval'"],
+    // Keep a strict default and allow opt-in compatibility fallback for older browsers.
+    scriptSrc: allowUnsafeEval ? ["'self'", "'unsafe-eval'"] : ["'self'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", "data:", "blob:"],
     fontSrc: ["'self'", "data:"],
