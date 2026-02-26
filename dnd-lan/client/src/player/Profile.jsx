@@ -314,7 +314,7 @@ export default function Profile() {
                       <PolaroidFrame className="lg character-polaroid" src={profile.avatarUrl} alt={profile.characterName} fallback={(profile.characterName || "?").slice(0, 1)} />
                       <div className="character-tags">
                         <span className="badge secondary">{profile.classRole || "Класс/роль"}</span>
-                        <span className="badge">lvl {profile.level ?? "?"}</span>
+                        <span className="badge">ур. {profile.level ?? "?"}</span>
                       </div>
                     </div>
                     <div className="character-info profile-info">

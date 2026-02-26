@@ -90,7 +90,7 @@ export default function Bestiary() {
 
   return (
     <div className={`card taped bestiary-shell${lite ? " page-lite" : ""}`.trim()}>
-      <div style={{ fontWeight: 800, fontSize: 18 }}>{t("bestiary.title", null, "Bestiary")}</div>
+      <div style={{ fontWeight: 800, fontSize: 18 }}>{t("bestiary.title", null, "Бестиарий")}</div>
       <div className="small">{t("bestiary.readOnly", null, "Режим только чтения для игроков")}</div>
       <hr />
         <input
@@ -143,7 +143,13 @@ export default function Bestiary() {
       )}
 
       <Modal open={open} title={cur?.name || ""} onClose={() => { setOpen(false); setCurId(null); }}>
-        <div className="small">{t("bestiary.meta", null, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"} • CR: ${cur?.cr || "—"}`)}</div>
+        <div className="small">
+          {t("bestiary.meta", {
+            type: cur?.type || "—",
+            habitat: cur?.habitat || "—",
+            cr: cur?.cr || "—"
+          }, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"} • CR: ${cur?.cr || "—"}`)}
+        </div>
         <hr />
         <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12, marginBottom: 10 }}>
           {gallery.map((im) => (

@@ -9,10 +9,9 @@ import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { Backpack, BookOpen, Gamepad2, Send, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
 import { t } from "../i18n/index.js";
-import { getNavUsageSummary, trackNavUsage } from "./navUsageMetrics.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
-const OPTIONAL_NAV_BASE_ORDER = ["/app/notes", "/app/transfers", "/app/shop", "/app/bestiary", "/app/arcade"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/shop", "/app/bestiary", "/app/notes", "/app/transfers", "/app/arcade"];
 const ROUTE_TO_ICON = {
   "/app/players": Users,
   "/app/profile": UserRound,
@@ -51,7 +50,6 @@ export default function PlayerLayout() {
   const [err, setErr] = useState("");
   const [netErr, setNetErr] = useState("");
   const [transferBadge, setTransferBadge] = useState(0);
-  const [navSummary, setNavSummary] = useState(() => getNavUsageSummary().summary);
 
   const { socket, refreshAuth, netState } = useSocket();
   const OFFLINE_BANNER_DELAY_MS = 2000;
@@ -104,11 +102,6 @@ export default function PlayerLayout() {
         });
     }
   }, [location.search, refreshAuth, socket]);
-
-  useEffect(() => {
-    const { summary } = trackNavUsage(location.pathname);
-    setNavSummary(summary);
-  }, [location.pathname]);
 
   useEffect(() => {
     if (!socket) return () => {};
@@ -258,16 +251,16 @@ export default function PlayerLayout() {
     const optionalOrder = bestiaryEnabled
       ? OPTIONAL_NAV_BASE_ORDER
       : OPTIONAL_NAV_BASE_ORDER.filter((route) => route !== "/app/bestiary");
-
-    const optionalSorted = [...optionalOrder]
-      .sort((a, b) => {
-        const scoreA = Number(navSummary?.routes?.[a]) || 0;
-        const scoreB = Number(navSummary?.routes?.[b]) || 0;
-        if (scoreA !== scoreB) return scoreB - scoreA;
-        return optionalOrder.indexOf(a) - optionalOrder.indexOf(b);
-      });
-
-    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalSorted];
+    const optionalPrimary = optionalOrder.slice(0, 2);
+    if (
+      transferBadge > 0
+      && optionalOrder.includes("/app/transfers")
+      && !optionalPrimary.includes("/app/transfers")
+      && optionalPrimary.length
+    ) {
+      optionalPrimary[optionalPrimary.length - 1] = "/app/transfers";
+    }
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalPrimary];
     return selectedRoutes.map((to) => ({
       to,
       label: t(ROUTE_TO_LABEL[to]),
@@ -275,7 +268,7 @@ export default function PlayerLayout() {
       badge: to === "/app/transfers" ? transferBadge : 0,
       primary: true
     }));
-  }, [bestiaryEnabled, navSummary, transferBadge]);
+  }, [bestiaryEnabled, transferBadge]);
 
   return (
     <div>

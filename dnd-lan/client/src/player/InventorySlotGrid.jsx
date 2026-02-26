@@ -35,6 +35,7 @@ export default function InventorySlotGrid({
   onSplitItem,
   onQuickEquipItem
 }) {
+  const ultraNarrowScreen = useMediaQuery("(max-width: 360px)");
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 6 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } });
   const sensors = useSensors(...(touchOptimized ? [] : [pointerSensor, touchSensor]));
@@ -250,6 +251,7 @@ export default function InventorySlotGrid({
               onKeyboardMoveItem={moveItemByKeyboard}
               touchOptimized={touchOptimized}
               touchLiteMode={touchLiteMode}
+              compactTouch={ultraNarrowScreen}
               hasItems={(itemsCountByContainer[container.key] || 0) > 0}
               selectedMoveId={selectedMoveId}
               onToggleMoveSelection={toggleMoveSelection}
@@ -284,6 +286,7 @@ function ContainerGrid({
   onKeyboardMoveItem,
   touchOptimized,
   touchLiteMode,
+  compactTouch,
   hasItems,
   selectedMoveId,
   onToggleMoveSelection,
@@ -293,15 +296,15 @@ function ContainerGrid({
   onCancelSplitArm
 }) {
   const displayCols = touchLiteMode ? getTouchLiteCols(container.key) : container.cols;
-  const minCell = touchLiteMode ? 104 : touchOptimized ? 92 : 0;
-  const gridMinWidth = touchOptimized ? (displayCols * minCell + (displayCols - 1) * 10) : null;
+  const minCell = touchLiteMode ? (compactTouch ? 0 : 104) : touchOptimized ? (compactTouch ? 0 : 92) : 0;
+  const gridMinWidth = touchOptimized && minCell > 0 ? (displayCols * minCell + (displayCols - 1) * 10) : null;
   const gridNode = (
     <div
       className="inv-slot-grid"
       style={{
-        gridTemplateColumns: touchOptimized
+        gridTemplateColumns: touchOptimized && minCell > 0
           ? `repeat(${displayCols}, minmax(${minCell}px, 1fr))`
-          : `repeat(${container.cols}, minmax(0, 1fr))`,
+          : `repeat(${touchOptimized ? displayCols : container.cols}, minmax(0, 1fr))`,
         minWidth: gridMinWidth ? `${gridMinWidth}px` : undefined
       }}
     >
@@ -754,4 +757,26 @@ function normalizeSlot(primary, fallback) {
   const n = Number(raw);
   if (!Number.isInteger(n) || n < 0) return null;
   return n;
+}
+
+function useMediaQuery(query) {
+  const [matches, setMatches] = useState(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return false;
+    return window.matchMedia(query).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return () => {};
+    const media = window.matchMedia(query);
+    const update = () => setMatches(media.matches);
+    update();
+    if (media.addEventListener) media.addEventListener("change", update);
+    else if (media.addListener) media.addListener(update);
+    return () => {
+      if (media.removeEventListener) media.removeEventListener("change", update);
+      else if (media.removeListener) media.removeListener(update);
+    };
+  }, [query]);
+
+  return matches;
 }

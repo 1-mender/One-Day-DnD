@@ -161,6 +161,15 @@ export const ru = {
   "playerDossier": {
     "lastSeen": "Последняя активность"
   },
+  "bestiary": {
+    "disabled": "Бестиарий отключён DM",
+    "title": "Бестиарий",
+    "readOnly": "Режим только чтения для игроков",
+    "search": "Поиск по имени...",
+    "showMore": "Показать ещё",
+    "open": "Открыть",
+    "meta": "Тип: {type} • Среда: {habitat} • CR: {cr}"
+  },
   "profile": {
     "myProfile": "Твой профиль",
     "readOnlyImpersonation": "только чтение (имперсонализация)"

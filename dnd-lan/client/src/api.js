@@ -5,6 +5,9 @@ const PLAYER_TOKEN_KEY = "dnd_player_token";
 const JOIN_REQ_KEY = "dnd_join_request_id";
 const IMP_FLAG_KEY = "dnd_impersonating";
 const IMP_MODE_KEY = "dnd_imp_mode";
+const DEFAULT_HTTP_TIMEOUT_MS = 15_000;
+const DEFAULT_HTTP_WRITE_TIMEOUT_MS = 20_000;
+const DEFAULT_UPLOAD_TIMEOUT_MS = 60_000;
 
 function getLocalStorage() {
   try {
@@ -91,11 +94,19 @@ async function request(path, opts = {}) {
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
   const token = storage.getPlayerToken();
   if (token) headers["x-player-token"] = token;
+  const method = String(opts.method || "GET").toUpperCase();
+  const defaultTimeout = method === "GET" || method === "HEAD"
+    ? DEFAULT_HTTP_TIMEOUT_MS
+    : DEFAULT_HTTP_WRITE_TIMEOUT_MS;
+  const timeoutMs = Number.isFinite(Number(opts.timeoutMs)) && Number(opts.timeoutMs) > 0
+    ? Number(opts.timeoutMs)
+    : defaultTimeout;
 
   const res = await safeFetch(path, {
     ...opts,
     headers,
-    credentials: "include"
+    credentials: "include",
+    timeoutMs
   });
   const body = await parseBody(res);
   if (!res.ok) throw makeError(body?.error || ERROR_CODES.REQUEST_FAILED, res, body);
@@ -112,7 +123,13 @@ async function uploadForm(path, formData, fallbackError) {
   const headers = {};
   const token = storage.getPlayerToken();
   if (token) headers["x-player-token"] = token;
-  const res = await safeFetch(path, { method: "POST", body: formData, headers, credentials: "include" });
+  const res = await safeFetch(path, {
+    method: "POST",
+    body: formData,
+    headers,
+    credentials: "include",
+    timeoutMs: DEFAULT_UPLOAD_TIMEOUT_MS
+  });
   const body = await parseBody(res);
   if (!res.ok) throw makeError(body?.error || fallbackError, res, body);
   return body;

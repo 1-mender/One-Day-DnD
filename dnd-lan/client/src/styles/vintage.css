@@ -459,20 +459,17 @@ body.arcade-modal-open{
     linear-gradient(180deg, #f2e6cd, #dcc59d);
   border: 1px solid rgba(110,90,55,.40);
   box-shadow: var(--shadow2);
-  display:flex;
-  justify-content:flex-start;
+  display: grid;
+  grid-template-columns: repeat(var(--bottom-nav-cols, 5), minmax(0, 1fr));
+  justify-content: stretch;
   gap: 8px;
-  overflow-x: auto;
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 }
 .bottom-nav-inner::-webkit-scrollbar{
   display: none;
 }
 .bottom-nav-link{
-  flex: 0 0 auto;
-  min-width: 88px;
+  min-width: 0;
   text-decoration:none;
   border-radius: 14px;
   padding: 10px 8px;
@@ -1097,15 +1094,11 @@ body.arcade-modal-open{
     flex-wrap: wrap;
   }
   .bottom-nav-inner{
-    justify-content: flex-start;
-    flex-wrap: nowrap;
     gap: 6px;
   }
   .bottom-nav-link{
-    flex: 0 0 auto;
-    min-width: 84px;
-    max-width: none;
-    white-space: nowrap;
+    max-width: 100%;
+    white-space: normal;
   }
   .bottom-nav-link > span{
     max-width: 100%;
@@ -1654,14 +1647,10 @@ body.arcade-modal-open{
   .paper-note::before{ display:none; }
   .row{ flex-wrap: wrap; }
   .bottom-nav-inner{
-    overflow-x: auto;
-    overflow-y: hidden;
-    justify-content: flex-start;
     gap: 6px;
   }
   .bottom-nav-link{
-    flex: 0 0 auto;
-    min-width: 84px;
+    min-width: 0;
   }
   input, textarea, select, .btn{
     min-height: 44px;
@@ -4258,8 +4247,8 @@ body.arcade-modal-open{
 .inv-slot-handle{
   justify-self: end;
   align-self: end;
-  width: 26px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   border: 1px solid rgba(70,55,30,.2);
   background: rgba(255,255,255,.62);
@@ -4291,8 +4280,8 @@ body.arcade-modal-open{
 }
 
 .inv-slot-menu-btn{
-  width: 26px;
-  height: 24px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   border: 1px solid rgba(70,55,30,.2);
   background: rgba(255,255,255,.62);
@@ -4345,8 +4334,8 @@ body.arcade-modal-open{
 
 .inv-slot-board-wrap.touch-optimized .inv-slot-handle,
 .inv-slot-board-wrap.touch-optimized .inv-slot-menu-btn{
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
 }
 

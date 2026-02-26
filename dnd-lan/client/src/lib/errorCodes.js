@@ -1,6 +1,7 @@
 export const ERROR_CODES = {
   OFFLINE: "offline",
   READ_ONLY: "read_only",
+  REQUEST_TIMEOUT: "request_timeout",
   REQUEST_FAILED: "request_failed",
   UPLOAD_FAILED: "upload_failed",
   EXPORT_FAILED: "export_failed",
@@ -13,6 +14,7 @@ export const ERROR_CODES = {
 export const ERROR_MESSAGES_RU = {
   offline: "Нет соединения с сервером. Проверьте сеть и попробуйте снова.",
   read_only: "Режим только чтения: изменение данных сейчас недоступно.",
+  request_timeout: "Сервер не ответил вовремя. Повторите попытку.",
   request_failed: "Не удалось выполнить запрос. Попробуйте ещё раз.",
   upload_failed: "Не удалось загрузить файл.",
   export_failed: "Не удалось выполнить экспорт.",

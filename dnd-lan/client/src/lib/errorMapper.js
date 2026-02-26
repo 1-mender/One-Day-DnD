@@ -6,6 +6,7 @@ const CYRILLIC_RE = /[А-Яа-яЁё]/;
 const ERROR_HINTS_RU = {
   offline: "Проверьте Wi‑Fi/LAN и доступность сервера, затем повторите.",
   read_only: "Дождитесь восстановления сервера или отключите режим read-only у DM.",
+  request_timeout: "Проверьте стабильность сети и повторите запрос.",
   request_failed: "Повторите действие через несколько секунд.",
   not_authenticated: "Войдите в систему заново.",
   player_token_required: "Переподключитесь к партии через экран входа.",
@@ -38,7 +39,7 @@ function inferCode(value) {
   const lowered = value.toLowerCase();
   if (ERROR_MESSAGES_RU[lowered]) return lowered;
   if (lowered.includes("failed to fetch") || lowered.includes("networkerror")) return ERROR_CODES.OFFLINE;
-  if (lowered === "aborterror" || lowered.includes("timeout")) return ERROR_CODES.REQUEST_FAILED;
+  if (lowered === "aborterror" || lowered.includes("timeout")) return ERROR_CODES.REQUEST_TIMEOUT;
   if (CODE_RE.test(lowered)) return lowered;
   return "";
 }

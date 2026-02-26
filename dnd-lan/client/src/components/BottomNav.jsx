@@ -4,14 +4,13 @@ import { t } from "../i18n/index.js";
 import { partitionNavItems } from "./bottomNavDomain.js";
 
 export default function BottomNav({ items = [] }) {
-  const maxPrimary = Math.max(1, Array.isArray(items) ? items.length : 1);
-  const { normalized, primary } = useMemo(() => partitionNavItems(items, maxPrimary), [items, maxPrimary]);
+  const { normalized, primary } = useMemo(() => partitionNavItems(items), [items]);
 
   if (!normalized.length) return null;
 
   return (
-    <nav className="bottom-nav" role="navigation" aria-label={t("bottomNav.ariaLabel", null, "Bottom navigation")}>
-      <div className="bottom-nav-inner">
+    <nav className="bottom-nav" role="navigation" aria-label={t("bottomNav.ariaLabel", null, "Нижняя навигация")}>
+      <div className="bottom-nav-inner" style={{ "--bottom-nav-cols": String(Math.max(1, primary.length)) }}>
         {primary.map((it) => (
           <NavLink
             key={it.to}
