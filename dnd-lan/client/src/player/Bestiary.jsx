@@ -135,6 +135,7 @@ export default function Bestiary() {
 
 function VirtualizedList({ items, lite, onOpen, attachImages }) {
   const parentRef = useRef(null);
+  const [listHeight, setListHeight] = useState(600);
   const rowVirtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => parentRef.current,
@@ -143,6 +144,34 @@ function VirtualizedList({ items, lite, onOpen, attachImages }) {
   });
 
   const virtualItems = rowVirtualizer.getVirtualItems();
+
+  useEffect(() => {
+    const refreshHeight = () => {
+      const node = parentRef.current;
+      if (!node || typeof window === "undefined") return;
+      const viewportHeight = window.visualViewport?.height || window.innerHeight || 0;
+      const rect = node.getBoundingClientRect();
+      const bottomNav = getBottomNavHeight();
+      const available = Math.floor(viewportHeight - rect.top - bottomNav - 20);
+      const nextHeight = Math.max(260, Math.min(760, available || 0));
+      setListHeight((prev) => (prev === nextHeight ? prev : nextHeight));
+    };
+
+    const visualViewport = window.visualViewport || null;
+    const frame = window.requestAnimationFrame(refreshHeight);
+    window.addEventListener("resize", refreshHeight);
+    window.addEventListener("orientationchange", refreshHeight);
+    visualViewport?.addEventListener("resize", refreshHeight);
+    visualViewport?.addEventListener("scroll", refreshHeight);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("resize", refreshHeight);
+      window.removeEventListener("orientationchange", refreshHeight);
+      visualViewport?.removeEventListener("resize", refreshHeight);
+      visualViewport?.removeEventListener("scroll", refreshHeight);
+    };
+  }, [items.length]);
 
   useEffect(() => {
     if (!virtualItems.length) return;
@@ -155,7 +184,15 @@ function VirtualizedList({ items, lite, onOpen, attachImages }) {
   }, [virtualItems, items, attachImages]);
 
   return (
-    <div ref={parentRef} style={{ height: 600, overflow: "auto" }}>
+    <div
+      ref={parentRef}
+      style={{
+        height: listHeight,
+        maxHeight: "calc(100dvh - var(--bottom-nav-h) - env(safe-area-inset-bottom) - 24px)",
+        overflow: "auto",
+        overscrollBehavior: "contain"
+      }}
+    >
       <div style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}>
         {virtualItems.map((vi) => {
           const m = items[vi.index];
@@ -170,6 +207,14 @@ function VirtualizedList({ items, lite, onOpen, attachImages }) {
       </div>
     </div>
   );
+}
+
+function getBottomNavHeight() {
+  if (typeof window === "undefined") return 90;
+  const raw = window.getComputedStyle(document.documentElement).getPropertyValue("--bottom-nav-h");
+  const n = Number.parseFloat(raw);
+  if (Number.isFinite(n) && n > 0) return n;
+  return 90;
 }
 
 function MonsterCard({ m, lite, thumb, onOpen, attachImages }) {

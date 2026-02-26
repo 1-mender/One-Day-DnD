@@ -25,6 +25,7 @@ export default function InventorySlotGrid({
   items = [],
   readOnly = false,
   busy = false,
+  touchOptimized = false,
   onMove,
   onItemOpen,
   onTransferItem,
@@ -33,13 +34,13 @@ export default function InventorySlotGrid({
   onSplitItem,
   onQuickEquipItem
 }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } })
-  );
+  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 6 } });
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } });
+  const sensors = useSensors(...(touchOptimized ? [] : [pointerSensor, touchSensor]));
   const [activeId, setActiveId] = useState(null);
   const [splitArmedId, setSplitArmedId] = useState(null);
   const [dragMode, setDragMode] = useState("move");
+  const [selectedMoveId, setSelectedMoveId] = useState(null);
 
   const normalizedItems = useMemo(() => normalizeItems(items), [items]);
   const itemsById = useMemo(() => new Map(normalizedItems.map((item) => [item.id, item])), [normalizedItems]);
@@ -77,17 +78,70 @@ export default function InventorySlotGrid({
     await onMove(moves);
   };
 
+  const moveSelectedByTap = async (targetSlot) => {
+    if (!touchOptimized || readOnly || busy || typeof onMove !== "function") return;
+    if (!targetSlot || !Number.isInteger(targetSlot.slotX) || !Number.isInteger(targetSlot.slotY)) return;
+    if (selectedMoveId == null) return;
+    const selected = itemsById.get(selectedMoveId);
+    if (!selected) {
+      setSelectedMoveId(null);
+      return;
+    }
+    if (
+      selected.container === targetSlot.container
+      && selected.slotX === targetSlot.slotX
+      && selected.slotY === targetSlot.slotY
+    ) {
+      setSelectedMoveId(null);
+      return;
+    }
+    const target = itemBySlot.get(makeSlotKey(targetSlot.container, targetSlot.slotX, targetSlot.slotY));
+    const moves = [{ id: selected.id, ...targetSlot }];
+    if (target && target.id !== selected.id) {
+      moves.push({
+        id: target.id,
+        container: selected.container,
+        slotX: selected.slotX,
+        slotY: selected.slotY
+      });
+    }
+    await onMove(moves);
+    setSelectedMoveId(null);
+  };
+
+  const toggleMoveSelection = (id) => {
+    if (!touchOptimized || readOnly || busy) return;
+    setSplitArmedId(null);
+    setSelectedMoveId((current) => (current === id ? null : id));
+  };
+
+  useEffect(() => {
+    if (!touchOptimized && selectedMoveId != null) {
+      setSelectedMoveId(null);
+      return;
+    }
+    if (selectedMoveId != null && !itemsById.has(selectedMoveId)) {
+      setSelectedMoveId(null);
+    }
+  }, [itemsById, selectedMoveId, touchOptimized]);
+
   return (
-    <div className="inv-slot-board-wrap">
+    <div className={`inv-slot-board-wrap${touchOptimized ? " touch-optimized" : ""}`.trim()}>
       <div className="small inv-slot-hint">
-        RPG-сетка: drag за <GripVertical className="icon" aria-hidden="true" />, контекст через <MoreHorizontal className="icon" aria-hidden="true" />, клавиатура: Alt + стрелки.
+        {touchOptimized ? (
+          <>RPG-сетка (тач): выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните целевой слот.</>
+        ) : (
+          <>RPG-сетка: перетаскивайте за <GripVertical className="icon" aria-hidden="true" />, контекст через <MoreHorizontal className="icon" aria-hidden="true" />, клавиатура: Alt + стрелки.</>
+        )}
       </div>
 
       <DndContext
         sensors={sensors}
         onDragStart={(event) => {
+          if (touchOptimized) return;
           const id = parseItemId(event.active?.id);
           setActiveId(id);
+          setSelectedMoveId(null);
           const item = id != null ? itemsById.get(id) : null;
           const splitMode = id != null && id === splitArmedId && isSplittableItem(item);
           setDragMode(splitMode ? "split" : "move");
@@ -99,6 +153,7 @@ export default function InventorySlotGrid({
           setSplitArmedId(null);
         }}
         onDragEnd={async (event) => {
+          if (touchOptimized) return;
           setActiveId(null);
           const mode = dragMode;
           setDragMode("move");
@@ -147,6 +202,10 @@ export default function InventorySlotGrid({
               onSplitItem={onSplitItem}
               onQuickEquipItem={onQuickEquipItem}
               onKeyboardMoveItem={moveItemByKeyboard}
+              touchOptimized={touchOptimized}
+              selectedMoveId={selectedMoveId}
+              onToggleMoveSelection={toggleMoveSelection}
+              onTapTargetSlot={moveSelectedByTap}
               splitArmedId={splitArmedId}
               onArmSplit={(id) => setSplitArmedId(id)}
               onCancelSplitArm={(id) => setSplitArmedId((current) => (current === id ? null : current))}
@@ -175,6 +234,10 @@ function ContainerGrid({
   onSplitItem,
   onQuickEquipItem,
   onKeyboardMoveItem,
+  touchOptimized,
+  selectedMoveId,
+  onToggleMoveSelection,
+  onTapTargetSlot,
   splitArmedId,
   onArmSplit,
   onCancelSplitArm
@@ -205,6 +268,10 @@ function ContainerGrid({
               onSplitItem={onSplitItem}
               onQuickEquipItem={onQuickEquipItem}
               onKeyboardMoveItem={onKeyboardMoveItem}
+              touchOptimized={touchOptimized}
+              selectedMoveId={selectedMoveId}
+              onToggleMoveSelection={onToggleMoveSelection}
+              onTapTargetSlot={onTapTargetSlot}
               splitArmedId={splitArmedId}
               onArmSplit={onArmSplit}
               onCancelSplitArm={onCancelSplitArm}
@@ -229,17 +296,27 @@ function SlotCell({
   onSplitItem,
   onQuickEquipItem,
   onKeyboardMoveItem,
+  touchOptimized,
+  selectedMoveId,
+  onToggleMoveSelection,
+  onTapTargetSlot,
   splitArmedId,
   onArmSplit,
   onCancelSplitArm
 }) {
   const id = makeSlotId(container, slotX, slotY);
   const { isOver, setNodeRef } = useDroppable({ id });
+  const tapTargetArmed = touchOptimized && selectedMoveId != null;
   return (
     <div
       ref={setNodeRef}
-      className={`inv-slot-cell${isOver ? " active" : ""}${item ? " occupied" : ""}`.trim()}
+      className={`inv-slot-cell${isOver ? " active" : ""}${item ? " occupied" : ""}${tapTargetArmed ? " tap-target-armed" : ""}`.trim()}
       data-slot={`${container}:${slotX}:${slotY}`}
+      onClick={(event) => {
+        if (!tapTargetArmed) return;
+        if (event.target !== event.currentTarget) return;
+        onTapTargetSlot?.({ container, slotX, slotY });
+      }}
     >
       {item ? (
         <SlotItem
@@ -252,6 +329,11 @@ function SlotCell({
           onSplitItem={onSplitItem}
           onQuickEquipItem={onQuickEquipItem}
           onKeyboardMoveItem={onKeyboardMoveItem}
+          touchOptimized={touchOptimized}
+          moveSelectionActive={selectedMoveId != null}
+          selectedForMove={selectedMoveId === item.id}
+          onToggleMoveSelection={onToggleMoveSelection}
+          onTapTargetSlot={onTapTargetSlot}
           splitArmed={splitArmedId === item.id}
           onArmSplit={onArmSplit}
           onCancelSplitArm={onCancelSplitArm}
@@ -274,6 +356,11 @@ function SlotItem({
   onSplitItem,
   onQuickEquipItem,
   onKeyboardMoveItem,
+  touchOptimized = false,
+  moveSelectionActive = false,
+  selectedForMove = false,
+  onToggleMoveSelection,
+  onTapTargetSlot,
   splitArmed = false,
   onArmSplit,
   onCancelSplitArm
@@ -281,7 +368,7 @@ function SlotItem({
   const draggableId = makeItemId(item.id);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: draggableId,
-    disabled: readOnly
+    disabled: readOnly || touchOptimized
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -327,7 +414,7 @@ function SlotItem({
   return (
     <div
       ref={setNodeRef}
-      className={`inv-slot-item${isDragging || dragging ? " dragging" : ""}`.trim()}
+      className={`inv-slot-item${isDragging || dragging ? " dragging" : ""}${selectedForMove ? " selected-for-move" : ""}`.trim()}
       style={style}
       aria-label={`${item.name || "Предмет"} x${qty}`}
       onContextMenu={(event) => {
@@ -338,7 +425,21 @@ function SlotItem({
       <button
         type="button"
         className="inv-slot-open"
-        onClick={() => onOpen?.(item)}
+        onClick={() => {
+          if (touchOptimized && selectedForMove) {
+            onToggleMoveSelection?.(item.id);
+            return;
+          }
+          if (touchOptimized && moveSelectionActive) {
+            onTapTargetSlot?.({
+              container: normalizeContainer(item.container),
+              slotX: Number(item.slotX),
+              slotY: Number(item.slotY)
+            });
+            return;
+          }
+          onOpen?.(item);
+        }}
         title={`${item.name || "Предмет"} x${qty}`}
         onKeyDown={(event) => {
           if (!event.altKey) return;
@@ -370,10 +471,28 @@ function SlotItem({
           type="button"
           className={`inv-slot-handle${splitArmed ? " split-armed" : ""}`.trim()}
           disabled={readOnly}
-          title={readOnly ? "Недоступно в read-only" : "Перетащить предмет"}
-          aria-label={readOnly ? "Недоступно в read-only" : "Перетащить предмет"}
+          title={
+            readOnly
+              ? "Недоступно в режиме только чтения"
+              : touchOptimized
+                ? (selectedForMove ? "Отменить выбор предмета" : "Выбрать предмет для перемещения")
+                : "Перетащить предмет"
+          }
+          aria-label={
+            readOnly
+              ? "Недоступно в режиме только чтения"
+              : touchOptimized
+                ? (selectedForMove ? "Отменить выбор предмета" : "Выбрать предмет для перемещения")
+                : "Перетащить предмет"
+          }
+          onClick={(event) => {
+            if (!touchOptimized) return;
+            event.preventDefault();
+            event.stopPropagation();
+            onToggleMoveSelection?.(item.id);
+          }}
           onPointerDownCapture={(event) => {
-            if (readOnly || !canSplit || event.button === 2) return;
+            if (touchOptimized || readOnly || !canSplit || event.button === 2) return;
             clearSplitTimer(event.currentTarget);
             const timer = setTimeout(() => {
               onArmSplit?.(item.id);
@@ -381,14 +500,16 @@ function SlotItem({
             event.currentTarget.dataset.splitTimer = String(timer);
           }}
           onPointerUpCapture={(event) => {
+            if (touchOptimized) return;
             clearSplitTimer(event.currentTarget);
           }}
           onPointerCancelCapture={(event) => {
+            if (touchOptimized) return;
             clearSplitTimer(event.currentTarget);
             onCancelSplitArm?.(item.id);
           }}
-          {...attributes}
-          {...listeners}
+          {...(!touchOptimized ? attributes : {})}
+          {...(!touchOptimized ? listeners : {})}
         >
           <GripVertical className="icon" aria-hidden="true" />
         </button>

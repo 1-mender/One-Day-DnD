@@ -12,6 +12,7 @@ import { useToast } from "../components/ui/ToastProvider.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import { t } from "../i18n/index.js";
 import {
   EMPTY_PROFILE_DRAFT,
   PRESET_HINT,
@@ -263,7 +264,7 @@ export default function Profile() {
         <div className="profile-header-main">
           <div className="profile-title">Профиль персонажа</div>
           <div className="profile-meta small">
-            {readOnly ? "read-only (имперсонализация)" : "Твой профиль"} • Обновлён: {updatedLabel}
+            {readOnly ? t("profile.readOnlyImpersonation", null, "только чтение (имперсонализация)") : t("profile.myProfile", null, "Твой профиль")} • Обновлён: {updatedLabel}
           </div>
         </div>
         <div className="profile-header-actions">
@@ -282,7 +283,7 @@ export default function Profile() {
           <div className="item"><Skeleton h={140} w="100%" /></div>
         </div>
       ) : notCreated ? (
-        <EmptyState title="Профиль ещё не создан" hint="DM должен создать ваш character profile." />
+        <EmptyState title="Профиль ещё не создан" hint="DM должен создать профиль персонажа." />
       ) : (
         <>
           <div className="spread-grid profile-grid">

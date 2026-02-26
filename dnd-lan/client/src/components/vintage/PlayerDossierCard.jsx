@@ -1,11 +1,12 @@
 import React from "react";
 import { Scale } from "lucide-react";
 import PolaroidFrame from "./PolaroidFrame.jsx";
+import { t } from "../../i18n/index.js";
 
 function StatusStamp({ status }) {
   const s = String(status || "offline");
   const cls = s === "online" ? "online" : s === "idle" ? "idle" : "offline";
-  const label = s === "online" ? "ONLINE" : s === "idle" ? "IDLE" : "OFFLINE";
+  const label = t(`playerStatus.${cls}`, null, cls).toUpperCase();
   return <span className={`stamp ${cls}`}>{label}</span>;
 }
 
@@ -24,7 +25,7 @@ export default function PlayerDossierCard({
   const limit = Number(player.inventoryLimit || 0);
   const weightLabel = Number.isFinite(limit) && limit > 0
     ? `${weight.toFixed(2)} / ${limit}`
-    : `${weight.toFixed(2)} / inf`;
+    : `${weight.toFixed(2)} / \u221e`;
   const clickable = typeof onClick === "function";
 
   return (
@@ -82,7 +83,7 @@ export default function PlayerDossierCard({
           {menu ? <div className="dossier-menu">{menu}</div> : null}
         </div>
         <div className="small" style={{ marginTop: 6 }}>
-          lastSeen: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}
+          {t("playerDossier.lastSeen", null, "Последняя активность")}: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}
         </div>
       </div>
 

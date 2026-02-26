@@ -17,7 +17,9 @@ export const ru = {
     "pageFallbackLoading": "Загрузка…"
   },
   "bottomNav": {
-    "moreAria": "Ещё разделы"
+    "ariaLabel": "Нижняя навигация",
+    "moreAria": "Ещё разделы",
+    "badgeAria": "Новых: {count}"
   },
   "dmTabBar": {
     "dashboard": "Обзор",
@@ -155,6 +157,13 @@ export const ru = {
     "online": "В сети",
     "idle": "Неактивен",
     "offline": "Оффлайн"
+  },
+  "playerDossier": {
+    "lastSeen": "Последняя активность"
+  },
+  "profile": {
+    "myProfile": "Твой профиль",
+    "readOnlyImpersonation": "только чтение (имперсонализация)"
   },
   "qrCard": {
     "title": "QR для подключения",

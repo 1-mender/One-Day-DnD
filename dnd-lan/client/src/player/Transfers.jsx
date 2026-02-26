@@ -27,6 +27,7 @@ export default function Transfers() {
   const [outboxQ, setOutboxQ] = useState("");
   const [inboxOpen, setInboxOpen] = useState(true);
   const [outboxOpen, setOutboxOpen] = useState(false);
+  const [autoRefreshPaused, setAutoRefreshPaused] = useState(false);
 
   const loadInbox = useCallback(async ({ silent = false } = {}) => {
     if (!silent) setInboxLoading(true);
@@ -77,11 +78,40 @@ export default function Transfers() {
   }, [loadAll, socket]);
 
   useEffect(() => {
+    const updateAutoRefreshState = () => {
+      const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
+      const typing = isEditingInput();
+      const keyboardOpen = isKeyboardOpen();
+      const poorNetwork = isPoorNetwork();
+      setAutoRefreshPaused(hidden || typing || keyboardOpen || poorNetwork);
+    };
+
+    const connection = getNetworkConnection();
+    updateAutoRefreshState();
+    document.addEventListener("visibilitychange", updateAutoRefreshState);
+    document.addEventListener("focusin", updateAutoRefreshState);
+    document.addEventListener("focusout", updateAutoRefreshState);
+    window.addEventListener("resize", updateAutoRefreshState);
+    window.visualViewport?.addEventListener("resize", updateAutoRefreshState);
+    connection?.addEventListener?.("change", updateAutoRefreshState);
+
+    return () => {
+      document.removeEventListener("visibilitychange", updateAutoRefreshState);
+      document.removeEventListener("focusin", updateAutoRefreshState);
+      document.removeEventListener("focusout", updateAutoRefreshState);
+      window.removeEventListener("resize", updateAutoRefreshState);
+      window.visualViewport?.removeEventListener("resize", updateAutoRefreshState);
+      connection?.removeEventListener?.("change", updateAutoRefreshState);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (autoRefreshPaused) return () => {};
     const id = setInterval(() => {
       loadAll({ silent: true }).catch(() => {});
     }, REFRESH_MS);
     return () => clearInterval(id);
-  }, [loadAll]);
+  }, [autoRefreshPaused, loadAll]);
 
   async function acceptTransfer(transfer) {
     if (readOnly) return;
@@ -163,7 +193,10 @@ export default function Transfers() {
           <div className="inv-title-lg">Передачи</div>
           <div className="inv-subtitle">
             Входящие: {inbox.length} • Исходящие: {outbox.length}
-            {readOnly ? <span className="badge warn">read-only</span> : null}
+            {readOnly ? <span className="badge warn">только чтение</span> : null}
+            <span className={`badge ${autoRefreshPaused ? "secondary" : "ok"}`.trim()}>
+              {autoRefreshPaused ? "Автообновление на паузе" : "Автообновление"}
+            </span>
           </div>
         </div>
         <div className="inv-header-actions">
@@ -341,4 +374,39 @@ function filterTransfers(list, q) {
     ].filter(Boolean).join(" ").toLowerCase();
     return hay.includes(qq);
   });
+}
+
+function isEditingInput() {
+  if (typeof document === "undefined") return false;
+  const active = document.activeElement;
+  if (!active || !(active instanceof HTMLElement)) return false;
+  const tag = String(active.tagName || "").toLowerCase();
+  return (
+    tag === "input"
+    || tag === "textarea"
+    || tag === "select"
+    || !!active.isContentEditable
+  );
+}
+
+function isKeyboardOpen() {
+  if (typeof window === "undefined") return false;
+  const viewport = window.visualViewport;
+  if (!viewport) return false;
+  return window.innerHeight - viewport.height > 120;
+}
+
+function getNetworkConnection() {
+  if (typeof navigator === "undefined") return null;
+  return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+}
+
+function isPoorNetwork() {
+  const connection = getNetworkConnection();
+  if (!connection) return false;
+  const effectiveType = String(connection.effectiveType || "").toLowerCase();
+  if (connection.saveData) return true;
+  if (effectiveType === "slow-2g" || effectiveType === "2g") return true;
+  const downlink = Number(connection.downlink);
+  return Number.isFinite(downlink) && downlink > 0 && downlink < 1;
 }

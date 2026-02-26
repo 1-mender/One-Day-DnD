@@ -227,6 +227,54 @@ hr{
   font-weight: 1000;
   letter-spacing: 1px;
 }
+
+.inv-mobile-sticky{
+  position: sticky;
+  top: 8px;
+  z-index: 8;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(70,55,30,.24);
+  background: rgba(255,255,255,.62);
+  display: grid;
+  gap: 8px;
+}
+
+.inv-mobile-search input{
+  width: 100%;
+}
+
+.inv-mobile-quick-actions{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inv-mobile-quick-actions .btn{
+  width: 100%;
+  justify-content: center;
+}
+
+.inv-mobile-section{
+  margin-top: 12px;
+}
+
+.inv-mobile-section-summary{
+  list-style: none;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: .2px;
+}
+
+.inv-mobile-section-summary::-webkit-details-marker{
+  display: none;
+}
+
+.inv-mobile-section-body{
+  margin-top: 8px;
+}
 @media (min-width: 820px){
   .bestiary-list{
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3944,6 +3992,10 @@ body.arcade-modal-open{
   transform: translateY(-1px);
 }
 
+.inv-slot-cell.tap-target-armed{
+  border-color: rgba(69, 114, 56, .48);
+}
+
 .inv-slot-cell.occupied{
   border-style: solid;
 }
@@ -3973,6 +4025,10 @@ body.arcade-modal-open{
 .inv-slot-item.dragging{
   opacity: .86;
   box-shadow: 0 12px 20px rgba(20, 30, 12, .35);
+}
+
+.inv-slot-item.selected-for-move{
+  box-shadow: 0 0 0 2px rgba(58, 117, 52, .48), 0 10px 20px rgba(20, 30, 12, .26);
 }
 
 .inv-slot-open{
@@ -4128,7 +4184,22 @@ body.arcade-modal-open{
   cursor: not-allowed;
 }
 
+.inv-slot-board-wrap.touch-optimized .inv-slot-handle,
+.inv-slot-board-wrap.touch-optimized .inv-slot-menu-btn{
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.inv-slot-board-wrap.touch-optimized .inv-slot-cell{
+  min-height: 106px;
+}
+
 @media (max-width: 720px){
+  .inv-mobile-quick-actions{
+    grid-template-columns: 1fr;
+  }
+
   .dm-topbar{
     overflow-y: visible !important;
   }

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
@@ -63,10 +63,14 @@ export default function Inventory() {
   const [loading, setLoading] = useState(true);
   const { socket } = useSocket();
   const lite = useLiteMode();
+  const isNarrowScreen = useIsNarrowScreen();
   const [listRef] = useAutoAnimate({ duration: lite ? 0 : 200 });
   const [iconQuery, setIconQuery] = useState("");
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
+  const [mobileStatsOpen, setMobileStatsOpen] = useState(false);
+  const [mobileFavoritesOpen, setMobileFavoritesOpen] = useState(false);
+  const mobileViewInitRef = useRef(false);
 
   const readOnly = useReadOnly();
   const actionsVariant = lite || view === "grid" ? "compact" : "stack";
@@ -128,6 +132,12 @@ export default function Inventory() {
       setIconPickerOpen(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (!isNarrowScreen || mobileViewInitRef.current) return;
+    mobileViewInitRef.current = true;
+    if (view === "slots") setView("list");
+  }, [isNarrowScreen, setView, view]);
 
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
@@ -377,48 +387,112 @@ export default function Inventory() {
           <div className="inv-title-lg">Инвентарь</div>
           <div className="inv-subtitle">
             Вес (по фильтру): {totalWeight.toFixed(2)}
-            {readOnly ? <span className="badge warn">read-only</span> : null}
+            {readOnly ? <span className="badge warn">только чтение</span> : null}
           </div>
         </div>
-        <div className="inv-header-actions">
-          <button className="btn secondary" onClick={() => nav("/app/transfers")}>Передачи</button>
-          <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
-          <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
-        </div>
+        {!isNarrowScreen ? (
+          <div className="inv-header-actions">
+            <button className="btn secondary" onClick={() => nav("/app/transfers")}>Передачи</button>
+            <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
+            <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+          </div>
+        ) : null}
       </div>
 
-      <div className="inv-stats">
-        <div className="inv-stat">
-          <Package className="icon" aria-hidden="true" />
-          <div>
-            <div className="inv-stat-label">Всего</div>
-            <div className="inv-stat-value">{filtered.length}</div>
+      {isNarrowScreen ? (
+        <div className="inv-mobile-sticky">
+          <div className="inv-mobile-search">
+            <input
+              value={q}
+              onChange={(e)=>setQ(e.target.value)}
+              placeholder="Поиск по названию..."
+              aria-label="Поиск предметов по названию"
+            />
+          </div>
+          <div className="inv-mobile-quick-actions">
+            <button className="btn secondary" onClick={() => nav("/app/transfers")}>Передачи</button>
+            <button className="btn" onClick={startAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
+            <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
           </div>
         </div>
-        <div className="inv-stat">
-          <Eye className="icon" aria-hidden="true" />
-          <div>
-            <div className="inv-stat-label">Публичные</div>
-            <div className="inv-stat-value">{publicCount}</div>
+      ) : null}
+
+      {isNarrowScreen ? (
+        <details
+          className="inv-panel inv-mobile-section"
+          open={mobileStatsOpen}
+          onToggle={(event) => setMobileStatsOpen(event.currentTarget.open)}
+        >
+          <summary className="inv-mobile-section-summary">Показатели</summary>
+          <div className="inv-mobile-section-body">
+            <div className="inv-stats">
+              <div className="inv-stat">
+                <Package className="icon" aria-hidden="true" />
+                <div>
+                  <div className="inv-stat-label">Всего</div>
+                  <div className="inv-stat-value">{filtered.length}</div>
+                </div>
+              </div>
+              <div className="inv-stat">
+                <Eye className="icon" aria-hidden="true" />
+                <div>
+                  <div className="inv-stat-label">Публичные</div>
+                  <div className="inv-stat-value">{publicCount}</div>
+                </div>
+              </div>
+              <div className="inv-stat">
+                <EyeOff className="icon" aria-hidden="true" />
+                <div>
+                  <div className="inv-stat-label">Скрытые</div>
+                  <div className="inv-stat-value">{hiddenCount}</div>
+                </div>
+              </div>
+              <div className={`inv-stat ${weightStatus}`}>
+                <Scale className="icon" aria-hidden="true" />
+                <div>
+                  <div className="inv-stat-label">Вес</div>
+                  <div className="inv-stat-value">
+                    {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="inv-stat">
-          <EyeOff className="icon" aria-hidden="true" />
-          <div>
-            <div className="inv-stat-label">Скрытые</div>
-            <div className="inv-stat-value">{hiddenCount}</div>
+        </details>
+      ) : (
+        <div className="inv-stats">
+          <div className="inv-stat">
+            <Package className="icon" aria-hidden="true" />
+            <div>
+              <div className="inv-stat-label">Всего</div>
+              <div className="inv-stat-value">{filtered.length}</div>
+            </div>
           </div>
-        </div>
-        <div className={`inv-stat ${weightStatus}`}>
-          <Scale className="icon" aria-hidden="true" />
-          <div>
-            <div className="inv-stat-label">Вес</div>
-            <div className="inv-stat-value">
-              {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
+          <div className="inv-stat">
+            <Eye className="icon" aria-hidden="true" />
+            <div>
+              <div className="inv-stat-label">Публичные</div>
+              <div className="inv-stat-value">{publicCount}</div>
+            </div>
+          </div>
+          <div className="inv-stat">
+            <EyeOff className="icon" aria-hidden="true" />
+            <div>
+              <div className="inv-stat-label">Скрытые</div>
+              <div className="inv-stat-value">{hiddenCount}</div>
+            </div>
+          </div>
+          <div className={`inv-stat ${weightStatus}`}>
+            <Scale className="icon" aria-hidden="true" />
+            <div>
+              <div className="inv-stat-label">Вес</div>
+              <div className="inv-stat-value">
+                {totalWeightAll.toFixed(2)} {hasWeightLimit ? ` / ${maxWeight}` : " / \u221e"}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="inv-panel inv-filters">
         <div className="inv-panel-head">
@@ -436,12 +510,14 @@ export default function Inventory() {
           </div>
         </div>
         <div className="inv-filter-row">
-          <input
-            value={q}
-            onChange={(e)=>setQ(e.target.value)}
-            placeholder="Поиск по названию..."
-            aria-label="Поиск предметов по названию"
-          />
+          {!isNarrowScreen ? (
+            <input
+              value={q}
+              onChange={(e)=>setQ(e.target.value)}
+              placeholder="Поиск по названию..."
+              aria-label="Поиск предметов по названию"
+            />
+          ) : null}
           <select value={vis} onChange={(e)=>setVis(e.target.value)} aria-label="Фильтр по видимости">
             <option value="">Видимость: все</option>
             <option value="public">Публичные</option>
@@ -456,42 +532,85 @@ export default function Inventory() {
         </div>
       </div>
 
-      <div className="inv-panel inv-favorites">
-        <div className="inv-panel-head">
-          <div className="inv-panel-title">Избранное</div>
-          <div className="small">Быстрые слоты предметов</div>
+      {isNarrowScreen ? (
+        <details
+          className="inv-panel inv-mobile-section inv-favorites"
+          open={mobileFavoritesOpen}
+          onToggle={(event) => setMobileFavoritesOpen(event.currentTarget.open)}
+        >
+          <summary className="inv-mobile-section-summary">Избранное</summary>
+          <div className="inv-mobile-section-body">
+            <div className="small">Быстрые слоты предметов</div>
+            {favorites.length ? (
+              <div className="inv-quick-list">
+                {favorites.map((it) => {
+                  const icon = pickInventoryIcon(it);
+                  const qty = Number(it.qty) || 1;
+                  return (
+                    <button
+                      key={`fav_${it.id}`}
+                      type="button"
+                      className="inv-quick-item"
+                      onClick={() => startEdit(it)}
+                      disabled={readOnly}
+                      title={`${it.name || ""} x${qty}`}
+                      aria-label={`${it.name || "Item"} x${qty}`}
+                    >
+                      {icon.Icon ? (
+                        <icon.Icon className="inv-quick-icon" aria-hidden="true" />
+                      ) : (
+                        <span className="inv-quick-fallback">{icon.text}</span>
+                      )}
+                      <span className="inv-quick-qty">x{qty}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="small inv-quick-empty">
+                Добавьте предмет в избранное, чтобы он появился в быстрых слотах.
+              </div>
+            )}
+          </div>
+        </details>
+      ) : (
+        <div className="inv-panel inv-favorites">
+          <div className="inv-panel-head">
+            <div className="inv-panel-title">Избранное</div>
+            <div className="small">Быстрые слоты предметов</div>
+          </div>
+          {favorites.length ? (
+            <div className="inv-quick-list">
+              {favorites.map((it) => {
+                const icon = pickInventoryIcon(it);
+                const qty = Number(it.qty) || 1;
+                return (
+                  <button
+                    key={`fav_${it.id}`}
+                    type="button"
+                    className="inv-quick-item"
+                    onClick={() => startEdit(it)}
+                    disabled={readOnly}
+                    title={`${it.name || ""} x${qty}`}
+                    aria-label={`${it.name || "Item"} x${qty}`}
+                  >
+                    {icon.Icon ? (
+                      <icon.Icon className="inv-quick-icon" aria-hidden="true" />
+                    ) : (
+                      <span className="inv-quick-fallback">{icon.text}</span>
+                    )}
+                    <span className="inv-quick-qty">x{qty}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="small inv-quick-empty">
+              Добавьте предмет в избранное, чтобы он появился в быстрых слотах.
+            </div>
+          )}
         </div>
-        {favorites.length ? (
-          <div className="inv-quick-list">
-            {favorites.map((it) => {
-              const icon = pickInventoryIcon(it);
-              const qty = Number(it.qty) || 1;
-              return (
-                <button
-                  key={`fav_${it.id}`}
-                  type="button"
-                  className="inv-quick-item"
-                  onClick={() => startEdit(it)}
-                  disabled={readOnly}
-                  title={`${it.name || ""} x${qty}`}
-                  aria-label={`${it.name || "Item"} x${qty}`}
-                >
-                  {icon.Icon ? (
-                    <icon.Icon className="inv-quick-icon" aria-hidden="true" />
-                  ) : (
-                    <span className="inv-quick-fallback">{icon.text}</span>
-                  )}
-                  <span className="inv-quick-qty">x{qty}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="small inv-quick-empty">
-            Добавьте предмет в избранное, чтобы он появился в быстрых слотах.
-          </div>
-        )}
-      </div>
+      )}
 
       <div className="inv-panel inv-items">
         <div className="inv-panel-head">
@@ -517,6 +636,7 @@ export default function Inventory() {
               items={filtered}
               readOnly={readOnly}
               busy={layoutSaving}
+              touchOptimized={isNarrowScreen}
               onMove={moveLayoutItems}
               onItemOpen={(item) => startEdit(item)}
               onTransferItem={(item) => startTransfer(item)}
@@ -727,3 +847,20 @@ export default function Inventory() {
 }
 
 const inp = { width: "100%" };
+
+function useIsNarrowScreen() {
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 720px)");
+    const update = () => setNarrow(!!mq.matches);
+    update();
+    if (mq.addEventListener) mq.addEventListener("change", update);
+    else if (mq.addListener) mq.addListener(update);
+    return () => {
+      if (mq.removeEventListener) mq.removeEventListener("change", update);
+      else if (mq.removeListener) mq.removeListener(update);
+    };
+  }, []);
+  return narrow;
+}

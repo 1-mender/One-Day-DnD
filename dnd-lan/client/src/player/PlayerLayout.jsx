@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "../components/BottomNav.jsx";
 import OfflineBanner from "../components/OfflineBanner.jsx";
@@ -10,6 +10,29 @@ import { useSocket } from "../context/SocketContext.jsx";
 import { Backpack, BookOpen, Gamepad2, Send, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
 import { t } from "../i18n/index.js";
 import { getNavUsageSummary, trackNavUsage } from "./navUsageMetrics.js";
+
+const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/notes", "/app/bestiary", "/app/shop", "/app/transfers", "/app/arcade"];
+const ROUTE_TO_ICON = {
+  "/app/players": Users,
+  "/app/profile": UserRound,
+  "/app/inventory": Backpack,
+  "/app/arcade": Gamepad2,
+  "/app/transfers": Send,
+  "/app/notes": StickyNote,
+  "/app/shop": ShoppingBag,
+  "/app/bestiary": BookOpen
+};
+const ROUTE_TO_LABEL = {
+  "/app/players": "playerLayout.navPlayers",
+  "/app/profile": "playerLayout.navProfile",
+  "/app/inventory": "playerLayout.navInventory",
+  "/app/arcade": "playerLayout.navArcade",
+  "/app/transfers": "playerLayout.navTransfers",
+  "/app/notes": "playerLayout.navNotes",
+  "/app/shop": "playerLayout.navShop",
+  "/app/bestiary": "playerLayout.navBestiary"
+};
 
 export default function PlayerLayout() {
   const nav = useNavigate();
@@ -28,9 +51,7 @@ export default function PlayerLayout() {
   const [err, setErr] = useState("");
   const [netErr, setNetErr] = useState("");
   const [transferBadge, setTransferBadge] = useState(0);
-  const [transferPromoted, setTransferPromoted] = useState(
-    () => getNavUsageSummary().decision.promoteTransfers
-  );
+  const [navSummary, setNavSummary] = useState(() => getNavUsageSummary().summary);
 
   const { socket, refreshAuth, netState } = useSocket();
   const OFFLINE_BANNER_DELAY_MS = 2000;
@@ -85,8 +106,8 @@ export default function PlayerLayout() {
   }, [location.search, refreshAuth, socket]);
 
   useEffect(() => {
-    const { decision } = trackNavUsage(location.pathname);
-    setTransferPromoted(decision.promoteTransfers);
+    const { summary } = trackNavUsage(location.pathname);
+    setNavSummary(summary);
   }, [location.pathname]);
 
   useEffect(() => {
@@ -233,16 +254,47 @@ export default function PlayerLayout() {
     }
   }
 
-  const items = [
-    { to: "/app/players", label: t("playerLayout.navPlayers"), icon: Users, primary: true },
-    { to: "/app/profile", label: t("playerLayout.navProfile"), icon: UserRound, primary: true },
-    { to: "/app/inventory", label: t("playerLayout.navInventory"), icon: Backpack, primary: true },
-    { to: "/app/arcade", label: t("playerLayout.navArcade"), icon: Gamepad2, primary: !transferPromoted },
-    { to: "/app/transfers", label: t("playerLayout.navTransfers"), icon: Send, primary: transferPromoted, badge: transferBadge },
-    { to: "/app/notes", label: t("playerLayout.navNotes"), icon: StickyNote, primary: false },
-    { to: "/app/shop", label: t("playerLayout.navShop"), icon: ShoppingBag, primary: false }
-  ];
-  if (bestiaryEnabled) items.push({ to: "/app/bestiary", label: t("playerLayout.navBestiary"), icon: BookOpen, primary: false });
+  const navItems = useMemo(() => {
+    const optionalOrder = bestiaryEnabled
+      ? OPTIONAL_NAV_BASE_ORDER
+      : OPTIONAL_NAV_BASE_ORDER.filter((route) => route !== "/app/bestiary");
+
+    const optionalSorted = [...optionalOrder]
+      .sort((a, b) => {
+        const scoreA = Number(navSummary?.routes?.[a]) || 0;
+        const scoreB = Number(navSummary?.routes?.[b]) || 0;
+        if (scoreA !== scoreB) return scoreB - scoreA;
+        return optionalOrder.indexOf(a) - optionalOrder.indexOf(b);
+      });
+
+    const selectedOptional = optionalSorted.slice(0, 2);
+    const activeRoute = optionalOrder.find((route) => location.pathname === route || location.pathname.startsWith(`${route}/`)) || null;
+
+    if (activeRoute && !selectedOptional.includes(activeRoute)) {
+      if (selectedOptional.length < 2) selectedOptional.push(activeRoute);
+      else selectedOptional[selectedOptional.length - 1] = activeRoute;
+    }
+
+    if (transferBadge > 0 && optionalOrder.includes("/app/transfers") && !selectedOptional.includes("/app/transfers")) {
+      if (selectedOptional.length < 2) {
+        selectedOptional.push("/app/transfers");
+      } else {
+        const replaceIndex = activeRoute
+          ? selectedOptional.findIndex((route) => route !== activeRoute)
+          : selectedOptional.length - 1;
+        selectedOptional[replaceIndex >= 0 ? replaceIndex : selectedOptional.length - 1] = "/app/transfers";
+      }
+    }
+
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...selectedOptional];
+    return selectedRoutes.map((to) => ({
+      to,
+      label: t(ROUTE_TO_LABEL[to]),
+      icon: ROUTE_TO_ICON[to],
+      badge: to === "/app/transfers" ? transferBadge : 0,
+      primary: true
+    }));
+  }, [bestiaryEnabled, location.pathname, navSummary, transferBadge]);
 
   return (
     <div>
@@ -286,7 +338,7 @@ export default function PlayerLayout() {
           <Outlet context={{ socket }} />
         </div>
       </VintageShell>
-      <BottomNav items={items} />
+      <BottomNav items={navItems} />
     </div>
   );
 }

@@ -12,25 +12,28 @@ test("partitionNavItems keeps only valid nav entries", () => {
   assert.equal(normalized.length, 1);
 });
 
-test("partitionNavItems uses first four items when primaries are not marked", () => {
+test("partitionNavItems uses first five items when primaries are not marked", () => {
   const { primary, secondary } = partitionNavItems([
     { to: "/a", label: "A" },
     { to: "/b", label: "B" },
     { to: "/c", label: "C" },
     { to: "/d", label: "D" },
-    { to: "/e", label: "E" }
+    { to: "/e", label: "E" },
+    { to: "/f", label: "F" }
   ]);
-  assert.deepEqual(primary.map((item) => item.to), ["/a", "/b", "/c", "/d"]);
-  assert.deepEqual(secondary.map((item) => item.to), ["/e"]);
+  assert.deepEqual(primary.map((item) => item.to), ["/a", "/b", "/c", "/d", "/e"]);
+  assert.deepEqual(secondary.map((item) => item.to), ["/f"]);
 });
 
-test("partitionNavItems respects explicit primary markers", () => {
+test("partitionNavItems prioritizes explicit primaries and fills to five", () => {
   const { primary, secondary } = partitionNavItems([
     { to: "/a", label: "A", primary: true },
     { to: "/b", label: "B", primary: true },
     { to: "/c", label: "C" },
-    { to: "/d", label: "D" }
+    { to: "/d", label: "D" },
+    { to: "/e", label: "E" },
+    { to: "/f", label: "F" }
   ]);
-  assert.deepEqual(primary.map((item) => item.to), ["/a", "/b"]);
-  assert.deepEqual(secondary.map((item) => item.to), ["/c", "/d"]);
+  assert.deepEqual(primary.map((item) => item.to), ["/a", "/b", "/c", "/d", "/e"]);
+  assert.deepEqual(secondary.map((item) => item.to), ["/f"]);
 });
