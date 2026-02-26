@@ -4256,6 +4256,9 @@ body.arcade-modal-open{
   align-items: center;
   justify-content: center;
   cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .inv-slot-handle:active{

@@ -38,12 +38,17 @@ export default function InventorySlotGrid({
   const ultraNarrowScreen = useMediaQuery("(max-width: 360px)");
   const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 6 } });
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 8 } });
-  const sensors = useSensors(...(touchOptimized ? [] : [pointerSensor, touchSensor]));
   const [activeId, setActiveId] = useState(null);
   const [splitArmedId, setSplitArmedId] = useState(null);
   const [dragMode, setDragMode] = useState("move");
   const [selectedMoveId, setSelectedMoveId] = useState(null);
-  const [touchLiteMode, setTouchLiteMode] = useState(touchOptimized);
+  const [touchLiteMode, setTouchLiteMode] = useState(false);
+  const tapToMoveMode = touchOptimized && touchLiteMode;
+  const sensors = useSensors(...(
+    tapToMoveMode
+      ? []
+      : (touchOptimized ? [touchSensor] : [pointerSensor, touchSensor])
+  ));
 
   const normalizedItems = useMemo(() => normalizeItems(items), [items]);
   const itemsById = useMemo(() => new Map(normalizedItems.map((item) => [item.id, item])), [normalizedItems]);
@@ -55,8 +60,8 @@ export default function InventorySlotGrid({
     return map;
   }, [normalizedItems]);
   const rowsByContainer = useMemo(
-    () => buildRowsByContainer(normalizedItems, touchOptimized && touchLiteMode),
-    [normalizedItems, touchLiteMode, touchOptimized]
+    () => buildRowsByContainer(normalizedItems, tapToMoveMode),
+    [normalizedItems, tapToMoveMode]
   );
   const itemsCountByContainer = useMemo(() => {
     const byContainer = {};
@@ -94,7 +99,7 @@ export default function InventorySlotGrid({
   };
 
   const moveSelectedByTap = async (targetSlot) => {
-    if (!touchOptimized || readOnly || busy || typeof onMove !== "function") return;
+    if (!tapToMoveMode || readOnly || busy || typeof onMove !== "function") return;
     if (!targetSlot || !Number.isInteger(targetSlot.slotX) || !Number.isInteger(targetSlot.slotY)) return;
     if (selectedMoveId == null) return;
     const selected = itemsById.get(selectedMoveId);
@@ -125,34 +130,36 @@ export default function InventorySlotGrid({
   };
 
   const toggleMoveSelection = (id) => {
-    if (!touchOptimized || readOnly || busy) return;
+    if (!tapToMoveMode || readOnly || busy) return;
     setSplitArmedId(null);
     setSelectedMoveId((current) => (current === id ? null : id));
   };
 
   useEffect(() => {
-    if (!touchOptimized && selectedMoveId != null) {
+    if (!tapToMoveMode && selectedMoveId != null) {
       setSelectedMoveId(null);
       return;
     }
     if (selectedMoveId != null && !itemsById.has(selectedMoveId)) {
       setSelectedMoveId(null);
     }
-  }, [itemsById, selectedMoveId, touchOptimized]);
+  }, [itemsById, selectedMoveId, tapToMoveMode]);
 
   useEffect(() => {
     if (!touchOptimized) {
       setTouchLiteMode(false);
       return;
     }
-    setTouchLiteMode(true);
+    setTouchLiteMode(false);
   }, [touchOptimized]);
 
   return (
     <div className={`inv-slot-board-wrap${touchOptimized ? " touch-optimized" : ""}${touchOptimized && touchLiteMode ? " touch-lite" : ""}`.trim()}>
       <div className="small inv-slot-hint">
-        {touchOptimized ? (
+        {touchOptimized && tapToMoveMode ? (
           <>RPG-сетка (тач): включен Lite-режим. Выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните целевой слот.</>
+        ) : touchOptimized ? (
+          <>RPG-сетка (тач): режим Классика. Перетаскивайте предмет за <GripVertical className="icon" aria-hidden="true" />.</>
         ) : (
           <>RPG-сетка: перетаскивайте за <GripVertical className="icon" aria-hidden="true" />, контекст через <MoreHorizontal className="icon" aria-hidden="true" />, клавиатура: Alt + стрелки.</>
         )}
@@ -175,7 +182,7 @@ export default function InventorySlotGrid({
           </button>
         </div>
       ) : null}
-      {touchOptimized && selectedMoveItem ? (
+      {touchOptimized && tapToMoveMode && selectedMoveItem ? (
         <div className="inv-slot-touch-state">
           <span>Перемещение: <b>{selectedMoveItem.name || "Без названия"}</b>. Тапните слот назначения.</span>
           <button type="button" className="btn secondary" onClick={() => setSelectedMoveId(null)}>Отмена</button>
@@ -185,7 +192,7 @@ export default function InventorySlotGrid({
       <DndContext
         sensors={sensors}
         onDragStart={(event) => {
-          if (touchOptimized) return;
+          if (tapToMoveMode) return;
           const id = parseItemId(event.active?.id);
           setActiveId(id);
           setSelectedMoveId(null);
@@ -200,7 +207,7 @@ export default function InventorySlotGrid({
           setSplitArmedId(null);
         }}
         onDragEnd={async (event) => {
-          if (touchOptimized) return;
+          if (tapToMoveMode) return;
           setActiveId(null);
           const mode = dragMode;
           setDragMode("move");
@@ -251,6 +258,7 @@ export default function InventorySlotGrid({
               onKeyboardMoveItem={moveItemByKeyboard}
               touchOptimized={touchOptimized}
               touchLiteMode={touchLiteMode}
+              tapToMoveMode={tapToMoveMode}
               compactTouch={ultraNarrowScreen}
               hasItems={(itemsCountByContainer[container.key] || 0) > 0}
               selectedMoveId={selectedMoveId}
@@ -286,6 +294,7 @@ function ContainerGrid({
   onKeyboardMoveItem,
   touchOptimized,
   touchLiteMode,
+  tapToMoveMode,
   compactTouch,
   hasItems,
   selectedMoveId,
@@ -330,6 +339,7 @@ function ContainerGrid({
             onKeyboardMoveItem={onKeyboardMoveItem}
             touchOptimized={touchOptimized}
             touchLiteMode={touchLiteMode}
+            tapToMoveMode={tapToMoveMode}
             selectedMoveId={selectedMoveId}
             onToggleMoveSelection={onToggleMoveSelection}
             onTapTargetSlot={onTapTargetSlot}
@@ -379,6 +389,7 @@ function SlotCell({
   onKeyboardMoveItem,
   touchOptimized,
   touchLiteMode,
+  tapToMoveMode,
   selectedMoveId,
   onToggleMoveSelection,
   onTapTargetSlot,
@@ -388,7 +399,7 @@ function SlotCell({
 }) {
   const id = makeSlotId(container, slotX, slotY);
   const { isOver, setNodeRef } = useDroppable({ id });
-  const tapTargetArmed = touchOptimized && selectedMoveId != null;
+  const tapTargetArmed = tapToMoveMode && selectedMoveId != null;
   return (
     <div
       ref={setNodeRef}
@@ -413,6 +424,7 @@ function SlotCell({
           onKeyboardMoveItem={onKeyboardMoveItem}
           touchOptimized={touchOptimized}
           touchLiteMode={touchLiteMode}
+          tapToMoveMode={tapToMoveMode}
           moveSelectionActive={selectedMoveId != null}
           selectedForMove={selectedMoveId === item.id}
           onToggleMoveSelection={onToggleMoveSelection}
@@ -441,6 +453,7 @@ function SlotItem({
   onKeyboardMoveItem,
   touchOptimized = false,
   touchLiteMode = false,
+  tapToMoveMode = false,
   moveSelectionActive = false,
   selectedForMove = false,
   onToggleMoveSelection,
@@ -452,7 +465,7 @@ function SlotItem({
   const draggableId = makeItemId(item.id);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: draggableId,
-    disabled: readOnly || touchOptimized
+    disabled: readOnly || tapToMoveMode
   });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -510,11 +523,11 @@ function SlotItem({
         type="button"
         className="inv-slot-open"
         onClick={() => {
-          if (touchOptimized && selectedForMove) {
+          if (tapToMoveMode && selectedForMove) {
             onToggleMoveSelection?.(item.id);
             return;
           }
-          if (touchOptimized && moveSelectionActive) {
+          if (tapToMoveMode && moveSelectionActive) {
             onTapTargetSlot?.({
               container: normalizeContainer(item.container),
               slotX: Number(item.slotX),
@@ -558,19 +571,19 @@ function SlotItem({
           title={
             readOnly
               ? "Недоступно в режиме только чтения"
-              : touchOptimized
+              : tapToMoveMode
                 ? (selectedForMove ? "Отменить выбор предмета" : "Выбрать предмет для перемещения")
                 : "Перетащить предмет"
           }
           aria-label={
             readOnly
               ? "Недоступно в режиме только чтения"
-              : touchOptimized
+              : tapToMoveMode
                 ? (selectedForMove ? "Отменить выбор предмета" : "Выбрать предмет для перемещения")
                 : "Перетащить предмет"
           }
           onClick={(event) => {
-            if (!touchOptimized) return;
+            if (!tapToMoveMode) return;
             event.preventDefault();
             event.stopPropagation();
             onToggleMoveSelection?.(item.id);
@@ -592,8 +605,8 @@ function SlotItem({
             clearSplitTimer(event.currentTarget);
             onCancelSplitArm?.(item.id);
           }}
-          {...(!touchOptimized ? attributes : {})}
-          {...(!touchOptimized ? listeners : {})}
+          {...(!tapToMoveMode ? attributes : {})}
+          {...(!tapToMoveMode ? listeners : {})}
         >
           <GripVertical className="icon" aria-hidden="true" />
         </button>
