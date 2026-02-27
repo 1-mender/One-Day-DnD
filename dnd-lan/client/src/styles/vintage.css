@@ -459,17 +459,20 @@ body.arcade-modal-open{
     linear-gradient(180deg, #f2e6cd, #dcc59d);
   border: 1px solid rgba(110,90,55,.40);
   box-shadow: var(--shadow2);
-  display: grid;
-  grid-template-columns: repeat(var(--bottom-nav-cols, 5), minmax(0, 1fr));
-  justify-content: stretch;
+  display: flex;
+  align-items: stretch;
   gap: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
 .bottom-nav-inner::-webkit-scrollbar{
   display: none;
 }
 .bottom-nav-link{
-  min-width: 0;
+  flex: 0 0 104px;
+  min-width: 104px;
   text-decoration:none;
   border-radius: 14px;
   padding: 10px 8px;
@@ -1097,7 +1100,8 @@ body.arcade-modal-open{
     gap: 6px;
   }
   .bottom-nav-link{
-    max-width: 100%;
+    flex-basis: 96px;
+    min-width: 96px;
     white-space: normal;
   }
   .bottom-nav-link > span{
@@ -1168,6 +1172,10 @@ body.arcade-modal-open{
   :root{ --bottom-nav-h: 110px; }
   .bottom-nav{ padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
   .bottom-nav-inner{ gap: 6px; }
+  .bottom-nav-link{
+    flex-basis: 88px;
+    min-width: 88px;
+  }
 }
 
 .theme-no-textures body{
@@ -1650,7 +1658,8 @@ body.arcade-modal-open{
     gap: 6px;
   }
   .bottom-nav-link{
-    min-width: 0;
+    flex-basis: 92px;
+    min-width: 92px;
   }
   input, textarea, select, .btn{
     min-height: 44px;

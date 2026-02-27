@@ -251,16 +251,7 @@ export default function PlayerLayout() {
     const optionalOrder = bestiaryEnabled
       ? OPTIONAL_NAV_BASE_ORDER
       : OPTIONAL_NAV_BASE_ORDER.filter((route) => route !== "/app/bestiary");
-    const optionalPrimary = optionalOrder.slice(0, 2);
-    if (
-      transferBadge > 0
-      && optionalOrder.includes("/app/transfers")
-      && !optionalPrimary.includes("/app/transfers")
-      && optionalPrimary.length
-    ) {
-      optionalPrimary[optionalPrimary.length - 1] = "/app/transfers";
-    }
-    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalPrimary];
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalOrder];
     return selectedRoutes.map((to) => ({
       to,
       label: t(ROUTE_TO_LABEL[to]),
