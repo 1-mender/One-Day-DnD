@@ -19,6 +19,7 @@ const Bestiary = lazy(() => import("./player/Bestiary.jsx"));
 const Profile = lazy(() => import("./player/Profile.jsx"));
 const Arcade = lazy(() => import("./player/Arcade.jsx"));
 const ShopJoe = lazy(() => import("./player/ShopJoe.jsx"));
+const TestDrive = lazy(() => import("./player/TestDrive.jsx"));
 
 const DMDashboard = lazy(() => import("./dm/DMDashboard.jsx"));
 const DMLobby = lazy(() => import("./dm/DMLobby.jsx"));
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="arcade" element={withSuspense(<Arcade />)} />
           <Route path="shop" element={withSuspense(<ShopJoe />)} />
           <Route path="bestiary" element={withSuspense(<Bestiary />)} />
+          <Route path="test-drive" element={withSuspense(<TestDrive />)} />
         </Route>
 
         {/* DM */}
