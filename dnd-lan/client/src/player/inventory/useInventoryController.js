@@ -202,6 +202,14 @@ export function useInventoryController() {
     setSplitOpen(true);
   }
 
+  function handleGridSplitRequest(item, targetSlot, targetItem) {
+    if (targetItem) {
+      toast.warn("Для разделения нужен пустой слот");
+      return;
+    }
+    startSplit(item, targetSlot);
+  }
+
   async function save() {
     if (readOnly) return;
     setErr("");
@@ -452,6 +460,7 @@ export function useInventoryController() {
     startEdit,
     startTransfer,
     startSplit,
+    handleGridSplitRequest,
     save,
     del,
     sendTransfer,
