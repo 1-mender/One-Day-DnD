@@ -4,10 +4,10 @@ import DMBestiaryEditorModal from "./bestiary/sections/DMBestiaryEditorModal.jsx
 import DMBestiaryListSection from "./bestiary/sections/DMBestiaryListSection.jsx";
 import DMBestiaryManageSection from "./bestiary/sections/DMBestiaryManageSection.jsx";
 import DMBestiaryReplaceConfirmModal from "./bestiary/sections/DMBestiaryReplaceConfirmModal.jsx";
-import { useDMBestiaryController } from "./bestiary/useDMBestiaryController.js";
+import { useDmBestiaryController } from "./bestiary/useDmBestiaryController.js";
 
 export default function DMBestiary() {
-  const controller = useDMBestiaryController();
+  const controller = useDmBestiaryController();
   const { selected } = controller;
 
   return (

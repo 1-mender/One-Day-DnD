@@ -6,7 +6,7 @@ import { useQueryState } from "../../hooks/useQueryState.js";
 import { formatError } from "../../lib/formatError.js";
 import { EMPTY_BESTIARY_FORM, filterBestiary } from "./dmBestiaryDomain.js";
 
-export function useDMBestiaryController() {
+export function useDmBestiaryController() {
   const [enabled, setEnabled] = useState(false);
   const [items, setItems] = useState([]);
   const [nextCursor, setNextCursor] = useState(null);
@@ -96,15 +96,8 @@ export function useDMBestiaryController() {
   }, [load, socket]);
 
   const selectedId = Number(selectedIdParam || 0);
-  const selected = useMemo(
-    () => items.find((monster) => monster.id === selectedId) || null,
-    [items, selectedId]
-  );
-
-  const filtered = useMemo(
-    () => filterBestiary(items, q, vis),
-    [items, q, vis]
-  );
+  const selected = useMemo(() => items.find((monster) => monster.id === selectedId) || null, [items, selectedId]);
+  const filtered = useMemo(() => filterBestiary(items, q, vis), [items, q, vis]);
 
   const loadImages = useCallback(async (monsterId) => {
     try {
@@ -146,10 +139,7 @@ export function useDMBestiaryController() {
     setErr("");
     const payload = {
       ...form,
-      abilities: (form.abilitiesText || "")
-        .split("\n")
-        .map((value) => value.trim())
-        .filter(Boolean)
+      abilities: (form.abilitiesText || "").split("\n").map((value) => value.trim()).filter(Boolean)
     };
     delete payload.abilitiesText;
     try {
@@ -314,6 +304,7 @@ export function useDMBestiaryController() {
   }, [runDryRun]);
 
   return {
+    applyImport,
     del,
     delImage,
     doExport,
@@ -357,14 +348,13 @@ export function useDMBestiaryController() {
     setPortMatch,
     setPortMode,
     setPortOnExisting,
-    setReplaceConfirmOpen,
     setQ,
+    setReplaceConfirmOpen,
     setVis,
     startEdit,
     startNew,
     toggleEnabled,
     toggleMonsterHidden,
-    vis,
-    applyImport
+    vis
   };
 }
