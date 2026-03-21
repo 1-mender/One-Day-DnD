@@ -1,341 +1,71 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../api.js";
-import { formatError } from "../lib/formatError.js";
-import { ERROR_CODES } from "../lib/errorCodes.js";
-import { StatsEditor, StatsView } from "../components/profile/StatsEditor.jsx";
-import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
-import { useSocket } from "../context/SocketContext.jsx";
-import { useReadOnly } from "../hooks/useReadOnly.js";
+import React from "react";
 import ConfirmModal from "../components/ConfirmModal.jsx";
 import { t } from "../i18n/index.js";
-import {
-  applyTicketGamePatch,
-  applyTicketRulesPatch,
-  applyTicketShopPatch,
-  buildGeneralChanges,
-  createDailyQuestDraft,
-  isDailyQuestChanged,
-  isGameChanged,
-  isShopChanged
-} from "./settings/domain/ticketRulesEditor.js";
 import { GAME_LABELS, inp, RULE_TIPS, SHOP_LABELS } from "./settings/domain/settingsConstants.js";
-import {
-  DEFAULT_PRESET_ACCESS,
-  addProfilePresetItem,
-  normalizePresetAccess,
-  removeProfilePresetItem,
-  updateProfilePresetData,
-  updateProfilePresetItem
-} from "./settings/domain/presetsEditor.js";
+import { useDmSettings } from "./settings/useDmSettings.js";
+import ProfilePresetsSection from "./settings/sections/ProfilePresetsSection.jsx";
 
 export default function DMSettings() {
-  const [joinEnabled, setJoinEnabled] = useState(false);
-  const [joinCode, setJoinCode] = useState("");
-  const [showJoin, setShowJoin] = useState(false);
-
-  const [newPass, setNewPass] = useState("");
-  const [newPass2, setNewPass2] = useState("");
-  const [showPass, setShowPass] = useState(false);
-
-  const [info, setInfo] = useState(null);
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
-  const [ticketRules, setTicketRules] = useState(null);
-  const [ticketRulesBase, setTicketRulesBase] = useState(null);
-  const [showOnlyChanged, setShowOnlyChanged] = useState(false);
-  const [ticketBusy, setTicketBusy] = useState(false);
-  const [ticketMsg, setTicketMsg] = useState("");
-  const [ticketErr, setTicketErr] = useState("");
-  const [questConfirm, setQuestConfirm] = useState(null);
-  const [profilePresets, setProfilePresets] = useState([]);
-  const [presetAccess, setPresetAccess] = useState(DEFAULT_PRESET_ACCESS);
-  const [presetBusy, setPresetBusy] = useState(false);
-  const [presetMsg, setPresetMsg] = useState("");
-  const [presetErr, setPresetErr] = useState("");
-
-  const { socket } = useSocket();
-  const readOnly = useReadOnly();
-
-  const load = useCallback(async () => {
-    setErr("");
-    try {
-      const [jc, si, tr, presets] = await Promise.all([
-        api.dmGetJoinCode(),
-        api.serverInfo(),
-        api.dmTicketsRules(),
-        api.dmProfilePresets()
-      ]);
-      setJoinEnabled(!!jc.enabled);
-      setJoinCode(jc.joinCode || "");
-      setInfo(si);
-      setTicketRules(tr?.rules || null);
-      setTicketRulesBase(tr?.rules || null);
-      setProfilePresets(Array.isArray(presets?.presets) ? presets.presets : []);
-      setPresetAccess(normalizePresetAccess(presets?.access));
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return () => {};
-    load().catch((e) => setErr(formatError(e)));
-    const onUpdated = () => load().catch(() => {});
-    socket.on("settings:updated", onUpdated);
-    return () => {
-      socket.off("settings:updated", onUpdated);
-    };
-  }, [load, socket]);
-
-  const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");
-  const ticketDirty = useMemo(() => {
-    if (!ticketRules || !ticketRulesBase) return false;
-    return JSON.stringify(ticketRules) !== JSON.stringify(ticketRulesBase);
-  }, [ticketRules, ticketRulesBase]);
-  const ticketBase = ticketRulesBase || {};
-  const ticketCur = ticketRules || {};
-  const generalChanges = buildGeneralChanges(ticketCur, ticketBase);
-  const dailyQuestChanged = isDailyQuestChanged(ticketCur, ticketBase);
-  const showGeneralBlock = !showOnlyChanged || Object.values(generalChanges).some(Boolean);
-  const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
-  const showDailyQuestBlock = !showOnlyChanged || dailyQuestChanged;
-
-  const gameEntries = Object.entries(ticketCur.games || {});
-  const shopEntries = Object.entries(ticketCur.shop || {});
-  const filteredGames = showOnlyChanged ? gameEntries.filter(([key, g]) => isGameChanged(ticketBase, key, g)) : gameEntries;
-  const filteredShop = showOnlyChanged ? shopEntries.filter(([key, item]) => isShopChanged(ticketBase, key, item)) : shopEntries;
-
-  async function saveJoinCode() {
-    if (readOnly) return;
-    setMsg("");
-    setErr("");
-    try {
-      const nextCode = joinEnabled ? String(joinCode || "").trim() : "";
-      await api.dmSetJoinCode(nextCode);
-      setMsg("Код партии сохранён.");
-      await load();
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
-    }
-  }
-
-  async function changePassword() {
-    if (readOnly) return;
-    setMsg("");
-    setErr("");
-    const pass = String(newPass || "");
-    if (!pass) {
-      setErr("Введите новый пароль.");
-      return;
-    }
-    if (pass !== String(newPass2 || "")) {
-      setErr("Пароли не совпадают.");
-      return;
-    }
-    try {
-      await api.dmChangePassword(pass);
-      setMsg("Пароль изменён.");
-      setNewPass("");
-      setNewPass2("");
-      setShowPass(false);
-    } catch (e) {
-      setErr(formatError(e));
-    }
-  }
-
-  function updateTicketRules(patch) {
-    setTicketRules((prev) => applyTicketRulesPatch(prev, patch));
-  }
-
-  function addDailyQuest() {
-    const draft = createDailyQuestDraft();
-    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    pool.push(draft);
-    const activeKey = ticketRules?.dailyQuest?.activeKey || draft.key;
-    updateTicketRules({ dailyQuest: { pool, activeKey } });
-  }
-
-  function updateDailyQuest(idx, patch) {
-    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    if (!pool[idx]) return;
-    pool[idx] = { ...pool[idx], ...(patch || {}) };
-    updateTicketRules({ dailyQuest: { pool } });
-  }
-
-  function removeDailyQuest(idx) {
-    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    const removed = pool.splice(idx, 1)[0];
-    let activeKey = ticketRules?.dailyQuest?.activeKey || "";
-    if (removed?.key && removed.key === activeKey) {
-      activeKey = pool.find((q) => q.enabled !== false)?.key || pool[0]?.key || "";
-    }
-    updateTicketRules({ dailyQuest: { pool, activeKey } });
-  }
-
-  function setActiveDailyQuest(key) {
-    updateTicketRules({ dailyQuest: { activeKey: key } });
-  }
-
-  function resetDailyQuestToday() {
-    if (readOnly) return;
-    const activeKey = ticketRules?.dailyQuest?.activeKey || "";
-    if (!activeKey) {
-      setTicketErr("Нет активного ежедневного квеста.");
-      return;
-    }
-    setQuestConfirm({ action: "reset", activeKey });
-  }
-
-  function reassignDailyQuestToday() {
-    if (readOnly) return;
-    const activeKey = ticketRules?.dailyQuest?.activeKey || "";
-    if (!activeKey) {
-      setTicketErr("Нет активного ежедневного квеста.");
-      return;
-    }
-    setQuestConfirm({ action: "reassign", activeKey });
-  }
-
-  async function confirmDailyQuestAction() {
-    if (!questConfirm || readOnly) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      if (questConfirm.action === "reset") {
-        await api.dmTicketsResetQuest(questConfirm.activeKey);
-        setTicketMsg("Ежедневный квест сброшен на сегодня.");
-      }
-      if (questConfirm.action === "reassign") {
-        await api.dmTicketsSetActiveQuest(questConfirm.activeKey);
-        setTicketMsg("Ежедневный квест переназначен на сегодня.");
-        setTicketRulesBase((prev) => (
-          prev ? { ...prev, dailyQuest: { ...(prev.dailyQuest || {}), activeKey: questConfirm.activeKey } } : prev
-        ));
-      }
-      setQuestConfirm(null);
-    } catch (e) {
-      setTicketErr(formatError(e));
-    } finally {
-      setTicketBusy(false);
-    }
-  }
-
-  function updateTicketGame(key, patch) {
-    setTicketRules((prev) => applyTicketGamePatch(prev, key, patch));
-  }
-
-  function updateTicketShop(key, patch) {
-    setTicketRules((prev) => applyTicketShopPatch(prev, key, patch));
-  }
-
-  async function saveTicketRules() {
-    if (readOnly) return;
-    if (!ticketRules) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      const r = await api.dmTicketsUpdateRules({
-        enabled: ticketRules.enabled ?? true,
-        rules: ticketRules
-      });
-      setTicketRules(r.rules || null);
-      setTicketRulesBase(r.rules || null);
-      setTicketMsg("Правила сохранены.");
-    } catch (e) {
-      setTicketErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
-    } finally {
-      setTicketBusy(false);
-    }
-  }
-
-  async function resetTicketRules() {
-    if (readOnly) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      const r = await api.dmTicketsUpdateRules({ reset: true });
-      setTicketRules(r.rules || null);
-      setTicketRulesBase(r.rules || null);
-      setTicketMsg("Правила сброшены к дефолту.");
-    } catch (e) {
-      setTicketErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
-    } finally {
-      setTicketBusy(false);
-    }
-  }
-
-  function addPreset() {
-    setProfilePresets((prev) => addProfilePresetItem(prev));
-  }
-
-  function removePreset(idx) {
-    setProfilePresets((prev) => removeProfilePresetItem(prev, idx));
-  }
-
-  function updatePreset(idx, patch) {
-    setProfilePresets((prev) => updateProfilePresetItem(prev, idx, patch));
-  }
-
-  function updatePresetData(idx, patch) {
-    setProfilePresets((prev) => updateProfilePresetData(prev, idx, patch));
-  }
-
-  async function saveProfilePresets() {
-    if (readOnly) return;
-    setPresetErr("");
-    setPresetMsg("");
-    setPresetBusy(true);
-    try {
-      const r = await api.dmProfilePresetsUpdate({
-        presets: profilePresets || [],
-        access: presetAccess || {}
-      });
-      setProfilePresets(Array.isArray(r?.presets) ? r.presets : []);
-      setPresetAccess(r?.access || presetAccess);
-      setPresetMsg("Пресеты сохранены.");
-    } catch (e) {
-      setPresetErr(formatError(e));
-    } finally {
-      setPresetBusy(false);
-    }
-  }
-
-  async function exportZip() {
-    setMsg("");
-    setErr("");
-    try {
-      const blob = await api.exportZip();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `backup_${new Date().toISOString().slice(0, 10)}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      setMsg("Экспорт готов.");
-    } catch (e) {
-      setErr(formatError(e, ERROR_CODES.EXPORT_FAILED));
-    }
-  }
-
-  async function importZip(e) {
-    if (readOnly) return;
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setMsg("");
-    setErr("");
-    try {
-      await api.importZip(file);
-      setMsg("Импорт выполнен.");
-    } catch (err2) {
-      setErr(formatError(err2, ERROR_CODES.IMPORT_FAILED));
-    }
-  }
+  const {
+    joinEnabled,
+    setJoinEnabled,
+    joinCode,
+    setJoinCode,
+    showJoin,
+    setShowJoin,
+    newPass,
+    setNewPass,
+    newPass2,
+    setNewPass2,
+    showPass,
+    setShowPass,
+    msg,
+    err,
+    ticketRules,
+    showOnlyChanged,
+    setShowOnlyChanged,
+    ticketBusy,
+    ticketMsg,
+    ticketErr,
+    questConfirm,
+    closeQuestConfirm,
+    profilePresets,
+    presetAccess,
+    setPresetAccess,
+    presetBusy,
+    presetMsg,
+    presetErr,
+    readOnly,
+    lanUrl,
+    ticketDirty,
+    generalChanges,
+    showGeneralBlock,
+    showGeneralInputs,
+    showDailyQuestBlock,
+    filteredGames,
+    filteredShop,
+    saveJoinCode,
+    changePassword,
+    updateTicketRules,
+    addDailyQuest,
+    updateDailyQuest,
+    removeDailyQuest,
+    setActiveDailyQuest,
+    resetDailyQuestToday,
+    reassignDailyQuestToday,
+    confirmDailyQuestAction,
+    updateTicketGame,
+    updateTicketShop,
+    saveTicketRules,
+    resetTicketRules,
+    addPreset,
+    removePreset,
+    updatePreset,
+    updatePresetData,
+    saveProfilePresets,
+    exportZip,
+    importZip
+  } = useDmSettings();
 
   return (
     <div className="card taped">
@@ -373,157 +103,20 @@ export default function DMSettings() {
           </div>
         </div>
 
-        <div className="card taped">
-          <div className="u-fw-800">{"\u041f\u0440\u0435\u0441\u0435\u0442\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f"}</div>
-          <div className="small">{"\u0428\u0430\u0431\u043b\u043e\u043d\u044b \u043f\u0440\u043e\u0444\u0438\u043b\u044f \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432."}</div>
-          <hr />
-          {presetErr ? <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{presetErr}</div> : null}
-          {presetMsg ? <div className="badge ok">{presetMsg}</div> : null}
-          <div className="list">
-            <label className="row">
-              <input
-                type="checkbox"
-                checked={presetAccess.enabled !== false}
-                onChange={(e) => setPresetAccess({ ...presetAccess, enabled: e.target.checked })}
-              />
-              <span>{"\u0412\u043a\u043b\u044e\u0447\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442\u044b \u0434\u043b\u044f \u0438\u0433\u0440\u043e\u043a\u043e\u0432"}</span>
-            </label>
-            <label className="row">
-              <input
-                type="checkbox"
-                checked={presetAccess.playerEdit !== false}
-                onChange={(e) => setPresetAccess({ ...presetAccess, playerEdit: e.target.checked })}
-              />
-              <span>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0432 \u043f\u0440\u044f\u043c\u043e\u043c \u0440\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0438"}</span>
-            </label>
-            <label className="row">
-              <input
-                type="checkbox"
-                checked={presetAccess.playerRequest !== false}
-                onChange={(e) => setPresetAccess({ ...presetAccess, playerRequest: e.target.checked })}
-              />
-              <span>{"\u0420\u0430\u0437\u0440\u0435\u0448\u0438\u0442\u044c \u043f\u0440\u0438\u043c\u0435\u043d\u0435\u043d\u0438\u0435 \u0432 \u0437\u0430\u043f\u0440\u043e\u0441\u0430\u0445"}</span>
-            </label>
-            <label className="row">
-              <input
-                type="checkbox"
-                checked={!!presetAccess.hideLocal}
-                onChange={(e) => setPresetAccess({ ...presetAccess, hideLocal: e.target.checked })}
-              />
-              <span>Скрыть локальные пресеты (только мастер)</span>
-            </label>
-
-            <div className="row u-row-gap-8 u-row-wrap">
-              <button className="btn secondary" onClick={addPreset} disabled={readOnly}>+ {"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c \u043f\u0440\u0435\u0441\u0435\u0442"}</button>
-              <button className="btn" onClick={saveProfilePresets} disabled={readOnly || presetBusy}>{"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c"}</button>
-            </div>
-
-            {profilePresets.length === 0 ? (
-              <div className="badge warn">{"\u041f\u0440\u0435\u0441\u0435\u0442\u043e\u0432 \u043f\u043e\u043a\u0430 \u043d\u0435\u0442."}</div>
-            ) : (
-              <div className="list">
-                {profilePresets.map((preset, idx) => (
-                  <div key={preset.id || `${preset.title}-${idx}`} className="paper-note">
-                    <div className="row u-row-between-center">
-                      <div className="title">{"\u041f\u0440\u0435\u0441\u0435\u0442 #"}{idx + 1}</div>
-                      <button className="btn danger" onClick={() => removePreset(idx)} disabled={readOnly}>{"\u0423\u0434\u0430\u043b\u0438\u0442\u044c"}</button>
-                    </div>
-                    <div className="list u-mt-10">
-                      <input
-                        value={preset.title || ""}
-                        onChange={(e) => updatePreset(idx, { title: e.target.value })}
-                        placeholder={"\u041d\u0430\u0437\u0432\u0430\u043d\u0438\u0435 \u043f\u0440\u0435\u0441\u0435\u0442\u0430"}
-                        aria-label="Название пресета профиля"
-                        maxLength={80}
-                        style={inp}
-                      />
-                      <input
-                        value={preset.subtitle || ""}
-                        onChange={(e) => updatePreset(idx, { subtitle: e.target.value })}
-                        placeholder={"\u041f\u043e\u0434\u0437\u0430\u0433\u043e\u043b\u043e\u0432\u043e\u043a / \u043e\u043f\u0438\u0441\u0430\u043d\u0438\u0435"}
-                        aria-label="Подзаголовок пресета"
-                        maxLength={160}
-                        style={inp}
-                      />
-                      <div className="row u-row-gap-8 u-row-wrap">
-                        <input
-                          value={preset.data?.characterName || ""}
-                          onChange={(e) => updatePresetData(idx, { characterName: e.target.value })}
-                          placeholder={"\u0418\u043c\u044f \u043f\u0435\u0440\u0441\u043e\u043d\u0430\u0436\u0430"}
-                          aria-label="Имя персонажа в пресете"
-                          maxLength={80}
-                          style={inp}
-                          className="u-minw-220"
-                        />
-                        <input
-                          value={preset.data?.classRole || ""}
-                          onChange={(e) => updatePresetData(idx, { classRole: e.target.value })}
-                          placeholder={"\u041a\u043b\u0430\u0441\u0441 / \u0440\u043e\u043b\u044c"}
-                          aria-label="Класс или роль в пресете"
-                          maxLength={80}
-                          style={inp}
-                          className="u-minw-220"
-                        />
-                        <input
-                          value={preset.data?.level ?? ""}
-                          onChange={(e) => updatePresetData(idx, { level: e.target.value })}
-                          placeholder={"\u0423\u0440\u043e\u0432\u0435\u043d\u044c"}
-                          aria-label="Уровень в пресете"
-                          style={inp}
-                          className="u-minw-140"
-                        />
-                      </div>
-                      <div className="kv">
-                        <div className="title">{"\u0421\u0442\u0430\u0442\u044b"}</div>
-                        <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} readOnly={readOnly} />
-                      </div>
-                      <div className="paper-note u-mt-8">
-                        <div className="title">{"\u041f\u0440\u0435\u0432\u044c\u044e"}</div>
-                        <div className="row u-items-start u-mt-10">
-                          <PolaroidFrame
-                            className="sm"
-                            src={preset.data?.avatarUrl || ""}
-                            alt={preset.data?.characterName || preset.title}
-                            fallback={(preset.data?.characterName || preset.title || "?").slice(0, 1)}
-                          />
-                          <div className="u-minw-0">
-                            <div className="u-fw-900">{preset.data?.characterName || "\u0411\u0435\u0437 \u0438\u043c\u0435\u043d\u0438"}</div>
-                            <div className="small u-mt-4">
-                              {preset.data?.classRole || "\u041a\u043b\u0430\u0441\u0441/\u0440\u043e\u043b\u044c"} • lvl {preset.data?.level || "?"}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="u-mt-10">
-                          <StatsView stats={preset.data?.stats || {}} />
-                        </div>
-                        <div className="small bio-text u-mt-10 u-pre-wrap">
-                          {preset.data?.bio || "\u0411\u0438\u043e\u0433\u0440\u0430\u0444\u0438\u044f \u043d\u0435 \u0437\u0430\u043f\u043e\u043b\u043d\u0435\u043d\u0430"}
-                        </div>
-                      </div>
-                      <textarea
-                        value={preset.data?.bio || ""}
-                        onChange={(e) => updatePresetData(idx, { bio: e.target.value })}
-                        rows={5}
-                        maxLength={2000}
-                        placeholder={"\u0411\u0438\u043e\u0433\u0440\u0430\u0444\u0438\u044f"}
-                        aria-label="Биография в пресете"
-                        style={inp}
-                      />
-                      <input
-                        value={preset.data?.avatarUrl || ""}
-                        onChange={(e) => updatePresetData(idx, { avatarUrl: e.target.value })}
-                        placeholder={"URL \u0430\u0432\u0430\u0442\u0430\u0440\u0430"}
-                        aria-label="URL аватара в пресете"
-                        maxLength={512}
-                        style={inp}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <ProfilePresetsSection
+          presetErr={presetErr}
+          presetMsg={presetMsg}
+          presetAccess={presetAccess}
+          setPresetAccess={setPresetAccess}
+          addPreset={addPreset}
+          saveProfilePresets={saveProfilePresets}
+          readOnly={readOnly}
+          presetBusy={presetBusy}
+          profilePresets={profilePresets}
+          removePreset={removePreset}
+          updatePreset={updatePreset}
+          updatePresetData={updatePresetData}
+        />
 
         <div className="title u-mt-10">{"\u0414\u041c"}</div>
         <div className="card taped">
@@ -953,7 +546,7 @@ export default function DMSettings() {
         open={!!questConfirm}
         title={questConfirm?.action === "reset" ? t("dmSettings.questResetTitle") : t("dmSettings.questReassignTitle")}
         message={questConfirm?.action === "reset" ? t("dmSettings.questResetBody") : t("dmSettings.questReassignBody")}
-        onCancel={() => setQuestConfirm(null)}
+        onCancel={closeQuestConfirm}
         onConfirm={confirmDailyQuestAction}
         confirmDisabled={readOnly || ticketBusy}
       />
