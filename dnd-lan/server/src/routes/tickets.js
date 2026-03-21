@@ -34,66 +34,19 @@ import {
 } from "../tickets/shared/ticketUtils.js";
 import {
   getActiveQuest,
-  getQuestHistory,
-  getQuestStates,
   maybeGrantDailyQuest
 } from "../tickets/services/dailyQuestService.js";
 import { getEffectiveRules, saveRulesOverride } from "../tickets/services/ticketRulesService.js";
+import {
+  buildTicketPayload,
+  ensureTicketRow,
+  normalizeDay
+} from "../tickets/services/ticketStateService.js";
 
 export const ticketsRouter = express.Router();
 
 validateGameCatalog();
 const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
-
-function ensureTicketRow(db, playerId) {
-  let row = db.prepare("SELECT * FROM tickets WHERE player_id=?").get(playerId);
-  if (!row) {
-    const t = now();
-    db.prepare(
-      "INSERT INTO tickets(player_id, balance, streak, daily_earned, daily_spent, day_key, last_played_at, updated_at) VALUES(?,?,?,?,?,?,?,?)"
-    ).run(playerId, 0, 0, 0, 0, getDayKey(t), null, t);
-    row = db.prepare("SELECT * FROM tickets WHERE player_id=?").get(playerId);
-  }
-  return row;
-}
-
-function normalizeDay(db, row, dayKey) {
-  if (row.day_key === dayKey) return row;
-  const t = now();
-  db.prepare(
-    "UPDATE tickets SET daily_earned=0, daily_spent=0, day_key=?, streak=0, updated_at=? WHERE player_id=?"
-  ).run(dayKey, t, row.player_id);
-  return db.prepare("SELECT * FROM tickets WHERE player_id=?").get(row.player_id);
-}
-
-function mapState(row) {
-  return {
-    balance: Number(row.balance || 0),
-    streak: Number(row.streak || 0),
-    dailyEarned: Number(row.daily_earned || 0),
-    dailySpent: Number(row.daily_spent || 0),
-    dayKey: Number(row.day_key || 0),
-    lastPlayedAt: row.last_played_at ?? null,
-    updatedAt: row.updated_at ?? null
-  };
-}
-
-function getUsage(db, playerId, dayKey) {
-  const plays = db
-    .prepare("SELECT game_key as gameKey, COUNT(*) as c FROM ticket_plays WHERE player_id=? AND day_key=? GROUP BY game_key")
-    .all(playerId, dayKey);
-  const purchases = db
-    .prepare("SELECT item_key as itemKey, SUM(qty) as c FROM ticket_purchases WHERE player_id=? AND day_key=? GROUP BY item_key")
-    .all(playerId, dayKey);
-
-  const playsToday = {};
-  const purchasesToday = {};
-
-  for (const p of plays) playsToday[p.gameKey] = Number(p.c || 0);
-  for (const p of purchases) purchasesToday[p.itemKey] = Number(p.c || 0);
-
-  return { playsToday, purchasesToday };
-}
 
 function getCatalogGame(gameKey) {
   return GAME_CATALOG.find((g) => g.key === gameKey) || null;
@@ -189,22 +142,6 @@ function getMatchHistory(db, playerId, limit = ARCADE_HISTORY_LIMIT) {
     ).get(row.id, playerId);
     return compactMatchPayload(row, playerId, String(opponent?.displayName || ""));
   });
-}
-
-function buildPlayerArcadeMetrics(history) {
-  const items = Array.isArray(history) ? history : [];
-  const finished = items.filter((m) => m.status === "completed" || m.result === "win" || m.result === "loss");
-  const wins = finished.filter((m) => m.result === "win").length;
-  const queueWaitValues = items.map((m) => Number(m.queueWaitMs || 0)).filter((v) => Number.isFinite(v) && v > 0);
-  return {
-    matches: finished.length,
-    wins,
-    losses: finished.filter((m) => m.result === "loss").length,
-    winRate: finished.length ? Number((wins / finished.length).toFixed(2)) : 0,
-    avgQueueWaitMs: queueWaitValues.length
-      ? Math.round(queueWaitValues.reduce((acc, v) => acc + v, 0) / queueWaitValues.length)
-      : null
-  };
 }
 
 function buildMatchmakingPayload(db, playerId, partyId) {
@@ -463,23 +400,6 @@ function queuePlayerForMatchmaking({
   return { status: "matched", queueRow, match: nextMatch, opponent };
 }
 
-function buildPayload(db, playerId, dayKey, rules, options = {}) {
-  const partyId = Number(options.partyId || getParty().id);
-  const row = db.prepare("SELECT * FROM tickets WHERE player_id=?").get(playerId);
-  const historyDays = Number(process.env.DAILY_QUEST_HISTORY_DAYS || 7);
-  const matchmaking = buildMatchmakingPayload(db, playerId, partyId);
-  return {
-    state: mapState(row),
-    rules,
-    catalog: GAME_CATALOG,
-    usage: getUsage(db, playerId, dayKey),
-    quests: getQuestStates(db, playerId, dayKey, rules),
-    questHistory: getQuestHistory(db, playerId, dayKey, rules, historyDays),
-    matchmaking,
-    arcadeMetrics: buildPlayerArcadeMetrics(matchmaking.history)
-  };
-}
-
 ticketsRouter.get("/rules", (req, res) => {
   const isDm = isDmRequest(req);
   const me = getPlayerContextFromRequest(req, { at: Date.now() });
@@ -498,7 +418,10 @@ ticketsRouter.get("/me", (req, res) => {
   row = normalizeDay(db, row, dayKey);
 
   const rules = getEffectiveRules(me.player.party_id);
-  res.json(buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }));
+  res.json(buildTicketPayload(db, me.player.id, dayKey, rules, {
+    partyId: me.player.party_id,
+    buildMatchmakingPayload
+  }));
 });
 
 ticketsRouter.get("/catalog", (req, res) => {
@@ -551,7 +474,10 @@ ticketsRouter.post("/matchmaking/queue", (req, res) => {
   }
 
   return res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    ...buildTicketPayload(db, me.player.id, dayKey, rules, {
+      partyId: me.player.party_id,
+      buildMatchmakingPayload
+    }),
     matchmakingAction: {
       status: queued.status,
       queueId: Number(queued.queueRow?.id || 0),
@@ -581,7 +507,10 @@ ticketsRouter.post("/matchmaking/cancel", (req, res) => {
 
   if (!active) {
     return res.json({
-      ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+      ...buildTicketPayload(db, me.player.id, dayKey, rules, {
+        partyId: me.player.party_id,
+        buildMatchmakingPayload
+      }),
       matchmakingAction: { status: "noop" }
     });
   }
@@ -611,7 +540,10 @@ ticketsRouter.post("/matchmaking/cancel", (req, res) => {
   });
 
   return res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    ...buildTicketPayload(db, me.player.id, dayKey, rules, {
+      partyId: me.player.party_id,
+      buildMatchmakingPayload
+    }),
     matchmakingAction: { status: "canceled", queueId: Number(active.id) }
   });
 });
@@ -685,7 +617,10 @@ ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
   });
 
   return res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    ...buildTicketPayload(db, me.player.id, dayKey, rules, {
+      partyId: me.player.party_id,
+      buildMatchmakingPayload
+    }),
     matchmakingAction: {
       status: queued.status,
       queueId: Number(queued.queueRow?.id || 0),
@@ -967,7 +902,10 @@ ticketsRouter.post("/play", (req, res) => {
   });
 
   res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    ...buildTicketPayload(db, me.player.id, dayKey, rules, {
+      partyId: me.player.party_id,
+      buildMatchmakingPayload
+    }),
     result: {
       gameKey,
       outcome,
@@ -1046,7 +984,10 @@ ticketsRouter.post("/purchase", (req, res) => {
   });
 
   res.json({
-    ...buildPayload(db, me.player.id, dayKey, rules, { partyId: me.player.party_id }),
+    ...buildTicketPayload(db, me.player.id, dayKey, rules, {
+      partyId: me.player.party_id,
+      buildMatchmakingPayload
+    }),
     result: { itemKey, price }
   });
 });
@@ -1227,6 +1168,9 @@ ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
   });
 
   const rules = getEffectiveRules(player.party_id);
-  res.json(buildPayload(db, playerId, dayKey, rules, { partyId: player.party_id }));
+  res.json(buildTicketPayload(db, playerId, dayKey, rules, {
+    partyId: player.party_id,
+    buildMatchmakingPayload
+  }));
 });
 
