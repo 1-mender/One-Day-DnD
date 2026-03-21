@@ -6,25 +6,9 @@ import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { createSeedStore } from "../tickets/domain/playValidation.js";
 import {
-  ARCADE_HISTORY_LIMIT,
-  ARCADE_METRICS_DAYS,
   SEED_TTL_MS
 } from "../tickets/shared/ticketConstants.js";
-import {
-  clampLimit,
-  getDayKey
-} from "../tickets/shared/ticketUtils.js";
-import { getEffectiveRules } from "../tickets/services/ticketRulesService.js";
-import {
-  buildTicketPayload,
-  ensureTicketRow,
-  normalizeDay
-} from "../tickets/services/ticketStateService.js";
-import {
-  buildDmArcadeMetrics,
-  buildMatchmakingPayload,
-  getMatchHistory,
-} from "../tickets/services/matchmakingService.js";
+import { buildMatchmakingPayload } from "../tickets/services/matchmakingService.js";
 import {
   processMatchmakingQueueCancel,
   processMatchmakingQueueJoin,
@@ -40,54 +24,73 @@ import {
   setActiveDailyQuest,
   updateDmRules
 } from "../tickets/services/ticketAdminService.js";
+import {
+  getDmTicketMetricsPayload,
+  getTicketCatalogPayload,
+  getTicketMatchHistoryPayload,
+  getTicketMePayload,
+  getTicketRulesPayload,
+  issueTicketSeedPayload
+} from "../tickets/services/ticketQueryService.js";
 
 export const ticketsRouter = express.Router();
 
 validateGameCatalog();
 const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
 
+function resolvePlayerContext(req) {
+  return getPlayerContextFromRequest(req, { at: Date.now() });
+}
+
+function requirePlayer(req, res) {
+  const me = resolvePlayerContext(req);
+  if (!me) {
+    res.status(401).json({ error: "not_authenticated" });
+    return null;
+  }
+  return me;
+}
+
 ticketsRouter.get("/rules", (req, res) => {
   const isDm = isDmRequest(req);
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
+  const me = resolvePlayerContext(req);
   if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
   const partyId = me?.player?.party_id ?? getParty().id;
-  res.json({ rules: getEffectiveRules(partyId) });
+  const result = getTicketRulesPayload({ partyId });
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.get("/me", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
-
-  const db = getDb();
-  let row = ensureTicketRow(db, me.player.id);
-  const dayKey = getDayKey();
-  row = normalizeDay(db, row, dayKey);
-
-  const rules = getEffectiveRules(me.player.party_id);
-  res.json(buildTicketPayload(db, me.player.id, dayKey, rules, {
+  const me = requirePlayer(req, res);
+  if (!me) return;
+  const result = getTicketMePayload({
+    db: getDb(),
+    playerId: me.player.id,
     partyId: me.player.party_id,
     buildMatchmakingPayload
-  }));
+  });
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.get("/catalog", (req, res) => {
-  res.json({ catalog: GAME_CATALOG });
+  const result = getTicketCatalogPayload();
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.get("/seed", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
-  const gameKey = String(req.query?.gameKey || "").trim();
-  if (!gameKey || !GAME_CATALOG.find((g) => g.key === gameKey)) {
-    return res.status(400).json({ error: "invalid_game" });
-  }
-  const issued = issueSeed(me.player.id, gameKey);
-  res.json({ seed: issued.seed, proof: issued.proof, gameKey });
+  const me = requirePlayer(req, res);
+  if (!me) return;
+  const result = issueTicketSeedPayload({
+    playerId: me.player.id,
+    gameKey: req.query?.gameKey,
+    issueSeedFn: issueSeed
+  });
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.post("/matchmaking/queue", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const me = requirePlayer(req, res);
+  if (!me) return;
   const result = processMatchmakingQueueJoin({
     db: getDb(),
     io: req.app.locals.io,
@@ -99,8 +102,8 @@ ticketsRouter.post("/matchmaking/queue", (req, res) => {
 });
 
 ticketsRouter.post("/matchmaking/cancel", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const me = requirePlayer(req, res);
+  if (!me) return;
   const result = processMatchmakingQueueCancel({
     db: getDb(),
     io: req.app.locals.io,
@@ -113,16 +116,15 @@ ticketsRouter.post("/matchmaking/cancel", (req, res) => {
 });
 
 ticketsRouter.get("/matches/history", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
-  const db = getDb();
-  const limit = clampLimit(req.query?.limit, ARCADE_HISTORY_LIMIT, 1, 50);
-  return res.json({ items: getMatchHistory(db, me.player.id, limit) });
+  const me = requirePlayer(req, res);
+  if (!me) return;
+  const result = getTicketMatchHistoryPayload({ db: getDb(), playerId: me.player.id, limit: req.query?.limit });
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const me = requirePlayer(req, res);
+  if (!me) return;
   const result = processMatchRematchRequest({
     db: getDb(),
     io: req.app.locals.io,
@@ -134,8 +136,8 @@ ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
 });
 
 ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const me = requirePlayer(req, res);
+  if (!me) return;
   const result = processMatchCompletion({
     db: getDb(),
     io: req.app.locals.io,
@@ -148,8 +150,8 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
 });
 
 ticketsRouter.post("/play", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const me = requirePlayer(req, res);
+  if (!me) return;
   const result = processTicketPlay({
     db: getDb(),
     io: req.app.locals.io,
@@ -163,8 +165,8 @@ ticketsRouter.post("/play", (req, res) => {
 });
 
 ticketsRouter.post("/purchase", (req, res) => {
-  const me = getPlayerContextFromRequest(req, { at: Date.now() });
-  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  const me = requirePlayer(req, res);
+  if (!me) return;
   const result = processTicketPurchase({
     db: getDb(),
     io: req.app.locals.io,
@@ -177,16 +179,17 @@ ticketsRouter.post("/purchase", (req, res) => {
 });
 
 ticketsRouter.get("/dm/metrics", dmAuthMiddleware, (req, res) => {
-  const db = getDb();
-  const partyId = Number(getParty().id);
-  const days = clampLimit(req.query?.days, ARCADE_METRICS_DAYS, 1, 30);
-  return res.json({ metrics: buildDmArcadeMetrics(db, partyId, days) });
+  const result = getDmTicketMetricsPayload({
+    db: getDb(),
+    partyId: Number(getParty().id),
+    days: req.query?.days
+  });
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.get("/dm/rules", dmAuthMiddleware, (req, res) => {
-  const party = getParty();
-  const rules = getEffectiveRules(party.id);
-  res.json({ rules });
+  const result = getTicketRulesPayload({ partyId: getParty().id });
+  return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
