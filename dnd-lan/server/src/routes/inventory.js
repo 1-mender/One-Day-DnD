@@ -1,7 +1,7 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getParty } from "../db.js";
-import { now, jsonParse } from "../util.js";
+import { now } from "../util.js";
 import { getInventoryLimitForPlayer } from "../inventoryLimit.js";
 import { logEvent } from "../events.js";
 import { getActiveSessionByToken, getPlayerTokenFromRequest } from "../sessionAuth.js";
@@ -16,23 +16,33 @@ import {
   isPlacementAllowedForItem,
   isValidSlot,
   makeSlotKey,
-  mapInventoryRow,
-  normalizeIdList,
   normalizeInventoryContainer,
   normalizeSlotCoord,
   parseLayoutMoves
 } from "./inventoryDomain.js";
+import {
+  listInventoryForPlayer,
+  processDmInventoryBulkDelete,
+  processDmInventoryBulkVisibility,
+  processDmInventoryCreate,
+  processDmInventoryDelete,
+  processDmInventoryUpdate,
+  processPlayerInventoryCreate,
+  processPlayerInventoryDelete,
+  processPlayerInventoryUpdate
+} from "../inventory/services/inventoryCrudService.js";
+import {
+  TRANSFER_MAX_QTY,
+  TRANSFER_NOTE_MAX,
+  TRANSFER_TTL_MS,
+  expireTransfer,
+  getInventoryTotalWeight,
+  parseTransferQty,
+  toFiniteNumber,
+  transferError
+} from "../inventory/services/inventoryServiceUtils.js";
 
 export const inventoryRouter = express.Router();
-
-const TRANSFER_MAX_QTY = 9999;
-const TRANSFER_NOTE_MAX = 140;
-const TRANSFER_TTL_MS = Number(process.env.INVENTORY_TRANSFER_TTL_MS || 3 * 24 * 60 * 60 * 1000);
-
-function toFiniteNumber(value, fallback) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
 
 function authPlayer(req) {
   const token = getPlayerTokenFromRequest(req);
@@ -48,213 +58,34 @@ function ensureWritable(sess, res) {
   return true;
 }
 
-function getInventoryTotalWeight(db, playerId, excludeItemId = null) {
-  const row = excludeItemId
-    ? db.prepare("SELECT SUM(weight * qty) AS total FROM inventory_items WHERE player_id=? AND id<>?").get(playerId, excludeItemId)
-    : db.prepare("SELECT SUM(weight * qty) AS total FROM inventory_items WHERE player_id=?").get(playerId);
-  const total = Number(row?.total ?? 0);
-  return Number.isFinite(total) ? total : 0;
-}
-
-function checkWeightLimit(db, playerId, nextQty, nextWeight, res, excludeItemId = null, currentTotal = null, limitOverride = null) {
-  const raw = Number.isFinite(limitOverride) ? Number(limitOverride) : Number(getInventoryLimitForPlayer(db, playerId).limit || 0);
-  if (!Number.isFinite(raw) || raw <= 0) return true;
-  const base = getInventoryTotalWeight(db, playerId, excludeItemId);
-  const projected = base + (Number(nextQty || 0) * Number(nextWeight || 0));
-  const totalNow = Number.isFinite(currentTotal)
-    ? Number(currentTotal)
-    : (excludeItemId == null ? base : getInventoryTotalWeight(db, playerId));
-  if (projected > raw && projected > totalNow) {
-    res.status(400).json({ error: "weight_limit_exceeded", limit: raw, projected });
-    return false;
-  }
-  return true;
-}
-
-function transferError(code, status = 400, extra = null) {
-  const err = new Error(code);
-  err.code = code;
-  err.status = status;
-  if (extra) err.extra = extra;
-  throw err;
-}
-
-function expireTransfer(db, tr, t = now()) {
-  const item = db.prepare("SELECT id, reserved_qty FROM inventory_items WHERE id=? AND player_id=?")
-    .get(tr.item_id, tr.from_player_id);
-  if (item) {
-    const reservedQty = Number(item.reserved_qty || 0);
-    const nextReserved = Math.max(0, reservedQty - Number(tr.qty || 0));
-    db.prepare("UPDATE inventory_items SET reserved_qty=?, updated_at=? WHERE id=?").run(nextReserved, t, item.id);
-  }
-  db.prepare("UPDATE item_transfers SET status='expired' WHERE id=?").run(tr.id);
-}
-
-function parseTransferQty(value) {
-  const qty = Math.floor(toFiniteNumber(value, NaN));
-  if (!Number.isFinite(qty)) return NaN;
-  return qty;
-}
-
 inventoryRouter.get("/mine", (req, res) => {
   const sess = authPlayer(req);
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  const db = getDb();
-  ensurePlayerLayoutSlots(db, sess.player_id);
-  const items = db.prepare(
-    "SELECT * FROM inventory_items WHERE player_id=? ORDER BY inv_container ASC, slot_y ASC, slot_x ASC, id DESC"
-  ).all(sess.player_id).map(mapInventoryRow);
-  const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
-  res.json({ items, weightLimit: limitInfo.limit, weightLimitBase: limitInfo.base, weightLimitRace: limitInfo.race, weightLimitBonus: limitInfo.bonus });
+  const result = listInventoryForPlayer({ db: getDb(), playerId: sess.player_id, includeWeightLimit: true });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.get("/player/:playerId", dmAuthMiddleware, (req, res) => {
   const pid = Number(req.params.playerId);
-  const db = getDb();
-  ensurePlayerLayoutSlots(db, pid);
-  const items = db.prepare(
-    "SELECT * FROM inventory_items WHERE player_id=? ORDER BY inv_container ASC, slot_y ASC, slot_x ASC, id DESC"
-  ).all(pid).map(mapInventoryRow);
-  res.json({ items });
+  const result = listInventoryForPlayer({ db: getDb(), playerId: pid, includeWeightLimit: false });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine", (req, res) => {
   const sess = authPlayer(req);
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
   if (!ensureWritable(sess, res)) return;
-  const db = getDb();
-  const b = req.body || {};
-  const name = String(b.name || "").trim();
-  if (!name) return res.status(400).json({ error: "name_required" });
-
-  const qty = Math.max(1, toFiniteNumber(b.qty ?? 1, 1));
-  const weight = Math.max(0, toFiniteNumber(b.weight ?? 0, 0));
-  const rarity = String(b.rarity || "common");
-  const visibility = (b.visibility === "hidden") ? "hidden" : "public";
-  const tags = Array.isArray(b.tags) ? b.tags.map(String) : [];
-  const desc = String(b.description || "");
-  const imageUrl = String(b.imageUrl || b.image_url || "");
-  const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
-  if (!checkWeightLimit(db, sess.player_id, qty, weight, res, null, null, limitInfo.limit)) return;
-  ensurePlayerLayoutSlots(db, sess.player_id);
-  const requestedContainer = normalizeInventoryContainer(b.container ?? b.inv_container);
-  const requestedSlot = getRequestedSlot(b);
-  if (requestedSlot?.error) return res.status(400).json({ error: requestedSlot.error });
-  const slot = requestedSlot || getNextInventorySlot(db, sess.player_id, requestedContainer);
-  const occupiedBy = findItemAtSlot(db, sess.player_id, slot.container, slot.slotX, slot.slotY);
-  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
-  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, slot.container, slot.slotX)) {
-    return res.status(400).json({ error: "invalid_equipment_slot" });
-  }
-
-  const t = now();
-  const id = db.prepare(
-    "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-  ).run(
-    sess.player_id,
-    name,
-    desc,
-    imageUrl || null,
-    qty,
-    weight,
-    rarity,
-    JSON.stringify(tags),
-    visibility,
-    slot.container,
-    slot.slotX,
-    slot.slotY,
-    t,
-    sess.impersonated ? "dm" : "player"
-  ).lastInsertRowid;
-
-  logEvent({
-    partyId: sess.party_id,
-    type: "inventory.created",
-    actorRole: sess.impersonated ? "dm" : "player",
-    actorPlayerId: sess.player_id,
-    actorName: sess.impersonated ? "DM (impersonation)" : null,
-    targetType: "inventory_item",
-    targetId: Number(id),
-    message: `Добавлен предмет: ${name}`,
-    data: { playerId: sess.player_id, visibility, qty },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  res.json({ ok: true, id });
+  const result = processPlayerInventoryCreate({ db: getDb(), io: req.app.locals.io, sess, body: req.body });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.put("/mine/:id", (req, res) => {
   const sess = authPlayer(req);
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
   if (!ensureWritable(sess, res)) return;
-  const db = getDb();
   const itemId = Number(req.params.id);
-  ensurePlayerLayoutSlots(db, sess.player_id);
-  const existing = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(itemId, sess.player_id);
-  if (!existing) return res.status(404).json({ error: "not_found" });
-
-  const b = req.body || {};
-  const name = String(b.name ?? existing.name).trim();
-  if (!name) return res.status(400).json({ error: "name_required" });
-
-  const qty = Math.max(1, toFiniteNumber(b.qty ?? existing.qty, existing.qty ?? 1));
-  const weight = Math.max(0, toFiniteNumber(b.weight ?? existing.weight, existing.weight ?? 0));
-  const rarity = String(b.rarity ?? existing.rarity);
-  const visibility = (b.visibility ?? existing.visibility) === "hidden" ? "hidden" : "public";
-  const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(existing.tags, []);
-  const desc = String(b.description ?? existing.description ?? "");
-  const imageUrl = String(b.imageUrl ?? b.image_url ?? existing.image_url ?? "");
-  const container = normalizeInventoryContainer(b.container ?? b.inv_container ?? existing.inv_container);
-  const slotX = normalizeSlotCoord(b.slotX ?? b.slot_x ?? existing.slot_x);
-  const slotY = normalizeSlotCoord(b.slotY ?? b.slot_y ?? existing.slot_y);
-  if (!isValidSlot(container, slotX, slotY)) return res.status(400).json({ error: "invalid_slot" });
-  const occupiedBy = findItemAtSlot(db, sess.player_id, container, slotX, slotY, itemId);
-  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
-  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, container, slotX)) {
-    return res.status(400).json({ error: "invalid_equipment_slot" });
-  }
-  const reservedQty = Number(existing.reserved_qty || 0);
-  if (qty < reservedQty) return res.status(400).json({ error: "reserved_qty_exceeded" });
-  const limitInfo = getInventoryLimitForPlayer(db, sess.player_id);
-  if (!checkWeightLimit(db, sess.player_id, qty, weight, res, itemId, null, limitInfo.limit)) return;
-
-  db.prepare(
-    "UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=?"
-  ).run(
-    name,
-    desc,
-    imageUrl || null,
-    qty,
-    weight,
-    rarity,
-    JSON.stringify(tags),
-    visibility,
-    container,
-    slotX,
-    slotY,
-    now(),
-    sess.impersonated ? "dm" : "player",
-    itemId
-  );
-
-  logEvent({
-    partyId: sess.party_id,
-    type: "inventory.updated",
-    actorRole: sess.impersonated ? "dm" : "player",
-    actorPlayerId: sess.player_id,
-    actorName: sess.impersonated ? "DM (impersonation)" : null,
-    targetType: "inventory_item",
-    targetId: Number(itemId),
-    message: `Изменён предмет: ${name}`,
-    data: { playerId: sess.player_id, visibility, qty },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  res.json({ ok: true });
+  const result = processPlayerInventoryUpdate({ db: getDb(), io: req.app.locals.io, sess, itemId, body: req.body });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine/layout", (req, res) => {
@@ -493,96 +324,17 @@ inventoryRouter.delete("/mine/:id", (req, res) => {
   const sess = authPlayer(req);
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
   if (!ensureWritable(sess, res)) return;
-  const db = getDb();
   const itemId = Number(req.params.id);
-  const row = db.prepare("SELECT name, reserved_qty FROM inventory_items WHERE id=? AND player_id=?").get(itemId, sess.player_id);
-  if (!row) return res.status(404).json({ error: "not_found" });
-  if (Number(row.reserved_qty || 0) > 0) return res.status(400).json({ error: "transfer_pending" });
-  db.prepare("DELETE FROM inventory_items WHERE id=? AND player_id=?").run(itemId, sess.player_id);
-
-  logEvent({
-    partyId: sess.party_id,
-    type: "inventory.deleted",
-    actorRole: sess.impersonated ? "dm" : "player",
-    actorPlayerId: sess.player_id,
-    actorName: sess.impersonated ? "DM (impersonation)" : null,
-    targetType: "inventory_item",
-    targetId: Number(itemId),
-    message: `Удалён предмет: ${row?.name || itemId}`,
-    data: { playerId: sess.player_id },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${sess.player_id}`).emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  res.json({ ok: true });
+  const result = processPlayerInventoryDelete({ db: getDb(), io: req.app.locals.io, sess, itemId });
+  return res.status(result.status).json(result.body);
 });
 
 // DM edit any inventory
 inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
   const pid = Number(req.params.playerId);
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
-  const db = getDb();
-  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(pid);
-  if (!player) return res.status(404).json({ error: "player_not_found" });
-  const b = req.body || {};
-  const name = String(b.name || "").trim();
-  if (!name) return res.status(400).json({ error: "name_required" });
-
-  const qty = Math.max(1, toFiniteNumber(b.qty ?? 1, 1));
-  const weight = Math.max(0, toFiniteNumber(b.weight ?? 0, 0));
-  const rarity = String(b.rarity || "common");
-  const visibility = (b.visibility === "hidden") ? "hidden" : "public";
-  const tags = Array.isArray(b.tags) ? b.tags.map(String) : [];
-  const desc = String(b.description || "");
-  const imageUrl = String(b.imageUrl || b.image_url || "");
-  const limitInfo = getInventoryLimitForPlayer(db, pid);
-  if (!checkWeightLimit(db, pid, qty, weight, res, null, null, limitInfo.limit)) return;
-  ensurePlayerLayoutSlots(db, pid);
-  const requestedContainer = normalizeInventoryContainer(b.container ?? b.inv_container);
-  const requestedSlot = getRequestedSlot(b);
-  if (requestedSlot?.error) return res.status(400).json({ error: requestedSlot.error });
-  const slot = requestedSlot || getNextInventorySlot(db, pid, requestedContainer);
-  const occupiedBy = findItemAtSlot(db, pid, slot.container, slot.slotX, slot.slotY);
-  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
-  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, slot.container, slot.slotX)) {
-    return res.status(400).json({ error: "invalid_equipment_slot" });
-  }
-
-  const ins2 = db.prepare(
-    "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-  ).run(
-    pid,
-    name,
-    desc,
-    imageUrl || null,
-    qty,
-    weight,
-    rarity,
-    JSON.stringify(tags),
-    visibility,
-    slot.container,
-    slot.slotX,
-    slot.slotY,
-    now(),
-    "dm"
-  );
-
-  logEvent({
-    partyId: player.party_id,
-    type: "inventory.granted",
-    actorRole: "dm",
-    actorName: "DM",
-    targetType: "inventory_item",
-    targetId: Number(ins2.lastInsertRowid),
-    message: `DM выдал предмет "${name}" игроку #${pid}`,
-    data: { playerId: pid, visibility, qty },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  res.json({ ok: true });
+  const result = processDmInventoryCreate({ db: getDb(), io: req.app.locals.io, playerId: pid, body: req.body });
+  return res.status(result.status).json(result.body);
 });
 
 // DM update any inventory item
@@ -590,72 +342,15 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
   const pid = Number(req.params.playerId);
   const itemId = Number(req.params.id);
   if (!pid || !itemId) return res.status(400).json({ error: "invalid_id" });
-
-  const db = getDb();
-  ensurePlayerLayoutSlots(db, pid);
-  const existing = db.prepare("SELECT * FROM inventory_items WHERE id=? AND player_id=?").get(itemId, pid);
-  if (!existing) return res.status(404).json({ error: "not_found" });
-
-  const b = req.body || {};
-  const name = String(b.name ?? existing.name).trim();
-  if (!name) return res.status(400).json({ error: "name_required" });
-
-  const qty = Math.max(1, toFiniteNumber(b.qty ?? existing.qty, existing.qty ?? 1));
-  const weight = Math.max(0, toFiniteNumber(b.weight ?? existing.weight, existing.weight ?? 0));
-  const rarity = String(b.rarity ?? existing.rarity);
-  const visibility = (b.visibility ?? existing.visibility) === "hidden" ? "hidden" : "public";
-  const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(existing.tags, []);
-  const desc = String(b.description ?? existing.description ?? "");
-  const imageUrl = String(b.imageUrl ?? b.image_url ?? existing.image_url ?? "");
-  const container = normalizeInventoryContainer(b.container ?? b.inv_container ?? existing.inv_container);
-  const slotX = normalizeSlotCoord(b.slotX ?? b.slot_x ?? existing.slot_x);
-  const slotY = normalizeSlotCoord(b.slotY ?? b.slot_y ?? existing.slot_y);
-  if (!isValidSlot(container, slotX, slotY)) return res.status(400).json({ error: "invalid_slot" });
-  const occupiedBy = findItemAtSlot(db, pid, container, slotX, slotY, itemId);
-  if (occupiedBy) return res.status(409).json({ error: "slot_occupied", itemId: Number(occupiedBy.id) });
-  if (!isPlacementAllowedForItem({ name, description: desc, rarity, tags }, container, slotX)) {
-    return res.status(400).json({ error: "invalid_equipment_slot" });
-  }
-  const reservedQty = Number(existing.reserved_qty || 0);
-  if (qty < reservedQty) return res.status(400).json({ error: "reserved_qty_exceeded" });
-  const limitInfo = getInventoryLimitForPlayer(db, pid);
-  if (!checkWeightLimit(db, pid, qty, weight, res, itemId, null, limitInfo.limit)) return;
-
-  db.prepare(
-    "UPDATE inventory_items SET name=?, description=?, image_url=?, qty=?, weight=?, rarity=?, tags=?, visibility=?, inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=?"
-  ).run(
-    name,
-    desc,
-    imageUrl || null,
-    qty,
-    weight,
-    rarity,
-    JSON.stringify(tags),
-    visibility,
-    container,
-    slotX,
-    slotY,
-    now(),
-    "dm",
-    itemId
-  );
-
-  const p = db.prepare("SELECT party_id FROM players WHERE id=?").get(pid);
-  logEvent({
-    partyId: p?.party_id ?? getParty().id,
-    type: "inventory.updated",
-    actorRole: "dm",
-    actorName: "DM",
-    targetType: "inventory_item",
-    targetId: Number(itemId),
-    message: `DM изменил предмет "${name}" игроку #${pid}`,
-    data: { playerId: pid, visibility, qty },
-    io: req.app.locals.io
+  const result = processDmInventoryUpdate({
+    db: getDb(),
+    io: req.app.locals.io,
+    playerId: pid,
+    itemId,
+    body: req.body,
+    fallbackPartyId: getParty().id
   });
-
-  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  res.json({ ok: true });
+  return res.status(result.status).json(result.body);
 });
 
 // DM delete any inventory item
@@ -663,144 +358,28 @@ inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) 
   const pid = Number(req.params.playerId);
   const itemId = Number(req.params.id);
   if (!pid || !itemId) return res.status(400).json({ error: "invalid_id" });
-
-  const db = getDb();
-  const row = db.prepare("SELECT name, reserved_qty FROM inventory_items WHERE id=? AND player_id=?").get(itemId, pid);
-  if (!row) return res.status(404).json({ error: "not_found" });
-  const recipients = db.prepare(
-    "SELECT DISTINCT to_player_id AS pid FROM item_transfers WHERE item_id=? AND status='pending'"
-  ).all(itemId).map((r) => Number(r.pid));
-
-  const tx = db.transaction(() => {
-    db.prepare("UPDATE item_transfers SET status='canceled' WHERE item_id=? AND status='pending'").run(itemId);
-    db.prepare("DELETE FROM inventory_items WHERE id=? AND player_id=?").run(itemId, pid);
+  const result = processDmInventoryDelete({
+    db: getDb(),
+    io: req.app.locals.io,
+    playerId: pid,
+    itemId,
+    fallbackPartyId: getParty().id
   });
-  tx();
-
-  const p = db.prepare("SELECT party_id FROM players WHERE id=?").get(pid);
-  logEvent({
-    partyId: p?.party_id ?? getParty().id,
-    type: "inventory.deleted",
-    actorRole: "dm",
-    actorName: "DM",
-    targetType: "inventory_item",
-    targetId: Number(itemId),
-    message: `DM удалил предмет "${row?.name || itemId}" у игрока #${pid}`,
-    data: { playerId: pid },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
-  req.app.locals.io?.to(`player:${pid}`).emit("transfers:updated");
-  for (const rid of recipients) {
-    if (rid) req.app.locals.io?.to(`player:${rid}`).emit("transfers:updated");
-  }
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("transfers:updated");
-  res.json({ ok: true });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/dm/player/:playerId/bulk-visibility", dmAuthMiddleware, (req, res) => {
   const pid = Number(req.params.playerId);
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
-  const visibility = req.body?.visibility === "hidden" ? "hidden" : "public";
-  const itemIds = normalizeIdList(req.body?.itemIds, 500);
-  if (!itemIds.length) return res.status(400).json({ error: "empty_item_ids" });
-
-  const db = getDb();
-  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(pid);
-  if (!player) return res.status(404).json({ error: "player_not_found" });
-
-  const placeholders = itemIds.map(() => "?").join(",");
-  const params = [pid, ...itemIds];
-  const t = now();
-  const result = db.prepare(
-    `UPDATE inventory_items
-     SET visibility=?, updated_at=?, updated_by='dm'
-     WHERE player_id=?
-       AND id IN (${placeholders})`
-  ).run(visibility, t, ...params);
-
-  logEvent({
-    partyId: player.party_id,
-    type: "inventory.bulk_visibility",
-    actorRole: "dm",
-    actorName: "DM",
-    targetType: "player",
-    targetId: Number(pid),
-    message: `DM updated visibility for ${result.changes || 0} item(s) of player #${pid}`,
-    data: { playerId: pid, visibility, itemIds, updated: result.changes || 0 },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  res.json({ ok: true, updated: result.changes || 0 });
+  const result = processDmInventoryBulkVisibility({ db: getDb(), io: req.app.locals.io, playerId: pid, body: req.body });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/dm/player/:playerId/bulk-delete", dmAuthMiddleware, (req, res) => {
   const pid = Number(req.params.playerId);
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
-  const itemIds = normalizeIdList(req.body?.itemIds, 500);
-  if (!itemIds.length) return res.status(400).json({ error: "empty_item_ids" });
-
-  const db = getDb();
-  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(pid);
-  if (!player) return res.status(404).json({ error: "player_not_found" });
-
-  const placeholders = itemIds.map(() => "?").join(",");
-  const itemRows = db.prepare(
-    `SELECT id
-     FROM inventory_items
-     WHERE player_id=?
-       AND id IN (${placeholders})`
-  ).all(pid, ...itemIds);
-  const existingIds = itemRows.map((row) => Number(row.id)).filter((id) => Number.isInteger(id) && id > 0);
-  if (!existingIds.length) return res.json({ ok: true, deleted: 0 });
-
-  const existingPlaceholders = existingIds.map(() => "?").join(",");
-  const recipients = db.prepare(
-    `SELECT DISTINCT to_player_id AS pid
-     FROM item_transfers
-     WHERE status='pending'
-       AND item_id IN (${existingPlaceholders})`
-  ).all(...existingIds).map((row) => Number(row.pid)).filter((id) => Number.isInteger(id) && id > 0);
-
-  const tx = db.transaction(() => {
-    db.prepare(
-      `UPDATE item_transfers
-       SET status='canceled'
-       WHERE status='pending'
-         AND item_id IN (${existingPlaceholders})`
-    ).run(...existingIds);
-    return db.prepare(
-      `DELETE FROM inventory_items
-       WHERE player_id=?
-         AND id IN (${existingPlaceholders})`
-    ).run(pid, ...existingIds);
-  });
-  const deleted = tx()?.changes || 0;
-
-  logEvent({
-    partyId: player.party_id,
-    type: "inventory.bulk_deleted",
-    actorRole: "dm",
-    actorName: "DM",
-    targetType: "player",
-    targetId: Number(pid),
-    message: `DM deleted ${deleted} item(s) from player #${pid}`,
-    data: { playerId: pid, itemIds: existingIds, deleted },
-    io: req.app.locals.io
-  });
-
-  req.app.locals.io?.to(`player:${pid}`).emit("inventory:updated");
-  req.app.locals.io?.to(`player:${pid}`).emit("transfers:updated");
-  for (const rid of recipients) {
-    req.app.locals.io?.to(`player:${rid}`).emit("transfers:updated");
-  }
-  req.app.locals.io?.to("dm").emit("inventory:updated");
-  req.app.locals.io?.to("dm").emit("transfers:updated");
-  res.json({ ok: true, deleted });
+  const result = processDmInventoryBulkDelete({ db: getDb(), io: req.app.locals.io, playerId: pid, body: req.body });
+  return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/transfers", (req, res) => {
