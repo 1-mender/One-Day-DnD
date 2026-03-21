@@ -1,6 +1,6 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
+import { getDb, getParty, getPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
@@ -16,181 +16,34 @@ import {
   validateTttPayload,
   validateUnoPayload
 } from "../tickets/domain/playValidation.js";
-import { mergeRules, normalizeRules } from "../tickets/domain/rules.js";
-import { DEFAULT_TICKET_RULES, sanitizeRulesText } from "../tickets/domain/defaultRules.js";
+import { mergeRules } from "../tickets/domain/rules.js";
+import {
+  ARCADE_HISTORY_LIMIT,
+  ARCADE_METRICS_DAYS,
+  ARCADE_QUEUE_ETA_SEC,
+  ARCADE_QUEUE_TTL_MS,
+  DAY_MS,
+  MIN_ARCADE_PLAY_MS,
+  SEED_TTL_MS
+} from "../tickets/shared/ticketConstants.js";
+import {
+  clampLimit,
+  getDayKey,
+  isPlainObject,
+  summarizeStats
+} from "../tickets/shared/ticketUtils.js";
+import {
+  getActiveQuest,
+  getQuestHistory,
+  getQuestStates,
+  maybeGrantDailyQuest
+} from "../tickets/services/dailyQuestService.js";
+import { getEffectiveRules, saveRulesOverride } from "../tickets/services/ticketRulesService.js";
 
 export const ticketsRouter = express.Router();
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const SEED_TTL_MS = 10 * 60 * 1000;
-const ARCADE_QUEUE_TTL_MS = Number(process.env.ARCADE_QUEUE_TTL_MS || 2 * 60 * 1000);
-const ARCADE_HISTORY_LIMIT = Number(process.env.ARCADE_HISTORY_LIMIT || 20);
-const ARCADE_QUEUE_ETA_SEC = Number(process.env.ARCADE_QUEUE_ETA_SEC || 12);
-const ARCADE_METRICS_DAYS = Number(process.env.ARCADE_METRICS_DAYS || 7);
-const MIN_ARCADE_PLAY_MS = Object.freeze({
-  guess: Number(process.env.TICKETS_MIN_PLAY_MS_GUESS || 0),
-  ttt: Number(process.env.TICKETS_MIN_PLAY_MS_TTT || 0),
-  match3: Number(process.env.TICKETS_MIN_PLAY_MS_MATCH3 || 0),
-  uno: Number(process.env.TICKETS_MIN_PLAY_MS_UNO || 0),
-  scrabble: Number(process.env.TICKETS_MIN_PLAY_MS_SCRABBLE || 0)
-});
-
 validateGameCatalog();
 const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
-
-function getDayKey(t = now()) {
-  return Math.floor(Number(t) / DAY_MS);
-}
-
-function isPlainObject(v) {
-  return !!v && typeof v === "object" && !Array.isArray(v);
-}
-
-function applyAutoBalance(db, partyId, rules) {
-  if (!rules.autoBalance?.enabled) return rules;
-  const dayKey = getDayKey();
-  const windowDays = Number(rules.autoBalance.windowDays || 7);
-  const minDay = dayKey - windowDays + 1;
-  const stats = db.prepare(
-    `SELECT tp.game_key as gameKey,
-            SUM(CASE WHEN tp.outcome='win' THEN 1 ELSE 0 END) as wins,
-            COUNT(*) as total
-       FROM ticket_plays tp
-       JOIN players p ON p.id = tp.player_id
-      WHERE p.party_id = ? AND tp.day_key >= ?
-      GROUP BY tp.game_key`
-  ).all(partyId, minDay);
-  const statsMap = new Map(stats.map((row) => [row.gameKey, row]));
-  const nextRules = { ...rules, games: { ...rules.games } };
-  for (const [key, game] of Object.entries(rules.games || {})) {
-    const row = statsMap.get(key);
-    if (!row || Number(row.total || 0) < rules.autoBalance.minPlays) {
-      nextRules.games[key] = { ...game };
-      continue;
-    }
-    const winRate = Number(row.wins || 0) / Number(row.total || 1);
-    const tweak = winRate - rules.autoBalance.targetWinRate;
-    const rewardStep = Number(rules.autoBalance.rewardStep || 0);
-    const penaltyStep = Number(rules.autoBalance.penaltyStep || 0);
-    const next = { ...game };
-    if (tweak > 0.08) {
-      next.rewardMax = Math.max(next.rewardMin, next.rewardMax - rewardStep);
-      next.lossPenalty = Math.min(999, next.lossPenalty + penaltyStep);
-    } else if (tweak < -0.08) {
-      next.rewardMax = Math.min(999, next.rewardMax + rewardStep);
-      next.lossPenalty = Math.max(0, next.lossPenalty - penaltyStep);
-    }
-    nextRules.games[key] = next;
-  }
-  return nextRules;
-}
-
-function getQuestProgress(db, playerId, dayKey) {
-  const row = db
-    .prepare("SELECT COUNT(DISTINCT game_key) AS c FROM ticket_plays WHERE player_id=? AND day_key=?")
-    .get(playerId, dayKey);
-  return Number(row?.c || 0);
-}
-
-function getActiveQuest(rules) {
-  const dq = rules?.dailyQuest;
-  if (!dq || dq.enabled === false) return null;
-  const pool = Array.isArray(dq.pool) ? dq.pool : [];
-  let q = pool.find((x) => x.key === dq.activeKey && x.enabled !== false);
-  if (!q) q = pool.find((x) => x.enabled !== false) || null;
-  return q;
-}
-
-function getQuestStates(db, playerId, dayKey, rules) {
-  const q = getActiveQuest(rules);
-  if (!q) return [];
-  const distinctGames = getQuestProgress(db, playerId, dayKey);
-  const row = db.prepare(
-    "SELECT reward_granted, rewarded_at FROM ticket_quests WHERE player_id=? AND quest_key=? AND day_key=?"
-  ).get(playerId, q.key, dayKey);
-  const completed = distinctGames >= q.goal;
-  return [{
-    key: q.key,
-    title: q.title,
-    description: q.description,
-    goal: q.goal,
-    progress: distinctGames,
-    reward: q.reward,
-    completed,
-    rewarded: !!row,
-    rewardGranted: row?.reward_granted ?? 0,
-    rewardedAt: row?.rewarded_at ?? null
-  }];
-}
-
-function getQuestHistory(db, playerId, dayKey, rules, days = 7) {
-  const q = getActiveQuest(rules);
-  if (!q) return [];
-  const d = Math.max(1, Math.min(30, Math.floor(Number(days) || 7)));
-  const minDay = dayKey - (d - 1);
-  const rows = db.prepare(
-    "SELECT day_key, reward_granted, rewarded_at FROM ticket_quests WHERE player_id=? AND quest_key=? AND day_key>=? ORDER BY day_key DESC"
-  ).all(playerId, q.key, minDay);
-  return rows.map((r) => ({
-    dayKey: r.day_key,
-    rewardGranted: r.reward_granted ?? 0,
-    rewardedAt: r.rewarded_at ?? null
-  }));
-}
-
-function maybeGrantDailyQuest(db, playerId, dayKey, rules) {
-  const q = getActiveQuest(rules);
-  if (!q) return null;
-  const distinctGames = getQuestProgress(db, playerId, dayKey);
-  if (distinctGames < q.goal) return null;
-
-  const existing = db.prepare(
-    "SELECT 1 FROM ticket_quests WHERE player_id=? AND quest_key=? AND day_key=?"
-  ).get(playerId, q.key, dayKey);
-  if (existing) return null;
-
-  const row = db.prepare("SELECT balance, daily_earned FROM tickets WHERE player_id=?").get(playerId);
-  const currentEarned = Number(row?.daily_earned || 0);
-  const currentBalance = Number(row?.balance || 0);
-
-  let reward = Number(q.reward || 0);
-  const cap = Number(rules?.dailyEarnCap || 0);
-  if (cap > 0) {
-    reward = Math.max(0, Math.min(reward, cap - currentEarned));
-  }
-
-  const t = now();
-  const tx = db.transaction(() => {
-    db.prepare(
-      "INSERT INTO ticket_quests(player_id, quest_key, day_key, reward_granted, rewarded_at, created_at) VALUES(?,?,?,?,?,?)"
-    ).run(playerId, q.key, dayKey, reward, t, t);
-    if (reward > 0) {
-      db.prepare("UPDATE tickets SET balance=?, daily_earned=?, updated_at=? WHERE player_id=?")
-        .run(currentBalance + reward, currentEarned + reward, t, playerId);
-    }
-  });
-  tx();
-
-  return { questKey: q.key, rewardGranted: reward };
-}
-
-function getEffectiveRules(partyId) {
-  const settings = getPartySettings(partyId);
-  const overrides = jsonParse(settings?.tickets_rules, {});
-  const merged = mergeRules(DEFAULT_TICKET_RULES, overrides);
-  const sanitized = sanitizeRulesText(merged, DEFAULT_TICKET_RULES);
-  sanitized.enabled = settings?.tickets_enabled == null ? true : !!settings.tickets_enabled;
-  const normalized = normalizeRules(sanitized);
-  return applyAutoBalance(getDb(), partyId, normalized);
-}
-
-function saveRulesOverride(partyId, enabled, rules) {
-  const nextEnabled = enabled == null ? 1 : enabled ? 1 : 0;
-  setPartySettings(partyId, {
-    tickets_enabled: nextEnabled,
-    tickets_rules: JSON.stringify(rules || {})
-  });
-}
 
 function ensureTicketRow(db, playerId) {
   let row = db.prepare("SELECT * FROM tickets WHERE player_id=?").get(playerId);
@@ -242,12 +95,6 @@ function getUsage(db, playerId, dayKey) {
   return { playsToday, purchasesToday };
 }
 
-function clampLimit(value, fallback, min, max) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.max(min, Math.min(max, Math.floor(n)));
-}
-
 function getCatalogGame(gameKey) {
   return GAME_CATALOG.find((g) => g.key === gameKey) || null;
 }
@@ -262,13 +109,6 @@ function resolveModeKey(gameKey, modeKey) {
   const found = modes.find((m) => String(m.key) === safe);
   if (!found) return null;
   return safe;
-}
-
-function calcPercentile(list, p) {
-  if (!Array.isArray(list) || !list.length) return null;
-  const sorted = list.slice().sort((a, b) => a - b);
-  const idx = Math.max(0, Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1));
-  return sorted[idx];
 }
 
 function compactMatchPayload(row, playerId, opponentName = "") {
@@ -477,18 +317,6 @@ function emitMatchFound(io, db, matchId, players) {
     emitQueueUpdated(io, playerId);
   }
   io.to("dm").emit("tickets:updated");
-}
-
-function summarizeStats(values) {
-  const list = (values || []).map((v) => Number(v)).filter((v) => Number.isFinite(v) && v >= 0);
-  if (!list.length) return { count: 0, avg: null, p50: null, p95: null };
-  const sum = list.reduce((acc, v) => acc + v, 0);
-  return {
-    count: list.length,
-    avg: Math.round(sum / list.length),
-    p50: calcPercentile(list, 50),
-    p95: calcPercentile(list, 95)
-  };
 }
 
 function buildDmArcadeMetrics(db, partyId, days = ARCADE_METRICS_DAYS) {
