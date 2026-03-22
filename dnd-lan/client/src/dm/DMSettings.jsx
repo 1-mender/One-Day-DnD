@@ -72,16 +72,21 @@ export default function DMSettings() {
   } = useDmSettings();
 
   return (
-    <div className="card taped">
-      <div className="u-title-xl">Настройки</div>
-      <div className="small">Код партии, безопасность, экономика, локальная сеть и брандмауэр.</div>
+    <div className="card taped tf-shell tf-dm-settings-shell">
+      <div className="tf-page-head">
+        <div className="tf-page-head-main">
+          <div className="tf-overline">Session controls</div>
+          <div className="u-title-xl tf-page-title">Настройки</div>
+          <div className="small">Код партии, безопасность, экономика, локальная сеть и брандмауэр.</div>
+        </div>
+      </div>
       <hr />
       {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
       {err && <div className="badge off">{"\u041e\u0448\u0438\u0431\u043a\u0430: "}{err}</div>}
       {msg && <div className="badge ok">{msg}</div>}
 
-      <div className="list">
-        <div className="title u-mt-6">{"\u0418\u0433\u0440\u043e\u043a"}</div>
+      <div className="list dm-settings-stack">
+        <div className="title u-mt-6 dm-settings-group-title">{"\u0418\u0433\u0440\u043e\u043a"}</div>
         <JoinSettingsSection
           joinEnabled={joinEnabled}
           setJoinEnabled={setJoinEnabled}
@@ -108,7 +113,7 @@ export default function DMSettings() {
           updatePresetData={updatePresetData}
         />
 
-        <div className="title u-mt-10">{"\u0414\u041c"}</div>
+        <div className="title u-mt-10 dm-settings-group-title">{"\u0414\u041c"}</div>
         <PasswordSettingsSection
           showPass={showPass}
           setShowPass={setShowPass}
@@ -124,7 +129,7 @@ export default function DMSettings() {
 
         <BackupSettingsSection exportZip={exportZip} importZip={importZip} readOnly={readOnly} />
 
-        <div className="title u-mt-10">{"\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430"}</div>
+        <div className="title u-mt-10 dm-settings-group-title">{"\u042d\u043a\u043e\u043d\u043e\u043c\u0438\u043a\u0430"}</div>
         <TicketRulesSection
           showOnlyChanged={showOnlyChanged}
           setShowOnlyChanged={setShowOnlyChanged}

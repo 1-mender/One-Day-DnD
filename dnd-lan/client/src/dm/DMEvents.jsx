@@ -43,6 +43,7 @@ export default function DMEvents() {
   const debouncedQ = useDebouncedValue(q, 250);
   const prefix = scopes.find((entry) => entry.key === scope)?.prefix || "";
   const sinceMs = Number(sinceParam || 0);
+  const activeRange = !sinceMs ? "all" : (Date.now() - sinceMs <= 90 * 60 * 1000 ? "1h" : "24h");
   const offsetRef = useRef(0);
 
   useEffect(() => {
@@ -226,7 +227,7 @@ export default function DMEvents() {
   }
 
   return (
-    <div className="card taped">
+    <div className="card taped tf-shell tf-dm-events-shell">
       <PageHeader
         title={t("dmEvents.title")}
         subtitle={t("dmEvents.subtitle")}
@@ -241,7 +242,7 @@ export default function DMEvents() {
 
       {readOnly ? <StatusBanner tone="warning">{t("dmEvents.readOnly")}</StatusBanner> : null}
 
-      <FilterBar>
+      <FilterBar className="dm-events-toolbar">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("dmEvents.searchPlaceholder")} aria-label="Поиск по журналу событий" className="u-w-min-520" />
         <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Фильтр источника событий">
           {scopes.map((entry) => (
@@ -252,14 +253,14 @@ export default function DMEvents() {
           <option value="all">{t("dmEvents.viewAll")}</option>
           <option value="recent">{t("dmEvents.viewRecent")}</option>
         </select>
-        <div className="row u-row-gap-6 u-row-wrap">
-          <button className={`btn ${!sinceMs ? "" : "secondary"}`} onClick={() => setSinceHours(0)}>
+        <div className="row u-row-gap-6 u-row-wrap tf-segmented dm-events-range">
+          <button className={`btn tf-segmented-btn ${activeRange === "all" ? "tf-segmented-btn-active" : "secondary"}`} onClick={() => setSinceHours(0)}>
             {t("dmEvents.rangeAll")}
           </button>
-          <button className={`btn ${sinceMs ? "secondary" : ""}`} onClick={() => setSinceHours(1)}>
+          <button className={`btn tf-segmented-btn ${activeRange === "1h" ? "tf-segmented-btn-active" : "secondary"}`} onClick={() => setSinceHours(1)}>
             {t("dmEvents.range1h")}
           </button>
-          <button className={`btn ${sinceMs ? "secondary" : ""}`} onClick={() => setSinceHours(24)}>
+          <button className={`btn tf-segmented-btn ${activeRange === "24h" ? "tf-segmented-btn-active" : "secondary"}`} onClick={() => setSinceHours(24)}>
             {t("dmEvents.range24h")}
           </button>
         </div>
@@ -270,7 +271,7 @@ export default function DMEvents() {
       ) : null}
 
       <SectionCard
-        className="u-mt-10"
+        className="u-mt-10 dm-events-cleanup-card"
         title={t("dmEvents.cleanupTitle")}
         subtitle={t("dmEvents.cleanupHint")}
         actions={(
@@ -299,7 +300,7 @@ export default function DMEvents() {
 
       {err ? <div className="badge off u-mt-10">{t("common.error")}: {err}</div> : null}
 
-      <div ref={listRef} className="list events-list" style={{ "--events-offset": `${eventsOffset}px` }}>
+      <div ref={listRef} className="list events-list tf-panel dm-events-list" style={{ "--events-offset": `${eventsOffset}px` }}>
         {displayRows.length === 0 && !busy ? (
           <div className="small">{t("dmEvents.empty")}</div>
         ) : (
@@ -309,7 +310,7 @@ export default function DMEvents() {
               return (
                 <div
                   key={eventItem.id}
-                  className="item taped"
+                  className="item taped dm-events-item"
                   style={{
                     alignItems: "flex-start",
                     position: "absolute",
