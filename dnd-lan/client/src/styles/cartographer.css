@@ -2412,6 +2412,138 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   color: #4c4030;
 }
 
+/* Player shop tactical pass */
+.tf-shop-shell{
+  --shop-ink: #ece6dc;
+  --shop-muted: rgba(214, 220, 227, 0.86);
+  --shop-line: rgba(128, 138, 149, 0.34);
+  border-radius: 28px;
+  border-color: rgba(108, 118, 128, 0.28);
+  box-shadow:
+    0 22px 42px rgba(0,0,0,0.42),
+    inset 0 1px 0 rgba(220,228,236,0.08);
+}
+
+.tf-shop-shell .shop-hero{
+  position: relative;
+  z-index: 1;
+}
+
+.tf-shop-shell .shop-summary{
+  margin: 14px 0 12px;
+}
+
+.tf-shop-shell .shop-summary .tf-stat-card{
+  background:
+    linear-gradient(180deg, rgba(87, 95, 104, 0.82), rgba(41, 46, 51, 0.94));
+  border-color: rgba(143, 155, 167, 0.3);
+  color: #e7ebef;
+}
+
+.tf-shop-shell .shop-summary .small{
+  color: rgba(205, 213, 220, 0.78);
+}
+
+.tf-shop-shell .shop-summary strong{
+  font-size: 20px;
+  line-height: 1.2;
+  color: #f2f5f8;
+}
+
+.tf-shop-shell .shop-banner{
+  margin-top: 14px;
+  align-items: start;
+  gap: 6px;
+  border-color: rgba(143, 155, 167, 0.28);
+  box-shadow: 0 14px 24px rgba(0,0,0,0.28);
+}
+
+.tf-shop-shell .shop-section-head{
+  gap: 16px;
+}
+
+.tf-shop-shell .shop-section-title{
+  color: #dee5eb;
+}
+
+.tf-shop-shell .shop-section-subtitle{
+  color: rgba(205, 213, 220, 0.76);
+}
+
+.tf-shop-shell .tf-shop-section{
+  border-radius: 24px;
+}
+
+.tf-shop-shell .tf-shop-card{
+  border-radius: 22px;
+  border-color: rgba(128, 138, 149, 0.32);
+  box-shadow: 0 14px 24px rgba(0,0,0,0.34);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.tf-shop-shell .tf-shop-card:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 18px 28px rgba(0,0,0,0.4);
+}
+
+.tf-shop-shell .tf-shop-card.disabled-card{
+  opacity: 0.82;
+}
+
+.tf-shop-shell .shop-head{
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.tf-shop-shell .shop-meta{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.tf-shop-shell .tf-shop-chip{
+  backdrop-filter: blur(6px);
+}
+
+.tf-shop-shell .tf-shop-price{
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.tf-shop-shell .shop-actions{
+  margin-top: 12px;
+}
+
+.tf-shop-shell .shop-disabled-note{
+  margin-top: 8px;
+  color: rgba(226, 188, 160, 0.9);
+}
+
+.tf-shop-shell .shop-mascot-stall{
+  margin-top: 14px;
+  border-color: rgba(128, 138, 149, 0.3);
+  box-shadow: 0 18px 30px rgba(0,0,0,0.34);
+}
+
+.tf-shop-shell .shop-mascot-bubble-minimal{
+  border-color: rgba(143, 155, 167, 0.28);
+  box-shadow: 0 12px 22px rgba(0,0,0,0.26);
+}
+
+@media (max-width: 720px){
+  .tf-shop-shell .shop-summary{
+    margin-top: 10px;
+  }
+
+  .tf-shop-shell .shop-section-head{
+    align-items: start;
+  }
+}
+
 @media (max-width: 720px){
   .inventory-shell{
     padding: 14px 14px 12px;
@@ -2897,6 +3029,105 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .dossier-actions{
     min-width: 0;
     width: 100%;
+  }
+}
+
+/* DM players tactical pass */
+.dm-players-board{
+  align-items: start;
+}
+
+.tf-dm-players-shell{
+  border-radius: 28px;
+  padding: 20px;
+  background:
+    linear-gradient(180deg, rgba(249, 244, 235, 0.98), rgba(236, 227, 210, 0.96));
+  border: 1px solid rgba(118, 100, 70, 0.2);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.78),
+    0 20px 38px rgba(64, 53, 38, 0.1);
+}
+
+.dm-players-summary{
+  margin-bottom: 14px;
+}
+
+.dm-players-toolbar{
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.dm-players-toolbar-title{
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--map-ink);
+}
+
+.dm-players-filterbar{
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.dm-players-filterbar input{
+  flex: 1 1 260px;
+}
+
+.dm-players-roster{
+  gap: 14px;
+}
+
+.tf-dm-player-detail{
+  border-radius: 26px;
+  padding: 18px;
+  background:
+    linear-gradient(180deg, rgba(250, 246, 237, 0.98), rgba(236, 227, 208, 0.95));
+}
+
+.dm-player-detail-head{
+  gap: 14px;
+}
+
+.dm-player-detail-title{
+  color: var(--map-ink);
+  font-size: 28px;
+  line-height: 1.06;
+}
+
+.dm-player-detail-meta{
+  color: var(--map-muted);
+}
+
+.dm-player-detail-badges{
+  margin-bottom: 12px;
+}
+
+.dm-player-detail-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.dm-player-detail-grid .tf-stat-card strong{
+  font-size: 20px;
+}
+
+.dm-player-action-list .btn{
+  width: 100%;
+  justify-content: center;
+}
+
+.dm-player-empty{
+  display: grid;
+  gap: 6px;
+  min-height: 220px;
+  align-content: center;
+}
+
+@media (max-width: 860px){
+  .dm-player-detail-grid{
+    grid-template-columns: 1fr;
   }
 }
 

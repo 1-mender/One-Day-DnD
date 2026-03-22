@@ -208,11 +208,24 @@ export default function DMPlayers() {
     });
   }, [playersWithTickets, q, statusFilter]);
 
+  const statusCounts = useMemo(() => {
+    return playersWithTickets.reduce(
+      (acc, player) => {
+        const status = String(player.status || "offline");
+        if (status === "online") acc.online += 1;
+        else if (status === "idle") acc.idle += 1;
+        else acc.offline += 1;
+        return acc;
+      },
+      { online: 0, idle: 0, offline: 0 }
+    );
+  }, [playersWithTickets]);
+
   return (
     <>
-      <div className="two-pane" data-detail={selectedPlayer ? "1" : "0"}>
+      <div className="two-pane dm-players-board" data-detail={selectedPlayer ? "1" : "0"}>
         <div className="pane pane-list">
-          <div className="card taped">
+          <div className="card taped tf-shell tf-dm-players-shell">
             <PageHeader
               title={t("dmPlayers.title")}
               subtitle={t("dmPlayers.subtitle")}
@@ -220,22 +233,42 @@ export default function DMPlayers() {
             <hr />
             {readOnly ? <StatusBanner tone="warning">{t("dmPlayers.readOnly")}</StatusBanner> : null}
             <ErrorBanner message={err} onRetry={loadAll} />
-            <FilterBar className="u-mb-8">
-              <input
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t("dmPlayers.searchPlaceholder")}
-                aria-label={t("dmPlayers.searchPlaceholder")}
-                className="u-w-min-360"
-              />
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label={t("dmPlayers.statusAll")} className="u-w-180">
-                <option value="all">{t("dmPlayers.statusAll")}</option>
-                <option value="online">{t("dmPlayers.statusOnline")}</option>
-                <option value="idle">{t("dmPlayers.statusIdle")}</option>
-                <option value="offline">{t("dmPlayers.statusOffline")}</option>
-              </select>
-            </FilterBar>
-            <div className="list">
+            <div className="dm-players-summary tf-stat-grid">
+              <div className="tf-stat-card">
+                <div className="small">Онлайн</div>
+                <strong>{statusCounts.online}</strong>
+              </div>
+              <div className="tf-stat-card">
+                <div className="small">Нет активности</div>
+                <strong>{statusCounts.idle}</strong>
+              </div>
+              <div className="tf-stat-card">
+                <div className="small">Оффлайн</div>
+                <strong>{statusCounts.offline}</strong>
+              </div>
+            </div>
+            <div className="tf-panel tf-command-bar dm-players-toolbar">
+              <div className="tf-section-copy">
+                <div className="tf-section-kicker">Roster filters</div>
+                <div className="dm-players-toolbar-title">Поиск и статусы</div>
+              </div>
+              <FilterBar className="u-mb-0 dm-players-filterbar">
+                <input
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={t("dmPlayers.searchPlaceholder")}
+                  aria-label={t("dmPlayers.searchPlaceholder")}
+                  className="u-w-min-360"
+                />
+                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label={t("dmPlayers.statusAll")} className="u-w-180">
+                  <option value="all">{t("dmPlayers.statusAll")}</option>
+                  <option value="online">{t("dmPlayers.statusOnline")}</option>
+                  <option value="idle">{t("dmPlayers.statusIdle")}</option>
+                  <option value="offline">{t("dmPlayers.statusOffline")}</option>
+                </select>
+              </FilterBar>
+            </div>
+            <div className="list dm-players-roster">
               {filtered.map((player) => (
                 <PlayerDossierCard
                   key={player.id}
@@ -264,29 +297,46 @@ export default function DMPlayers() {
         </div>
 
         <div className="pane pane-detail">
-          <div className="card taped pane-sticky">
+          <div className="card taped pane-sticky tf-panel tf-dm-player-detail">
             {selectedPlayer ? (
               <>
-                <PageHeader
-                  title={selectedPlayer.displayName}
-                  subtitle={t("dmPlayers.playerMeta", {
-                    id: selectedPlayer.id,
-                    lastSeen: selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"
-                  })}
-                  actions={(
-                    <>
-                      <button className="btn secondary" onClick={() => selectPlayer(0)}>{t("dmPlayers.backToList")}</button>
-                      <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>{t("dmPlayers.openProfile")}</button>
-                    </>
-                  )}
-                />
+                <div className="dm-player-detail-head tf-page-head">
+                  <div className="tf-page-head-main">
+                    <div className="tf-overline">Selected operative</div>
+                    <div className="tf-page-title dm-player-detail-title">{selectedPlayer.displayName}</div>
+                    <div className="small dm-player-detail-meta">
+                      {t("dmPlayers.playerMeta", {
+                        id: selectedPlayer.id,
+                        lastSeen: selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"
+                      })}
+                    </div>
+                  </div>
+                  <div className="tf-command-actions">
+                    <button className="btn secondary" onClick={() => selectPlayer(0)}>{t("dmPlayers.backToList")}</button>
+                    <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>{t("dmPlayers.openProfile")}</button>
+                  </div>
+                </div>
                 <hr />
-                <div className="row u-row-wrap">
+                <div className="row u-row-wrap dm-player-detail-badges">
                   <PlayerStatusPill status={selectedPlayer.status} />
                   <span className="badge">{t("dmPlayers.ticketsBadge", { value: selectedPlayer.ticketBalance ?? 0 })}</span>
                   <span className="badge secondary">{t("dmPlayers.streakBadge", { value: selectedPlayer.ticketStreak ?? 0 })}</span>
                 </div>
-                <div className="list u-list-mt-12">
+                <div className="dm-player-detail-grid">
+                  <div className="tf-stat-card">
+                    <div className="small">Статус</div>
+                    <strong>{t(`playerStatus.${String(selectedPlayer.status || "offline")}`)}</strong>
+                  </div>
+                  <div className="tf-stat-card">
+                    <div className="small">Билеты</div>
+                    <strong>{selectedPlayer.ticketBalance ?? 0}</strong>
+                  </div>
+                  <div className="tf-stat-card">
+                    <div className="small">Серия</div>
+                    <strong>{selectedPlayer.ticketStreak ?? 0}</strong>
+                  </div>
+                </div>
+                <div className="list u-list-mt-12 dm-player-action-list">
                   <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuTickets")}</button>
                   <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuEditName")}</button>
                   <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>{t("dmPlayers.menuAsPlayer")}</button>
@@ -295,7 +345,11 @@ export default function DMPlayers() {
                 </div>
               </>
             ) : (
-              <div className="small">{t("dmPlayers.pickPlayerHint")}</div>
+              <div className="dm-player-empty">
+                <div className="tf-overline">Control panel</div>
+                <div className="dm-player-detail-title">Выбор игрока</div>
+                <div className="small">{t("dmPlayers.pickPlayerHint")}</div>
+              </div>
             )}
           </div>
         </div>

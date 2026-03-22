@@ -35,6 +35,8 @@ export default function ShopJoe() {
     () => buildPurchaseSummary(usage, itemTitleMap),
     [usage, itemTitleMap]
   );
+  const totalPurchases = Number(purchaseSummary?.totalPurchases || 0);
+  const topItemTitle = purchaseSummary?.topItemTitle || "—";
 
   function toastPurchaseError(error) {
     const message = formatError(error);
@@ -76,21 +78,36 @@ export default function ShopJoe() {
   }
 
   return (
-    <div className="card taped shop-shell tavern-shop">
-      <div className="row shop-hero">
-        <div className="shop-hero-copy">
-          <div className="shop-kicker">{"Темная таверна • тёплая лампа"}</div>
-          <div className="shop-title">{"Лавка Джо"}</div>
+    <div className="card taped shop-shell tavern-shop tf-shell tf-shop-shell">
+      <div className="row shop-hero tf-page-head">
+        <div className="shop-hero-copy tf-page-head-main">
+          <div className="shop-kicker tf-overline">{"Merchant counter"}</div>
+          <div className="shop-title tf-page-title">{"Лавка Джо"}</div>
           <div className="small">
             {"Билеты имеют цену: чем сильнее эффект, тем строже лимиты."}
           </div>
         </div>
-        <div className="ticket-bank">
+        <div className="ticket-bank tf-command-actions">
           <div className="ticket-card">
             <div className="ticket-label">{"Баланс"}</div>
             <div className="ticket-value">{loading ? "..." : balance}</div>
           </div>
           <div className="ticket-meta small">{"Крупные покупки лучше делать после серии побед."}</div>
+        </div>
+      </div>
+
+      <div className="shop-summary tf-stat-grid">
+        <div className="tf-stat-card">
+          <div className="small">Доступных секций</div>
+          <strong>{catalog.length}</strong>
+        </div>
+        <div className="tf-stat-card">
+          <div className="small">Покупок сегодня</div>
+          <strong>{totalPurchases}</strong>
+        </div>
+        <div className="tf-stat-card">
+          <div className="small">Фаворит дня</div>
+          <strong>{topItemTitle}</strong>
         </div>
       </div>
 
@@ -100,7 +117,7 @@ export default function ShopJoe() {
         purchaseSummary={purchaseSummary}
       />
 
-      <div className="shop-banner">
+      <div className="shop-banner tf-panel tf-command-bar">
         <div className="banner-title">{"Каждый билет меняет историю"}</div>
         <div className="small">{"Эпические усиления редки, а расходники стабилизируют сцену."}</div>
       </div>
@@ -115,10 +132,13 @@ export default function ShopJoe() {
 
       <div className="list">
         {catalog.map((section) => (
-          <div key={section.key} className="paper-note tavern-section">
-            <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-              <div className="title">{section.title}</div>
-              <div className="small">{section.subtitle}</div>
+          <div key={section.key} className="paper-note tavern-section tf-panel tf-shop-section">
+            <div className="row shop-section-head" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
+              <div className="tf-section-copy">
+                <div className="tf-section-kicker">{"Merchant shelf"}</div>
+                <div className="title shop-section-title">{section.title}</div>
+              </div>
+              <div className="small shop-section-subtitle">{section.subtitle}</div>
             </div>
             <div className="shop-grid" style={{ marginTop: 10 }}>
               {section.items.map((item) => {
@@ -147,7 +167,7 @@ export default function ShopJoe() {
                 const isPendingThis = pendingItemKey === item.key;
 
                 return (
-                  <div key={item.key} className={`item taped shop-card${cardBlocked ? " disabled-card" : ""}`}>
+                  <div key={item.key} className={`item taped shop-card tf-shop-card${cardBlocked ? " disabled-card" : ""}`}>
                     <div className="shop-head">
                       <div className="shop-item-title">{item.title}</div>
                       <span className={`badge ${cardBlocked ? "off" : `badge-impact ${item.impactClass}`}`}>
@@ -156,18 +176,18 @@ export default function ShopJoe() {
                     </div>
                     <div className="small">{item.blurb}</div>
                     <div className="shop-meta">
-                      <span className="meta-chip">
+                      <span className="meta-chip tf-shop-chip">
                         {"Лимит: "}{formatLimit(item.limit, dailyLimit)}
                       </span>
-                      <span className="meta-chip">{item.note}</span>
+                      <span className="meta-chip tf-shop-chip">{item.note}</span>
                       {dailyLimit ? (
-                        <span className="meta-chip">
+                        <span className="meta-chip tf-shop-chip">
                           {"Сегодня: "}{usedToday}/{dailyLimit}
                         </span>
                       ) : null}
                     </div>
                     <div className="row shop-actions" style={{ justifyContent: "space-between" }}>
-                      <span className="ticket-pill">{priceLabel(itemPrice)}</span>
+                      <span className="ticket-pill tf-shop-price">{priceLabel(itemPrice)}</span>
                       <button
                         className="btn secondary"
                         disabled={isDisabled}
@@ -177,7 +197,7 @@ export default function ShopJoe() {
                         {isPendingThis ? "Покупаем..." : "Купить"}
                       </button>
                     </div>
-                    {disabledReason ? <div className="small">{disabledReason}</div> : null}
+                    {disabledReason ? <div className="small shop-disabled-note">{disabledReason}</div> : null}
                   </div>
                 );
               })}
