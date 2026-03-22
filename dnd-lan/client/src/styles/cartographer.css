@@ -3313,6 +3313,38 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   margin-bottom: 14px;
 }
 
+.players-summary-strip{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.players-summary-pill{
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(242, 234, 220, 0.92));
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.players-summary-pill span{
+  color: #756754;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.players-summary-pill strong{
+  color: #2f261d;
+  font-size: 16px;
+  font-weight: 900;
+}
+
 .players-toolbar{
   gap: 14px;
   margin-bottom: 8px;
@@ -3357,6 +3389,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .players-mobile-fold-summary{
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-height: 52px;
   padding: 0 16px;
   cursor: pointer;
@@ -3365,10 +3398,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   font-weight: 800;
   color: var(--map-ink);
   list-style: none;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(242, 234, 219, 0.92));
 }
 
 .players-mobile-fold-summary::-webkit-details-marker{
   display: none;
+}
+
+.players-mobile-fold-summary::after{
+  content: "+";
+  color: #6a7f59;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.players-mobile-fold[open] .players-mobile-fold-summary{
+  border-bottom: 1px solid rgba(118, 100, 70, 0.12);
+}
+
+.players-mobile-fold[open] .players-mobile-fold-summary::after{
+  content: "−";
 }
 
 .players-mobile-fold-body{
@@ -3473,7 +3522,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .dossier-head{
-  margin-top: 10px;
+  margin-top: 0;
+}
+
+.dossier-topline{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .dossier-name{
@@ -3543,30 +3600,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     justify-content: flex-start;
   }
 
-  .players-summary{
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-
-  .players-summary .tf-stat-card{
-    padding: 10px 10px;
-    min-height: 0;
-  }
-
-  .players-summary .tf-stat-card strong{
-    font-size: 18px;
-  }
-
   .players-side-stack{
     gap: 10px;
   }
 
   .tf-roster-card{
     display: grid;
-    grid-template-columns: 86px minmax(0, 1fr);
-    gap: 12px;
-    padding: 14px;
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px;
     border-radius: 20px;
   }
 
@@ -3574,7 +3616,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     width: auto;
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 0;
   }
 
   .dossier-meta{
@@ -3584,12 +3626,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     gap: 6px;
   }
 
+  .tf-roster-card .polaroid-frame{
+    width: 72px;
+    height: 72px;
+  }
+
   .dossier-body{
     width: 100%;
   }
 
   .dossier-flags{
     gap: 6px;
+    margin-top: 6px;
   }
 
   .tf-roster-card .badge{
@@ -3602,8 +3650,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     font-size: 16px;
   }
 
-  .dossier-head{
-    margin-top: 6px;
+  .dossier-topline{
+    gap: 8px;
   }
 
   .dossier-last-seen{
@@ -3626,12 +3674,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 @media (max-width: 420px){
   .tf-roster-card{
     padding: 14px;
-    grid-template-columns: 76px minmax(0, 1fr);
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .dossier-side{
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tf-roster-card .polaroid-frame{
+    width: 64px;
+    height: 64px;
   }
 
   .tf-players-shell{

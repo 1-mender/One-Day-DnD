@@ -43,13 +43,30 @@ export default function PlayerDossierCard({
     >
       <div className="dossier-side">
         <PolaroidFrame src={avatar} alt={player.displayName} fallback={initial} />
-        <div className="dossier-meta">
-          <span className="badge">#{player.id}</span>
-          <StatusStamp status={player.status} />
-        </div>
       </div>
 
       <div className="dossier-body">
+        <div className="dossier-head">
+          <div className="dossier-topline">
+            <div className="dossier-meta">
+              <span className="badge">#{player.id}</span>
+              <StatusStamp status={player.status} />
+            </div>
+            {menu ? <div className="dossier-menu">{menu}</div> : null}
+          </div>
+          <div className="dossier-name">
+            <span>{player.displayName}</span>
+            {player.inventoryOverLimit ? (
+              <span
+                className="dossier-overweight"
+                title={`Перегруз • Вес: ${weightLabel}`}
+                aria-label={`Перегруз • Вес: ${weightLabel}`}
+              >
+                <Scale className="icon" aria-hidden="true" />
+              </span>
+            ) : null}
+          </div>
+        </div>
         <div className="dossier-flags">
           {player.profileCreated ? (
             <span className="badge ok">ПРОФИЛЬ OK</span>
@@ -64,22 +81,6 @@ export default function PlayerDossierCard({
           {ticketStreak != null ? (
             <span className="badge secondary">Серия: {ticketStreak}</span>
           ) : null}
-        </div>
-
-        <div className="dossier-head">
-          <div className="dossier-name">
-            <span>{player.displayName}</span>
-            {player.inventoryOverLimit ? (
-              <span
-                className="dossier-overweight"
-                title={`Перегруз • Вес: ${weightLabel}`}
-                aria-label={`Перегруз • Вес: ${weightLabel}`}
-              >
-                <Scale className="icon" aria-hidden="true" />
-              </span>
-            ) : null}
-          </div>
-          {menu ? <div className="dossier-menu">{menu}</div> : null}
         </div>
         <div className="small dossier-last-seen">
           {t("playerDossier.lastSeen", null, "Последняя активность")}: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}

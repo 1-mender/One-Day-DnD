@@ -146,20 +146,28 @@ export default function Players() {
             </div>
           </div>
 
-          <div className="players-summary tf-stat-grid">
-            <div className="tf-stat-card">
-              <div className="small">Онлайн</div>
-              <strong>{statusCounts.online}</strong>
+          {isNarrowScreen ? (
+            <div className="players-summary-strip">
+              <div className="players-summary-pill"><span>Онлайн</span><strong>{statusCounts.online}</strong></div>
+              <div className="players-summary-pill"><span>Нет активности</span><strong>{statusCounts.idle}</strong></div>
+              <div className="players-summary-pill"><span>Оффлайн</span><strong>{statusCounts.offline}</strong></div>
             </div>
-            <div className="tf-stat-card">
-              <div className="small">Нет активности</div>
-              <strong>{statusCounts.idle}</strong>
+          ) : (
+            <div className="players-summary tf-stat-grid">
+              <div className="tf-stat-card">
+                <div className="small">Онлайн</div>
+                <strong>{statusCounts.online}</strong>
+              </div>
+              <div className="tf-stat-card">
+                <div className="small">Нет активности</div>
+                <strong>{statusCounts.idle}</strong>
+              </div>
+              <div className="tf-stat-card">
+                <div className="small">Оффлайн</div>
+                <strong>{statusCounts.offline}</strong>
+              </div>
             </div>
-            <div className="tf-stat-card">
-              <div className="small">Оффлайн</div>
-              <strong>{statusCounts.offline}</strong>
-            </div>
-          </div>
+          )}
 
           <div className="players-toolbar tf-panel tf-command-bar">
             <div className="tf-section-copy">
