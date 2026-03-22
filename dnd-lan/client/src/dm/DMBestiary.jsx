@@ -12,7 +12,7 @@ export default function DMBestiary() {
 
   return (
     <>
-      <div className="two-pane" data-detail={selected ? "1" : "0"}>
+      <div className="two-pane dm-bestiary-board" data-detail={selected ? "1" : "0"}>
         <DMBestiaryListSection controller={controller} />
         <div className="pane pane-detail">
           <DMBestiaryDetailSection controller={controller} />

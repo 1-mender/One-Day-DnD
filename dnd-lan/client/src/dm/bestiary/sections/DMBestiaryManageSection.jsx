@@ -26,8 +26,11 @@ export default function DMBestiaryManageSection({ controller }) {
   } = controller;
 
   return (
-    <div className="card taped scrap-card u-mt-12">
-      <div className="u-fw-800">Управление</div>
+    <div className="card taped scrap-card u-mt-12 tf-panel dm-bestiary-manage">
+      <div className="tf-section-copy">
+        <div className="tf-section-kicker">Archive ops</div>
+        <div className="u-fw-800 dm-bestiary-section-title">Управление</div>
+      </div>
       <div className="small">Экспорт / импорт / видимость</div>
       <hr />
       <div className="row u-row-gap-8 u-row-wrap">
@@ -68,7 +71,7 @@ export default function DMBestiaryManageSection({ controller }) {
       {portErr ? <div className="badge off u-mt-10">Ошибка: {portErr}</div> : null}
       {portMsg ? <div className="badge ok u-mt-10">{portMsg}</div> : null}
       {portPlan ? (
-        <div className="card taped u-mt-12">
+        <div className="card taped u-mt-12 tf-panel dm-bestiary-plan">
           <div className="u-fw-900">План проверки</div>
           <div className="small u-mt-6">
             режим={portPlan.mode}, сопоставление={portPlan.match}, при совпадении={portPlan.onExisting}, картинки={String(portPlan.imagesMeta)}

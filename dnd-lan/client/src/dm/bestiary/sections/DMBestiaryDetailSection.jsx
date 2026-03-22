@@ -4,12 +4,13 @@ export default function DMBestiaryDetailSection({ controller }) {
   const { readOnly, selectMonster, selected, startEdit, toggleMonsterHidden } = controller;
 
   return (
-    <div className="card taped scrap-card pane-sticky">
+    <div className="card taped scrap-card pane-sticky tf-panel dm-bestiary-detail">
       {selected ? (
         <>
-          <div className="row u-row-between-center">
-            <div>
-              <div className="u-title-xl">{selected.name}</div>
+          <div className="tf-page-head dm-bestiary-detail-head">
+            <div className="tf-page-head-main">
+              <div className="tf-overline">Selected creature</div>
+              <div className="u-title-xl tf-page-title dm-bestiary-detail-title">{selected.name}</div>
               <div className="small">{selected.type || "-"} • CR: {selected.cr || "-"}</div>
             </div>
             <div className="row u-row-gap-8">
@@ -30,12 +31,12 @@ export default function DMBestiaryDetailSection({ controller }) {
             </button>
           </div>
           {selected.description ? (
-            <div className="u-mt-12">
+            <div className="u-mt-12 dm-bestiary-description tf-panel">
               <MarkdownView source={selected.description} />
             </div>
           ) : null}
           {Array.isArray(selected.abilities) && selected.abilities.length ? (
-            <div className="paper-note u-mt-12">
+            <div className="paper-note u-mt-12 tf-panel dm-bestiary-abilities">
               <div className="title">Способности</div>
               <div className="small u-pre-wrap">{selected.abilities.join("\n")}</div>
             </div>

@@ -24,12 +24,22 @@ export default function DMBestiaryListSection({ controller }) {
 
   return (
     <div className="pane pane-list">
-      <div className="card taped scrap-card paper-stack">
-        <div className="u-title-xl">Бестиарий (мастер)</div>
-        <div className="small">Каталог существ и общий лор</div>
+      <div className="card taped scrap-card paper-stack tf-shell tf-dm-bestiary-shell">
+        <div className="tf-page-head">
+          <div className="tf-page-head-main">
+            <div className="tf-overline">Master archive</div>
+            <div className="u-title-xl tf-page-title">Бестиарий (мастер)</div>
+            <div className="small">Каталог существ и общий лор</div>
+          </div>
+        </div>
         <hr />
         {err ? <div className="badge off">Ошибка: {err}</div> : null}
-        <div className="row u-row-wrap">
+        <div className="tf-panel tf-command-bar dm-bestiary-toolbar">
+          <div className="tf-section-copy">
+            <div className="tf-section-kicker">Search archive</div>
+            <div className="dm-bestiary-section-title">Поиск и видимость</div>
+          </div>
+          <div className="row u-row-wrap">
           <input
             value={q}
             onChange={(event) => setQ(event.target.value)}
@@ -46,12 +56,13 @@ export default function DMBestiaryListSection({ controller }) {
             {enabled ? "Видно игрокам" : "Скрыто для игроков"}
           </span>
           <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
+          </div>
         </div>
-        <div className="list u-list-mt-12">
+        <div className="list u-list-mt-12 dm-bestiary-list">
           {filtered.map((monster) => (
             <div
               key={monster.id}
-              className={`item taped u-items-stretch${selected?.id === monster.id ? " selected" : ""}`}
+              className={`item taped u-items-stretch tf-monster-card dm-bestiary-card${selected?.id === monster.id ? " selected" : ""}`}
               onClick={() => selectMonster(monster.id)}
               role="button"
               tabIndex={0}

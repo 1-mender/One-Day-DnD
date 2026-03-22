@@ -3545,6 +3545,58 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 }
 
+/* DM bestiary tactical pass */
+.dm-bestiary-board{
+  align-items: start;
+}
+
+.tf-dm-bestiary-shell{
+  border-radius: 28px;
+  padding: 22px;
+}
+
+.dm-bestiary-toolbar{
+  gap: 12px;
+}
+
+.dm-bestiary-section-title{
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--map-ink);
+}
+
+.dm-bestiary-list{
+  gap: 12px;
+}
+
+.dm-bestiary-card{
+  min-height: 108px;
+}
+
+.dm-bestiary-detail,
+.dm-bestiary-manage,
+.dm-bestiary-plan{
+  border-radius: 24px;
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.dm-bestiary-detail-title{
+  color: var(--map-ink);
+}
+
+.dm-bestiary-description,
+.dm-bestiary-abilities{
+  border-radius: 18px;
+  box-shadow: var(--tf-shadow-soft);
+}
+
+@media (max-width: 720px){
+  .tf-dm-bestiary-shell{
+    padding: 18px;
+  }
+}
+
 @media (max-width: 720px){
   .dm-topbar{
     justify-content: flex-start;
