@@ -37,7 +37,7 @@ export default function ProfileContent({ controller }) {
             <div className="profile-section-kicker tf-section-kicker">Открытая глава</div>
             <div className="title profile-block-title">Публичный блок</div>
           </div>
-          <span className="badge ok profile-visibility-badge">видят все игроки</span>
+          <span className="badge ok profile-visibility-badge">видят все</span>
         </div>
         <div className="small note-hint profile-visibility-hint">
           Визитка персонажа и биография доступны всей группе.
@@ -52,7 +52,7 @@ export default function ProfileContent({ controller }) {
               </div>
               {canEdit("avatarUrl") ? (
                 <button className="btn secondary profile-inline-btn" onClick={() => openEdit("avatar")}>
-                  <ImageUp className="icon" aria-hidden="true" />Редактировать
+                  <ImageUp className="icon" aria-hidden="true" />Аватар
                 </button>
               ) : null}
             </div>
@@ -97,7 +97,7 @@ export default function ProfileContent({ controller }) {
                 </div>
                 {canEditBasic ? (
                   <button className="btn secondary profile-action profile-inline-btn" onClick={() => openEdit("basic")}>
-                    <PencilLine className="icon" aria-hidden="true" />Редактировать
+                    <PencilLine className="icon" aria-hidden="true" />Данные
                   </button>
                 ) : null}
               </div>

@@ -7,7 +7,7 @@ function StatusStamp({ status }) {
   const s = String(status || "offline");
   const cls = s === "online" ? "online" : s === "idle" ? "idle" : "offline";
   const label = t(`playerStatus.${cls}`, null, cls).toUpperCase();
-  return <span className={`stamp tf-status-stamp ${cls}`}>{label}</span>;
+  return <span className={`stamp tf-status-stamp dossier-status-stamp ${cls}`}>{label}</span>;
 }
 
 export default function PlayerDossierCard({
@@ -48,37 +48,35 @@ export default function PlayerDossierCard({
 
       <div className="dossier-body">
         <div className="dossier-head">
-          <div className="dossier-topline">
+          <div className="dossier-header-row">
+            <div className="dossier-name">
+              <span>{player.displayName}</span>
+              {player.inventoryOverLimit ? (
+                <span
+                  className="dossier-overweight"
+                  title={`Перегруз • Вес: ${weightLabel}`}
+                  aria-label={`Перегруз • Вес: ${weightLabel}`}
+                >
+                  <Scale className="icon" aria-hidden="true" />
+                </span>
+              ) : null}
+            </div>
             <div className="dossier-topmeta">
-              <span className="badge">#{player.id}</span>
+              <span className="badge secondary dossier-id-badge">#{player.id}</span>
               <StatusStamp status={player.status} />
             </div>
             {menu ? <div className="dossier-menu">{menu}</div> : null}
           </div>
-          <div className="dossier-name">
-            <span>{player.displayName}</span>
-            {player.inventoryOverLimit ? (
-              <span
-                className="dossier-overweight"
-                title={`Перегруз • Вес: ${weightLabel}`}
-                aria-label={`Перегруз • Вес: ${weightLabel}`}
-              >
-                <Scale className="icon" aria-hidden="true" />
-              </span>
-            ) : null}
-          </div>
         </div>
-        <div className="small dossier-last-seen">
-          {t("playerDossier.lastSeen", null, "Активность")}: {lastSeenLabel}
-        </div>
+        <div className="small dossier-last-seen" title={player.lastSeen || ""}>{lastSeenLabel}</div>
         <div className="dossier-flags">
           {player.profileCreated ? (
-            <span className="badge ok">ПРОФИЛЬ OK</span>
+            <span className="badge ok">ПРОФИЛЬ</span>
           ) : (
-            <span className="badge warn">НЕТ ПРОФИЛЯ</span>
+            <span className="badge warn">НЕТ ПРОФ.</span>
           )}
           <span className="badge secondary">ЗАМЕТКИ</span>
-          <span className="badge secondary">ИНВЕНТАРЬ</span>
+          <span className="badge secondary">ИНВ.</span>
           {ticketBalance != null ? (
             <span className="badge">Билеты: {ticketBalance}</span>
           ) : null}

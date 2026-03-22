@@ -196,10 +196,8 @@ export default function Players() {
           {isNarrowScreen ? (
             <div className="players-summary-strip">
               <div className="players-summary-pill"><span>Видимых</span><strong>{filtered.length}</strong></div>
-              <div className="players-summary-pill"><span>Всего</span><strong>{players.length}</strong></div>
               <div className="players-summary-pill"><span>Онлайн</span><strong>{statusCounts.online}</strong></div>
-              <div className="players-summary-pill"><span>Нет активности</span><strong>{statusCounts.idle}</strong></div>
-              <div className="players-summary-pill"><span>Оффлайн</span><strong>{statusCounts.offline}</strong></div>
+              <div className="players-summary-pill"><span>Пассивных</span><strong>{statusCounts.idle + statusCounts.offline}</strong></div>
             </div>
           ) : (
             <div className="players-summary tf-stat-grid">
