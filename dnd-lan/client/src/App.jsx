@@ -2,6 +2,7 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SocketProvider } from "./context/SocketContext.jsx";
 import { t } from "./i18n/index.js";
+import VintageShell from "./components/vintage/VintageShell.jsx";
 
 import Join from "./player/Join.jsx";
 import Waiting from "./player/Waiting.jsx";
@@ -51,6 +52,16 @@ export default function App() {
       <Routes>
         {/* Player */}
         <Route path="/" element={<Join />} />
+        <Route
+          path="/test-drive"
+          element={withSuspense(
+            <VintageShell layout="spread" pageKey="/test-drive">
+              <div className="container padBottom">
+                <TestDrive />
+              </div>
+            </VintageShell>
+          )}
+        />
         <Route path="/waiting" element={<SocketProvider role="waiting"><Waiting /></SocketProvider>} />
         <Route path="/app" element={<SocketProvider role="player"><PlayerLayout /></SocketProvider>}>
           <Route index element={<Navigate to="players" replace />} />
