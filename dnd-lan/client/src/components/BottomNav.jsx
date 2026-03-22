@@ -11,6 +11,10 @@ export default function BottomNav({ items = [] }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
+  const [compactMobile, setCompactMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(max-width: 720px)").matches;
+  });
   const rootRef = useRef(null);
   const toggleRef = useRef(null);
   const menuRef = useRef(null);
@@ -18,11 +22,36 @@ export default function BottomNav({ items = [] }) {
   const menuId = useId();
 
   const { normalized, primary, secondary } = useMemo(() => {
-    return partitionNavItems(items, 7);
-  }, [items]);
+    const maxPrimary = compactMobile ? 4 : 7;
+    const partitioned = partitionNavItems(items, maxPrimary);
+    if (!compactMobile) return partitioned;
+
+    const activeSecondary = partitioned.secondary.find(
+      (item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+    );
+    if (!activeSecondary || partitioned.primary.some((item) => item.to === activeSecondary.to)) {
+      return partitioned;
+    }
+
+    const nextPrimary = [...partitioned.primary];
+    nextPrimary[Math.max(0, nextPrimary.length - 1)] = activeSecondary;
+    const nextSecondary = partitioned.normalized.filter(
+      (item) => !nextPrimary.some((primaryItem) => primaryItem.to === item.to)
+    );
+    return { ...partitioned, primary: nextPrimary, secondary: nextSecondary };
+  }, [compactMobile, items, location.pathname]);
 
   const isPathActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`);
   const secondaryActive = secondary.some((item) => isPathActive(item.to));
+
+  useEffect(() => {
+    if (typeof window === "undefined") return () => {};
+    const media = window.matchMedia("(max-width: 720px)");
+    const apply = () => setCompactMobile(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
 
   useEffect(() => {
     itemRefs.current = itemRefs.current.slice(0, secondary.length);

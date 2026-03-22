@@ -2463,11 +2463,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .tf-shop-shell .shop-section-title{
-  color: #dee5eb;
+  color: #efe7da;
 }
 
 .tf-shop-shell .shop-section-subtitle{
-  color: rgba(205, 213, 220, 0.76);
+  color: rgba(232, 225, 214, 0.88);
 }
 
 .tf-shop-shell .tf-shop-section{
@@ -2617,22 +2617,120 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 @media (max-width: 720px){
+  .tf-shop-shell{
+    padding: 14px;
+    border-radius: 22px;
+  }
+
   .tf-shop-shell .shop-summary{
+    display: none;
+  }
+
+  .tf-shop-shell .shop-hero{
+    gap: 10px;
+  }
+
+  .tf-shop-shell .ticket-bank{
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .tf-shop-shell .ticket-card{
+    min-width: 0;
+    min-height: 82px;
+    padding: 12px 14px;
+  }
+
+  .tf-shop-shell .shop-mascot-stall{
+    display: none;
+  }
+
+  .tf-shop-shell .shop-banner{
     margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 18px;
+  }
+
+  .tf-shop-shell .shop-section-title{
+    color: #f2ece2;
+    font-size: 24px;
+    line-height: 1.05;
+  }
+
+  .tf-shop-shell .shop-section-subtitle{
+    display: none;
   }
 
   .tf-shop-shell .shop-section-head{
     align-items: start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .tf-shop-shell .tf-shop-section{
+    padding: 14px 12px;
+    border-radius: 20px;
+  }
+
+  .tf-shop-shell .shop-grid{
+    gap: 12px;
+  }
+
+  .tf-shop-shell .tf-shop-card{
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .tf-shop-shell .shop-item-title{
+    font-size: 22px;
+  }
+
+  .tf-shop-shell .shop-card-blurb{
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .tf-shop-shell .shop-meta{
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .tf-shop-shell .tf-shop-chip{
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .tf-shop-shell .shop-actions{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .tf-shop-shell .tf-shop-price,
+  .tf-shop-shell .tf-shop-buy-btn{
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .tf-shop-shell .tf-shop-buy-btn{
+    min-height: 42px;
+  }
+
+  .tf-shop-shell .shop-disabled-note{
+    margin-top: 6px;
+    font-size: 12px;
   }
 }
 
 @media (max-width: 720px){
   .inventory-shell{
-    padding: 14px 14px 12px;
+    padding: 12px 12px 10px;
   }
 
   .inv-filters{
-    margin-top: 10px;
+    margin-top: 8px;
   }
 
   .inv-header{
@@ -2645,11 +2743,72 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .inv-mobile-quick-actions{
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
   }
 
   .inv-transfer-grid{
     grid-template-columns: 1fr;
+  }
+
+  .inv-mobile-quick-actions .btn{
+    min-width: 0;
+    min-height: 42px;
+    padding-inline: 8px;
+    font-size: 13px;
+  }
+
+  .inv-mobile-sticky{
+    padding: 12px;
+    gap: 10px;
+    border-radius: 18px;
+  }
+
+  .inv-mobile-section{
+    border-radius: 18px;
+  }
+
+  .inv-mobile-section-summary{
+    min-height: 52px;
+    padding: 0 16px;
+    font-size: 16px;
+  }
+
+  .inv-mobile-section-body{
+    padding: 0 14px 14px;
+  }
+
+  .inv-panel-head{
+    margin-bottom: 10px;
+  }
+
+  .tf-inventory-shell{
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .tf-inventory-shell .inv-card{
+    padding: 12px;
+    border-radius: 18px;
+  }
+
+  .tf-inventory-shell .inv-title{
+    font-size: 17px;
+    line-height: 1.1;
+  }
+
+  .tf-inventory-shell .inv-meta-row{
+    gap: 6px;
+  }
+
+  .tf-inventory-shell .inv-chip{
+    min-height: 24px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .tf-item-list{
+    gap: 10px;
   }
 
   .character-hero{
@@ -2657,9 +2816,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .character-portrait{
-    flex-direction: row;
-    align-items: center;
+    flex-direction: column;
+    align-items: flex-start;
     gap: 12px;
+  }
+
+  .character-tags{
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .profile-shell{
@@ -2692,6 +2856,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     font-size: 28px;
   }
 
+  .profile-hero{
+    gap: 14px;
+  }
+
   .profile-request-item{
     padding: 12px 14px;
   }
@@ -2717,25 +2885,46 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-monster-card{
-    grid-template-columns: 64px minmax(0, 1fr);
+    grid-template-columns: 56px minmax(0, 1fr) auto;
     align-items: start;
     min-height: 0;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
   }
 
   .tf-monster-card .badge.secondary{
-    grid-column: 1 / -1;
-    justify-self: start;
+    grid-column: auto;
+    align-self: center;
+    justify-self: end;
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
   }
 
   .tf-monster-thumb{
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    font-size: 18px;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    font-size: 17px;
   }
 
   .bestiary-card-name{
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1.08;
+  }
+
+  .tf-bestiary-shell{
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .bestiary-toolbar{
+    padding: 12px;
+  }
+
+  .bestiary-search{
+    min-height: 50px;
   }
 }
 
@@ -2757,6 +2946,24 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .profile-shell,
   .tf-bestiary-shell{
     padding: 14px;
+  }
+
+  .tf-shop-shell{
+    padding: 12px;
+  }
+
+  .inv-mobile-quick-actions{
+    grid-template-columns: 1fr;
+  }
+
+  .tf-monster-card{
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .tf-monster-card .badge.secondary{
+    grid-column: 1 / -1;
+    justify-self: start;
+    margin-top: 2px;
   }
 }
 
@@ -4527,6 +4734,23 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   align-items: center;
 }
 
+@media (max-width: 720px){
+  .tf-notes-shell{
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .tf-notes-shell .list{
+    gap: 10px;
+  }
+
+  .tf-notes-shell .note-card{
+    padding: 14px;
+    border-radius: 18px;
+    align-items: flex-start;
+  }
+}
+
 .tf-transfers-shell{
   background:
     radial-gradient(circle at top right, rgba(109, 138, 87, 0.08), transparent 26%),
@@ -4831,13 +5055,33 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .bottom-nav-inner{
-    gap: 6px;
-    padding: 8px;
+    gap: 4px;
+    padding: 5px;
   }
 
   .bottom-nav-link,
   .bottom-nav-link-btn{
-    min-width: 80px;
+    min-width: 0;
+    min-height: 54px;
+    padding: 8px 6px;
+    flex: 1 1 0;
+    border-radius: 16px;
+  }
+
+  .bottom-nav-link .nav-icon,
+  .bottom-nav-link-btn .nav-icon{
+    width: 16px;
+    height: 16px;
+  }
+
+  .bottom-nav-link > span,
+  .bottom-nav-link-btn > span{
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 10px;
+    line-height: 1.05;
   }
 
   .test-drive-toolbar{
@@ -4857,6 +5101,30 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .test-drive-inline-stats{
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px){
+  .bottom-nav{
+    padding-inline: 4px;
+  }
+
+  .bottom-nav-inner{
+    gap: 2px;
+    padding: 4px;
+    border-radius: 20px;
+  }
+
+  .bottom-nav-link,
+  .bottom-nav-link-btn{
+    min-height: 52px;
+    padding: 7px 3px;
+    border-radius: 14px;
+  }
+
+  .bottom-nav-link > span,
+  .bottom-nav-link-btn > span{
+    font-size: 9.5px;
   }
 }
 }
