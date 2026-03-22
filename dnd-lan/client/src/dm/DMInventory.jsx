@@ -69,7 +69,7 @@ export default function DMInventory() {
   } = controller;
 
   return (
-    <div className="card dm-inv-shell" data-has-selection={selectedCount > 0 ? "true" : "false"}>
+    <div className="card dm-inv-shell tf-shell tf-dm-inv-shell" data-has-selection={selectedCount > 0 ? "true" : "false"}>
       <PageHeader title={t("dmInventory.title")} subtitle={t("dmInventory.subtitle")} />
       <hr />
       <ErrorBanner message={err} onRetry={() => loadInv(selectedId)} />

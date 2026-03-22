@@ -20,7 +20,7 @@ export default function DMInventoryItemsSection({
 }) {
   return (
     <div
-      className={`list inv-shelf dm-inv-list ${view === "grid" ? "inv-grid" : ""}`}
+      className={`list inv-shelf dm-inv-list tf-panel ${view === "grid" ? "inv-grid tf-item-grid" : "tf-item-list"}`}
       style={{ height: view === "list" ? "70vh" : undefined, overflow: view === "list" ? "auto" : undefined }}
       ref={view === "grid" ? autoAnimateRef : listRef}
     >

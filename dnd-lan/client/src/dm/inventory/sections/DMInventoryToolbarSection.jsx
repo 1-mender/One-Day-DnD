@@ -11,8 +11,11 @@ export default function DMInventoryToolbarSection({
   refresh
 }) {
   return (
-    <div className="dm-inv-panel">
-      <div className="dm-inv-panel-title">Игрок</div>
+    <div className="dm-inv-panel tf-panel">
+      <div className="tf-section-copy">
+        <div className="tf-section-kicker">Roster target</div>
+        <div className="dm-inv-panel-title">Игрок</div>
+      </div>
       <FilterBar>
         <select
           value={selectedId}

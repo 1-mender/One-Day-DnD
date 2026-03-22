@@ -15,7 +15,7 @@ export default function DMInventoryTransfersSection({
 }) {
   return (
     <SectionCard
-      className="u-mt-12"
+      className="u-mt-12 tf-panel dm-inv-transfers-card"
       title={t("dmInventory.transfersTitle")}
       subtitle={t("dmInventory.transfersHint")}
       actions={(
@@ -41,9 +41,9 @@ export default function DMInventoryTransfersSection({
             {transfers.length ? t("dmInventory.transferNotFound") : t("dmInventory.transferEmpty")}
           </div>
         ) : (
-          <div className="list">
+          <div className="list dm-inv-transfer-list">
             {filteredTransfers.map((transfer) => (
-              <div key={transfer.id} className="item u-items-start">
+              <div key={transfer.id} className="item u-items-start dm-inv-transfer-item">
                 <div className="u-flex-1">
                   <div className="row u-row-gap-8 u-row-wrap">
                     {Number(transfer.expiresAt || 0) > 0 && Number(transfer.expiresAt) <= Date.now() ? (

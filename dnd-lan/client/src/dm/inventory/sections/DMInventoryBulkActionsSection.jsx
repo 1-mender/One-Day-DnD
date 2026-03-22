@@ -11,8 +11,11 @@ export default function DMInventoryBulkActionsSection({
   selectedId
 }) {
   return (
-    <div className="dm-inv-panel">
-      <div className="dm-inv-panel-title">Выбор</div>
+    <div className="dm-inv-panel tf-panel">
+      <div className="tf-section-copy">
+        <div className="tf-section-kicker">Selection ops</div>
+        <div className="dm-inv-panel-title">Выбор</div>
+      </div>
       <FilterBar>
         <span className="badge secondary">{t("dmInventory.selectedCount", { count: selectedCount })}</span>
         <button

@@ -18,8 +18,11 @@ export default function DMInventoryFiltersSection({
   vis
 }) {
   return (
-    <div className="dm-inv-panel">
-      <div className="dm-inv-panel-title">Фильтры</div>
+    <div className="dm-inv-panel tf-panel dm-inv-panel-filters">
+      <div className="tf-section-copy">
+        <div className="tf-section-kicker">Inventory filters</div>
+        <div className="dm-inv-panel-title">Фильтры</div>
+      </div>
       <FilterBar>
         <input
           value={q}
@@ -40,19 +43,31 @@ export default function DMInventoryFiltersSection({
           ))}
         </select>
       </FilterBar>
-      <div className="dm-inv-view">
-        <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
+      <div className="dm-inv-view tf-segmented">
+        <button className={`btn tf-segmented-btn ${view === "list" ? "tf-segmented-btn-active" : "secondary"}`} onClick={() => setView("list")}>
           <List className="icon" aria-hidden="true" />{t("dmInventory.viewList")}
         </button>
-        <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
+        <button className={`btn tf-segmented-btn ${view === "grid" ? "tf-segmented-btn-active" : "secondary"}`} onClick={() => setView("grid")}>
           <LayoutGrid className="icon" aria-hidden="true" />{t("dmInventory.viewGrid")}
         </button>
       </div>
-      <div className="dm-inv-stats">
-        <span className="badge"><Package className="icon" aria-hidden="true" />{t("dmInventory.totalItems", { count: filteredCount })}</span>
-        <span className="badge ok"><Eye className="icon" aria-hidden="true" />{t("dmInventory.totalPublic", { count: publicCount })}</span>
-        <span className="badge off"><EyeOff className="icon" aria-hidden="true" />{t("dmInventory.totalHidden", { count: hiddenCount })}</span>
-        <span className="badge secondary"><Scale className="icon" aria-hidden="true" />{t("dmInventory.totalWeight", { value: totalWeightAll.toFixed(2) })}</span>
+      <div className="dm-inv-stats tf-stat-grid">
+        <div className="tf-stat-card">
+          <div className="small"><Package className="icon" aria-hidden="true" />Всего</div>
+          <strong>{filteredCount}</strong>
+        </div>
+        <div className="tf-stat-card">
+          <div className="small"><Eye className="icon" aria-hidden="true" />Публичные</div>
+          <strong>{publicCount}</strong>
+        </div>
+        <div className="tf-stat-card">
+          <div className="small"><EyeOff className="icon" aria-hidden="true" />Скрытые</div>
+          <strong>{hiddenCount}</strong>
+        </div>
+        <div className="tf-stat-card">
+          <div className="small"><Scale className="icon" aria-hidden="true" />Вес</div>
+          <strong>{totalWeightAll.toFixed(2)}</strong>
+        </div>
       </div>
     </div>
   );
