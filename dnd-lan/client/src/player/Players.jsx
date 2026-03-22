@@ -18,6 +18,7 @@ export default function Players() {
   const [err, setErr] = useState("");
   const { socket } = useSocket();
   const [listRef] = useAutoAnimate({ duration: 200 });
+  const isNarrowScreen = useIsNarrowScreen();
 
   const load = useCallback(async () => {
     setErr("");
@@ -67,6 +68,67 @@ export default function Players() {
       { online: 0, idle: 0, offline: 0 }
     );
   }, [players]);
+
+  const legendContent = (
+    <>
+      <div className="tf-section-head">
+        <div className="tf-section-copy">
+          <div className="tf-section-kicker">Field guide</div>
+          <div className="u-fw-800 players-guide-title">Легенда статусов</div>
+        </div>
+        <Users className="players-guide-icon" aria-hidden="true" />
+      </div>
+      <div className="list players-legend-list">
+        <div className="item">
+          <div className="kv">
+            <div className="u-fw-700">Онлайн</div>
+            <div className="small">Игрок активен и сейчас в сессии.</div>
+          </div>
+          <PlayerStatusPill status="online" />
+        </div>
+        <div className="item">
+          <div className="kv">
+            <div className="u-fw-700">Нет активности</div>
+            <div className="small">Соединение живое, но действий давно не было.</div>
+          </div>
+          <PlayerStatusPill status="idle" />
+        </div>
+        <div className="item">
+          <div className="kv">
+            <div className="u-fw-700">Оффлайн</div>
+            <div className="small">Игрок отключён и скрыт из списка слева.</div>
+          </div>
+          <PlayerStatusPill status="offline" />
+        </div>
+      </div>
+    </>
+  );
+
+  const briefContent = (
+    <>
+      <div className="tf-section-head">
+        <div className="tf-section-copy">
+          <div className="tf-section-kicker">Roster brief</div>
+          <div className="u-fw-800 players-guide-title">Полевая сводка</div>
+        </div>
+        <Activity className="players-guide-icon" aria-hidden="true" />
+      </div>
+      <div className="players-note-grid">
+        <div className="tf-stat-card">
+          <div className="small">Видно сейчас</div>
+          <strong>{filtered.length}</strong>
+        </div>
+        <div className="tf-stat-card">
+          <div className="small">Активных статусов</div>
+          <strong>{statusCounts.online + statusCounts.idle}</strong>
+        </div>
+      </div>
+      <div className="paper-note players-note-callout">
+        <div className="title">Совет</div>
+        <div className="small">Если статус завис, обнови страницу или подожди следующий push по WebSocket.</div>
+      </div>
+    </>
+  );
 
   return (
     <div className="spread-grid players-grid">
@@ -139,65 +201,48 @@ export default function Players() {
 
       <div className="spread-col">
         <div className="players-side-stack">
-          <section className="card taped scrap-card no-stamp tf-panel tf-players-guide">
-            <div className="tf-section-head">
-              <div className="tf-section-copy">
-                <div className="tf-section-kicker">Field guide</div>
-                <div className="u-fw-800 players-guide-title">Легенда статусов</div>
-              </div>
-              <Users className="players-guide-icon" aria-hidden="true" />
-            </div>
-            <div className="list players-legend-list">
-              <div className="item">
-                <div className="kv">
-                  <div className="u-fw-700">Онлайн</div>
-                  <div className="small">Игрок активен и сейчас в сессии.</div>
-                </div>
-                <PlayerStatusPill status="online" />
-              </div>
-              <div className="item">
-                <div className="kv">
-                  <div className="u-fw-700">Нет активности</div>
-                  <div className="small">Соединение живое, но действий давно не было.</div>
-                </div>
-                <PlayerStatusPill status="idle" />
-              </div>
-              <div className="item">
-                <div className="kv">
-                  <div className="u-fw-700">Оффлайн</div>
-                  <div className="small">Игрок отключён и скрыт из списка слева.</div>
-                </div>
-                <PlayerStatusPill status="offline" />
-              </div>
-            </div>
-          </section>
-
-          <section className="card taped scrap-card no-stamp tf-panel tf-players-note">
-            <div className="tf-section-head">
-              <div className="tf-section-copy">
-                <div className="tf-section-kicker">Roster brief</div>
-                <div className="u-fw-800 players-guide-title">Полевая сводка</div>
-              </div>
-              <Activity className="players-guide-icon" aria-hidden="true" />
-            </div>
-            <div className="players-note-grid">
-              <div className="tf-stat-card">
-                <div className="small">Видно сейчас</div>
-                <strong>{filtered.length}</strong>
-              </div>
-              <div className="tf-stat-card">
-                <div className="small">Активных статусов</div>
-                <strong>{statusCounts.online + statusCounts.idle}</strong>
-              </div>
-            </div>
-            <div className="paper-note players-note-callout">
-              <div className="title">Совет</div>
-              <div className="small">Если статус завис, обнови страницу или подожди следующий push по WebSocket.</div>
-            </div>
-          </section>
+          {isNarrowScreen ? (
+            <>
+              <details className="tf-panel players-mobile-fold">
+                <summary className="players-mobile-fold-summary">Легенда статусов</summary>
+                <div className="players-mobile-fold-body">{legendContent}</div>
+              </details>
+              <details className="tf-panel players-mobile-fold">
+                <summary className="players-mobile-fold-summary">Полевая сводка</summary>
+                <div className="players-mobile-fold-body">{briefContent}</div>
+              </details>
+            </>
+          ) : (
+            <>
+              <section className="card taped scrap-card no-stamp tf-panel tf-players-guide">
+                {legendContent}
+              </section>
+              <section className="card taped scrap-card no-stamp tf-panel tf-players-note">
+                {briefContent}
+              </section>
+            </>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function useIsNarrowScreen(maxWidth = 720) {
+  const [isNarrow, setIsNarrow] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia(`(max-width: ${maxWidth}px)`).matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return () => {};
+    const media = window.matchMedia(`(max-width: ${maxWidth}px)`);
+    const apply = () => setIsNarrow(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, [maxWidth]);
+
+  return isNarrow;
 }
 

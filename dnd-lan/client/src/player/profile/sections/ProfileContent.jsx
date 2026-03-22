@@ -153,9 +153,20 @@ export default function ProfileContent({ controller }) {
             <div className="title profile-detail-title profile-card-title">
               <ScrollText className="profile-section-icon" aria-hidden="true" />Права на редактирование
             </div>
-            <div className="small note-hint profile-editable-fields">
-              Разрешено редактировать: {editableFields.length ? editableFields.join(", ") : "нет"}
+            <div className="small note-hint profile-editable-fields-label">
+              Разрешено редактировать:
             </div>
+            {editableFields.length ? (
+              <div className="profile-editable-chip-list">
+                {editableFields.map((field) => (
+                  <span key={field} className="profile-editable-chip">
+                    {formatEditableFieldLabel(field)}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="small note-hint profile-editable-fields">нет</div>
+            )}
           </div>
 
           {allowRequests && !readOnly ? (
@@ -261,4 +272,12 @@ function getStatusLabel(status) {
   if (status === "approved") return "Одобрено";
   if (status === "rejected") return "Отклонено";
   return "Все";
+}
+
+function formatEditableFieldLabel(value) {
+  return String(value || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/^\w/, (letter) => letter.toUpperCase());
 }
