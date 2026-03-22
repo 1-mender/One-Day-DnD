@@ -1086,6 +1086,29 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   gap: 14px;
 }
 
+.tf-item-card{
+  position: relative;
+  overflow: hidden;
+}
+
+.tf-slot-board{
+  display: grid;
+  gap: 12px;
+}
+
+.tf-slot-hint{
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background: rgba(255,255,255,0.86);
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.tf-slot-zone{
+  border-radius: 18px;
+  box-shadow: var(--tf-shadow-soft);
+}
+
 /* ===== Player inventory tactical pass ===== */
 .inventory-shell{
   border-radius: 20px;
@@ -1500,6 +1523,99 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .tf-inventory-shell .inv-actions .btn{
   min-height: 40px;
+}
+
+.tf-inventory-shell .inv-slot-board-wrap{
+  display: grid;
+  gap: 12px;
+}
+
+.tf-inventory-shell .inv-slot-zones{
+  display: grid;
+  gap: 12px;
+}
+
+.tf-inventory-shell .inv-slot-zone{
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(242, 234, 219, 0.94));
+  padding: 12px;
+}
+
+.tf-inventory-shell .inv-slot-zone-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.tf-inventory-shell .inv-slot-zone-head h4{
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.03em;
+  color: #2f261d;
+}
+
+.tf-inventory-shell .inv-slot-grid{
+  gap: 10px;
+}
+
+.tf-inventory-shell .inv-slot-cell{
+  min-height: 88px;
+  border: 1px dashed rgba(118, 100, 70, 0.24);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.64), rgba(239, 230, 213, 0.68));
+}
+
+.tf-inventory-shell .inv-slot-cell.active{
+  border-color: rgba(86, 126, 74, 0.54);
+  background: linear-gradient(180deg, rgba(198, 220, 173, 0.34), rgba(173, 202, 145, 0.28));
+}
+
+.tf-inventory-shell .inv-slot-item{
+  border: 1px solid rgba(117, 99, 70, 0.16);
+  border-left: 3px solid var(--inv-accent, var(--map-accent));
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245, 237, 223, 0.95));
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.tf-inventory-shell .inv-slot-item.selected-for-move{
+  box-shadow:
+    inset 0 0 0 2px rgba(86, 126, 74, 0.42),
+    var(--tf-shadow-soft);
+}
+
+.tf-inventory-shell .inv-slot-open{
+  color: #2f261d;
+}
+
+.tf-inventory-shell .inv-slot-name{
+  color: #2f261d;
+  font-weight: 800;
+}
+
+.tf-inventory-shell .inv-slot-meta{
+  gap: 6px;
+}
+
+.tf-inventory-shell .inv-slot-qty,
+.tf-inventory-shell .inv-slot-reserved{
+  border-radius: 999px;
+  background: rgba(255,255,255,0.86);
+}
+
+.tf-inventory-shell .inv-slot-handle,
+.tf-inventory-shell .inv-slot-menu-btn{
+  border-radius: 12px;
+  background: rgba(255,255,255,0.84);
+}
+
+.tf-inventory-shell .inv-slot-menu{
+  border-radius: 16px;
+  box-shadow: var(--tf-shadow);
 }
 
 .inv-icon-picker{

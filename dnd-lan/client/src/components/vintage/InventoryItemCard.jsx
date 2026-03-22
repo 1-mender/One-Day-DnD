@@ -252,7 +252,7 @@ function InventoryItemCard({
 
   return (
     <div
-      className="item taped inv-card"
+      className="item taped inv-card tf-item-card"
       data-rarity={rarityKey}
       data-visibility={item.visibility}
       data-favorite={isFavorite ? "true" : "false"}

@@ -50,8 +50,8 @@ export default function InventorySlotGrid({
   });
 
   return (
-    <div className={`inv-slot-board-wrap${touchOptimized ? " touch-optimized" : ""}${touchOptimized && touchLiteMode ? " touch-lite" : ""}`.trim()}>
-      <div className="small inv-slot-hint">
+    <div className={`inv-slot-board-wrap tf-slot-board${touchOptimized ? " touch-optimized" : ""}${touchOptimized && touchLiteMode ? " touch-lite" : ""}`.trim()}>
+      <div className="small inv-slot-hint tf-slot-hint">
         {touchOptimized && tapToMoveMode ? (
           <>RPG-сетка (тач): включен Lite-режим. Выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните целевой слот.</>
         ) : touchOptimized ? (
@@ -61,17 +61,17 @@ export default function InventorySlotGrid({
         )}
       </div>
       {touchOptimized ? (
-        <div className="inv-slot-mobile-mode">
+        <div className="inv-slot-mobile-mode tf-segmented">
           <button
             type="button"
-            className={`btn ${touchLiteMode ? "" : "secondary"}`.trim()}
+            className={`btn tf-segmented-btn ${touchLiteMode ? "tf-segmented-btn-active" : "secondary"}`.trim()}
             onClick={() => setTouchLiteMode(true)}
           >
             Lite
           </button>
           <button
             type="button"
-            className={`btn ${touchLiteMode ? "secondary" : ""}`.trim()}
+            className={`btn tf-segmented-btn ${touchLiteMode ? "secondary" : "tf-segmented-btn-active"}`.trim()}
             onClick={() => setTouchLiteMode(false)}
           >
             Классика
@@ -79,7 +79,7 @@ export default function InventorySlotGrid({
         </div>
       ) : null}
       {touchOptimized && tapToMoveMode && selectedMoveItem ? (
-        <div className="inv-slot-touch-state">
+        <div className="inv-slot-touch-state tf-panel">
           <span>Перемещение: <b>{selectedMoveItem.name || "Без названия"}</b>. Тапните слот назначения.</span>
           <button type="button" className="btn secondary" onClick={() => toggleMoveSelection(selectedMoveItem.id)}>Отмена</button>
         </div>

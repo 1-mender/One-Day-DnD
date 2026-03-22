@@ -76,7 +76,7 @@ export default function ContainerGrid({
 
   if (touchLiteMode && container.key !== "backpack") {
     return (
-      <details className="inv-slot-zone touch-collapsed" open={hasItems}>
+      <details className="inv-slot-zone tf-slot-zone touch-collapsed" open={hasItems}>
         <summary className="inv-slot-zone-head">
           <h4>{container.label}</h4>
           <span className="badge secondary">{hasItems ? "есть предметы" : "пусто"}</span>
@@ -87,7 +87,7 @@ export default function ContainerGrid({
   }
 
   return (
-    <section className={`inv-slot-zone${touchOptimized ? " touch-optimized" : ""}`.trim()}>
+    <section className={`inv-slot-zone tf-slot-zone${touchOptimized ? " touch-optimized" : ""}`.trim()}>
       <div className="inv-slot-zone-head">
         <h4>{container.label}</h4>
       </div>
