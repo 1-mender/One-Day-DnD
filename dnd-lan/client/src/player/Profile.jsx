@@ -14,11 +14,11 @@ export default function Profile() {
   const { err, load, loading, notCreated, profile, readOnly, updatedLabel } = controller;
 
   return (
-    <div className="card profile-shell profile-codex-shell" aria-busy={loading ? "true" : "false"}>
-      <div className="profile-header">
-        <div className="profile-header-main">
-          <div className="profile-overline">Лист персонажа</div>
-          <div className="profile-title">Профиль персонажа</div>
+    <div className="card profile-shell profile-codex-shell tf-shell tf-profile-shell" aria-busy={loading ? "true" : "false"}>
+      <div className="profile-header tf-page-head">
+        <div className="profile-header-main tf-page-head-main">
+          <div className="profile-overline tf-overline">Character sheet</div>
+          <div className="profile-title tf-page-title">Профиль персонажа</div>
           <div className="profile-meta small">
             {readOnly
               ? t("profile.readOnlyImpersonation", null, "только чтение (имперсонализация)")
@@ -28,7 +28,7 @@ export default function Profile() {
             Обновлён: {updatedLabel}
           </div>
         </div>
-        <div className="profile-header-actions">
+        <div className="profile-header-actions tf-command-actions">
           <button className="btn secondary profile-refresh-btn" onClick={load}>
             <RefreshCcw className="icon" aria-hidden="true" />Обновить
           </button>
