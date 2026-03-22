@@ -174,7 +174,7 @@ export default function ShopJoe() {
                         {itemMissingInRules ? "Нет в правилах" : itemDisabled ? "Закрыто" : item.impact}
                       </span>
                     </div>
-                    <div className="small">{item.blurb}</div>
+                    <div className="small shop-card-blurb">{item.blurb}</div>
                     <div className="shop-meta">
                       <span className="meta-chip tf-shop-chip">
                         {"Лимит: "}{formatLimit(item.limit, dailyLimit)}
@@ -189,7 +189,7 @@ export default function ShopJoe() {
                     <div className="row shop-actions" style={{ justifyContent: "space-between" }}>
                       <span className="ticket-pill tf-shop-price">{priceLabel(itemPrice)}</span>
                       <button
-                        className="btn secondary"
+                        className="btn secondary tf-shop-buy-btn"
                         disabled={isDisabled}
                         title={disabledReason || "Купить"}
                         onClick={() => handleBuy(item.key)}
