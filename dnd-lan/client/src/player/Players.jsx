@@ -130,6 +130,51 @@ export default function Players() {
     </>
   );
 
+  const legendFoldContent = (
+    <div className="list players-legend-list">
+      <div className="item">
+        <div className="kv">
+          <div className="u-fw-700">Онлайн</div>
+          <div className="small">Игрок активен и сейчас в сессии.</div>
+        </div>
+        <PlayerStatusPill status="online" />
+      </div>
+      <div className="item">
+        <div className="kv">
+          <div className="u-fw-700">Нет активности</div>
+          <div className="small">Соединение живое, но действий давно не было.</div>
+        </div>
+        <PlayerStatusPill status="idle" />
+      </div>
+      <div className="item">
+        <div className="kv">
+          <div className="u-fw-700">Оффлайн</div>
+          <div className="small">Игрок отключён и скрыт из списка слева.</div>
+        </div>
+        <PlayerStatusPill status="offline" />
+      </div>
+    </div>
+  );
+
+  const briefFoldContent = (
+    <>
+      <div className="players-note-grid players-note-grid-mobile">
+        <div className="players-brief-pill">
+          <span>Видно сейчас</span>
+          <strong>{filtered.length}</strong>
+        </div>
+        <div className="players-brief-pill">
+          <span>Активных статусов</span>
+          <strong>{statusCounts.online + statusCounts.idle}</strong>
+        </div>
+      </div>
+      <div className="paper-note players-note-callout">
+        <div className="title">Совет</div>
+        <div className="small">Если статус завис, обнови страницу или подожди следующий push по WebSocket.</div>
+      </div>
+    </>
+  );
+
   return (
     <div className="spread-grid players-grid">
       <div className="spread-col">
@@ -140,14 +185,18 @@ export default function Players() {
               <div className="u-title-xl tf-page-title">Игроки</div>
               <div className="small">Показаны только статусы «Онлайн» и «Нет активности». Оффлайн остаётся в сводке справа.</div>
             </div>
-            <div className="players-head-meta">
-              <span className="badge secondary">Видимых: {filtered.length}</span>
-              <span className="badge">Всего: {players.length}</span>
-            </div>
+            {!isNarrowScreen ? (
+              <div className="players-head-meta">
+                <span className="badge secondary">Видимых: {filtered.length}</span>
+                <span className="badge">Всего: {players.length}</span>
+              </div>
+            ) : null}
           </div>
 
           {isNarrowScreen ? (
             <div className="players-summary-strip">
+              <div className="players-summary-pill"><span>Видимых</span><strong>{filtered.length}</strong></div>
+              <div className="players-summary-pill"><span>Всего</span><strong>{players.length}</strong></div>
               <div className="players-summary-pill"><span>Онлайн</span><strong>{statusCounts.online}</strong></div>
               <div className="players-summary-pill"><span>Нет активности</span><strong>{statusCounts.idle}</strong></div>
               <div className="players-summary-pill"><span>Оффлайн</span><strong>{statusCounts.offline}</strong></div>
@@ -213,11 +262,11 @@ export default function Players() {
             <>
               <details className="tf-panel players-mobile-fold">
                 <summary className="players-mobile-fold-summary">Легенда статусов</summary>
-                <div className="players-mobile-fold-body">{legendContent}</div>
+                <div className="players-mobile-fold-body">{legendFoldContent}</div>
               </details>
               <details className="tf-panel players-mobile-fold">
                 <summary className="players-mobile-fold-summary">Полевая сводка</summary>
-                <div className="players-mobile-fold-body">{briefContent}</div>
+                <div className="players-mobile-fold-body">{briefFoldContent}</div>
               </details>
             </>
           ) : (

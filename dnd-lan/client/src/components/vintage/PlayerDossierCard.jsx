@@ -27,6 +27,7 @@ export default function PlayerDossierCard({
     ? `${weight.toFixed(2)} / ${limit}`
     : `${weight.toFixed(2)} / \u221e`;
   const clickable = typeof onClick === "function";
+  const lastSeenLabel = player.lastSeen ? formatLastSeenCompact(player.lastSeen) : "-";
 
   return (
     <div
@@ -48,7 +49,7 @@ export default function PlayerDossierCard({
       <div className="dossier-body">
         <div className="dossier-head">
           <div className="dossier-topline">
-            <div className="dossier-meta">
+            <div className="dossier-topmeta">
               <span className="badge">#{player.id}</span>
               <StatusStamp status={player.status} />
             </div>
@@ -67,6 +68,9 @@ export default function PlayerDossierCard({
             ) : null}
           </div>
         </div>
+        <div className="small dossier-last-seen">
+          {t("playerDossier.lastSeen", null, "Активность")}: {lastSeenLabel}
+        </div>
         <div className="dossier-flags">
           {player.profileCreated ? (
             <span className="badge ok">ПРОФИЛЬ OK</span>
@@ -82,12 +86,22 @@ export default function PlayerDossierCard({
             <span className="badge secondary">Серия: {ticketStreak}</span>
           ) : null}
         </div>
-        <div className="small dossier-last-seen">
-          {t("playerDossier.lastSeen", null, "Последняя активность")}: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}
-        </div>
       </div>
 
       {rightActions ? <div className="dossier-actions">{rightActions}</div> : null}
     </div>
   );
+}
+
+function formatLastSeenCompact(value) {
+  try {
+    return new Date(value).toLocaleString([], {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return "-";
+  }
 }
