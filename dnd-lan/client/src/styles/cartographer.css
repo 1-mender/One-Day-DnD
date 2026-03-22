@@ -2674,6 +2674,16 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     align-items: flex-start;
   }
 
+  .profile-nameplate-wrap{
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .profile-hero-stats{
+    grid-template-columns: 1fr;
+  }
+
   .profile-visibility-block{
     padding: 14px;
   }
@@ -2686,6 +2696,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     padding: 12px 14px;
   }
 
+  .profile-card-head,
+  .profile-section-head{
+    align-items: stretch;
+  }
+
+  .profile-card-head .btn,
+  .profile-section-head .btn{
+    width: 100%;
+    justify-content: center;
+  }
+
   .profile-flex-head{
     align-items: stretch;
   }
@@ -2693,6 +2714,28 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .profile-filter-btn,
   .profile-refresh-btn{
     width: 100%;
+  }
+
+  .tf-monster-card{
+    grid-template-columns: 64px minmax(0, 1fr);
+    align-items: start;
+    min-height: 0;
+  }
+
+  .tf-monster-card .badge.secondary{
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+
+  .tf-monster-thumb{
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    font-size: 18px;
+  }
+
+  .bestiary-card-name{
+    font-size: 20px;
   }
 }
 
@@ -2709,6 +2752,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .inv-transfer-grid{
     grid-template-columns: 1fr;
+  }
+
+  .profile-shell,
+  .tf-bestiary-shell{
+    padding: 14px;
   }
 }
 
@@ -3100,17 +3148,74 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     padding: 18px;
   }
 
+  .players-toolbar{
+    gap: 12px;
+  }
+
+  .players-toolbar-row{
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .players-toolbar-row input{
+    flex-basis: 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .players-toolbar-row .btn{
+    width: 100%;
+    justify-content: center;
+  }
+
   .players-head-meta{
     justify-content: flex-start;
   }
 
   .tf-roster-card{
+    flex-direction: column;
     gap: 12px;
+  }
+
+  .dossier-side{
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .dossier-meta{
+    flex: 1;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .dossier-body{
+    width: 100%;
   }
 
   .dossier-actions{
     min-width: 0;
     width: 100%;
+  }
+
+  .dossier-actions .btn{
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 420px){
+  .tf-roster-card{
+    padding: 14px;
+  }
+
+  .dossier-side{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .tf-players-shell{
+    padding: 14px;
   }
 }
 
