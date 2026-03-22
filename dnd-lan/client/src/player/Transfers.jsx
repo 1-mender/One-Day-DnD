@@ -187,10 +187,11 @@ export default function Transfers() {
   }, [outboxLoading, outbox.length, outboxQ]);
 
   return (
-    <div className="card inventory-shell">
+    <div className="card inventory-shell tf-shell tf-transfers-shell">
       <div className="inv-header">
         <div className="inv-header-main">
-          <div className="inv-title-lg">Передачи</div>
+          <div className="tf-overline">Item relay</div>
+          <div className="inv-title-lg tf-page-title">Передачи</div>
           <div className="inv-subtitle">
             Входящие: {inbox.length} • Исходящие: {outbox.length}
             {readOnly ? <span className="badge warn">только чтение</span> : null}
@@ -318,7 +319,7 @@ export default function Transfers() {
 function TransferItem({ transfer, side, readOnly, onAccept, onReject, onCancel }) {
   const expired = Number(transfer.expiresAt || 0) > 0 && Number(transfer.expiresAt) <= Date.now();
   return (
-    <div className="item" style={{ alignItems: "flex-start" }}>
+    <div className="item tf-transfer-item" style={{ alignItems: "flex-start" }}>
       <div style={{ flex: 1 }}>
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
           {expired ? <span className="badge secondary">Истекла</span> : null}

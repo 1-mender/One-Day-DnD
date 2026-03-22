@@ -35,9 +35,14 @@ export default function Notes() {
   }, [items, debouncedQ]);
 
   return (
-    <div className="card taped">
-      <div style={{ fontWeight: 800, fontSize: 18 }}>Заметки</div>
-      <div className="small">Показываются только доступные вам блоки</div>
+    <div className="card taped tf-shell tf-notes-shell">
+      <div className="tf-page-head">
+        <div className="tf-page-head-main">
+          <div className="tf-overline">Party notes</div>
+          <div className="tf-page-title">Заметки</div>
+          <div className="small">Показываются только доступные вам блоки</div>
+        </div>
+      </div>
       <hr />
       <input
         value={q}

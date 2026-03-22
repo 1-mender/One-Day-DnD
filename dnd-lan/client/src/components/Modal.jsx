@@ -80,14 +80,14 @@ export default function Modal({ open, title, children, onClose }) {
   if (!open) return null;
   const content = (
     <div
-      className="vintage-modal-overlay"
+      className="vintage-modal-overlay tf-modal-overlay"
       onMouseDown={(event) => {
         if (shouldCloseOnBackdropMouseDown(event.target, event.currentTarget)) onClose?.();
       }}
     >
       <div
         ref={dialogRef}
-        className="vintage-modal"
+        className="vintage-modal tf-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
@@ -96,11 +96,18 @@ export default function Modal({ open, title, children, onClose }) {
         onKeyDown={onDialogKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="vintage-modal-header">
-          <div id={title ? titleId : undefined} className="vintage-modal-title">{title || ""}</div>
-          <button type="button" className="btn secondary" onClick={onClose} aria-label={t("common.close", null, "Close")}>X</button>
+        <div className="vintage-modal-header tf-modal-header">
+          <div id={title ? titleId : undefined} className="vintage-modal-title tf-modal-title">{title || ""}</div>
+          <button
+            type="button"
+            className="btn secondary tf-modal-close"
+            onClick={onClose}
+            aria-label={t("common.close", null, "Close")}
+          >
+            X
+          </button>
         </div>
-        <div className="vintage-modal-body" role="document">{children}</div>
+        <div className="vintage-modal-body tf-modal-body" role="document">{children}</div>
       </div>
     </div>
   );

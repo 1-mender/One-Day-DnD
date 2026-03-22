@@ -167,12 +167,13 @@ export default function DMInfoBlocks() {
 
   return (
     <>
-      <div className="two-pane" data-detail={selected ? "1" : "0"}>
+      <div className="two-pane dm-info-board" data-detail={selected ? "1" : "0"}>
         <div className="pane pane-list">
-          <div className="card taped scrap-card paper-stack">
-            <div className="row u-row-between-center">
-              <div>
-                <div className="u-title-xl">{t("dmInfoBlocks.title", null, "Инфоблоки (мастер)")}</div>
+          <div className="card taped scrap-card paper-stack tf-shell tf-dm-info-shell">
+            <div className="tf-page-head">
+              <div className="tf-page-head-main">
+                <div className="tf-overline">Lore registry</div>
+                <div className="u-title-xl tf-page-title">{t("dmInfoBlocks.title", null, "Инфоблоки (мастер)")}</div>
                 <div className="small">{t("dmInfoBlocks.subtitle", null, "Доступ: только мастер / все / выбранные")}</div>
               </div>
               <button className="btn" onClick={startNew} disabled={readOnly}>+ {t("dmInfoBlocks.add", null, "Добавить")}</button>
@@ -180,7 +181,7 @@ export default function DMInfoBlocks() {
             <hr />
             {readOnly ? <div className="badge warn">{t("dmInfoBlocks.readOnly", null, "Режим только чтения: изменения отключены")}</div> : null}
             {err && <div className="badge off">{t("common.error")}: {err}</div>}
-            <div className="row u-row-wrap">
+            <div className="row u-row-wrap tf-panel dm-info-toolbar">
               <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} aria-label={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
               <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t("dmInfoBlocks.categoryAll", null, "Категория: все")} className="u-w-160">
                 <option value="">{t("dmInfoBlocks.categoryAll", null, "Категория: все")}</option>
@@ -196,11 +197,11 @@ export default function DMInfoBlocks() {
                 <option value="selected">{t("dmInfoBlocks.accessSelected", null, "Выбранные")}</option>
               </select>
             </div>
-            <div className="list u-list-mt-12">
+            <div className="list u-list-mt-12 dm-info-list">
               {filtered.map((b) => (
                 <div
                   key={b.id}
-                  className={`item taped note-card${selected?.id === b.id ? " selected" : ""}`}
+                  className={`item taped note-card dm-info-card${selected?.id === b.id ? " selected" : ""}`}
                   data-cat={b.category || "note"}
                   onClick={() => selectBlock(b.id)}
                   role="button"
@@ -235,12 +236,13 @@ export default function DMInfoBlocks() {
         </div>
 
         <div className="pane pane-detail">
-          <div className="card taped scrap-card pane-sticky">
+          <div className="card taped scrap-card pane-sticky tf-panel dm-info-detail">
             {selected ? (
               <>
-                <div className="row u-row-between-center">
-                  <div>
-                    <div className="u-title-xl">{selected.title}</div>
+                <div className="tf-page-head">
+                  <div className="tf-page-head-main">
+                    <div className="tf-overline">Selected block</div>
+                    <div className="u-title-xl tf-page-title">{selected.title}</div>
                     <div className="small">{selected.category} - {selected.access}</div>
                   </div>
                   <div className="row u-row-gap-8">
@@ -272,7 +274,7 @@ export default function DMInfoBlocks() {
             ) : (
               <>
                 <div className="small">Выберите блок, чтобы увидеть детали.</div>
-                <div className="paper-note u-mt-10">
+                <div className="paper-note u-mt-10 tf-panel">
                   <div className="title">Подсказка</div>
                   <div className="small">Markdown поддерживается для текста и изображений.</div>
                 </div>

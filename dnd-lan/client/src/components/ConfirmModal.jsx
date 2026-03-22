@@ -16,10 +16,10 @@ export default function ConfirmModal({
 }) {
   return (
     <Modal open={open} title={title || t("confirmDialog.defaultTitle")} onClose={onCancel}>
-      <div className="list">
-        {message ? <div className="small">{message}</div> : null}
+      <div className="list confirm-modal-stack">
+        {message ? <div className="small confirm-modal-message">{message}</div> : null}
         {children}
-        <div className="row u-row-gap-8">
+        <div className="row u-row-gap-8 confirm-modal-actions">
           <button className="btn secondary" onClick={onCancel}>{cancelLabel || t("common.cancel")}</button>
           <button className={`btn ${danger ? "danger" : ""}`.trim()} onClick={onConfirm} disabled={confirmDisabled}>
             {confirmLabel || t("common.confirm")}

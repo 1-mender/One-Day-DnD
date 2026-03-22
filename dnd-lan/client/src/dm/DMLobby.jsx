@@ -42,18 +42,23 @@ export default function DMLobby() {
   }
 
   return (
-    <div className="spread-grid">
+    <div className="spread-grid dm-lobby-grid">
       <div className="spread-col">
-        <div className="card taped scrap-card paper-stack">
-          <div style={{ fontWeight: 900, fontSize: 20 }}>Лобби / Подключения</div>
-          <div className="small">Заявки на вход: принять / отклонить / заблокировать IP</div>
+        <div className="card taped scrap-card paper-stack tf-shell tf-dm-lobby-shell">
+          <div className="tf-page-head">
+            <div className="tf-page-head-main">
+              <div className="tf-overline">Join requests</div>
+              <div className="tf-page-title">Лобби / Подключения</div>
+              <div className="small">Заявки на вход: принять / отклонить / заблокировать IP</div>
+            </div>
+          </div>
           <hr />
           {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
           {err && <div className="badge off">Ошибка: {err}</div>}
-          <div className="list">
+          <div className="list dm-lobby-list">
             {items.length === 0 && <div className="badge warn">Нет заявок</div>}
             {items.map((r) => (
-              <div key={r.id} className="item taped">
+              <div key={r.id} className="item taped dm-lobby-item">
                 <div className="kv">
                   <div style={{ fontWeight: 800 }}>{r.display_name}</div>
                   <div className="small">{new Date(r.created_at).toLocaleTimeString()} • {r.ip || "ip?"}</div>
@@ -71,8 +76,11 @@ export default function DMLobby() {
       </div>
 
       <div className="spread-col">
-        <div className="card taped scrap-card">
-          <div style={{ fontWeight: 800 }}>Памятка</div>
+        <div className="card taped scrap-card tf-panel tf-dm-lobby-guide">
+          <div className="tf-section-copy">
+            <div className="tf-section-kicker">Moderation guide</div>
+            <div style={{ fontWeight: 800 }}>Памятка</div>
+          </div>
           <div className="small">Быстрые правила по модерации</div>
           <hr />
           <div className="list">
