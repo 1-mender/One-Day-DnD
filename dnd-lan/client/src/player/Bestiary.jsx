@@ -89,18 +89,33 @@ export default function Bestiary() {
   if (!enabled) return <div className="card taped"><div className="badge warn">{t("bestiary.disabled", null, "Бестиарий отключён DM")}</div></div>;
 
   return (
-    <div className={`card taped bestiary-shell${lite ? " page-lite" : ""}`.trim()}>
-      <div style={{ fontWeight: 800, fontSize: 18 }}>{t("bestiary.title", null, "Бестиарий")}</div>
-      <div className="small">{t("bestiary.readOnly", null, "Режим только чтения для игроков")}</div>
-      <hr />
+    <div className={`card taped bestiary-shell tf-shell tf-bestiary-shell${lite ? " page-lite" : ""}`.trim()}>
+      <div className="bestiary-head tf-page-head">
+        <div className="bestiary-head-main tf-page-head-main">
+          <div className="tf-overline">Field Compendium</div>
+          <div className="bestiary-title tf-page-title">{t("bestiary.title", null, "Бестиарий")}</div>
+          <div className="small">{t("bestiary.readOnly", null, "Режим только чтения для игроков")}</div>
+        </div>
+        <div className="bestiary-head-meta">
+          <span className="badge secondary">Монстров: {items.length}</span>
+        </div>
+      </div>
+
+      <div className="bestiary-toolbar tf-panel tf-command-bar">
+        <div className="tf-section-copy">
+          <div className="tf-section-kicker">Search archive</div>
+          <div className="bestiary-toolbar-title">Поиск и обзор</div>
+        </div>
         <input
+          className="bestiary-search"
           value={q}
           onChange={(e)=>setQ(e.target.value)}
           placeholder={t("bestiary.search", null, "Поиск по имени...")}
           aria-label="Поиск монстров по имени"
-          style={{ width:"100%" }}
         />
-      <div className="bestiary-list" style={{ marginTop: 12 }}>
+      </div>
+
+      <div className="bestiary-list tf-bestiary-list" style={{ marginTop: 12 }}>
         {isNarrowScreen ? (
           <div className="list">
             {items.map((m) => {
@@ -135,7 +150,7 @@ export default function Bestiary() {
         )}
       </div>
       {nextCursor && (
-        <div className="row" style={{ marginTop: 10 }}>
+        <div className="row bestiary-more-row" style={{ marginTop: 10 }}>
           <button className="btn secondary" onClick={loadMore} disabled={loadingMore}>
             {loadingMore ? t("common.loading") : t("bestiary.showMore", null, "Показать ещё")}
           </button>
@@ -143,7 +158,8 @@ export default function Bestiary() {
       )}
 
       <Modal open={open} title={cur?.name || ""} onClose={() => { setOpen(false); setCurId(null); }}>
-        <div className="small">
+        <div className="bestiary-modal">
+        <div className="small bestiary-modal-meta">
           {t("bestiary.meta", {
             type: cur?.type || "—",
             habitat: cur?.habitat || "—",
@@ -151,12 +167,15 @@ export default function Bestiary() {
           }, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"} • CR: ${cur?.cr || "—"}`)}
         </div>
         <hr />
-        <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12, marginBottom: 10 }}>
+        <div className="bestiary-gallery" style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12, marginBottom: 10 }}>
           {gallery.map((im) => (
             <PolaroidFrame key={im.id} src={im.url} alt="" fallback="IMG" className={lite ? "sm" : "lg"} />
           ))}
         </div>
-        <MarkdownView source={cur?.description} />
+        <div className="bestiary-modal-body">
+          <MarkdownView source={cur?.description} />
+        </div>
+        </div>
       </Modal>
     </div>
   );
@@ -233,6 +252,7 @@ function VirtualizedList({ items, lite, onOpen, attachImages }) {
   return (
     <div
       ref={parentRef}
+      className="bestiary-virtual-list"
       style={{
         height: listHeight,
         maxHeight: "calc(100dvh - var(--bottom-nav-h) - env(safe-area-inset-bottom) - 24px)",
@@ -278,20 +298,20 @@ function MonsterCard({ m, lite, thumb, onOpen, attachImages }) {
   return (
     <div
       ref={ref}
-      className="item taped bestiary-card"
+      className="item taped bestiary-card tf-monster-card"
       style={{ cursor: "pointer", alignItems: "stretch" }}
       onClick={onOpen}
     >
       {lite ? (
-        <div className="bestiary-thumb" aria-hidden="true">{thumb}</div>
+        <div className="bestiary-thumb tf-monster-thumb" aria-hidden="true">{thumb}</div>
       ) : (
         <PolaroidFrame src={m.images?.[0]?.thumbUrl || m.images?.[0]?.url} alt={m.name} fallback="МОН" className="sm" />
       )}
-      <div className="kv" style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700 }}>{m.name}</div>
+      <div className="kv bestiary-card-copy" style={{ flex: 1 }}>
+        <div className="bestiary-card-name">{m.name}</div>
         <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
       </div>
-      <span className="badge">{t("bestiary.open", null, "Открыть")}</span>
+      <span className="badge secondary">{t("bestiary.open", null, "Открыть")}</span>
     </div>
   );
 }

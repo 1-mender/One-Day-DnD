@@ -7,7 +7,7 @@ function StatusStamp({ status }) {
   const s = String(status || "offline");
   const cls = s === "online" ? "online" : s === "idle" ? "idle" : "offline";
   const label = t(`playerStatus.${cls}`, null, cls).toUpperCase();
-  return <span className={`stamp ${cls}`}>{label}</span>;
+  return <span className={`stamp tf-status-stamp ${cls}`}>{label}</span>;
 }
 
 export default function PlayerDossierCard({
@@ -30,8 +30,7 @@ export default function PlayerDossierCard({
 
   return (
     <div
-      className={`item taped dossier-card${selected ? " selected" : ""}`.trim()}
-      style={{ alignItems: "stretch" }}
+      className={`item taped dossier-card tf-roster-card${selected ? " selected" : ""}`.trim()}
       onClick={clickable ? onClick : undefined}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
@@ -42,16 +41,16 @@ export default function PlayerDossierCard({
         }
       } : undefined}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="dossier-side">
         <PolaroidFrame src={avatar} alt={player.displayName} fallback={initial} />
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+        <div className="dossier-meta">
           <span className="badge">#{player.id}</span>
           <StatusStamp status={player.status} />
         </div>
       </div>
 
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="dossier-body">
+        <div className="dossier-flags">
           {player.profileCreated ? (
             <span className="badge ok">ПРОФИЛЬ OK</span>
           ) : (
@@ -82,12 +81,12 @@ export default function PlayerDossierCard({
           </div>
           {menu ? <div className="dossier-menu">{menu}</div> : null}
         </div>
-        <div className="small" style={{ marginTop: 6 }}>
+        <div className="small dossier-last-seen">
           {t("playerDossier.lastSeen", null, "Последняя активность")}: {player.lastSeen ? new Date(player.lastSeen).toLocaleString() : "-"}
         </div>
       </div>
 
-      {rightActions ? <div style={{ minWidth: 140, display: "flex", flexDirection: "column", gap: 8 }}>{rightActions}</div> : null}
+      {rightActions ? <div className="dossier-actions">{rightActions}</div> : null}
     </div>
   );
 }

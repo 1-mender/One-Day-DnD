@@ -27,11 +27,16 @@ export default function InventoryItemsSection({
   actionsVariant,
   toggleVisibility
 }) {
+  const viewLabel = view === "slots" ? "RPG-сетка" : view === "grid" ? "Плитка" : "Список";
+
   return (
     <div className="inv-panel inv-items tf-panel tf-items-panel">
       <div className="inv-panel-head tf-section-head">
-        <div className="inv-panel-title">Предметы</div>
-        <div className="small">Все предметы инвентаря</div>
+        <div className="tf-section-copy">
+          <div className="tf-section-kicker">Loadout archive</div>
+          <div className="inv-panel-title">Предметы</div>
+        </div>
+        <div className="small">Режим: {viewLabel}</div>
       </div>
       <ErrorBanner message={err} onRetry={load} />
 

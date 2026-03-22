@@ -1048,6 +1048,19 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   flex-wrap: wrap;
 }
 
+.tf-section-copy{
+  display: grid;
+  gap: 2px;
+}
+
+.tf-section-kicker{
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7a6b56;
+}
+
 .tf-segmented{
   display: flex;
   flex-wrap: wrap;
@@ -1186,6 +1199,16 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 10px;
   margin: 14px 0 10px;
+}
+
+.inv-stats-block{
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 10px;
+}
+
+.inv-stats-copy{
+  padding: 0 2px;
 }
 
 .inv-stat{
@@ -1371,6 +1394,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   font-family: var(--font-display);
   font-weight: 900;
   letter-spacing: 0.3px;
+  color: #2f261d;
 }
 
 .inv-mobile-section-summary::-webkit-details-marker{
@@ -1404,6 +1428,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   border: 1px solid rgba(116, 98, 70, 0.16);
   background: rgba(255,255,255,0.9);
   box-shadow: var(--tf-shadow-soft);
+  border-radius: 16px;
 }
 
 .inv-quick-list{
@@ -1421,7 +1446,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .inv-quick-item:hover{
   transform: translateY(-1px);
-  box-shadow: var(--map-shadow-sm);
+  box-shadow: var(--tf-shadow);
 }
 
 .inv-quick-empty{
@@ -1490,6 +1515,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: var(--tf-shadow-soft);
 }
 
+.tf-inventory-shell .inv-card:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--tf-shadow);
+}
+
 .tf-inventory-shell .inv-card[data-selected="true"]{
   border-color: rgba(94, 122, 77, 0.42);
   box-shadow:
@@ -1523,6 +1553,21 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .tf-inventory-shell .inv-actions .btn{
   min-height: 40px;
+}
+
+.tf-inventory-shell .rarity-medallion{
+  border-color: rgba(117, 99, 70, 0.14);
+  background: rgba(255,255,255,0.86);
+}
+
+.tf-inventory-shell .inv-quick-toggle{
+  border-color: rgba(117, 99, 70, 0.16);
+  background: rgba(255,255,255,0.84);
+}
+
+.tf-inventory-shell .inv-desc{
+  margin-top: 8px;
+  padding-top: 10px;
 }
 
 .tf-inventory-shell .inv-slot-board-wrap{
@@ -1616,6 +1661,153 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .tf-inventory-shell .inv-slot-menu{
   border-radius: 16px;
   box-shadow: var(--tf-shadow);
+}
+
+/* ===== Player bestiary tactical pass ===== */
+.tf-bestiary-shell{
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 22px 22px 18px;
+  background:
+    radial-gradient(circle at top left, rgba(110, 139, 90, 0.12), transparent 34%),
+    radial-gradient(circle at top right, rgba(176, 138, 59, 0.08), transparent 26%),
+    var(--tf-surface);
+  border: 1px solid rgba(123, 103, 72, 0.24);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.72),
+    var(--tf-shadow);
+}
+
+.tf-bestiary-shell::before{
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border-radius: 22px;
+  border: 1px solid rgba(166, 139, 97, 0.16);
+  pointer-events: none;
+}
+
+.bestiary-head{
+  position: relative;
+  z-index: 1;
+}
+
+.bestiary-title{
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #2f261d;
+}
+
+.bestiary-head-meta{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bestiary-toolbar{
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.bestiary-toolbar-title{
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #2f261d;
+}
+
+.bestiary-search{
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background: rgba(255,255,255,0.88);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.tf-bestiary-list{
+  position: relative;
+  z-index: 1;
+}
+
+.bestiary-virtual-list{
+  border-radius: 18px;
+  border: 1px solid rgba(118, 100, 70, 0.14);
+  background: rgba(255,255,255,0.46);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  padding: 6px;
+}
+
+.tf-monster-card{
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 116px;
+  border-radius: 18px;
+  border: 1px solid rgba(117, 99, 70, 0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,0.97), rgba(245, 237, 223, 0.95));
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.tf-monster-card:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--tf-shadow);
+}
+
+.tf-monster-card .polaroid-frame{
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.tf-monster-thumb{
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+  border: 1px solid rgba(117, 99, 70, 0.14);
+  background: linear-gradient(180deg, rgba(252, 248, 239, 0.98), rgba(234, 224, 202, 0.98));
+  color: #4a3e2e;
+  font-family: var(--font-display);
+  font-size: 22px;
+}
+
+.bestiary-card-copy{
+  gap: 4px;
+}
+
+.bestiary-card-name{
+  font-family: var(--font-display);
+  font-size: 22px;
+  line-height: 1.04;
+  color: #2f261d;
+}
+
+.bestiary-more-row{
+  position: relative;
+  z-index: 1;
+}
+
+.bestiary-modal{
+  display: grid;
+  gap: 0;
+}
+
+.bestiary-modal-meta{
+  color: #6c5f4d;
+}
+
+.bestiary-gallery{
+  margin-top: 4px;
+}
+
+.bestiary-modal-body{
+  line-height: 1.55;
+  color: #3f3327;
 }
 
 .inv-icon-picker{
@@ -2354,6 +2546,242 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .stamp.offline{
   background: rgba(190, 96, 80, 0.2);
   color: #6d2f25;
+}
+
+/* Player roster tactical pass */
+.players-grid{
+  align-items: start;
+}
+
+.tf-players-shell{
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 22px;
+  border: 1px solid rgba(131, 109, 75, 0.24);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 243, 0.98), rgba(241, 232, 214, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.8),
+    0 22px 42px rgba(58, 48, 33, 0.12);
+}
+
+.tf-players-shell::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top right, rgba(109, 138, 87, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 28%);
+}
+
+.players-head{
+  position: relative;
+  z-index: 1;
+}
+
+.players-head-meta{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.players-summary{
+  margin-bottom: 14px;
+}
+
+.players-toolbar{
+  gap: 14px;
+  margin-bottom: 8px;
+}
+
+.players-toolbar-title{
+  font-family: var(--font-ui);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--map-ink);
+}
+
+.players-toolbar-row{
+  flex: 1;
+  align-items: center;
+}
+
+.players-toolbar-row input{
+  flex: 1 1 320px;
+}
+
+.players-roster{
+  position: relative;
+  z-index: 1;
+}
+
+.players-list{
+  gap: 14px;
+}
+
+.players-side-stack{
+  display: grid;
+  gap: 14px;
+}
+
+.tf-players-guide,
+.tf-players-note{
+  border-radius: 24px;
+  padding: 18px;
+}
+
+.players-guide-title{
+  font-family: var(--font-ui);
+  font-size: 18px;
+  color: var(--map-ink);
+}
+
+.players-guide-icon{
+  color: rgba(95, 125, 78, 0.88);
+}
+
+.players-legend-list{
+  gap: 10px;
+}
+
+.players-legend-list .item{
+  align-items: center;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background: rgba(255,255,255,0.58);
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.players-note-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.players-note-callout{
+  margin-top: 0;
+  border-style: solid;
+  background:
+    linear-gradient(180deg, rgba(255, 250, 239, 0.96), rgba(242, 232, 210, 0.88));
+}
+
+.tf-roster-card{
+  align-items: stretch;
+  gap: 16px;
+  border-radius: 24px;
+  border: 1px solid rgba(118, 100, 70, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(245, 237, 222, 0.94));
+  box-shadow: var(--tf-shadow-soft);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.tf-roster-card:hover{
+  transform: translateY(-1px);
+  box-shadow: var(--tf-shadow);
+}
+
+.tf-roster-card.selected{
+  border-color: rgba(95, 125, 78, 0.36);
+  box-shadow:
+    0 0 0 1px rgba(95, 125, 78, 0.18),
+    var(--tf-shadow);
+}
+
+.dossier-side{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tf-roster-card .polaroid-frame{
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.dossier-meta{
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.dossier-body{
+  flex: 1;
+  min-width: 0;
+}
+
+.dossier-flags{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tf-roster-card .badge{
+  backdrop-filter: blur(8px);
+}
+
+.dossier-head{
+  margin-top: 10px;
+}
+
+.dossier-name{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--map-ink);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0.1px;
+}
+
+.dossier-last-seen{
+  margin-top: 8px;
+  color: var(--map-muted);
+}
+
+.dossier-actions{
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tf-status-stamp{
+  border-color: rgba(118, 100, 70, 0.18);
+}
+
+.players-side-stack .tf-stat-card strong,
+.players-summary .tf-stat-card strong{
+  font-size: 20px;
+}
+
+@media (max-width: 920px){
+  .players-note-grid{
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px){
+  .tf-players-shell{
+    padding: 18px;
+  }
+
+  .players-head-meta{
+    justify-content: flex-start;
+  }
+
+  .tf-roster-card{
+    gap: 12px;
+  }
+
+  .dossier-actions{
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 /* ===== DM second pass ===== */

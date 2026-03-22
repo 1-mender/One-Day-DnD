@@ -58,7 +58,10 @@ export default function InventoryToolbarSection({
 
       <div className="inv-panel inv-filters tf-panel tf-command-bar">
         <div className="inv-panel-head tf-section-head">
-          <div className="inv-panel-title">Фильтры</div>
+          <div className="tf-section-copy">
+            <div className="tf-section-kicker">Command bar</div>
+            <div className="inv-panel-title">Фильтры</div>
+          </div>
           <div className="inv-view-toggle tf-segmented">
             <button className={`btn tf-segmented-btn ${view === "list" ? "tf-segmented-btn-active" : "secondary"}`.trim()} onClick={() => setView("list")}>
               <List className="icon" aria-hidden="true" />Список

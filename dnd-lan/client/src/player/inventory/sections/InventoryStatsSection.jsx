@@ -61,5 +61,13 @@ export default function InventoryStatsSection({
     );
   }
 
-  return stats;
+  return (
+    <section className="inv-stats-block">
+      <div className="tf-section-copy inv-stats-copy">
+        <div className="tf-section-kicker">Party metrics</div>
+        <div className="small">Сводка по текущему фильтру и общему весу персонажа.</div>
+      </div>
+      {stats}
+    </section>
+  );
 }

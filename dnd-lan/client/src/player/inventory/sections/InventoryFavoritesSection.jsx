@@ -59,7 +59,10 @@ export default function InventoryFavoritesSection({
   return (
     <div className="inv-panel inv-favorites tf-panel">
       <div className="inv-panel-head tf-section-head">
-        <div className="inv-panel-title">Избранное</div>
+        <div className="tf-section-copy">
+          <div className="tf-section-kicker">Quick slots</div>
+          <div className="inv-panel-title">Избранное</div>
+        </div>
         <div className="small">Быстрые слоты предметов</div>
       </div>
       {content}
