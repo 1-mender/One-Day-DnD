@@ -43,7 +43,7 @@ export default function InventoryFavoritesSection({
   if (isNarrowScreen) {
     return (
       <details
-        className="inv-panel inv-mobile-section inv-favorites"
+        className="inv-panel inv-mobile-section inv-favorites tf-panel"
         open={mobileFavoritesOpen}
         onToggle={(event) => setMobileFavoritesOpen(event.currentTarget.open)}
       >
@@ -57,8 +57,8 @@ export default function InventoryFavoritesSection({
   }
 
   return (
-    <div className="inv-panel inv-favorites">
-      <div className="inv-panel-head">
+    <div className="inv-panel inv-favorites tf-panel">
+      <div className="inv-panel-head tf-section-head">
         <div className="inv-panel-title">Избранное</div>
         <div className="small">Быстрые слоты предметов</div>
       </div>

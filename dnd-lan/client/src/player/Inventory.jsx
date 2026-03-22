@@ -95,7 +95,7 @@ export default function Inventory() {
   const openTransfers = () => nav("/app/transfers");
 
   return (
-    <div className={`card inventory-shell${lite ? " page-lite" : ""}`.trim()}>
+    <div className={`card inventory-shell tf-shell tf-inventory-shell${lite ? " page-lite" : ""}`.trim()}>
       <InventoryToolbarSection
         isNarrowScreen={isNarrowScreen}
         totalWeight={totalWeight}

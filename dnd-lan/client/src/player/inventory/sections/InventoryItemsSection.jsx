@@ -28,8 +28,8 @@ export default function InventoryItemsSection({
   toggleVisibility
 }) {
   return (
-    <div className="inv-panel inv-items">
-      <div className="inv-panel-head">
+    <div className="inv-panel inv-items tf-panel tf-items-panel">
+      <div className="inv-panel-head tf-section-head">
         <div className="inv-panel-title">Предметы</div>
         <div className="small">Все предметы инвентаря</div>
       </div>
@@ -68,7 +68,7 @@ export default function InventoryItemsSection({
           hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
         />
       ) : (
-        <div className={`list inv-shelf ${view === "grid" ? "inv-grid" : ""}`} ref={lite ? null : listRef}>
+        <div className={`list inv-shelf tf-item-list ${view === "grid" ? "inv-grid tf-item-grid" : ""}`.trim()} ref={lite ? null : listRef}>
           {filtered.map((item) => (
             <InventoryItemCard
               key={item.id}

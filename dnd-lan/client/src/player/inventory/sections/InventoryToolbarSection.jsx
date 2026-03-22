@@ -20,16 +20,17 @@ export default function InventoryToolbarSection({
 }) {
   return (
     <>
-      <div className="inv-header">
-        <div className="inv-header-main">
-          <div className="inv-title-lg">Инвентарь</div>
+      <div className="inv-header tf-page-head">
+        <div className="inv-header-main tf-page-head-main">
+          <div className="tf-overline">Adventure Loadout</div>
+          <div className="inv-title-lg tf-page-title">Инвентарь</div>
           <div className="inv-subtitle">
             Вес (по фильтру): {totalWeight.toFixed(2)}
             {readOnly ? <span className="badge warn">только чтение</span> : null}
           </div>
         </div>
         {!isNarrowScreen ? (
-          <div className="inv-header-actions">
+          <div className="inv-header-actions tf-command-actions">
             <button className="btn secondary" onClick={onOpenTransfers}>Передачи</button>
             <button className="btn" onClick={onStartAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
             <button className="btn secondary" onClick={onRefresh}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
@@ -38,7 +39,7 @@ export default function InventoryToolbarSection({
       </div>
 
       {isNarrowScreen ? (
-        <div className="inv-mobile-sticky">
+        <div className="inv-mobile-sticky tf-panel tf-command-bar">
           <div className="inv-mobile-search">
             <input
               value={q}
@@ -55,17 +56,17 @@ export default function InventoryToolbarSection({
         </div>
       ) : null}
 
-      <div className="inv-panel inv-filters">
-        <div className="inv-panel-head">
+      <div className="inv-panel inv-filters tf-panel tf-command-bar">
+        <div className="inv-panel-head tf-section-head">
           <div className="inv-panel-title">Фильтры</div>
-          <div className="inv-view-toggle">
-            <button className={`btn ${view === "list" ? "" : "secondary"}`} onClick={() => setView("list")}>
+          <div className="inv-view-toggle tf-segmented">
+            <button className={`btn tf-segmented-btn ${view === "list" ? "tf-segmented-btn-active" : "secondary"}`.trim()} onClick={() => setView("list")}>
               <List className="icon" aria-hidden="true" />Список
             </button>
-            <button className={`btn ${view === "grid" ? "" : "secondary"}`} onClick={() => setView("grid")}>
+            <button className={`btn tf-segmented-btn ${view === "grid" ? "tf-segmented-btn-active" : "secondary"}`.trim()} onClick={() => setView("grid")}>
               <LayoutGrid className="icon" aria-hidden="true" />Плитка
             </button>
-            <button className={`btn ${view === "slots" ? "" : "secondary"}`} onClick={() => setView("slots")}>
+            <button className={`btn tf-segmented-btn ${view === "slots" ? "tf-segmented-btn-active" : "secondary"}`.trim()} onClick={() => setView("slots")}>
               <Grid3x3 className="icon" aria-hidden="true" />RPG
             </button>
           </div>

@@ -30,6 +30,19 @@ const LOADOUT = [
   { label: "Вес", value: "18 / 50" }
 ];
 
+const HERO_METRICS = [
+  { label: "Выносливость", value: "101 / 151" },
+  { label: "Билеты", value: "12" },
+  { label: "Уведомления", value: "3" }
+];
+
+const PROFILE_STATS = [
+  { label: "Сила", value: "17" },
+  { label: "Ловкость", value: "12" },
+  { label: "Защита", value: "14" },
+  { label: "Крит", value: "10%" }
+];
+
 const INVENTORY_ITEMS = [
   { name: "Лунный компас", meta: "навигация", stamp: "редкий" },
   { name: "Печать охотника", meta: "метка", stamp: "тактика" },
@@ -54,15 +67,23 @@ export default function TestDrive() {
     <div className="test-drive-shell">
       <section className="test-drive-hero">
         <div className="test-drive-hero-copy">
-          <div className="test-drive-overline">Guild Codex / Test Drive</div>
-          <h1>Пилот нового визуального направления</h1>
+          <div className="test-drive-hero-topbar">
+            {HERO_METRICS.map((item) => (
+              <div key={item.label} className="test-drive-metric-pill">
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </div>
+            ))}
+          </div>
+          <div className="test-drive-overline">Adventure UI / Test Drive</div>
+          <h1>Игровой интерфейс без перегруза</h1>
           <p>
-            Здесь мы тестируем более смелый стиль: тёмные codex-акценты, мшистый primary, более сильную
-            иерархию и контентные карточки вместо одинаковых бежевых блоков.
+            Здесь мы проверяем более игровой, но при этом читаемый продуктовый стиль: тёплая база, более
+            собранные панели, живые карточки сущностей и понятные акценты без тяжёлого декора.
           </p>
           <div className="test-drive-actions">
             <button className="test-drive-btn primary">
-              <Sparkles className="icon" aria-hidden="true" />Оставить как кандидат
+              <Sparkles className="icon" aria-hidden="true" />Сохранить направление
             </button>
             <button className="test-drive-btn secondary">
               <Eye className="icon" aria-hidden="true" />Сравнить с текущим UI
@@ -72,10 +93,15 @@ export default function TestDrive() {
 
         <div className="test-drive-codex">
           <div className="test-drive-codex-frame">
+            <div className="test-drive-stage-tabs">
+              <button type="button" className="test-drive-stage-tab active">Усиление</button>
+              <button type="button" className="test-drive-stage-tab">Навык</button>
+              <button type="button" className="test-drive-stage-tab">Снаряжение</button>
+            </div>
             <div className="test-drive-codex-art">
-              <div className="test-drive-codex-glyph">✦</div>
-              <div className="test-drive-codex-title">Око сумрачной гильдии</div>
-              <div className="test-drive-codex-meta">легендарная сущность интерфейса</div>
+              <div className="test-drive-codex-glyph">ADV</div>
+              <div className="test-drive-codex-title">Тёплая база и сильные акценты</div>
+              <div className="test-drive-codex-meta">игровой характер через карточки, статусы и hero-блоки</div>
             </div>
           </div>
         </div>
@@ -101,7 +127,20 @@ export default function TestDrive() {
         <div className="test-drive-status">
           <span className="test-drive-badge moss">Primary: moss</span>
           <span className="test-drive-badge gold">Accent: brass</span>
-          <span className="test-drive-badge ink">Surface: codex dark</span>
+          <span className="test-drive-badge ink">Surface: light panels</span>
+        </div>
+      </section>
+
+      <section className="test-drive-command-bar">
+        <div className="test-drive-command-strip">
+          <button type="button" className="test-drive-command-btn active">Обзор</button>
+          <button type="button" className="test-drive-command-btn">Loadout</button>
+          <button type="button" className="test-drive-command-btn">Улучшения</button>
+          <button type="button" className="test-drive-command-btn">Квесты</button>
+        </div>
+        <div className="test-drive-command-meta">
+          <span className="test-drive-badge gold">Party UI</span>
+          <span className="test-drive-badge moss">Tactical Fantasy</span>
         </div>
       </section>
 
@@ -111,7 +150,7 @@ export default function TestDrive() {
             <div className="test-drive-panel-head">
               <div>
                 <div className="test-drive-panel-title">Партия</div>
-                <div className="small">Левая рейка должна быть плотнее и полезнее текущего списка.</div>
+                <div className="small">Левая рейка плотнее, полезнее и ближе к игровому roster-screen.</div>
               </div>
               <span className="test-drive-badge moss">3 игрока</span>
             </div>
@@ -129,18 +168,27 @@ export default function TestDrive() {
             </div>
           </div>
 
-          <div className="test-drive-panel dark">
+          <div className="test-drive-panel accent">
             <div className="test-drive-panel-head">
               <div>
-                <div className="test-drive-panel-title">Сценический блок</div>
-                <div className="small">Тёмные панели только для hero и сущностей.</div>
+                <div className="test-drive-panel-title">Дизайн-правила</div>
+                <div className="small">Игровой вайб через акценты и структуру, а не через сплошной декор.</div>
               </div>
               <WandSparkles className="icon" aria-hidden="true" />
             </div>
-            <div className="test-drive-inset">
-              <div className="test-drive-kicker">Активный эффект</div>
-              <div className="test-drive-feature-name">Пепельная метка</div>
-              <div className="small">Следующее усиление магазина стоит на 2 билета дешевле.</div>
+            <div className="test-drive-mini-grid">
+              <div className="test-drive-stat-card">
+                <strong>Читаемость</strong>
+                <span>Светлые панели, тёмный текст, понятные action-кнопки.</span>
+              </div>
+              <div className="test-drive-stat-card">
+                <strong>Игровость</strong>
+                <span>Карточки предметов, монстров и профиля получают больше характера.</span>
+              </div>
+              <div className="test-drive-stat-card">
+                <strong>Дисциплина</strong>
+                <span>Меньше пустоты и меньше одинаковых бежевых прямоугольников.</span>
+              </div>
             </div>
           </div>
         </aside>
@@ -150,15 +198,15 @@ export default function TestDrive() {
             <div className="test-drive-panel-head">
               <div>
                 <div className="test-drive-panel-title">{currentView.label}</div>
-                <div className="small">Один экран, четыре сценария для теста визуальной системы.</div>
+                <div className="small">Один экран, четыре игровых сценария для проверки новой системы.</div>
               </div>
-              <button className="test-drive-btn ghost">Переключить композицию</button>
+              <button className="test-drive-btn ghost">Сменить паттерн</button>
             </div>
 
             {view === "profile" ? (
               <div className="test-drive-content-grid">
                 <article className="test-drive-entity-card">
-                  <div className="test-drive-entity-art">D</div>
+                  <div className="test-drive-entity-art test-drive-entity-art-lg">D</div>
                   <div className="test-drive-entity-copy">
                     <div className="test-drive-kicker">Публичный профиль</div>
                     <div className="test-drive-entity-title">Dri, архивариус ветра</div>
@@ -176,16 +224,24 @@ export default function TestDrive() {
 
                 <article className="test-drive-panel inset-panel">
                   <div className="test-drive-panel-title">Приватный блок</div>
+                  <div className="test-drive-tactical-stat-list">
+                    {PROFILE_STATS.map((item) => (
+                      <div key={item.label} className="test-drive-tactical-stat-row">
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
+                      </div>
+                    ))}
+                  </div>
                   <div className="test-drive-mini-grid">
                     <div className="test-drive-stat-card">
                       <Shield className="icon" aria-hidden="true" />
                       <strong>Статы</strong>
-                      <span>Сильнее выделены как важный модуль, а не просто белая полоса.</span>
+                      <span>Остаются рабочим UI, но больше не теряются в плоской форме.</span>
                     </div>
                     <div className="test-drive-stat-card">
                       <UserRound className="icon" aria-hidden="true" />
                       <strong>Права</strong>
-                      <span>Редактирование и заявки уходят во вторичный слой.</span>
+                      <span>Редактирование и заявки уводятся во вторичный, но читаемый слой.</span>
                     </div>
                   </div>
                 </article>
@@ -202,7 +258,7 @@ export default function TestDrive() {
                     </div>
                     <div className="test-drive-loot-title">{item.name}</div>
                     <div className="small">{item.meta}</div>
-                    <button className="test-drive-btn secondary">Осмотреть</button>
+                    <button className="test-drive-btn secondary">Открыть карточку</button>
                   </article>
                 ))}
               </div>
@@ -238,7 +294,7 @@ export default function TestDrive() {
                     <div className="test-drive-loot-title">{offer.title}</div>
                     <div className="small">{offer.hint}</div>
                     <button className="test-drive-btn primary">
-                      <Swords className="icon" aria-hidden="true" />Взять в билд
+                      <Swords className="icon" aria-hidden="true" />Добавить в набор
                     </button>
                   </article>
                 ))}
