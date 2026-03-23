@@ -26,7 +26,7 @@ import { getIconKeyFromItem, getInventoryIcon, stripIconTags } from "../../lib/i
 import { getRarityLabel } from "../../lib/inventoryRarity.js";
 import MarkdownView from "../markdown/MarkdownView.jsx";
 import RarityBadge from "./RarityBadge.jsx";
-import ActionSheet from "../ui/ActionSheet.jsx";
+import { ActionSheet } from "../../foundation/primitives/index.js";
 
 let swipeHintShown = false;
 

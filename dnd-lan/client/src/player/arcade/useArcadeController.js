@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useToast } from "../../components/ui/ToastProvider.jsx";
+import { useToast } from "../../foundation/providers/index.js";
 import { useLiteMode } from "../../hooks/useLiteMode.js";
 import { useTickets } from "../../hooks/useTickets.js";
 import { t } from "../../i18n/index.js";

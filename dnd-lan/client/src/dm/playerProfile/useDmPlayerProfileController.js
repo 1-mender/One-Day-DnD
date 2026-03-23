@@ -2,7 +2,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api.js";
-import { useToast } from "../../components/ui/ToastProvider.jsx";
+import { useToast } from "../../foundation/providers/index.js";
 import { useSocket } from "../../context/SocketContext.jsx";
 import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { formatError } from "../../lib/formatError.js";

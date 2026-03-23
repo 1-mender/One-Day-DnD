@@ -3,7 +3,7 @@ import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
-import ActionMenu from "../components/ui/ActionMenu.jsx";
+import { ActionMenu } from "../foundation/primitives/index.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";

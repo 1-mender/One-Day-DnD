@@ -2,7 +2,7 @@ import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api.js";
-import { useToast } from "../../components/ui/ToastProvider.jsx";
+import { useToast } from "../../foundation/providers/index.js";
 import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { formatError } from "../../lib/formatError.js";
 import {

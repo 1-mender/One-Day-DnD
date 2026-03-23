@@ -1,6 +1,6 @@
 import React from "react";
 import { useTickets } from "../hooks/useTickets.js";
-import { useToast } from "../components/ui/ToastProvider.jsx";
+import { useToast } from "../foundation/providers/index.js";
 import { formatError } from "../lib/formatError.js";
 import ShopMascotStall from "./shop/ShopMascotStall.jsx";
 import { buildShopCatalog } from "./shop/shopCatalog.js";

@@ -1,4 +1,4 @@
-import ActionMenu from "../../../components/ui/ActionMenu.jsx";
+import { ActionMenu } from "../../../foundation/primitives/index.js";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 
 export default function DMBestiaryListSection({ controller }) {

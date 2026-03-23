@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import { EmptyState, ErrorBanner, Skeleton } from "../foundation/primitives/index.js";
-import { useToast } from "../components/ui/ToastProvider.jsx";
+import { useToast } from "../foundation/providers/index.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import { formatError } from "../lib/formatError.js";

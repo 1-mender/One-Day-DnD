@@ -9,7 +9,7 @@ import "./styles/vintage.css";
 import "./styles/cartographer.css";
 import "@fontsource/eb-garamond";
 import "@fontsource/im-fell-english";
-import { ToastProvider } from "./components/ui/ToastProvider.jsx";
+import { ToastProvider } from "./foundation/providers/index.js";
 import ErrorBoundary from "./components/ui/ErrorBoundary.jsx";
 import { t } from "./i18n/index.js";
 
