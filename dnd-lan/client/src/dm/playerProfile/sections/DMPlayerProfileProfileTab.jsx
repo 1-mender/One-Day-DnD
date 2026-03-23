@@ -1,6 +1,6 @@
 import { ImageUp, Save } from "lucide-react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
-import EmptyState from "../../../components/ui/EmptyState.jsx";
+import { EmptyState } from "../../../foundation/primitives/index.js";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import {
   DM_PROFILE_EDITABLE_OPTIONS,

@@ -1,6 +1,5 @@
 import { RefreshCcw } from "lucide-react";
-import Skeleton from "../../../components/ui/Skeleton.jsx";
-import { FilterBar, SectionCard } from "../../../foundation/primitives/index.js";
+import { FilterBar, SectionCard, Skeleton } from "../../../foundation/primitives/index.js";
 import { t } from "../../../i18n/index.js";
 
 export default function DMInventoryTransfersSection({

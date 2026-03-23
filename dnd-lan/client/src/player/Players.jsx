@@ -5,9 +5,7 @@ import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Activity, RefreshCcw, Users } from "lucide-react";
 import { useQueryState } from "../hooks/useQueryState.js";
-import ErrorBanner from "../components/ui/ErrorBanner.jsx";
-import EmptyState from "../components/ui/EmptyState.jsx";
-import Skeleton from "../components/ui/Skeleton.jsx";
+import { EmptyState, ErrorBanner, Skeleton } from "../foundation/primitives/index.js";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
 

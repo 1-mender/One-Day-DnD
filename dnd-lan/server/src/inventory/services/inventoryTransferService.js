@@ -6,7 +6,7 @@ import {
   ensurePlayerLayoutSlots,
   findItemAtSlot,
   getNextInventorySlot
-} from "../../routes/inventoryDomain.js";
+} from "../domain/inventoryDomain.js";
 import {
   TRANSFER_MAX_QTY,
   TRANSFER_NOTE_MAX,

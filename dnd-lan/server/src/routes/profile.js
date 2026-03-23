@@ -3,7 +3,7 @@ import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getPartySettings, getSingleParty, setPartySettings } from "../db.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 import { jsonParse, now, randId } from "../util.js";
-import { getDmPayloadFromRequest, getPlayerContextFromRequest } from "../sessionAuth.js";
+import { ensureSessionWritable, getDmPayloadFromRequest, getPlayerContextFromRequest } from "../sessionAuth.js";
 
 export const profileRouter = express.Router();
 
@@ -237,14 +237,6 @@ function validateAndFinalizePatch(patch, { stringifyStats = true } = {}) {
   return { patch: out };
 }
 
-function ensureWritable(sess, res) {
-  if (sess.impersonated && !sess.impersonated_write) {
-    res.status(403).json({ error: "read_only_impersonation" });
-    return false;
-  }
-  return true;
-}
-
 profileRouter.get("/profile-presets", (req, res) => {
   const dm = getDmPayloadFromRequest(req);
   const me = getPlayerContextFromRequest(req, { at: now() });
@@ -380,7 +372,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
 
   const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
-  if (!ensureWritable(me.sess, res)) return;
+  if (!ensureSessionWritable(me.sess, res)) return;
 
   const db = getDb();
   const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
@@ -427,7 +419,7 @@ profileRouter.post("/players/:id/profile-requests", (req, res) => {
 
   const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
-  if (!ensureWritable(me.sess, res)) return;
+  if (!ensureSessionWritable(me.sess, res)) return;
 
   const db = getDb();
   const profile = db.prepare("SELECT allow_requests FROM character_profiles WHERE player_id=?").get(playerId);
@@ -449,6 +441,10 @@ profileRouter.post("/players/:id/profile-requests", (req, res) => {
     .prepare("INSERT INTO profile_change_requests(player_id, proposed_changes, reason, status, created_at) VALUES(?,?,?,?,?)")
     .run(playerId, JSON.stringify(changes), reason || null, "pending", t);
 
+  req.app.locals.io?.to(`player:${playerId}`).emit("profile:requestsUpdated", {
+    requestId: Number(info.lastInsertRowid),
+    playerId
+  });
   req.app.locals.io?.to("dm").emit("profile:requestCreated", { id: info.lastInsertRowid, playerId });
   res.json({ ok: true, requestId: info.lastInsertRowid });
 });
@@ -606,6 +602,11 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
   }
 
   req.app.locals.io?.to(`player:${reqRow.player_id}`).emit("profile:updated");
+  req.app.locals.io?.to(`player:${reqRow.player_id}`).emit("profile:requestsUpdated", {
+    requestId: id,
+    playerId: Number(reqRow.player_id),
+    status: "approved"
+  });
   req.app.locals.io?.to("dm").emit("players:updated");
   req.app.locals.io?.to("dm").emit("profile:requestsUpdated");
   res.json({ ok: true });
@@ -629,6 +630,11 @@ profileRouter.post("/profile-requests/:id/reject", dmAuthMiddleware, (req, res) 
   db.prepare("UPDATE profile_change_requests SET status='rejected', resolved_at=?, resolved_by=?, dm_note=? WHERE id=?")
     .run(t, resolvedBy, note || null, id);
 
+  req.app.locals.io?.to(`player:${reqRow.player_id}`).emit("profile:requestsUpdated", {
+    requestId: id,
+    playerId: Number(reqRow.player_id),
+    status: "rejected"
+  });
   req.app.locals.io?.to("dm").emit("profile:requestsUpdated");
   res.json({ ok: true });
 });

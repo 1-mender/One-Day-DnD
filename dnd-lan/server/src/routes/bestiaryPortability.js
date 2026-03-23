@@ -1,11 +1,15 @@
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getSinglePartyId } from "../db.js";
 import { now, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
+import { uploadsDir } from "../paths.js";
 
 export const bestiaryPortabilityRouter = express.Router();
+const BESTIARY_UPLOAD_DIR = path.join(uploadsDir, "bestiary");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -52,6 +56,25 @@ function pickParam(req, key, fallback) {
   const qv = req.query?.[key];
   const bv = req.body?.[key];
   return (qv ?? bv ?? fallback);
+}
+
+function resolveImportedImageFilename(img) {
+  const directName = String(img?.filename || "").trim();
+  if (directName) return directName;
+  const rawUrl = String(img?.url || "").trim();
+  if (!rawUrl) return "";
+  const normalized = rawUrl.replace(/\\/g, "/").split("?")[0];
+  return path.basename(normalized);
+}
+
+function importedBestiaryImageExists(filename) {
+  if (!filename) return false;
+  return fs.existsSync(path.join(BESTIARY_UPLOAD_DIR, filename));
+}
+
+function pushImageImportWarning(warnings, monsterName, filename) {
+  if (warnings.length >= 50) return;
+  warnings.push(`Файл изображения "${filename}" для "${monsterName}" не найден в uploads/bestiary; metadata skipped`);
 }
 
 bestiaryPortabilityRouter.get("/export", dmAuthMiddleware, (req, res) => {
@@ -310,8 +333,12 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
             "INSERT INTO monster_images(monster_id, filename, original_name, mime, created_at) VALUES(?,?,?,?,?)"
           );
           for (const img of m.images) {
-            const filename = String(img?.filename || "").trim();
+            const filename = resolveImportedImageFilename(img);
             if (!filename) continue;
+            if (!importedBestiaryImageExists(filename)) {
+              pushImageImportWarning(warnings, m.name, filename);
+              continue;
+            }
             insImg.run(
               Number(monsterId),
               filename,
@@ -370,8 +397,12 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
 
         if (imagesMeta && Array.isArray(m.images) && m.images.length > 0) {
           for (const img of m.images) {
-            const filename = String(img?.filename || "").trim();
+            const filename = resolveImportedImageFilename(img);
             if (!filename) continue;
+            if (!importedBestiaryImageExists(filename)) {
+              pushImageImportWarning(warnings, m.name, filename);
+              continue;
+            }
             const exists = hasImg.get(foundId, filename);
             if (exists) continue;
             insImg.run(
@@ -405,8 +436,12 @@ bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.si
 
         if (imagesMeta && Array.isArray(m.images) && m.images.length > 0) {
           for (const img of m.images) {
-            const filename = String(img?.filename || "").trim();
+            const filename = resolveImportedImageFilename(img);
             if (!filename) continue;
+            if (!importedBestiaryImageExists(filename)) {
+              pushImageImportWarning(warnings, m.name, filename);
+              continue;
+            }
             insImg.run(
               Number(monsterId),
               filename,

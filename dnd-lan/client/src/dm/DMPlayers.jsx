@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import Modal from "../components/Modal.jsx";
-import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import ActionMenu from "../components/ui/ActionMenu.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -11,7 +10,7 @@ import { useReadOnly } from "../hooks/useReadOnly.js";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { t } from "../i18n/index.js";
-import { ConfirmDialog, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
+import { ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);

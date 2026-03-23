@@ -2,7 +2,7 @@ import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getSinglePartyId } from "../db.js";
 import { now } from "../util.js";
-import { getActiveSessionByToken, getPlayerTokenFromRequest } from "../sessionAuth.js";
+import { requirePlayerSession } from "../sessionAuth.js";
 import {
   listInventoryForPlayer,
   processDmInventoryBulkDelete,
@@ -32,23 +32,9 @@ import {
 
 export const inventoryRouter = express.Router();
 
-function authPlayer(req) {
-  const token = getPlayerTokenFromRequest(req);
-  if (!token) return null;
-  return getActiveSessionByToken(token, { at: now() });
-}
-
-function ensureWritable(sess, res) {
-  if (sess.impersonated && !sess.impersonated_write) {
-    res.status(403).json({ error: "read_only_impersonation" });
-    return false;
-  }
-  return true;
-}
-
 inventoryRouter.get("/mine", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  const sess = requirePlayerSession(req, res, { at: now() });
+  if (!sess) return;
   const result = listInventoryForPlayer({ db: getDb(), playerId: sess.player_id, includeWeightLimit: true });
   return res.status(result.status).json(result.body);
 });
@@ -60,34 +46,30 @@ inventoryRouter.get("/player/:playerId", dmAuthMiddleware, (req, res) => {
 });
 
 inventoryRouter.post("/mine", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processPlayerInventoryCreate({ db: getDb(), io: req.app.locals.io, sess, body: req.body });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.put("/mine/:id", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const itemId = Number(req.params.id);
   const result = processPlayerInventoryUpdate({ db: getDb(), io: req.app.locals.io, sess, itemId, body: req.body });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine/layout", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processInventoryLayoutUpdate({ db: getDb(), io: req.app.locals.io, sess, body: req.body });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine/:id/split", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processInventorySplit({
     db: getDb(),
     io: req.app.locals.io,
@@ -99,9 +81,8 @@ inventoryRouter.post("/mine/:id/split", (req, res) => {
 });
 
 inventoryRouter.post("/mine/:id/quick-equip", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processInventoryQuickEquip({
     db: getDb(),
     io: req.app.locals.io,
@@ -112,9 +93,8 @@ inventoryRouter.post("/mine/:id/quick-equip", (req, res) => {
 });
 
 inventoryRouter.delete("/mine/:id", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const itemId = Number(req.params.id);
   const result = processPlayerInventoryDelete({ db: getDb(), io: req.app.locals.io, sess, itemId });
   return res.status(result.status).json(result.body);
@@ -174,31 +154,29 @@ inventoryRouter.post("/dm/player/:playerId/bulk-delete", dmAuthMiddleware, (req,
 });
 
 inventoryRouter.post("/transfers", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processTransferCreate({ db: getDb(), io: req.app.locals.io, sess, body: req.body, nowFn: now });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.get("/transfers/inbox", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  const sess = requirePlayerSession(req, res, { at: now() });
+  if (!sess) return;
   const result = listTransferInbox({ db: getDb(), playerId: sess.player_id, nowFn: now });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.get("/transfers/outbox", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
+  const sess = requirePlayerSession(req, res, { at: now() });
+  if (!sess) return;
   const result = listTransferOutbox({ db: getDb(), playerId: sess.player_id, nowFn: now });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/transfers/:id/accept", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processTransferAccept({
     db: getDb(),
     io: req.app.locals.io,
@@ -210,9 +188,8 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
 });
 
 inventoryRouter.post("/transfers/:id/reject", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processTransferReject({
     db: getDb(),
     io: req.app.locals.io,
@@ -224,9 +201,8 @@ inventoryRouter.post("/transfers/:id/reject", (req, res) => {
 });
 
 inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
-  const sess = authPlayer(req);
-  if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (!ensureWritable(sess, res)) return;
+  const sess = requirePlayerSession(req, res, { at: now(), writable: true });
+  if (!sess) return;
   const result = processTransferCancel({
     db: getDb(),
     io: req.app.locals.io,

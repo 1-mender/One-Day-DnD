@@ -1,5 +1,4 @@
-import EmptyState from "../../../components/ui/EmptyState.jsx";
-import Skeleton from "../../../components/ui/Skeleton.jsx";
+import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import InventoryItemCard from "../../../components/vintage/InventoryItemCard.jsx";
 import { t } from "../../../i18n/index.js";
 

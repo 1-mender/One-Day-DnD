@@ -1,9 +1,8 @@
 import React from "react";
-import ErrorBanner from "../components/ui/ErrorBanner.jsx";
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { INVENTORY_ICON_SECTIONS } from "../lib/inventoryIcons.js";
 import { t } from "../i18n/index.js";
-import { ConfirmDialog, PageHeader, StatusBanner } from "../foundation/primitives/index.js";
+import { ConfirmDialog, ErrorBanner, PageHeader, StatusBanner } from "../foundation/primitives/index.js";
 import DMInventoryBulkActionsSection from "./inventory/sections/DMInventoryBulkActionsSection.jsx";
 import DMInventoryFiltersSection from "./inventory/sections/DMInventoryFiltersSection.jsx";
 import DMInventoryItemModal from "./inventory/sections/DMInventoryItemModal.jsx";

@@ -122,10 +122,13 @@ export function useProfileController() {
     loadPresetsRef.current?.().catch(() => {});
     const onUpdated = () => loadRef.current?.().catch(() => {});
     const onSettings = () => loadPresetsRef.current?.().catch(() => {});
+    const onRequestsUpdated = () => loadRef.current?.().catch(() => {});
     socket.on("profile:updated", onUpdated);
+    socket.on("profile:requestsUpdated", onRequestsUpdated);
     socket.on("settings:updated", onSettings);
     return () => {
       socket.off("profile:updated", onUpdated);
+      socket.off("profile:requestsUpdated", onRequestsUpdated);
       socket.off("settings:updated", onSettings);
     };
   }, [socket]);

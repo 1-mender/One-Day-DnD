@@ -1,6 +1,5 @@
 import { BookOpenText, Clock3, ImageUp, PencilLine, RefreshCcw, ScrollText, Send, Shield } from "lucide-react";
-import EmptyState from "../../../components/ui/EmptyState.jsx";
-import Skeleton from "../../../components/ui/Skeleton.jsx";
+import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import { StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import { formatChangeFields } from "../../profileDomain.js";

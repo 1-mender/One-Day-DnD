@@ -1,13 +1,15 @@
-import { jsonParse, now } from "../util.js";
+import { jsonParse, now } from "../../util.js";
 
 export const INVENTORY_CONTAINER_BACKPACK = "backpack";
 export const INVENTORY_CONTAINER_HOTBAR = "hotbar";
 export const INVENTORY_CONTAINER_EQUIPMENT = "equipment";
+
 const INVENTORY_LAYOUT = {
   [INVENTORY_CONTAINER_BACKPACK]: { cols: 6, rows: 100 },
   [INVENTORY_CONTAINER_HOTBAR]: { cols: 6, rows: 1 },
   [INVENTORY_CONTAINER_EQUIPMENT]: { cols: 4, rows: 1 }
 };
+
 const INVENTORY_SLOT_MAX = 99;
 
 function toFiniteNumber(value, fallback) {

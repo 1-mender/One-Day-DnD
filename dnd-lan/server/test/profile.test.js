@@ -20,6 +20,16 @@ initDb();
 const dmUser = createDmUser("dm", "secret123");
 
 const app = express();
+const ioEvents = [];
+app.locals.io = {
+  to(room) {
+    return {
+      emit(event, payload) {
+        ioEvents.push({ room, event, payload });
+      }
+    };
+  }
+};
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", profileRouter);
@@ -29,6 +39,10 @@ const base = `http://127.0.0.1:${server.address().port}`;
 
 test.after(() => {
   server.close();
+});
+
+test.beforeEach(() => {
+  ioEvents.length = 0;
 });
 
 function dmCookie() {
@@ -146,6 +160,42 @@ test("Player can create request with reason and DM can approve", async () => {
     body: { note: "OK" }
   });
   assert.equal(approveRes.res.status, 200);
+  assert.ok(ioEvents.find((entry) => entry.room === `player:${playerId}` && entry.event === "profile:updated"));
+  assert.ok(ioEvents.find((entry) => entry.room === `player:${playerId}` && entry.event === "profile:requestsUpdated"));
+});
+
+test("DM reject emits live profile request update to player room", async () => {
+  const playerId = createPlayer("Player Reject");
+  const token = createSession(playerId);
+  const dmHeaders = { cookie: dmCookie() };
+
+  await api(`/api/players/${playerId}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: { characterName: "Reject Me", allowRequests: true }
+  });
+
+  const reqRes = await api(`/api/players/${playerId}/profile-requests`, {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: {
+      proposedChanges: { bio: "Need update" },
+      reason: "Arc update"
+    }
+  });
+  assert.equal(reqRes.res.status, 200);
+
+  const rejectRes = await api(`/api/profile-requests/${reqRes.data.requestId}/reject`, {
+    method: "POST",
+    headers: dmHeaders,
+    body: { note: "Not now" }
+  });
+  assert.equal(rejectRes.res.status, 200);
+  assert.ok(ioEvents.find((entry) =>
+    entry.room === `player:${playerId}`
+    && entry.event === "profile:requestsUpdated"
+    && entry.payload?.status === "rejected"
+  ));
 });
 
 test("Validation rejects long bio", async () => {

@@ -13,7 +13,7 @@ import {
   normalizeInventoryContainer,
   normalizeSlotCoord,
   parseLayoutMoves
-} from "../../routes/inventoryDomain.js";
+} from "../domain/inventoryDomain.js";
 import { toFiniteNumber, transferError } from "./inventoryServiceUtils.js";
 
 function ok(body) {

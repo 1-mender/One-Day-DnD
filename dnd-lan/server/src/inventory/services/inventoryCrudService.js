@@ -13,7 +13,7 @@ import {
   normalizeIdList,
   normalizeInventoryContainer,
   normalizeSlotCoord
-} from "../../routes/inventoryDomain.js";
+} from "../domain/inventoryDomain.js";
 import { checkWeightLimit, toFiniteNumber } from "./inventoryServiceUtils.js";
 
 function ok(body) {

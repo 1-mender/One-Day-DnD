@@ -6,9 +6,9 @@ import { getDb } from "../db.js";
 import { jsonParse, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
 import {
-  getActiveSessionByToken,
+  ensureSessionWritable,
   getDmPayloadFromRequest,
-  getPlayerTokenFromRequest
+  getPlayerSessionFromRequest
 } from "../sessionAuth.js";
 import {
   DANGEROUS_UPLOAD_MIMES,
@@ -52,23 +52,15 @@ const upload = multer({
 
 const PLAYER_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
-function getPlayerSession(req) {
-  const token = getPlayerTokenFromRequest(req);
-  if (!token) return null;
-  return getActiveSessionByToken(token, { at: now() });
-}
-
 function dmOrAvatarUpload(req, res, next) {
   if (getDmPayloadFromRequest(req)) {
     req.isPlayerUpload = false;
     return next();
   }
 
-  const sess = getPlayerSession(req);
+  const sess = getPlayerSessionFromRequest(req, { at: now() });
   if (!sess) return res.status(401).json({ error: "not_authenticated" });
-  if (sess.impersonated && !sess.impersonated_write) {
-    return res.status(403).json({ error: "read_only_impersonation" });
-  }
+  if (!ensureSessionWritable(sess, res)) return;
   const row = getDb().prepare("SELECT editable_fields FROM character_profiles WHERE player_id=?").get(sess.player_id);
   if (!row) return res.status(404).json({ error: "profile_not_created" });
   const parsed = jsonParse(row.editable_fields, []);

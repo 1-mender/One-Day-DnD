@@ -139,4 +139,46 @@
   color: var(--fd-color-text-muted);
   font-size: var(--fd-size-sm);
 }
+
+.fd-error-banner {
+  border-radius: var(--fd-radius-md);
+  border: 1px solid color-mix(in srgb, var(--fd-color-danger) 58%, var(--fd-color-border));
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fd-color-danger) 70%, white), color-mix(in srgb, var(--fd-color-danger) 88%, var(--fd-color-surface)));
+  box-shadow: var(--fd-shadow-sm);
+  padding: var(--fd-space-3);
+}
+
+.fd-error-banner-title {
+  font-family: var(--fd-font-display);
+  font-size: var(--fd-size-md);
+  font-weight: 800;
+}
+
+.fd-error-banner-text,
+.fd-error-banner-hint {
+  margin-top: var(--fd-space-1);
+  font-size: var(--fd-size-sm);
+}
+
+.fd-error-banner-hint {
+  color: var(--fd-color-text-muted);
+}
+
+.fd-error-banner-action {
+  margin-top: var(--fd-space-2);
+}
+
+.fd-skeleton {
+  border-radius: var(--fd-radius-sm);
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.48) 45%,
+      rgba(255, 255, 255, 0.12) 100%
+    ),
+    rgba(83, 74, 53, 0.12);
+  background-size: 220px 100%;
+  animation: skel 1.25s ease-in-out infinite;
+}
 }

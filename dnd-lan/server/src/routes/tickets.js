@@ -3,7 +3,7 @@ import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getSingleParty, getSinglePartyId } from "../db.js";
 import { now } from "../util.js";
 import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
-import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
+import { ensureSessionWritable, getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { createSeedStore } from "../tickets/domain/playValidation.js";
 import {
   SEED_TTL_MS
@@ -54,10 +54,7 @@ function requirePlayer(req, res) {
 function requireWritablePlayer(req, res) {
   const me = requirePlayer(req, res);
   if (!me) return null;
-  if (me.sess?.impersonated && !me.sess?.impersonated_write) {
-    res.status(403).json({ error: "read_only_impersonation" });
-    return null;
-  }
+  if (!ensureSessionWritable(me.sess, res)) return null;
   return me;
 }
 

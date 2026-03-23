@@ -1,7 +1,6 @@
 import React from "react";
 import { Save } from "lucide-react";
-import ErrorBanner from "../components/ui/ErrorBanner.jsx";
-import Skeleton from "../components/ui/Skeleton.jsx";
+import { ErrorBanner, Skeleton } from "../foundation/primitives/index.js";
 import DMPlayerProfileProfileTab from "./playerProfile/sections/DMPlayerProfileProfileTab.jsx";
 import DMPlayerProfileRequestsTab from "./playerProfile/sections/DMPlayerProfileRequestsTab.jsx";
 import { useDmPlayerProfileController } from "./playerProfile/useDmPlayerProfileController.js";

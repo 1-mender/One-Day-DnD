@@ -1,8 +1,6 @@
 import React from "react";
 import { RefreshCcw } from "lucide-react";
-import ErrorBanner from "../components/ui/ErrorBanner.jsx";
-import EmptyState from "../components/ui/EmptyState.jsx";
-import Skeleton from "../components/ui/Skeleton.jsx";
+import { EmptyState, ErrorBanner, Skeleton } from "../foundation/primitives/index.js";
 import { t } from "../i18n/index.js";
 import ProfileContent from "./profile/sections/ProfileContent.jsx";
 import ProfileEditModal from "./profile/sections/ProfileEditModal.jsx";

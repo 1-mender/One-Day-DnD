@@ -5,7 +5,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-const { registerHealthRoutes } = await import("../src/health.js");
+const { registerHealthRoutes, resetReadyzLogStateForTest } = await import("../src/health.js");
+const { logger } = await import("../src/logger.js");
 
 function createApp(getDb, uploadsDir) {
   const app = express();
@@ -18,6 +19,10 @@ async function getJson(base, route) {
   const data = await res.json().catch(() => ({}));
   return { res, data };
 }
+
+test.beforeEach(() => {
+  resetReadyzLogStateForTest();
+});
 
 test("healthz returns ok with uptime", async () => {
   const uploadsDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-health-"));
@@ -62,6 +67,44 @@ test("readyz returns 503 when db check fails", async () => {
     assert.equal(out.data.ok, false);
     assert.equal(out.data.error, "not_ready");
   } finally {
+    server.close();
+  }
+});
+
+test("readyz throttles repeated identical failure logs and resets after success", async () => {
+  const uploadsDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-ready-throttle-"));
+  let shouldFail = true;
+  const app = createApp(
+    () => ({ prepare: () => ({ get: () => {
+      if (shouldFail) throw new Error("db_down");
+      return { ok: 1 };
+    } }) }),
+    uploadsDir
+  );
+  const server = app.listen(0);
+  const base = `http://127.0.0.1:${server.address().port}`;
+
+  const originalError = logger.error;
+  const seen = [];
+  logger.error = (...args) => {
+    seen.push(args);
+  };
+
+  try {
+    const first = await getJson(base, "/readyz");
+    const second = await getJson(base, "/readyz");
+    shouldFail = false;
+    const ok = await getJson(base, "/readyz");
+    shouldFail = true;
+    const third = await getJson(base, "/readyz");
+
+    assert.equal(first.res.status, 503);
+    assert.equal(second.res.status, 503);
+    assert.equal(ok.res.status, 200);
+    assert.equal(third.res.status, 503);
+    assert.equal(seen.length, 2);
+  } finally {
+    logger.error = originalError;
     server.close();
   }
 });

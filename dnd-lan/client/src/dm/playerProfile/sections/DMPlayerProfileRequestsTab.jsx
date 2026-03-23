@@ -1,6 +1,5 @@
 import { Copy, RefreshCcw } from "lucide-react";
-import EmptyState from "../../../components/ui/EmptyState.jsx";
-import Skeleton from "../../../components/ui/Skeleton.jsx";
+import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import {
   DM_PROFILE_FIELD_LABELS,
   formatProfileRequestValue

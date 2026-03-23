@@ -70,6 +70,11 @@ export default function Waiting() {
     return () => clearInterval(id);
   }, [checkSession, status]);
 
+  const leaveWaiting = useCallback(() => {
+    storage.clearJoinRequestId();
+    nav("/", { replace: true });
+  }, [nav]);
+
   return (
     <VintageShell>
       <div className="container">
@@ -104,7 +109,7 @@ export default function Waiting() {
           <button className="btn secondary u-mt-12" onClick={() => checkSession().catch(() => {})} disabled={checking || status !== "waiting"}>
             {checking ? t("waiting.checking") : t("waiting.checkStatus")}
           </button>
-          <button className="btn secondary u-mt-12" onClick={() => nav("/", { replace: true })}>
+          <button className="btn secondary u-mt-12" onClick={leaveWaiting}>
             {t("common.back")}
           </button>
         </div>

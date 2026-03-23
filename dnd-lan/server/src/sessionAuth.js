@@ -44,6 +44,30 @@ export function getPlayerContextFromRequest(req, options = {}) {
   return getPlayerContextByToken(token, options);
 }
 
+export function getPlayerSessionFromRequest(req, options = {}) {
+  const token = getPlayerTokenFromRequest(req);
+  if (!token) return null;
+  return getActiveSessionByToken(token, options);
+}
+
+export function ensureSessionWritable(sess, res) {
+  if (sess?.impersonated && !sess?.impersonated_write) {
+    res.status(403).json({ error: "read_only_impersonation" });
+    return false;
+  }
+  return true;
+}
+
+export function requirePlayerSession(req, res, options = {}) {
+  const sess = getPlayerSessionFromRequest(req, options);
+  if (!sess) {
+    res.status(401).json({ error: "not_authenticated" });
+    return null;
+  }
+  if (options.writable && !ensureSessionWritable(sess, res)) return null;
+  return sess;
+}
+
 export function getPlayerTokenFromSocketRequest(socketRequest) {
   const rawCookie = socketRequest?.headers?.cookie || "";
   if (!rawCookie) return "";

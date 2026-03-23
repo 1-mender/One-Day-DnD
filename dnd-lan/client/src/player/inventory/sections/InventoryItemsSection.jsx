@@ -1,7 +1,5 @@
 import React from "react";
-import ErrorBanner from "../../../components/ui/ErrorBanner.jsx";
-import EmptyState from "../../../components/ui/EmptyState.jsx";
-import Skeleton from "../../../components/ui/Skeleton.jsx";
+import { EmptyState, ErrorBanner, Skeleton } from "../../../foundation/primitives/index.js";
 import InventoryItemCard from "../../../components/vintage/InventoryItemCard.jsx";
 import InventorySlotGrid from "../../InventorySlotGrid.jsx";
 
