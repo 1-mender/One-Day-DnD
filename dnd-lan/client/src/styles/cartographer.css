@@ -521,21 +521,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .inv-card[data-rarity="legendary"]{ --inv-accent: #b28a3b; }
 .inv-card[data-rarity="custom"]{ --inv-accent: #8a7860; }
 
-.inv-toolbar{
-  border: 1px solid var(--map-line);
-  background: rgba(255, 255, 255, 0.6);
-}
-
-.inv-hero{
-  border: 1px solid var(--map-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(235, 229, 214, 0.85));
-}
-
-.inv-hero::before,
-.inv-hero::after{
-  content: none;
-}
-
 .inv-select{
   border: 1px solid var(--map-line);
   background: rgba(255,255,255,0.85);
@@ -1446,10 +1431,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .inv-title{
   font-weight: 900;
   letter-spacing: 0.3px;
-}
-
-.inv-meta-line{
-  color: var(--map-muted);
 }
 
 .inv-actions{
