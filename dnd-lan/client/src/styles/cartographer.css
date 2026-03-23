@@ -24,7 +24,7 @@
   --page-max: 1080px;
   --page-pad-x: clamp(18px, 3.6vw, 40px);
   --page-pad-y: clamp(20px, 3.6vw, 42px);
-  --bottom-nav-h: 84px;
+  --bottom-nav-h: 76px;
 
   --font-body: "EB Garamond", ui-serif, Georgia, serif;
   --font-display: "IM Fell English", "EB Garamond", ui-serif, Georgia, serif;
@@ -4942,7 +4942,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .bottom-nav{
-  padding: 0 10px calc(10px + env(safe-area-inset-bottom));
+  padding: 0 8px calc(4px + env(safe-area-inset-bottom));
   background:
     linear-gradient(180deg, rgba(255,255,255,0), rgba(35, 33, 24, 0.08));
 }
@@ -4963,7 +4963,7 @@ body.arcade-modal-open{
   justify-content: center;
   gap: 8px;
   border-radius: 28px;
-  padding: 10px;
+  padding: 8px;
   background:
     linear-gradient(180deg, rgba(252,249,243,0.95), rgba(236, 227, 208, 0.96));
   border: 1px solid rgba(118, 100, 70, 0.18);
@@ -4976,8 +4976,8 @@ body.arcade-modal-open{
 .bottom-nav-link,
 .bottom-nav-link-btn{
   min-width: 94px;
-  min-height: 66px;
-  padding: 12px 14px;
+  min-height: 62px;
+  padding: 10px 12px;
   border-radius: 20px;
   border: 1px solid rgba(117, 105, 76, 0.18);
   background: rgba(255, 255, 255, 0.74);
@@ -5090,6 +5090,10 @@ body.arcade-modal-open{
 }
 
 @media (max-width: 720px){
+  :root{
+    --bottom-nav-h: 68px;
+  }
+
   .dm-topbar{
     justify-content: center;
   }
@@ -5098,15 +5102,15 @@ body.arcade-modal-open{
     display: grid;
     grid-template-columns: repeat(var(--bottom-nav-cols, 5), minmax(0, 1fr));
     gap: 4px;
-    padding: 5px;
+    padding: 4px;
   }
 
   .bottom-nav-link,
   .bottom-nav-link-btn{
     width: 100%;
     min-width: 0;
-    min-height: 54px;
-    padding: 8px 6px;
+    min-height: 50px;
+    padding: 7px 5px;
     border-radius: 16px;
   }
 
@@ -5116,8 +5120,8 @@ body.arcade-modal-open{
 
   .bottom-nav-link .nav-icon,
   .bottom-nav-link-btn .nav-icon{
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
   }
 
   .bottom-nav-link > span,
@@ -5126,33 +5130,37 @@ body.arcade-modal-open{
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 10px;
+    font-size: 9.5px;
     line-height: 1.05;
   }
 }
 
 @media (max-width: 420px){
+  :root{
+    --bottom-nav-h: 64px;
+  }
+
   .bottom-nav{
-    padding-inline: 4px;
+    padding-inline: 3px;
   }
 
   .bottom-nav-inner{
     grid-template-columns: repeat(var(--bottom-nav-cols, 5), minmax(0, 1fr));
     gap: 2px;
-    padding: 4px;
-    border-radius: 20px;
+    padding: 3px;
+    border-radius: 18px;
   }
 
   .bottom-nav-link,
   .bottom-nav-link-btn{
-    min-height: 52px;
-    padding: 7px 3px;
-    border-radius: 14px;
+    min-height: 48px;
+    padding: 6px 2px;
+    border-radius: 13px;
   }
 
   .bottom-nav-link > span,
   .bottom-nav-link-btn > span{
-    font-size: 9.5px;
+    font-size: 9px;
   }
 
   .bottom-nav-popover{
