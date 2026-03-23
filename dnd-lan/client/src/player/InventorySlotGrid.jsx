@@ -53,9 +53,9 @@ export default function InventorySlotGrid({
     <div className={`inv-slot-board-wrap tf-slot-board${touchOptimized ? " touch-optimized" : ""}${touchOptimized && touchLiteMode ? " touch-lite" : ""}`.trim()}>
       <div className="small inv-slot-hint tf-slot-hint">
         {touchOptimized && tapToMoveMode ? (
-          <>RPG-сетка (тач): включен Lite-режим. Выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните целевой слот.</>
+          <>Lite: выберите предмет кнопкой <GripVertical className="icon" aria-hidden="true" />, затем тапните слот.</>
         ) : touchOptimized ? (
-          <>RPG-сетка (тач): режим Классика. Перетаскивайте предмет за <GripVertical className="icon" aria-hidden="true" />.</>
+          <>Классика: перетаскивайте предмет за <GripVertical className="icon" aria-hidden="true" />.</>
         ) : (
           <>RPG-сетка: перетаскивайте за <GripVertical className="icon" aria-hidden="true" />, контекст через <MoreHorizontal className="icon" aria-hidden="true" />, клавиатура: Alt + стрелки.</>
         )}
@@ -74,7 +74,7 @@ export default function InventorySlotGrid({
             className={`btn tf-segmented-btn ${touchLiteMode ? "secondary" : "tf-segmented-btn-active"}`.trim()}
             onClick={() => setTouchLiteMode(false)}
           >
-            Классика
+            Классик.
           </button>
         </div>
       ) : null}
@@ -120,11 +120,13 @@ export default function InventorySlotGrid({
             />
           ))}
         </div>
-        <DragOverlay>
-          {activeItem ? (
-            <SlotItem item={activeItem} dragging readOnly={readOnly || busy} splitArmed={dragMode === "split"} />
-          ) : null}
-        </DragOverlay>
+        {!touchOptimized ? (
+          <DragOverlay>
+            {activeItem ? (
+              <SlotItem item={activeItem} dragging readOnly={readOnly || busy} splitArmed={dragMode === "split"} />
+            ) : null}
+          </DragOverlay>
+        ) : null}
       </DndContext>
     </div>
   );

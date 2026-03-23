@@ -45,8 +45,8 @@ export function useInventoryGridController({
     return map;
   }, [normalizedItems]);
   const rowsByContainer = useMemo(
-    () => buildRowsByContainer(normalizedItems, tapToMoveMode),
-    [normalizedItems, tapToMoveMode]
+    () => buildRowsByContainer(normalizedItems, touchOptimized || tapToMoveMode),
+    [normalizedItems, tapToMoveMode, touchOptimized]
   );
   const itemsCountByContainer = useMemo(() => {
     const byContainer = {};

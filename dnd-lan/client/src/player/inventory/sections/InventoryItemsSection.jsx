@@ -28,15 +28,16 @@ export default function InventoryItemsSection({
   toggleVisibility
 }) {
   const viewLabel = view === "slots" ? "RPG-сетка" : view === "grid" ? "Плитка" : "Список";
+  const compactItemsHead = isNarrowScreen && view === "slots";
 
   return (
     <div className="inv-panel inv-items tf-panel tf-items-panel">
-      <div className="inv-panel-head tf-section-head">
-        <div className="tf-section-copy">
+      <div className={`inv-panel-head tf-section-head${compactItemsHead ? " inv-panel-head-compact" : ""}`.trim()}>
+        <div className={`tf-section-copy${compactItemsHead ? " inv-items-head-copy" : ""}`.trim()}>
           <div className="tf-section-kicker">Loadout archive</div>
           <div className="inv-panel-title">Предметы</div>
         </div>
-        <div className="small">Режим: {viewLabel}</div>
+        <div className={`small${compactItemsHead ? " inv-items-head-meta" : ""}`.trim()}>Режим: {viewLabel}</div>
       </div>
       <ErrorBanner message={err} onRetry={load} />
 
@@ -73,7 +74,11 @@ export default function InventoryItemsSection({
           hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
         />
       ) : (
-        <div className={`list inv-shelf tf-item-list ${view === "grid" ? "inv-grid tf-item-grid" : ""}`.trim()} ref={lite ? null : listRef}>
+        <div
+          className={`list inv-shelf tf-item-list ${view === "grid" ? "inv-grid tf-item-grid" : ""}`.trim()}
+          data-view={view}
+          ref={lite ? null : listRef}
+        >
           {filtered.map((item) => (
             <InventoryItemCard
               key={item.id}

@@ -26,17 +26,12 @@ export default function ContainerGrid({
   onArmSplit,
   onCancelSplitArm
 }) {
-  const displayCols = touchLiteMode ? getTouchLiteCols(container.key) : container.cols;
-  const minCell = touchLiteMode ? (compactTouch ? 0 : 86) : touchOptimized ? (compactTouch ? 0 : 76) : 0;
-  const gridMinWidth = touchOptimized && minCell > 0 ? (displayCols * minCell + (displayCols - 1) * 10) : null;
+  const visualCols = touchOptimized ? getTouchLiteCols(container.key) : container.cols;
   const gridNode = (
     <div
       className="inv-slot-grid"
       style={{
-        gridTemplateColumns: touchOptimized && minCell > 0
-          ? `repeat(${displayCols}, minmax(${minCell}px, 1fr))`
-          : `repeat(${touchOptimized ? displayCols : container.cols}, minmax(0, 1fr))`,
-        minWidth: gridMinWidth ? `${gridMinWidth}px` : undefined
+        gridTemplateColumns: `repeat(${visualCols}, minmax(0, 1fr))`
       }}
     >
       {Array.from({ length: rows * container.cols }).map((_, index) => {
@@ -76,7 +71,7 @@ export default function ContainerGrid({
 
   if (touchLiteMode && container.key !== "backpack") {
     return (
-      <details className="inv-slot-zone tf-slot-zone touch-collapsed" open={hasItems}>
+      <details className="inv-slot-zone tf-slot-zone touch-collapsed" data-container={container.key} open={hasItems}>
         <summary className="inv-slot-zone-head">
           <h4>{container.label}</h4>
           <span className="badge secondary">{hasItems ? "есть предметы" : "пусто"}</span>
@@ -87,7 +82,10 @@ export default function ContainerGrid({
   }
 
   return (
-    <section className={`inv-slot-zone tf-slot-zone${touchOptimized ? " touch-optimized" : ""}`.trim()}>
+    <section
+      className={`inv-slot-zone tf-slot-zone${touchOptimized ? " touch-optimized" : ""}`.trim()}
+      data-container={container.key}
+    >
       <div className="inv-slot-zone-head">
         <h4>{container.label}</h4>
       </div>

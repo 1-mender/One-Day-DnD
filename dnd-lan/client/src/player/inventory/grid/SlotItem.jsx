@@ -76,7 +76,7 @@ export default function SlotItem({
   return (
     <div
       ref={setNodeRef}
-      className={`inv-slot-item${isDragging || dragging ? " dragging" : ""}${selectedForMove ? " selected-for-move" : ""}${touchLiteMode ? " touch-lite" : ""}`.trim()}
+      className={`inv-slot-item${isDragging || dragging ? " dragging" : ""}${selectedForMove ? " selected-for-move" : ""}${touchLiteMode ? " touch-lite" : ""}${touchOptimized ? " touch-optimized" : ""}`.trim()}
       style={style}
       aria-label={`${item.name || "Предмет"} x${qty}`}
       onContextMenu={(event) => {

@@ -133,6 +133,7 @@ function InventoryItemCard({
   const descPreview = useMemo(() => truncateText(descPlain, 180), [descPlain]);
   const hasLongDesc = !lite && descPlain.length > 180;
   const showFullDesc = !lite && (!hasLongDesc || expanded);
+  const showDesc = !!item.description && descPlain.length > (isMobile ? 6 : 0);
   const showActions = hasActions && (!isMobile && (!(compact || lite) || quickOpen));
   const swipeEnabled = isMobile && hasActions;
   const actionsLabel = item.name ? `Действия: ${item.name}` : "Действия предмета";
@@ -318,13 +319,13 @@ function InventoryItemCard({
               ) : null}
             </div>
           </div>
-          <div className="inv-meta-row">
+          <div className={`inv-meta-row${isMobile ? " inv-meta-row-mobile" : ""}`.trim()}>
             <span className="inv-chip">x{item.qty}</span>
             <span className={`inv-chip ${isHidden ? "off" : "ok"}`}>
               {isHidden ? <EyeOff className="icon" aria-hidden="true" /> : <Eye className="icon" aria-hidden="true" />}{vis}
             </span>
             <span className="inv-chip">Вес: {weight.toFixed(2)}</span>
-            <span className="inv-chip secondary">Редкость: {rarityLabel}</span>
+            {!isMobile ? <span className="inv-chip secondary">Редкость: {rarityLabel}</span> : null}
             {reservedQty > 0 ? (
               <span className="inv-chip warn" title={`В резерве: ${reservedQty}`} aria-label={`В резерве: ${reservedQty}`}>
                 Доступно: {availableQty}
@@ -332,8 +333,8 @@ function InventoryItemCard({
             ) : null}
           </div>
           {!lite && tags.length ? (
-            <div className="inv-tags">
-              {tags.slice(0, 4).map((tag) => (
+            <div className={`inv-tags${isMobile ? " inv-tags-mobile" : ""}`.trim()}>
+              {tags.slice(0, isMobile ? 2 : 4).map((tag) => (
                 <span key={tag} className="inv-tag">#{tag}</span>
               ))}
             </div>
@@ -344,7 +345,7 @@ function InventoryItemCard({
         </div>
       </div>
 
-      {item.description ? (
+      {showDesc ? (
         <div className={`inv-desc${lite ? " inv-desc-lite" : ""}`.trim()}>
           <div className="inv-desc-text" id={descId}>
             {showFullDesc ? (

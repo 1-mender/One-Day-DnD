@@ -385,120 +385,6 @@ a:focus-visible{
 a{ color: #3a2f20; }
 a:hover{ color: #000; }
 
-.vintage-modal-overlay{
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.55);
-  backdrop-filter: blur(2px);
-  display: grid;
-  place-items: center;
-  padding:
-    calc(10px + env(safe-area-inset-top))
-    calc(10px + env(safe-area-inset-right))
-    calc(10px + env(safe-area-inset-bottom))
-    calc(10px + env(safe-area-inset-left));
-  z-index: 999;
-}
-.vintage-modal{
-    width: min(820px, 94vw);
-    max-height: 90vh;
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
-    display:flex;
-    flex-direction: column;
-    border-radius: 20px;
-    background:
-      var(--noise),
-      linear-gradient(180deg, rgba(255,255,255,.30), rgba(255,255,255,0)),
-      linear-gradient(180deg, var(--paper), var(--paper2));
-    border: 1px solid rgba(110,90,55,.40);
-    box-shadow: var(--shadow0);
-    overflow: hidden;
-  }
-.vintage-modal-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(70,55,30,.22);
-  background: rgba(255,255,255,.28);
-}
-.vintage-modal-title{ font-weight: 900; font-size: 16px; }
-.vintage-modal-body{
-    padding: 14px;
-    overflow: auto;
-    max-height: calc(90vh - 64px);
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 84px);
-    overscroll-behavior: contain;
-  }
-
-.bottom-nav{
-  position: fixed;
-  left: 0; right: 0; bottom: 0;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  z-index: 900;
-  transition: transform .18s ease, opacity .18s ease;
-  background:
-    linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.35)),
-    rgba(0,0,0,.12);
-}
-body.arcade-modal-open{
-  overflow: hidden;
-}
-.arcade-modal-open .bottom-nav{
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(120%);
-}
-.bottom-nav-inner{
-  max-width: 780px;
-  margin: 0 auto;
-  border-radius: 18px;
-  padding: 10px;
-  background:
-    var(--noise),
-    linear-gradient(180deg, #f2e6cd, #dcc59d);
-  border: 1px solid rgba(110,90,55,.40);
-  box-shadow: var(--shadow2);
-  display: flex;
-  align-items: stretch;
-  gap: 8px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-.bottom-nav-inner::-webkit-scrollbar{
-  display: none;
-}
-.bottom-nav-link{
-  flex: 0 0 104px;
-  min-width: 104px;
-  text-decoration:none;
-  border-radius: 14px;
-  padding: 10px 8px;
-  text-align:center;
-  font-weight: 900;
-  color: var(--ink);
-  border: 1px solid rgba(70,55,30,.18);
-  background: rgba(255,255,255,.30);
-  font-family: var(--font-accent);
-  letter-spacing: .2px;
-  display:flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-.bottom-nav-link.active{
-  background:
-    var(--noise),
-    linear-gradient(180deg, #fff3d6, #e6cfaa);
-  box-shadow: inset 0 0 0 2px rgba(255,255,255,.22);
-}
-.bottom-nav-link .nav-icon{
-  width: 18px;
-  height: 18px;
-}
-
 .offline-ribbon{
   position: sticky;
   top: 0;
@@ -1096,20 +982,6 @@ body.arcade-modal-open{
   .row{
     flex-wrap: wrap;
   }
-  .bottom-nav-inner{
-    gap: 6px;
-  }
-  .bottom-nav-link{
-    flex-basis: 96px;
-    min-width: 96px;
-    white-space: normal;
-  }
-  .bottom-nav-link > span{
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
   .card .row{
     flex-direction: column;
     align-items: stretch;
@@ -1134,9 +1006,6 @@ body.arcade-modal-open{
   .btn{
     font-size: 15px;
     min-height: 44px;
-  }
-  .bottom-nav-link{
-    padding: 12px 8px;
   }
   .arcade-head,
   .shop-head{
@@ -1170,12 +1039,6 @@ body.arcade-modal-open{
 
 @media (max-width: 420px){
   :root{ --bottom-nav-h: 110px; }
-  .bottom-nav{ padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-  .bottom-nav-inner{ gap: 6px; }
-  .bottom-nav-link{
-    flex-basis: 88px;
-    min-width: 88px;
-  }
 }
 
 .theme-no-textures body{
@@ -3611,29 +3474,6 @@ body.arcade-modal-open{
 }
 
 @media (max-width: 640px){
-  .vintage-modal-overlay{
-    display: flex;
-    align-items: flex-end;
-  }
-  .vintage-modal{
-    width: 100%;
-    max-width: none;
-    border-radius: 16px;
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px);
-  }
-  .vintage-modal-header{
-    padding: 10px 12px;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-  }
-  .vintage-modal-title{
-    font-size: 15px;
-  }
-  .vintage-modal-body{
-    padding: 12px;
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 74px);
-  }
   .ttt-overlay,
   .uno-overlay,
   .scrabble-overlay{
@@ -3707,10 +3547,6 @@ body.arcade-modal-open{
   }
   .arcade-queue-history-item .btn{
     width: 100%;
-  }
-  .bottom-nav-link{
-    font-size: 12px;
-    padding: 10px 6px;
   }
   .card{
     padding: 12px 12px;

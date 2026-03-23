@@ -264,22 +264,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: 0 0 0 3px rgba(110, 140, 90, 0.2) !important;
 }
 
-.vintage-modal-overlay{
-  background: rgba(32, 32, 28, 0.55);
-  backdrop-filter: blur(6px);
-}
-
-.vintage-modal{
-  border: 1px solid var(--map-line);
-  background: linear-gradient(180deg, var(--map-surface), var(--map-surface-2));
-  box-shadow: var(--map-shadow-md);
-}
-
-.vintage-modal-header{
-  background: rgba(255, 255, 255, 0.75);
-  border-bottom: 1px solid var(--map-line);
-}
-
 .bottom-nav{
   background:
     linear-gradient(180deg, rgba(255,255,255,0), rgba(35, 33, 24, 0.12));
@@ -4205,21 +4189,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: var(--tf-shadow-soft);
 }
 
-.action-menu-list{
-  border: 1px solid var(--map-line);
-  background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(242, 236, 222, 0.96));
-  box-shadow: var(--map-shadow-md);
-}
-
-.action-menu-item:hover{
-  background: rgba(110, 140, 90, 0.12);
-  border-color: var(--map-line-strong);
-}
-
-.action-menu-item.danger{
-  color: #7a2f2a;
-}
-
 .events-list{
   border: 1px solid var(--map-line);
   background: rgba(255,255,255,0.65);
@@ -4668,12 +4637,27 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .tf-modal-overlay{
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(10px + env(safe-area-inset-top))
+    calc(10px + env(safe-area-inset-right))
+    calc(10px + env(safe-area-inset-bottom))
+    calc(10px + env(safe-area-inset-left));
+  z-index: 999;
   background: rgba(31, 28, 22, 0.4);
   backdrop-filter: blur(8px);
 }
 
 .tf-modal{
   width: min(760px, calc(100vw - 32px));
+  max-height: 90vh;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border-radius: 28px;
   border: 1px solid rgba(118, 100, 70, 0.2);
   background:
@@ -4695,6 +4679,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .tf-modal-title{
   color: #2f271d;
+  font-weight: 900;
   font-size: 22px;
   letter-spacing: 0.03em;
 }
@@ -4706,6 +4691,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .tf-modal-body{
+  padding: 14px;
+  overflow: auto;
+  max-height: calc(90vh - 64px);
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 84px);
+  overscroll-behavior: contain;
   display: grid;
   gap: 14px;
 }
@@ -4778,6 +4768,16 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   padding: 0 10px calc(10px + env(safe-area-inset-bottom));
   background:
     linear-gradient(180deg, rgba(255,255,255,0), rgba(35, 33, 24, 0.08));
+}
+
+body.arcade-modal-open{
+  overflow: hidden;
+}
+
+.arcade-modal-open .bottom-nav{
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(120%);
 }
 
 .bottom-nav-inner{
@@ -4957,6 +4957,36 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .bottom-nav-link > span,
   .bottom-nav-link-btn > span{
     font-size: 9.5px;
+  }
+}
+
+@media (max-width: 640px){
+  .tf-modal-overlay{
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .tf-modal{
+    width: 100%;
+    max-width: none;
+    border-radius: 16px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px);
+  }
+
+  .tf-modal-header{
+    padding: 10px 12px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+
+  .tf-modal-title{
+    font-size: 15px;
+  }
+
+  .tf-modal-body{
+    padding: 12px;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 74px);
   }
 }
 
@@ -5142,15 +5172,36 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     border-radius: 18px;
   }
 
+  .inv-panel-head-compact{
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .inv-items-head-copy{
+    gap: 1px;
+  }
+
+  .inv-items-head-meta{
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--ink-border) 72%, transparent);
+    background: color-mix(in srgb, var(--surface-elevated) 88%, #fff 12%);
+    font-size: 10px;
+    line-height: 1;
+  }
+
   .tf-inventory-shell .inv-card{
-    padding: 10px;
+    padding: 9px;
     border-radius: 16px;
   }
 
   .tf-inventory-shell .inv-card-header{
     display: grid;
     grid-template-columns: 44px minmax(0, 1fr);
-    gap: 10px;
+    gap: 8px;
     align-items: start;
   }
 
@@ -5169,17 +5220,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-title{
-    font-size: 17px;
-    line-height: 1.1;
+    font-size: 16px;
+    line-height: 1.08;
   }
 
   .tf-inventory-shell .inv-title-row{
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 6px;
   }
 
   .tf-inventory-shell .inv-title-right{
-    gap: 6px;
+    gap: 5px;
   }
 
   .tf-inventory-shell .rarity-medallion{
@@ -5195,8 +5246,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-meta-row{
-    gap: 6px;
-    margin-top: 6px;
+    gap: 5px;
+    margin-top: 4px;
+  }
+
+  .tf-inventory-shell .inv-meta-row-mobile{
+    gap: 4px;
+  }
+
+  .tf-inventory-shell .inv-meta-row-mobile .inv-chip{
+    min-height: 20px;
+    padding: 0 7px;
+    font-size: 9.5px;
   }
 
   .tf-inventory-shell .inv-chip{
@@ -5206,13 +5267,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-tags{
-    margin-top: 6px;
+    margin-top: 4px;
     gap: 4px;
   }
 
+  .tf-inventory-shell .inv-tags-mobile{
+    margin-top: 2px;
+  }
+
   .tf-inventory-shell .inv-tag{
-    font-size: 10px;
-    padding: 3px 7px;
+    font-size: 9px;
+    padding: 2px 6px;
   }
 
   .tf-inventory-shell .inv-note{
@@ -5221,13 +5286,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-desc{
-    margin-top: 8px;
-    padding-top: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
   }
 
   .tf-inventory-shell .inv-desc-text{
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 12px;
+    line-height: 1.35;
   }
 
   .tf-inventory-shell .inv-actions{
@@ -5251,19 +5316,19 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .tf-slot-hint{
-    padding: 10px 12px;
-    font-size: 12px;
-    line-height: 1.35;
+    padding: 8px 10px;
+    font-size: 11px;
+    line-height: 1.3;
   }
 
   .tf-inventory-shell .inv-slot-mobile-mode{
-    gap: 6px;
+    gap: 5px;
   }
 
   .tf-inventory-shell .inv-slot-mobile-mode .btn{
-    min-height: 34px;
-    padding-inline: 12px;
-    font-size: 13px;
+    min-height: 32px;
+    padding-inline: 10px;
+    font-size: 12px;
   }
 
   .tf-inventory-shell .inv-slot-touch-state{
@@ -5272,7 +5337,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-slot-zone{
-    padding: 10px;
+    padding: 8px;
     border-radius: 16px;
   }
 
@@ -5281,30 +5346,45 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-slot-zone-head{
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .tf-inventory-shell .inv-slot-zone-head h4{
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .tf-inventory-shell .inv-slot-grid{
-    gap: 8px;
+    gap: 6px;
   }
 
   .tf-inventory-shell .inv-slot-cell{
-    min-height: 68px;
+    min-height: 60px;
     border-radius: 14px;
   }
 
   .tf-inventory-shell .inv-slot-item{
-    min-height: 68px;
+    min-height: 60px;
     border-radius: 14px;
-    padding: 6px;
+    padding: 5px;
     grid-template-columns: 1fr auto;
-    grid-template-rows: 1fr auto;
-    gap: 4px;
+    grid-template-rows: auto 1fr auto;
+    gap: 3px;
     overflow: hidden;
+  }
+
+  .tf-inventory-shell .inv-slot-item.touch-optimized{
+    border-color: color-mix(in srgb, var(--ok) 30%, var(--ink-border));
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.96), rgba(246, 240, 227, 0.94));
+    box-shadow: 0 6px 14px rgba(33, 26, 17, 0.12);
+  }
+
+  .tf-inventory-shell .inv-slot-item.touch-optimized .inv-slot-open{
+    grid-column: 1 / span 2;
+    grid-row: 1 / span 2;
+    gap: 2px;
+    align-self: start;
+    align-items: flex-start;
   }
 
   .tf-inventory-shell .inv-slot-open{
@@ -5323,43 +5403,57 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-slot-name{
-    font-size: 11px;
-    line-height: 1.15;
-    max-height: 2.3em;
+    font-size: 10px;
+    line-height: 1.1;
+    max-height: 2.2em;
     overflow: hidden;
   }
 
   .tf-inventory-shell .inv-slot-meta{
-    gap: 4px;
+    gap: 3px;
     align-self: end;
+  }
+
+  .tf-inventory-shell .inv-slot-item.touch-optimized .inv-slot-meta{
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: start;
+    padding: 1px 0;
   }
 
   .tf-inventory-shell .inv-slot-qty,
   .tf-inventory-shell .inv-slot-reserved{
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
-    font-size: 9px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 4px;
+    font-size: 8px;
   }
 
   .tf-inventory-shell .inv-slot-actions{
-    gap: 4px;
+    gap: 3px;
     align-self: end;
+  }
+
+  .tf-inventory-shell .inv-slot-item.touch-optimized .inv-slot-actions{
+    grid-column: 2;
+    grid-row: 3;
+    justify-self: end;
+    padding: 1px 0;
   }
 
   .tf-inventory-shell .inv-slot-handle,
   .tf-inventory-shell .inv-slot-menu-btn{
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    min-height: 28px;
-    border-radius: 9px;
+    width: 22px;
+    height: 22px;
+    min-width: 22px;
+    min-height: 22px;
+    border-radius: 7px;
   }
 
   .tf-inventory-shell .inv-slot-handle .icon,
   .tf-inventory-shell .inv-slot-menu-btn .icon{
-    width: 14px;
-    height: 14px;
+    width: 11px;
+    height: 11px;
   }
 }
 
@@ -5429,9 +5523,22 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     padding: 9px;
   }
 
+  .tf-item-list[data-view="list"] .inv-card{
+    padding: 8px 9px;
+  }
+
+  .tf-item-list[data-view="grid"] .inv-card{
+    padding: 8px;
+    border-left-width: 3px;
+  }
+
   .tf-inventory-shell .inv-card-header{
     grid-template-columns: 40px minmax(0, 1fr);
     gap: 8px;
+  }
+
+  .tf-item-list[data-view="grid"] .inv-card-header{
+    gap: 7px;
   }
 
   .tf-inventory-shell .inv-icon-wrap{
@@ -5442,13 +5549,34 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-title{
-    font-size: 16px;
+    font-size: 15px;
+  }
+
+  .tf-item-list[data-view="grid"] .inv-title{
+    font-size: 14px;
+    line-height: 1.05;
+  }
+
+  .tf-inventory-shell .inv-meta-row-mobile .inv-chip{
+    min-height: 19px;
+    padding-inline: 6px;
+    font-size: 9px;
   }
 
   .tf-inventory-shell .inv-chip{
     min-height: 20px;
     padding-inline: 7px;
     font-size: 9.5px;
+  }
+
+  .tf-item-list[data-view="grid"] .inv-meta-row-mobile{
+    gap: 3px;
+  }
+
+  .tf-item-list[data-view="grid"] .inv-meta-row-mobile .inv-chip{
+    min-height: 18px;
+    padding-inline: 6px;
+    font-size: 8.5px;
   }
 
   .tf-inventory-shell .inv-slot-hint{
@@ -5462,11 +5590,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .tf-inventory-shell .inv-slot-cell,
   .tf-inventory-shell .inv-slot-item{
-    min-height: 60px;
+    min-height: 54px;
   }
 
   .tf-inventory-shell .inv-slot-zone{
-    padding: 8px;
+    padding: 7px;
+  }
+
+  .tf-inventory-shell .inv-slot-zone[data-container="backpack"]{
+    padding-bottom: 6px;
   }
 
   .tf-inventory-shell .inv-slot-zone-head{
@@ -5474,20 +5606,34 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-inventory-shell .inv-slot-zone-head h4{
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .tf-inventory-shell .inv-slot-grid{
-    gap: 6px;
+    gap: 5px;
+  }
+
+  .tf-inventory-shell .inv-slot-zone[data-container="backpack"] .inv-slot-grid{
+    gap: 4px;
   }
 
   .tf-inventory-shell .inv-slot-item{
-    padding: 5px;
+    padding: 4px;
     gap: 3px;
   }
 
+  .inv-items-head-meta{
+    padding-inline: 7px;
+    font-size: 9px;
+  }
+
   .tf-inventory-shell .inv-slot-name{
-    font-size: 10px;
+    font-size: 9px;
+  }
+
+  .tf-inventory-shell .inv-slot-item.touch-optimized .inv-slot-name{
+    font-size: 8.5px;
+    letter-spacing: 0;
   }
 
   .tf-inventory-shell .inv-slot-actions{
@@ -5496,23 +5642,23 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .tf-inventory-shell .inv-slot-handle,
   .tf-inventory-shell .inv-slot-menu-btn{
-    width: 24px;
-    height: 24px;
-    min-width: 24px;
-    min-height: 24px;
-    border-radius: 8px;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    border-radius: 7px;
   }
 
   .tf-inventory-shell .inv-slot-handle .icon,
   .tf-inventory-shell .inv-slot-menu-btn .icon{
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
   }
 
   .tf-inventory-shell .inv-slot-qty,
   .tf-inventory-shell .inv-slot-reserved{
-    min-width: 16px;
-    height: 16px;
+    min-width: 14px;
+    height: 14px;
     font-size: 8px;
   }
 }
