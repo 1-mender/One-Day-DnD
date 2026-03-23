@@ -1,21 +1,14 @@
-import { useAutoAnimate } from "@formkit/auto-animate/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useToast } from "../../foundation/providers/index.js";
-import { useSocket } from "../../context/SocketContext.jsx";
 import { useQueryState } from "../../hooks/useQueryState.js";
 import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { formatError } from "../../lib/formatError.js";
-import { useLiteMode } from "../../hooks/useLiteMode.js";
 import {
   INVENTORY_ICON_SECTIONS,
   applyIconTag,
-  getIconKeyFromItem,
-  getInventoryIcon,
-  stripIconTags
 } from "../../lib/inventoryIcons.js";
 import { api } from "../../api.js";
 import {
-  EMPTY_INVENTORY_FORM,
   FAVORITE_TAG,
   applyLayoutMoves,
   filterIconSections,
@@ -24,8 +17,9 @@ import {
   getSplitInputMax,
   summarizeInventory
 } from "../inventoryDomain.js";
-
-const ENV_MAX_WEIGHT = Number(import.meta.env.VITE_INVENTORY_WEIGHT_LIMIT || 0);
+import { useInventoryData } from "./hooks/useInventoryData.js";
+import { useInventoryEditorState } from "./hooks/useInventoryEditorState.js";
+import { useInventoryResponsiveState } from "./hooks/useInventoryResponsiveState.js";
 
 export function useInventoryController() {
   const toast = useToast();
@@ -34,12 +28,6 @@ export function useInventoryController() {
   const [vis, setVis] = useQueryState("vis", "");
   const [rarity, setRarity] = useQueryState("rarity", "");
   const [view, setView] = useQueryState("view", "list");
-  const [items, setItems] = useState([]);
-  const [players, setPlayers] = useState([]);
-  const [maxWeight, setMaxWeight] = useState(ENV_MAX_WEIGHT);
-  const [open, setOpen] = useState(false);
-  const [edit, setEdit] = useState(null);
-  const [form, setForm] = useState(EMPTY_INVENTORY_FORM);
   const [transferOpen, setTransferOpen] = useState(false);
   const [transferItem, setTransferItem] = useState(null);
   const [transferTo, setTransferTo] = useState("");
@@ -49,85 +37,50 @@ export function useInventoryController() {
   const [splitItem, setSplitItem] = useState(null);
   const [splitQty, setSplitQty] = useState(1);
   const [splitTarget, setSplitTarget] = useState(null);
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(true);
-  const { socket } = useSocket();
-  const lite = useLiteMode();
-  const isNarrowScreen = useIsNarrowScreen();
-  const [listRef] = useAutoAnimate({ duration: lite ? 0 : 200 });
-  const [iconQuery, setIconQuery] = useState("");
-  const [iconPickerOpen, setIconPickerOpen] = useState(false);
   const [layoutSaving, setLayoutSaving] = useState(false);
-  const [mobileStatsOpen, setMobileStatsOpen] = useState(false);
-  const [mobileFavoritesOpen, setMobileFavoritesOpen] = useState(false);
-  const mobileViewInitRef = useRef(false);
-
   const readOnly = useReadOnly();
+  const {
+    items,
+    setItems,
+    players,
+    maxWeight,
+    err,
+    setErr,
+    loading,
+    load,
+    loadPlayers,
+  } = useInventoryData();
+  const {
+    open,
+    setOpen,
+    edit,
+    form,
+    setForm,
+    iconQuery,
+    setIconQuery,
+    iconPickerOpen,
+    setIconPickerOpen,
+    SelectedIcon,
+    startAdd: startEditorAdd,
+    startEdit: startEditorEdit,
+    closeEditor,
+  } = useInventoryEditorState();
+  const {
+    lite,
+    isNarrowScreen,
+    listRef,
+    mobileStatsOpen,
+    setMobileStatsOpen,
+    mobileFavoritesOpen,
+    setMobileFavoritesOpen,
+  } = useInventoryResponsiveState(view, setView);
   const actionsVariant = lite || view === "grid" ? "compact" : "stack";
-
-  const load = useCallback(async () => {
-    setErr("");
-    setLoading(true);
-    try {
-      const response = await api.invMine();
-      setItems(response.items || []);
-      const limit = Number(response?.weightLimit);
-      if (Number.isFinite(limit)) {
-        setMaxWeight((prev) => (prev === limit ? prev : limit));
-      }
-    } catch (e) {
-      setErr(formatError(e));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadPlayers = useCallback(async () => {
-    try {
-      const [meRes, listRes] = await Promise.all([api.me(), api.players()]);
-      const meId = meRes?.player?.id ?? null;
-      const list = Array.isArray(listRes?.items) ? listRes.items : [];
-      setPlayers(list.filter((player) => player.id !== meId));
-    } catch {
-      setPlayers([]);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!socket) return () => {};
-    load().catch(() => {});
-    const onUpdated = () => load().catch(() => {});
-    const onProfile = () => load().catch(() => {});
-    socket.on("inventory:updated", onUpdated);
-    socket.on("profile:updated", onProfile);
-    return () => {
-      socket.off("inventory:updated", onUpdated);
-      socket.off("profile:updated", onProfile);
-    };
-  }, [load, socket]);
 
   useEffect(() => {
     if (transferOpen && !transferTo && players.length) {
       setTransferTo(String(players[0].id));
     }
   }, [transferOpen, transferTo, players]);
-
-  useEffect(() => {
-    if (iconQuery) setIconPickerOpen(true);
-  }, [iconQuery]);
-
-  useEffect(() => {
-    if (!open) {
-      setIconQuery("");
-      setIconPickerOpen(false);
-    }
-  }, [open]);
-
-  useEffect(() => {
-    if (!isNarrowScreen || mobileViewInitRef.current) return;
-    mobileViewInitRef.current = true;
-    if (view === "slots") setView("list");
-  }, [isNarrowScreen, setView, view]);
 
   const filtered = useMemo(() => filterInventory(items, { q, vis, rarity }), [items, q, vis, rarity]);
   const { totalWeight, publicCount, hiddenCount } = useMemo(() => summarizeInventory(filtered), [filtered]);
@@ -141,29 +94,15 @@ export function useInventoryController() {
     [iconQuery]
   );
   const hasAny = items.length > 0;
-  const SelectedIcon = getInventoryIcon(form.iconKey);
 
   function startAdd() {
     if (readOnly) return;
-    setEdit(null);
-    setForm(EMPTY_INVENTORY_FORM);
-    setOpen(true);
+    startEditorAdd();
   }
 
   function startEdit(item) {
     if (readOnly) return;
-    setEdit(item);
-    const rest = { ...(item || {}) };
-    delete rest.imageUrl;
-    delete rest.image_url;
-    delete rest.reservedQty;
-    delete rest.reserved_qty;
-    setForm({
-      ...rest,
-      tags: stripIconTags(item.tags || []),
-      iconKey: getIconKeyFromItem(item)
-    });
-    setOpen(true);
+    startEditorEdit(item);
   }
 
   function startTransfer(item) {
@@ -382,10 +321,6 @@ export function useInventoryController() {
   const transferInputMax = Math.max(1, Math.min(9999, transferAvailable || 1));
   const splitAvailable = splitItem ? getItemAvailableQty(splitItem) : 0;
 
-  function closeEditor() {
-    setOpen(false);
-  }
-
   function closeTransfer() {
     setTransferOpen(false);
   }
@@ -480,21 +415,4 @@ export function useInventoryController() {
     closeTransfer,
     closeSplit
   };
-}
-
-function useIsNarrowScreen() {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 720px)");
-    const update = () => setNarrow(!!mq.matches);
-    update();
-    if (mq.addEventListener) mq.addEventListener("change", update);
-    else if (mq.addListener) mq.addListener(update);
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", update);
-      else if (mq.removeListener) mq.removeListener(update);
-    };
-  }, []);
-  return narrow;
 }
