@@ -1566,43 +1566,6 @@ a:hover{ color: #000; }
   color:#4a1010;
 }
 
-.inv-card{
-    position: relative;
-    display:flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 14px 16px;
-    border: 1px solid var(--rarity-frame, rgba(90,70,40,.22));
-    background:
-      var(--rarity-engrave, repeating-linear-gradient(135deg, rgba(0,0,0,.02) 0 8px, rgba(255,255,255,.05) 8px 16px)),
-      var(--paper-grain),
-      linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.25));
-    box-shadow: 0 8px 16px rgba(0,0,0,.16);
-  }
-  .inv-card::before{ display:none; }
-.inv-card::after{
-  content:"";
-  position:absolute;
-  right: 12px;
-    top: 10px;
-    width: 18px;
-    height: 18px;
-    border-radius: 6px;
-    background:
-      radial-gradient(circle at 30% 30%, rgba(255,255,255,.8), transparent 45%),
-      linear-gradient(180deg, var(--rarity-emblem, rgba(255,255,255,.75)), rgba(0,0,0,.05));
-    border: 1px solid var(--rarity-emblem-border, rgba(90,70,40,.35));
-    box-shadow: 0 4px 8px rgba(0,0,0,.18);
-  opacity: .88;
-  pointer-events: none;
-}
-.inv-card[data-lite="true"]{
-  background: rgba(255,255,255,.4);
-  box-shadow: none;
-}
-.inv-card[data-lite="true"]::after{
-  display:none;
-}
 .inv-card[data-lite="true"] .rarity-medallion{
   box-shadow: none;
 }
@@ -1627,68 +1590,7 @@ a:hover{ color: #000; }
     top: 8px;
     left: 8px;
   }
-  .inv-card[data-rarity="uncommon"]{
-    --rarity-frame: rgba(60,120,80,.45);
-    --rarity-engrave: repeating-linear-gradient(135deg, rgba(45,100,70,.08) 0 6px, rgba(255,255,255,.05) 6px 12px);
-    --rarity-emblem: #d6f2dc;
-    --rarity-emblem-border: rgba(60,120,80,.6);
-  }
-  .inv-card[data-rarity="rare"]{
-    --rarity-frame: rgba(50,90,150,.5);
-    --rarity-engrave: repeating-linear-gradient(135deg, rgba(60,100,160,.1) 0 6px, rgba(255,255,255,.06) 6px 12px);
-    --rarity-emblem: #d6e6fb;
-    --rarity-emblem-border: rgba(50,90,150,.6);
-  }
-  .inv-card[data-rarity="very_rare"]{
-    --rarity-frame: rgba(110,70,150,.55);
-    --rarity-engrave: repeating-linear-gradient(135deg, rgba(120,80,160,.12) 0 6px, rgba(255,255,255,.06) 6px 12px);
-    --rarity-emblem: #ead9ff;
-    --rarity-emblem-border: rgba(110,70,150,.65);
-  }
-  .inv-card[data-rarity="legendary"]{
-    --rarity-frame: rgba(165,120,40,.55);
-    --rarity-engrave: repeating-linear-gradient(135deg, rgba(170,120,45,.14) 0 6px, rgba(255,255,255,.08) 6px 12px);
-    --rarity-emblem: #fde9b5;
-    --rarity-emblem-border: rgba(165,120,40,.7);
-  }
-  .inv-card[data-rarity="custom"]{
-    --rarity-frame: rgba(120,80,60,.5);
-    --rarity-engrave: repeating-linear-gradient(135deg, rgba(120,80,60,.12) 0 6px, rgba(255,255,255,.05) 6px 12px);
-    --rarity-emblem: #ecd8bf;
-    --rarity-emblem-border: rgba(120,80,60,.6);
-  }
-.inv-fallback{
-  font-weight: 1000;
-  letter-spacing: 2px;
-  opacity: .6;
-  position: relative;
-  z-index: 1;
-}
-.inv-icon{
-  width: 46px;
-  height: 46px;
-  stroke-width: 2.1;
-  color: rgba(60,45,20,.75);
-  opacity: .85;
-  position: relative;
-  z-index: 1;
-}
-.inv-body{
-    display:flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .inv-title-row{
-    display:flex;
-    align-items:center;
-    justify-content: space-between;
-    gap: 10px;
-  }
-  .inv-title-row .badge,
-  .inv-title-row .rarity-medallion{
-    flex: 0 0 auto;
-  }
-  .rarity-medallion{
+.rarity-medallion{
     width: 28px;
     height: 28px;
     border-radius: 999px;

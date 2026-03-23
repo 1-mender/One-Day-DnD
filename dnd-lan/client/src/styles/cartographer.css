@@ -482,6 +482,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .inv-card{
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
   border-radius: 16px;
   border: 1px solid var(--map-line);
   border-left: 4px solid var(--inv-accent, var(--map-accent));
@@ -512,6 +517,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .inv-card[data-visibility="hidden"]{
   opacity: 0.92;
+}
+
+.inv-card[data-lite="true"]{
+  box-shadow: none;
 }
 
 .inv-card[data-rarity="common"]{ --inv-accent: #7f8f7a; }
@@ -551,11 +560,33 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   height: 26px;
 }
 
+.inv-fallback{
+  font-weight: 900;
+  letter-spacing: 1.4px;
+  color: rgba(47, 38, 29, 0.72);
+}
+
+.inv-icon{
+  stroke-width: 2;
+  color: rgba(60, 45, 20, 0.78);
+}
+
+.inv-body{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .inv-title-row{
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.inv-title-row .badge,
+.inv-title-row .rarity-medallion{
+  flex: 0 0 auto;
 }
 
 .inv-title{
