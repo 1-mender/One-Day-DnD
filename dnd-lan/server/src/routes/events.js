@@ -1,6 +1,6 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSinglePartyId } from "../db.js";
 import { now } from "../util.js";
 
 export const eventsRouter = express.Router();
@@ -47,7 +47,7 @@ function buildWhere(req, partyId) {
 
 eventsRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
 
   const { where, args, filters } = buildWhere(req, partyId);
   const maxRaw = Number(req.query.max ?? 20000);
@@ -87,7 +87,7 @@ eventsRouter.get("/export", dmAuthMiddleware, (req, res) => {
 
 eventsRouter.get("/", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
 
   const limitRaw = Number(req.query.limit ?? 200);
   const offsetRaw = Number(req.query.offset ?? 0);
@@ -116,7 +116,7 @@ eventsRouter.get("/", dmAuthMiddleware, (req, res) => {
 
 eventsRouter.post("/cleanup", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
 
   const mode = String(req.body?.mode || "").trim();
   if (!mode) return res.status(400).json({ error: "mode_required" });

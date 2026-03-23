@@ -1,6 +1,6 @@
 import cookie from "cookie";
 import { getDmCookieName, verifyDmToken } from "./auth.js";
-import { getDb, getParty } from "./db.js";
+import { getDb, getSingleParty } from "./db.js";
 import { now } from "./util.js";
 
 export function getPlayerCookieName() {
@@ -92,7 +92,7 @@ export function getRequestPartyId(req, options = {}) {
   const playerContext = getPlayerContextFromRequest(req, options);
   if (playerContext?.sess?.party_id) return Number(playerContext.sess.party_id);
   if (getDmPayloadFromRequest(req)) {
-    const party = getParty();
+    const party = getSingleParty();
     return party?.id ? Number(party.id) : null;
   }
   return null;

@@ -60,6 +60,13 @@ export function makeSlotKey(container, slotX, slotY) {
 }
 
 export function allocateNextSlot(occupied, container = INVENTORY_CONTAINER_BACKPACK) {
+  const next = findNextFreeSlot(occupied, container);
+  if (next) return next;
+  const normalizedContainer = normalizeInventoryContainer(container);
+  return { container: normalizedContainer, slotX: 0, slotY: 0 };
+}
+
+function findNextFreeSlot(occupied, container = INVENTORY_CONTAINER_BACKPACK) {
   const normalizedContainer = normalizeInventoryContainer(container);
   const spec = INVENTORY_LAYOUT[normalizedContainer] || INVENTORY_LAYOUT[INVENTORY_CONTAINER_BACKPACK];
   for (let y = 0; y < spec.rows; y += 1) {
@@ -68,7 +75,7 @@ export function allocateNextSlot(occupied, container = INVENTORY_CONTAINER_BACKP
       if (!occupied.has(key)) return { container: normalizedContainer, slotX: x, slotY: y };
     }
   }
-  return { container: normalizedContainer, slotX: 0, slotY: 0 };
+  return null;
 }
 
 export function getRequestedSlot(body) {
@@ -177,7 +184,7 @@ export function getNextInventorySlot(db, playerId, container = INVENTORY_CONTAIN
     if (!isValidSlot(c, x, y)) continue;
     occupied.add(makeSlotKey(c, x, y));
   }
-  return allocateNextSlot(occupied, normalizeInventoryContainer(container));
+  return findNextFreeSlot(occupied, normalizeInventoryContainer(container));
 }
 
 export function mapInventoryRow(row) {

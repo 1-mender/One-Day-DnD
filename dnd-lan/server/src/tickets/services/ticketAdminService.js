@@ -1,5 +1,6 @@
 import { getPartySettings } from "../../db.js";
 import { logEvent } from "../../events.js";
+import { emitSinglePartyEvent } from "../../singlePartyEmit.js";
 import { jsonParse, now } from "../../util.js";
 import { mergeRules } from "../domain/rules.js";
 import { getActiveQuest } from "./dailyQuestService.js";
@@ -26,8 +27,8 @@ export function updateDmRules({ party, body, io }) {
   const overrides = reset ? {} : mergeRules(currentOverrides, incoming);
   saveRulesOverride(party.id, enabled, overrides);
 
-  io?.emit("settings:updated");
-  io?.to("dm").emit("tickets:updated");
+  emitSinglePartyEvent(io, "settings:updated", undefined, { partyId: party.id });
+  emitSinglePartyEvent(io, "tickets:updated", undefined, { partyId: party.id });
 
   const rules = getEffectiveRules(party.id);
   const prevActive = prevRules?.dailyQuest?.activeKey || "";
@@ -77,7 +78,7 @@ export function setActiveDailyQuest({ party, body, io }) {
     });
   }
 
-  io?.emit("tickets:updated");
+  emitSinglePartyEvent(io, "tickets:updated", undefined, { partyId: party.id });
   return { ok: true, status: 200, body: { ok: true, activeKey: questKey } };
 }
 

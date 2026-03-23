@@ -1,9 +1,10 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSinglePartyId } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 
 export const infoBlocksRouter = express.Router();
 
@@ -20,7 +21,7 @@ infoBlocksRouter.get("/", (req, res) => {
   const db = getDb();
   const isDm = isDmRequest(req);
   if (isDm) {
-    const partyId = getParty().id;
+    const partyId = getSinglePartyId();
     const items = db.prepare("SELECT * FROM info_blocks WHERE party_id=? ORDER BY updated_at DESC").all(partyId).map(mapBlock);
     return res.json({ items });
   }
@@ -56,7 +57,7 @@ infoBlocksRouter.get("/", (req, res) => {
 
 infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const b = req.body || {};
   const title = String(b.title || "").trim();
   if (!title) return res.status(400).json({ error: "title_required" });
@@ -90,13 +91,13 @@ infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
     io: req.app.locals.io
   });
 
-  req.app.locals.io?.emit("infoBlocks:updated");
+  emitSinglePartyEvent(req.app.locals.io, "infoBlocks:updated", undefined, { partyId });
   res.json({ ok: true, id });
 });
 
 infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const id = Number(req.params.id);
   const cur = db.prepare("SELECT * FROM info_blocks WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
@@ -136,13 +137,13 @@ infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
     io: req.app.locals.io
   });
 
-  req.app.locals.io?.emit("infoBlocks:updated");
+  emitSinglePartyEvent(req.app.locals.io, "infoBlocks:updated", undefined, { partyId });
   res.json({ ok: true });
 });
 
 infoBlocksRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const id = Number(req.params.id);
   const cur = db.prepare("SELECT title FROM info_blocks WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
@@ -157,7 +158,7 @@ infoBlocksRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
     message: `Info block deleted: ${cur?.title || id}`,
     io: req.app.locals.io
   });
-  req.app.locals.io?.emit("infoBlocks:updated");
+  emitSinglePartyEvent(req.app.locals.io, "infoBlocks:updated", undefined, { partyId });
   res.json({ ok: true });
 });
 

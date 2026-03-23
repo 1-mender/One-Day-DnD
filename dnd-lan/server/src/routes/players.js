@@ -1,11 +1,12 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getPartyId, getParty } from "../db.js";
+import { getDb, getSinglePartyId } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { LIMITS } from "../limits.js";
 import { getInventoryLimitFromStats } from "../inventoryLimit.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 
 export const playersRouter = express.Router();
 
@@ -15,7 +16,7 @@ playersRouter.get("/", (req, res) => {
   if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
 
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const rows = db.prepare(
     `
     SELECT p.id,
@@ -42,7 +43,7 @@ playersRouter.get("/me", (req, res) => {
 
 playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const rows = db.prepare(
     `
     SELECT p.id,
@@ -89,11 +90,10 @@ playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {
 
   db.prepare("UPDATE players SET display_name=? WHERE id=?").run(name, pid);
 
-  req.app.locals.io?.to("dm").emit("players:updated");
-  req.app.locals.io?.to(`party:${player.party_id}`).emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: player.party_id });
 
   logEvent({
-    partyId: player.party_id ?? getParty().id,
+    partyId: player.party_id ?? getSinglePartyId(),
     type: "player.updated",
     actorRole: "dm",
     actorName: "DM",
@@ -125,11 +125,10 @@ playersRouter.delete("/dm/:id", dmAuthMiddleware, (req, res) => {
 
   req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
   req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
-  req.app.locals.io?.to("dm").emit("players:updated");
-  req.app.locals.io?.to(`party:${player.party_id}`).emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: player.party_id });
 
   logEvent({
-    partyId: player.party_id ?? getParty().id,
+    partyId: player.party_id ?? getSinglePartyId(),
     type: "player.deleted",
     actorRole: "dm",
     actorName: "DM",

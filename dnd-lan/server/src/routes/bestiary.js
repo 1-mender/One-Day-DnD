@@ -2,11 +2,12 @@ import express from "express";
 import path from "node:path";
 import fs from "node:fs";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getPartySettings, setPartySettings, getParty } from "../db.js";
+import { getDb, getPartySettings, getSinglePartyId, setPartySettings } from "../db.js";
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 import { getRequestPartyId, isDmRequest } from "../sessionAuth.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 
 export const bestiaryRouter = express.Router();
 
@@ -83,7 +84,7 @@ function fetchImagesByMonsterIds(db, partyId, monsterIds, limitPer = 0) {
 bestiaryRouter.get("/", (req, res) => {
   const db = getDb();
   const isDm = isDmRequest(req);
-  const partyId = getRequestPartyId(req, { at: Date.now() }) || getParty().id;
+  const partyId = getRequestPartyId(req, { at: Date.now() }) || getSinglePartyId();
   const settings = getPartySettings(partyId);
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [], nextCursor: null });
@@ -149,7 +150,7 @@ bestiaryRouter.get("/", (req, res) => {
 bestiaryRouter.get("/images", (req, res) => {
   const db = getDb();
   const isDm = isDmRequest(req);
-  const partyId = getRequestPartyId(req, { at: Date.now() }) || getParty().id;
+  const partyId = getRequestPartyId(req, { at: Date.now() }) || getSinglePartyId();
   const settings = getPartySettings(partyId);
   const ids = parseIdList(req.query.ids, MAX_IMAGE_IDS);
 
@@ -180,7 +181,7 @@ bestiaryRouter.get("/images", (req, res) => {
 
 bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const b = req.body || {};
   const name = String(b.name || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
@@ -211,13 +212,13 @@ bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
     io: req.app.locals.io
   });
 
-  req.app.locals.io?.emit("bestiary:updated");
+  emitSinglePartyEvent(req.app.locals.io, "bestiary:updated", undefined, { partyId });
   res.json({ ok: true, id });
 });
 
 bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const id = Number(req.params.id);
   const cur = db.prepare("SELECT * FROM monsters WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
@@ -253,13 +254,13 @@ bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
     io: req.app.locals.io
   });
 
-  req.app.locals.io?.emit("bestiary:updated");
+  emitSinglePartyEvent(req.app.locals.io, "bestiary:updated", undefined, { partyId });
   res.json({ ok: true });
 });
 
 bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const id = Number(req.params.id);
   const cur = db.prepare("SELECT id, name FROM monsters WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
@@ -292,13 +293,14 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
     message: `Удалён монстр: ${cur?.name || id}`,
     io: req.app.locals.io
   });
-  req.app.locals.io?.emit("bestiary:updated");
+  emitSinglePartyEvent(req.app.locals.io, "bestiary:updated", undefined, { partyId });
   res.json({ ok: true });
 });
 
 bestiaryRouter.post("/settings/toggle", dmAuthMiddleware, (req, res) => {
   const enabled = !!req.body?.enabled;
-  setPartySettings(getParty().id, { bestiary_enabled: enabled ? 1 : 0 });
-  req.app.locals.io?.emit("settings:updated");
+  const partyId = getSinglePartyId();
+  setPartySettings(partyId, { bestiary_enabled: enabled ? 1 : 0 });
+  emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId });
   res.json({ ok: true });
 });

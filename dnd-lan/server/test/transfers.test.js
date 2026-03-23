@@ -267,3 +267,66 @@ test("Expired transfer reject returns status expired and releases reservation", 
   const transferRow = db.prepare("SELECT status FROM item_transfers WHERE id=?").get(createRes.data.id);
   assert.equal(transferRow.status, "expired");
 });
+
+test("Transfer accept returns inventory_full when receiver backpack is full", async () => {
+  const playerA = createPlayer("SenderFull");
+  const playerB = createPlayer("ReceiverFull");
+  const tokenA = createSession(playerA);
+  const tokenB = createSession(playerB);
+  const itemId = createItem(playerA, { qty: 1 });
+  const db = getDb();
+  const t = now();
+
+  for (let y = 0; y < 100; y += 1) {
+    for (let x = 0; x < 6; x += 1) {
+      db.prepare(
+        "INSERT INTO inventory_items(player_id, name, description, image_url, qty, reserved_qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+      ).run(
+        playerB,
+        `Packed-${x}-${y}`,
+        "",
+        null,
+        1,
+        0,
+        0,
+        "common",
+        "[]",
+        "public",
+        "backpack",
+        x,
+        y,
+        t,
+        "seed"
+      );
+    }
+  }
+
+  const createRes = await api("/api/inventory/transfers", {
+    method: "POST",
+    headers: { "x-player-token": tokenA },
+    body: { to_player_id: playerB, item_id: itemId, qty: 1 }
+  });
+  assert.equal(createRes.res.status, 200);
+
+  const acceptRes = await api(`/api/inventory/transfers/${createRes.data.id}/accept`, {
+    method: "POST",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(acceptRes.res.status, 409);
+  assert.equal(acceptRes.data.error, "inventory_full");
+
+  const receiverCount = db.prepare("SELECT COUNT(*) AS c FROM inventory_items WHERE player_id=?").get(playerB);
+  assert.equal(receiverCount.c, 600);
+
+  const duplicatesAtOrigin = db.prepare(
+    "SELECT COUNT(*) AS c FROM inventory_items WHERE player_id=? AND inv_container='backpack' AND slot_x=0 AND slot_y=0"
+  ).get(playerB);
+  assert.equal(duplicatesAtOrigin.c, 1);
+
+  const transferRow = db.prepare("SELECT status FROM item_transfers WHERE id=?").get(createRes.data.id);
+  assert.equal(transferRow.status, "pending");
+
+  const senderItem = db.prepare("SELECT qty, reserved_qty FROM inventory_items WHERE id=?").get(itemId);
+  assert.equal(senderItem.qty, 1);
+  assert.equal(senderItem.reserved_qty, 1);
+});

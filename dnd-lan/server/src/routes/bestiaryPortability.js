@@ -1,7 +1,7 @@
 import express from "express";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSinglePartyId } from "../db.js";
 import { now, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 
@@ -56,7 +56,7 @@ function pickParam(req, key, fallback) {
 
 bestiaryPortabilityRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const withImages = String(req.query.withImages || "1") === "1";
 
   const monsters = db.prepare("SELECT * FROM monsters WHERE party_id=? ORDER BY name COLLATE NOCASE ASC").all(partyId);
@@ -112,7 +112,7 @@ bestiaryPortabilityRouter.get("/export", dmAuthMiddleware, (req, res) => {
 
 bestiaryPortabilityRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const mode = String(pickParam(req, "mode", "merge")).toLowerCase();
   const match = String(pickParam(req, "match", "name")).toLowerCase();
   const onExisting = String(pickParam(req, "onExisting", "update")).toLowerCase();

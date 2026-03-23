@@ -6,7 +6,8 @@ import unzipper from "unzipper";
 import multer from "multer";
 import { pipeline } from "node:stream/promises";
 import { dmAuthMiddleware } from "../auth.js";
-import { closeDb, reloadDb, DATA_DIR, DB_PATH } from "../db.js";
+import { assertSinglePartyDbFile, closeDb, DATA_DIR, DB_PATH, reloadDb } from "../db.js";
+import { emitSinglePartyEvents } from "../singlePartyEmit.js";
 import { asyncHandler, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
 
@@ -96,6 +97,14 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
     const srcUploads = path.join(tmpDir, "uploads");
 
     if (!fs.existsSync(srcDb)) return res.status(400).json({ error: "invalid_backup_no_db" });
+    try {
+      assertSinglePartyDbFile(srcDb);
+    } catch (error) {
+      if (error?.code === "multiple_parties_not_supported" || error?.code === "single_party_missing") {
+        return res.status(400).json({ error: "invalid_backup_single_party_required" });
+      }
+      throw error;
+    }
 
     const dstDb = DB_PATH;
     const dstUploads = uploadsDir;
@@ -147,11 +156,13 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
       fs.rmSync(dbBackupPath, { force: true });
     }
 
-    req.app.locals.io?.emit("settings:updated");
-    req.app.locals.io?.emit("players:updated");
-    req.app.locals.io?.emit("inventory:updated");
-    req.app.locals.io?.emit("bestiary:updated");
-    req.app.locals.io?.emit("infoBlocks:updated");
+    emitSinglePartyEvents(req.app.locals.io, [
+      "settings:updated",
+      "players:updated",
+      "inventory:updated",
+      "bestiary:updated",
+      "infoBlocks:updated"
+    ]);
 
     res.json({ ok: true });
   } catch (e) {

@@ -4,7 +4,7 @@ import fs from "node:fs";
 import sharp from "sharp";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSinglePartyId } from "../db.js";
 import { now, randId, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
@@ -34,7 +34,7 @@ const upload = multer({
 
 async function handleUpload(req, res) {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const f = req.file;
   const monsterId = Number(req.params.monsterId);
   if (!monsterId) {
@@ -119,7 +119,7 @@ async function handleUpload(req, res) {
 
 bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const monsterId = Number(req.params.monsterId);
   if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
   const monster = db.prepare("SELECT id FROM monsters WHERE id=? AND party_id=?").get(monsterId, partyId);
@@ -146,7 +146,7 @@ bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
 // Batch images by monster ids: GET /api/bestiary/images?ids=1,2,3&limitPer=1
 bestiaryImagesRouter.get("/images", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const idsParam = String(req.query.ids || "").trim();
   if (!idsParam) return res.status(400).json({ error: "ids_required" });
   const ids = idsParam.split(",").map((s) => Number(s)).filter(Boolean);
@@ -200,7 +200,7 @@ bestiaryImagesRouter.post("/:monsterId/image", dmAuthMiddleware, wrapMulter(uplo
 
 bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const partyId = getParty().id;
+  const partyId = getSinglePartyId();
   const imageId = Number(req.params.imageId);
   if (!imageId) return res.status(400).json({ error: "invalid_imageId" });
 

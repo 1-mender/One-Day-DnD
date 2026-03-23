@@ -1,10 +1,11 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSingleParty } from "../db.js";
 import { randId, now, normalizeIp } from "../util.js";
 import { dmAuthMiddleware } from "../auth.js";
 import { logEvent } from "../events.js";
 import { LIMITS } from "../limits.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 
 export const partyRouter = express.Router();
 
@@ -17,7 +18,7 @@ const joinLimiter = rateLimit({
 
 partyRouter.post("/join-request", joinLimiter, (req, res) => {
   const db = getDb();
-  const party = getParty();
+  const party = getSingleParty();
   const { displayName, joinCode } = req.body || {};
   const name = String(displayName || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
@@ -77,7 +78,7 @@ partyRouter.post("/approve", dmAuthMiddleware, (req, res) => {
   req.app.locals.io?.to(`joinreq:${jr.id}`).emit("player:approved", { playerToken: token, playerId, partyId: jr.party_id, displayName: jr.display_name });
   // notify dm & party
   req.app.locals.io?.to("dm").emit("player:approved", { playerId, displayName: jr.display_name });
-  req.app.locals.io?.to(`party:${jr.party_id}`).emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: jr.party_id });
 
   logEvent({
     partyId: jr.party_id,
@@ -160,7 +161,7 @@ partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
 
   req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
   req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
-  req.app.locals.io?.to("dm").emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: p.party_id });
   logEvent({
     partyId: p.party_id,
     type: "player.kicked",
@@ -176,7 +177,7 @@ partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
 });
 
 partyRouter.get("/join-code", dmAuthMiddleware, (req, res) => {
-  const party = getParty();
+  const party = getSingleParty();
   res.json({
     enabled: !!party.join_code,
     joinCode: party.join_code || ""
@@ -185,14 +186,13 @@ partyRouter.get("/join-code", dmAuthMiddleware, (req, res) => {
 
 partyRouter.post("/join-code", dmAuthMiddleware, (req, res) => {
   const { joinCode } = req.body || {};
-  const party = getParty();
+  const party = getSingleParty();
   const joinCodeStr = joinCode ? String(joinCode) : "";
   if (joinCodeStr && joinCodeStr.length > LIMITS.joinCode) {
     return res.status(400).json({ error: "join_code_too_long" });
   }
   getDb().prepare("UPDATE parties SET join_code=? WHERE id=?").run(joinCodeStr || null, party.id);
-  req.app.locals.io?.to("dm").emit("settings:updated");
-  req.app.locals.io?.to(`party:${party.id}`).emit("settings:updated");
+  emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId: party.id });
   res.json({ ok: true });
 });
 

@@ -4,6 +4,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import archiver from "archiver";
+import Database from "better-sqlite3";
 import express from "express";
 import cookieParser from "cookie-parser";
 
@@ -118,6 +119,38 @@ test("backup import returns 413 on oversized upload", async () => {
   const out = await upload("/api/backup/import", "zip", overLimit, { cookie });
   assert.equal(out.res.status, 413);
   assert.equal(out.data.error, "file_too_large");
+});
+
+test("backup import rejects archives with more than one party", async () => {
+  const cookie = dmCookie();
+  const dbCopyPath = path.join(tmpDir, `multi-party-${Date.now()}.db`);
+  const vacuumPath = dbCopyPath.replace(/\\/g, "/").replace(/'/g, "''");
+  getDb().exec(`VACUUM main INTO '${vacuumPath}'`);
+
+  const copyDb = new Database(dbCopyPath);
+  const t = now();
+  const secondPartyId = copyDb.prepare("INSERT INTO parties(name, join_code, created_at) VALUES(?,?,?)")
+    .run("Second Party", null, t).lastInsertRowid;
+  copyDb.prepare(
+    "INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access) VALUES(?,?,?,?,?,?)"
+  ).run(secondPartyId, 0, 1, "{}", "[]", "{}");
+  copyDb.close();
+
+  const zipPath = await createZip([
+    { name: "app.db", content: fs.readFileSync(dbCopyPath) }
+  ]);
+
+  try {
+    const out = await uploadBackupZip(zipPath, { cookie });
+    assert.equal(out.res.status, 400);
+    assert.equal(out.data.error, "invalid_backup_single_party_required");
+  } finally {
+    fs.rmSync(zipPath, { force: true });
+    fs.rmSync(dbCopyPath, { force: true });
+  }
+
+  const partyCount = Number(getDb().prepare("SELECT COUNT(*) AS c FROM parties").get()?.c || 0);
+  assert.equal(partyCount, 1);
 });
 
 test("backup import rolls back DB and uploads when replacement fails", async () => {

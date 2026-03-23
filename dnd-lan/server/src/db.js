@@ -22,6 +22,13 @@ let db;
 
 export { DATA_DIR, DB_PATH };
 
+function buildSinglePartyError(count) {
+  const err = new Error(count > 1 ? "multiple_parties_not_supported" : "single_party_missing");
+  err.code = count > 1 ? "multiple_parties_not_supported" : "single_party_missing";
+  err.partyCount = count;
+  return err;
+}
+
 export function getDb() {
   if (!db) initDb();
   return db;
@@ -36,24 +43,35 @@ export function closeDb() {
 
 export function initDb() {
   ensureDir(DATA_DIR);
-  db = new Database(DB_PATH);
-  db.pragma("foreign_keys = ON");
-  const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
-  db.exec(schema);
-  runMigrations(db, { dbPath: DB_PATH, dataDir: DATA_DIR, logger });
-  ensureColumnAwareIndexes(db);
+  const nextDb = new Database(DB_PATH);
+  try {
+    nextDb.pragma("foreign_keys = ON");
+    const schema = fs.readFileSync(SCHEMA_PATH, "utf8");
+    nextDb.exec(schema);
+    runMigrations(nextDb, { dbPath: DB_PATH, dataDir: DATA_DIR, logger });
+    ensureColumnAwareIndexes(nextDb);
 
-  // bootstrap default party if none
-  const partyCount = db.prepare("SELECT COUNT(*) AS c FROM parties").get().c;
-  if (partyCount === 0) {
-    const t = now();
-    const partyId = db.prepare("INSERT INTO parties(name, join_code, created_at) VALUES(?,?,?)")
-      .run("Default Party", null, t).lastInsertRowid;
-    db.prepare(
-      "INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access) VALUES(?,?,?,?,?,?)"
-    ).run(partyId, 0, 1, "{}", "[]", "{}");
+    // Bootstrap the only supported party when the database is empty.
+    const partyCount = getPartyCount(nextDb);
+    if (partyCount === 0) {
+      const t = now();
+      const partyId = nextDb.prepare("INSERT INTO parties(name, join_code, created_at) VALUES(?,?,?)")
+        .run("Default Party", null, t).lastInsertRowid;
+      nextDb.prepare(
+        "INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access) VALUES(?,?,?,?,?,?)"
+      ).run(partyId, 0, 1, "{}", "[]", "{}");
+    }
+
+    assertSinglePartyInvariant(nextDb);
+    db = nextDb;
+    return db;
+  } catch (error) {
+    try {
+      nextDb.close();
+    } catch {}
+    if (db === nextDb) db = null;
+    throw error;
   }
-  return db;
 }
 
 function hasColumn(database, tableName, columnName) {
@@ -96,7 +114,27 @@ export function dbHasDm() {
   return d.c > 0;
 }
 
-export function getPartyId() {
+export function getPartyCount(database = getDb()) {
+  return Number(database.prepare("SELECT COUNT(*) AS c FROM parties").get()?.c || 0);
+}
+
+export function assertSinglePartyInvariant(database = getDb()) {
+  const partyCount = getPartyCount(database);
+  if (partyCount !== 1) throw buildSinglePartyError(partyCount);
+  return partyCount;
+}
+
+export function assertSinglePartyDbFile(dbPath) {
+  const fileDb = new Database(dbPath, { readonly: true, fileMustExist: true });
+  try {
+    assertSinglePartyInvariant(fileDb);
+  } finally {
+    fileDb.close();
+  }
+}
+
+export function getSinglePartyId() {
+  assertSinglePartyInvariant();
   return getDb().prepare("SELECT id FROM parties ORDER BY id LIMIT 1").get().id;
 }
 
@@ -131,15 +169,20 @@ export function setPartySettings(partyId, patch) {
   ).run(partyId, bestiary, ticketsEnabled, ticketsRules, profilePresets, profilePresetsAccess);
 }
 
-export function getParty() {
+export function getSingleParty() {
+  assertSinglePartyInvariant();
   return getDb().prepare("SELECT * FROM parties ORDER BY id LIMIT 1").get();
 }
 
 export function setJoinCode(join_code) {
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   getDb().prepare("UPDATE parties SET join_code=? WHERE id=?").run(join_code || null, partyId);
 }
 
 export function parseJsonArray(s) {
   return jsonParse(s, []);
 }
+
+// Legacy aliases kept for older tests and scripts while server code migrates to explicit naming.
+export const getPartyId = getSinglePartyId;
+export const getParty = getSingleParty;

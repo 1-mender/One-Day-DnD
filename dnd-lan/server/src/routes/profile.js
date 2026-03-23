@@ -1,6 +1,7 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty, getPartySettings, setPartySettings } from "../db.js";
+import { getDb, getPartySettings, getSingleParty, setPartySettings } from "../db.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 import { jsonParse, now, randId } from "../util.js";
 import { getDmPayloadFromRequest, getPlayerContextFromRequest } from "../sessionAuth.js";
 
@@ -249,7 +250,7 @@ profileRouter.get("/profile-presets", (req, res) => {
   const me = getPlayerContextFromRequest(req, { at: now() });
   if (!dm && !me) return res.status(403).json({ error: "forbidden" });
 
-  const party = getParty();
+  const party = getSingleParty();
   const settings = getPartySettings(party.id);
   let presets = jsonParse(settings.profile_presets, []);
   const access = normalizePresetAccess(jsonParse(settings.profile_presets_access, {}));
@@ -261,7 +262,7 @@ profileRouter.get("/profile-presets", (req, res) => {
 });
 
 profileRouter.get("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
-  const party = getParty();
+  const party = getSingleParty();
   const settings = getPartySettings(party.id);
   const presets = jsonParse(settings.profile_presets, []);
   const access = normalizePresetAccess(jsonParse(settings.profile_presets_access, {}));
@@ -270,15 +271,14 @@ profileRouter.get("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
 
 profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
   const body = req.body || {};
-  const party = getParty();
+  const party = getSingleParty();
 
   if (body.reset) {
     setPartySettings(party.id, {
       profile_presets: "[]",
       profile_presets_access: JSON.stringify(DEFAULT_PRESET_ACCESS)
     });
-    req.app.locals.io?.to("dm").emit("settings:updated");
-    req.app.locals.io?.to(`party:${party.id}`).emit("settings:updated");
+    emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId: party.id });
     return res.json({ presets: [], access: DEFAULT_PRESET_ACCESS });
   }
 
@@ -297,8 +297,7 @@ profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
     profile_presets: JSON.stringify(presets),
     profile_presets_access: JSON.stringify(access)
   });
-  req.app.locals.io?.to("dm").emit("settings:updated");
-  req.app.locals.io?.to(`party:${party.id}`).emit("settings:updated");
+  emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId: party.id });
   res.json({ presets, access });
 });
 
@@ -321,6 +320,8 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
   if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
 
   const db = getDb();
+  const player = db.prepare("SELECT id FROM players WHERE id=?").get(playerId);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
   const existing = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   const payload = buildProfilePayload(req.body, existing);
   if (payload?.error) return res.status(400).json({ error: payload.error });

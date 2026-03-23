@@ -1,6 +1,6 @@
 import { getInventoryLimitForPlayer } from "../../inventoryLimit.js";
 import { logEvent } from "../../events.js";
-import { getParty } from "../../db.js";
+import { getSinglePartyId } from "../../db.js";
 import { jsonParse, now } from "../../util.js";
 import {
   ensurePlayerLayoutSlots,
@@ -66,7 +66,9 @@ function resolveTargetSlot(db, playerId, body, fallbackContainer) {
   const requestedContainer = normalizeInventoryContainer(body?.container ?? body?.inv_container ?? fallbackContainer);
   const requestedSlot = getRequestedSlot(body || {});
   if (requestedSlot?.error) return { error: requestedSlot.error };
-  return { slot: requestedSlot || getNextInventorySlot(db, playerId, requestedContainer) };
+  const slot = requestedSlot || getNextInventorySlot(db, playerId, requestedContainer);
+  if (!slot) return { error: "inventory_full" };
+  return { slot };
 }
 
 function createInventoryItem({
@@ -299,7 +301,7 @@ export function processPlayerInventoryUpdate({ db, io, sess, itemId, body }) {
 }
 
 export function processDmInventoryUpdate({ db, io, playerId, itemId, body, fallbackPartyId = null }) {
-  const partyId = db.prepare("SELECT party_id FROM players WHERE id=?").get(playerId)?.party_id ?? fallbackPartyId ?? getParty().id;
+  const partyId = db.prepare("SELECT party_id FROM players WHERE id=?").get(playerId)?.party_id ?? fallbackPartyId ?? getSinglePartyId();
   return updateInventoryItem({
     db,
     io,
@@ -354,7 +356,7 @@ export function processDmInventoryDelete({ db, io, playerId, itemId, fallbackPar
   });
   tx();
 
-  const partyId = db.prepare("SELECT party_id FROM players WHERE id=?").get(playerId)?.party_id ?? fallbackPartyId ?? getParty().id;
+  const partyId = db.prepare("SELECT party_id FROM players WHERE id=?").get(playerId)?.party_id ?? fallbackPartyId ?? getSinglePartyId();
   logEvent({
     partyId,
     type: "inventory.deleted",

@@ -175,6 +175,19 @@ test("Validation rejects invalid stats type", async () => {
   assert.equal(res.data.error, "stats_invalid");
 });
 
+test("DM profile update returns 404 for unknown player", async () => {
+  const dmHeaders = { cookie: dmCookie() };
+
+  const res = await api("/api/players/999999/profile", {
+    method: "PUT",
+    headers: dmHeaders,
+    body: { characterName: "Ghost" }
+  });
+
+  assert.equal(res.res.status, 404);
+  assert.equal(res.data.error, "player_not_found");
+});
+
 test("Player cannot edit or request when impersonation is read-only", async () => {
   const playerId = createPlayer("Impersonated");
   const dmHeaders = { cookie: dmCookie() };

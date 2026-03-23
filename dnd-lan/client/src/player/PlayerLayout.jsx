@@ -7,7 +7,7 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useSocket } from "../context/SocketContext.jsx";
-import { Backpack, BookOpen, Gamepad2, Send, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
+import { BookOpen, Gamepad2, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
 import { t } from "../i18n/index.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
@@ -23,12 +23,12 @@ const PRIMARY_NAV_ROUTES = new Set([
 ]);
 const ROUTE_TO_ICON = {
   "/app/players": Users,
-  "/app/profile": UserRound,
-  "/app/inventory": Backpack,
+  "/app/profile": User,
+  "/app/inventory": Package,
   "/app/arcade": Gamepad2,
   "/app/transfers": Send,
   "/app/notes": StickyNote,
-  "/app/shop": ShoppingBag,
+  "/app/shop": Store,
   "/app/bestiary": BookOpen
 };
 const ROUTE_TO_LABEL = {

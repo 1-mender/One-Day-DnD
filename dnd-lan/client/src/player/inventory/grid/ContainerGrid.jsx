@@ -17,7 +17,7 @@ export default function ContainerGrid({
   touchOptimized,
   touchLiteMode,
   tapToMoveMode,
-  compactTouch,
+  compactTouch: _compactTouch,
   hasItems,
   selectedMoveId,
   onToggleMoveSelection,

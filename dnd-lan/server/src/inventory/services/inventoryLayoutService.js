@@ -124,6 +124,7 @@ export function processInventorySplit({ db, io, sess, itemId, body }) {
         preferredContainer || existing.inv_container || INVENTORY_CONTAINER_BACKPACK
       );
     }
+    if (!slot) transferError("inventory_full", 409);
     if (!isPlacementAllowedForItem(existing, slot.container, slot.slotX)) {
       transferError("invalid_equipment_slot", 400);
     }
@@ -212,6 +213,7 @@ export function processInventoryQuickEquip({ db, io, sess, itemId }) {
     const t = now();
     if (occupant?.id) {
       const fallback = getNextInventorySlot(db, sess.player_id, INVENTORY_CONTAINER_BACKPACK);
+      if (!fallback) transferError("inventory_full", 409);
       db.prepare(
         "UPDATE inventory_items SET inv_container=?, slot_x=?, slot_y=?, updated_at=?, updated_by=? WHERE id=? AND player_id=?"
       ).run(

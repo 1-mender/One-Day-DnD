@@ -5,6 +5,11 @@
 - DM: `http://localhost:3000/dm`
 - Игроки: ссылка или QR из DM Dashboard
 
+## Single-Party Contract
+- Один экземпляр сервера обслуживает ровно одну party.
+- Если в базе данных окажется больше одной записи в `parties`, сервер не должен стартовать.
+- Import backup с несколькими party теперь считается невалидным и отклоняется.
+
 ## Требования
 - Node.js `>=18.18`
 - Windows PowerShell (команды ниже в формате PowerShell)
@@ -132,6 +137,9 @@ Auto backups go to `DND_LAN_BACKUP_DIR` (default `<data_dir>/backups`).
 Export/Import (DM auth):
 - `GET /api/backup/export` - zip with `app.db` + `uploads/`
 - `POST /api/backup/import` (multipart `zip`) - restore DB and uploads
+
+Ограничение:
+- backup должен содержать ровно одну party; multi-party архивы не поддерживаются и будут отклонены на import.
 
 Secret rotation:
 - changing `JWT_SECRET` invalidates DM sessions (re-login required).

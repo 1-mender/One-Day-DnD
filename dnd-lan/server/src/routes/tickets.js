@@ -1,6 +1,6 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSingleParty, getSinglePartyId } from "../db.js";
 import { now } from "../util.js";
 import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
@@ -51,11 +51,21 @@ function requirePlayer(req, res) {
   return me;
 }
 
+function requireWritablePlayer(req, res) {
+  const me = requirePlayer(req, res);
+  if (!me) return null;
+  if (me.sess?.impersonated && !me.sess?.impersonated_write) {
+    res.status(403).json({ error: "read_only_impersonation" });
+    return null;
+  }
+  return me;
+}
+
 ticketsRouter.get("/rules", (req, res) => {
   const isDm = isDmRequest(req);
   const me = resolvePlayerContext(req);
   if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
-  const partyId = me?.player?.party_id ?? getParty().id;
+  const partyId = me?.player?.party_id ?? getSinglePartyId();
   const result = getTicketRulesPayload({ partyId });
   return res.status(result.status).json(result.body);
 });
@@ -89,7 +99,7 @@ ticketsRouter.get("/seed", (req, res) => {
 });
 
 ticketsRouter.post("/matchmaking/queue", (req, res) => {
-  const me = requirePlayer(req, res);
+  const me = requireWritablePlayer(req, res);
   if (!me) return;
   const result = processMatchmakingQueueJoin({
     db: getDb(),
@@ -102,7 +112,7 @@ ticketsRouter.post("/matchmaking/queue", (req, res) => {
 });
 
 ticketsRouter.post("/matchmaking/cancel", (req, res) => {
-  const me = requirePlayer(req, res);
+  const me = requireWritablePlayer(req, res);
   if (!me) return;
   const result = processMatchmakingQueueCancel({
     db: getDb(),
@@ -123,7 +133,7 @@ ticketsRouter.get("/matches/history", (req, res) => {
 });
 
 ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
-  const me = requirePlayer(req, res);
+  const me = requireWritablePlayer(req, res);
   if (!me) return;
   const result = processMatchRematchRequest({
     db: getDb(),
@@ -136,7 +146,7 @@ ticketsRouter.post("/matches/:matchId/rematch", (req, res) => {
 });
 
 ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
-  const me = requirePlayer(req, res);
+  const me = requireWritablePlayer(req, res);
   if (!me) return;
   const result = processMatchCompletion({
     db: getDb(),
@@ -150,7 +160,7 @@ ticketsRouter.post("/matches/:matchId/complete", (req, res) => {
 });
 
 ticketsRouter.post("/play", (req, res) => {
-  const me = requirePlayer(req, res);
+  const me = requireWritablePlayer(req, res);
   if (!me) return;
   const result = processTicketPlay({
     db: getDb(),
@@ -165,7 +175,7 @@ ticketsRouter.post("/play", (req, res) => {
 });
 
 ticketsRouter.post("/purchase", (req, res) => {
-  const me = requirePlayer(req, res);
+  const me = requireWritablePlayer(req, res);
   if (!me) return;
   const result = processTicketPurchase({
     db: getDb(),
@@ -181,44 +191,44 @@ ticketsRouter.post("/purchase", (req, res) => {
 ticketsRouter.get("/dm/metrics", dmAuthMiddleware, (req, res) => {
   const result = getDmTicketMetricsPayload({
     db: getDb(),
-    partyId: Number(getParty().id),
+    partyId: Number(getSinglePartyId()),
     days: req.query?.days
   });
   return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.get("/dm/rules", dmAuthMiddleware, (req, res) => {
-  const result = getTicketRulesPayload({ partyId: getParty().id });
+  const result = getTicketRulesPayload({ partyId: getSinglePartyId() });
   return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.put("/dm/rules", dmAuthMiddleware, (req, res) => {
-  const result = updateDmRules({ party: getParty(), body: req.body, io: req.app.locals.io });
+  const result = updateDmRules({ party: getSingleParty(), body: req.body, io: req.app.locals.io });
   return res.status(result.status).json(result.body);
 });
 ticketsRouter.post("/dm/quest/active", dmAuthMiddleware, (req, res) => {
-  const result = setActiveDailyQuest({ party: getParty(), body: req.body, io: req.app.locals.io });
+  const result = setActiveDailyQuest({ party: getSingleParty(), body: req.body, io: req.app.locals.io });
   return res.status(result.status).json(result.body);
 });
 ticketsRouter.post("/dm/quest/assign", dmAuthMiddleware, (req, res) => {
-  const result = setActiveDailyQuest({ party: getParty(), body: req.body, io: req.app.locals.io });
+  const result = setActiveDailyQuest({ party: getSingleParty(), body: req.body, io: req.app.locals.io });
   return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
-  const result = resetDailyQuest({ db: getDb(), party: getParty(), body: req.body, io: req.app.locals.io });
+  const result = resetDailyQuest({ db: getDb(), party: getSingleParty(), body: req.body, io: req.app.locals.io });
   return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
-  const result = listDmTickets({ db: getDb(), partyId: getParty().id });
+  const result = listDmTickets({ db: getDb(), partyId: getSinglePartyId() });
   return res.status(result.status).json(result.body);
 });
 
 ticketsRouter.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
   const result = adjustPlayerTickets({
     db: getDb(),
-    party: getParty(),
+    party: getSingleParty(),
     body: req.body,
     io: req.app.locals.io,
     buildMatchmakingPayload

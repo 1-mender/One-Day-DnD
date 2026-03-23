@@ -1,6 +1,6 @@
 import express from "express";
 import { dmAuthMiddleware } from "../auth.js";
-import { getDb, getParty } from "../db.js";
+import { getDb, getSinglePartyId } from "../db.js";
 import { now } from "../util.js";
 import { getActiveSessionByToken, getPlayerTokenFromRequest } from "../sessionAuth.js";
 import {
@@ -139,7 +139,7 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
     playerId: pid,
     itemId,
     body: req.body,
-    fallbackPartyId: getParty().id
+    fallbackPartyId: getSinglePartyId()
   });
   return res.status(result.status).json(result.body);
 });
@@ -154,7 +154,7 @@ inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) 
     io: req.app.locals.io,
     playerId: pid,
     itemId,
-    fallbackPartyId: getParty().id
+    fallbackPartyId: getSinglePartyId()
   });
   return res.status(result.status).json(result.body);
 });

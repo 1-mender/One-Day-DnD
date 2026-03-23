@@ -134,7 +134,7 @@ export function useProfileController() {
     if (playerId) loadRequests(playerId, reqStatus).catch(() => {});
   }, [playerId, reqStatus, loadRequests]);
 
-  const editableFields = profile?.editableFields || [];
+  const editableFields = useMemo(() => profile?.editableFields || [], [profile?.editableFields]);
   const allowRequests = !!profile?.allowRequests;
   const canEdit = useCallback(
     (field) => editableFields.includes(field) && !readOnly,

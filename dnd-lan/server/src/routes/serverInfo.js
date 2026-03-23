@@ -1,6 +1,6 @@
 import express from "express";
 import { getLanIPv4 } from "../ip.js";
-import { dbHasDm, getParty, getPartySettings } from "../db.js";
+import { dbHasDm, getPartySettings, getSingleParty } from "../db.js";
 import { LIMITS } from "../limits.js";
 
 export const serverInfoRouter = express.Router();
@@ -8,7 +8,7 @@ export const serverInfoRouter = express.Router();
 serverInfoRouter.get("/info", (req, res) => {
   const ips = getLanIPv4();
   const port = Number(process.env.PORT || 3000);
-  const party = getParty();
+  const party = getSingleParty();
   const settings = getPartySettings(party.id);
   res.json({
     hasDm: dbHasDm(),

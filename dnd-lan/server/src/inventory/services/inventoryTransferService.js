@@ -4,6 +4,7 @@ import { logEvent } from "../../events.js";
 import {
   INVENTORY_CONTAINER_BACKPACK,
   ensurePlayerLayoutSlots,
+  findItemAtSlot,
   getNextInventorySlot
 } from "../../routes/inventoryDomain.js";
 import {
@@ -223,6 +224,9 @@ export function processTransferAccept({ db, io, sess, transferId, nowFn = now })
 
     ensurePlayerLayoutSlots(db, sess.player_id);
     const slot = getNextInventorySlot(db, sess.player_id, INVENTORY_CONTAINER_BACKPACK);
+    if (!slot) transferError("inventory_full", 409);
+    const occupiedBy = findItemAtSlot(db, sess.player_id, slot.container, slot.slotX, slot.slotY);
+    if (occupiedBy) transferError("inventory_full", 409);
     db.prepare(
       "INSERT INTO inventory_items(player_id, name, description, image_url, qty, weight, rarity, tags, visibility, inv_container, slot_x, slot_y, updated_at, updated_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
     ).run(
