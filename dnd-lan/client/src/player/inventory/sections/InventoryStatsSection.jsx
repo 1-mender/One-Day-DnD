@@ -13,6 +13,16 @@ export default function InventoryStatsSection({
   hasWeightLimit,
   maxWeight
 }) {
+  const summaryMeta = (
+    <div className="inv-mobile-summary-meta" aria-hidden="true">
+      <span className="inv-mobile-summary-pill">{filteredCount} шт.</span>
+      <span className={`inv-mobile-summary-pill ${weightStatus}`.trim()}>
+        {totalWeightAll.toFixed(1)}
+        {hasWeightLimit ? ` / ${maxWeight}` : ""}
+      </span>
+    </div>
+  );
+
   const stats = (
     <div className="inv-stats tf-stat-grid">
       <div className="inv-stat tf-stat-card">
@@ -55,7 +65,13 @@ export default function InventoryStatsSection({
         open={mobileStatsOpen}
         onToggle={(event) => setMobileStatsOpen(event.currentTarget.open)}
       >
-        <summary className="inv-mobile-section-summary">Показатели</summary>
+        <summary className="inv-mobile-section-summary">
+          <span className="inv-mobile-summary-copy">
+            <span className="inv-mobile-summary-title">Показатели</span>
+            <span className="inv-mobile-summary-subtitle">Вес и видимость</span>
+          </span>
+          {summaryMeta}
+        </summary>
         <div className="inv-mobile-section-body">{stats}</div>
       </details>
     );

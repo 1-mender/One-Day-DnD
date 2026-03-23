@@ -9,6 +9,15 @@ export default function InventoryFavoritesSection({
   startEdit,
   readOnly
 }) {
+  const summaryMeta = (
+    <div className="inv-mobile-summary-meta" aria-hidden="true">
+      <span className="inv-mobile-summary-pill">{favorites.length}</span>
+      <span className="inv-mobile-summary-pill muted">
+        {favorites.length ? "быстрые слоты" : "пусто"}
+      </span>
+    </div>
+  );
+
   const content = favorites.length ? (
     <div className="inv-quick-list">
       {favorites.map((item) => {
@@ -43,13 +52,19 @@ export default function InventoryFavoritesSection({
   if (isNarrowScreen) {
     return (
       <details
-        className="inv-panel inv-mobile-section inv-favorites tf-panel"
+        className={`inv-panel inv-mobile-section inv-favorites tf-panel${favorites.length ? "" : " is-empty"}`.trim()}
         open={mobileFavoritesOpen}
         onToggle={(event) => setMobileFavoritesOpen(event.currentTarget.open)}
       >
-        <summary className="inv-mobile-section-summary">Избранное</summary>
+        <summary className="inv-mobile-section-summary">
+          <span className="inv-mobile-summary-copy">
+            <span className="inv-mobile-summary-title">Избранное</span>
+            <span className="inv-mobile-summary-subtitle">Быстрые слоты</span>
+          </span>
+          {summaryMeta}
+        </summary>
         <div className="inv-mobile-section-body">
-          <div className="small">Быстрые слоты предметов</div>
+          {favorites.length ? <div className="small">Быстрые слоты предметов</div> : null}
           {content}
         </div>
       </details>

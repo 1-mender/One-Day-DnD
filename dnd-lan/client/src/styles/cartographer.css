@@ -4724,6 +4724,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   flex-wrap: wrap;
 }
 
+.action-menu{
+  position: relative;
+}
+
 .action-menu-btn{
   min-width: 44px;
   min-height: 44px;
@@ -4959,7 +4963,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 @media (max-width: 720px){
   .tf-inventory-shell{
     padding: 12px;
-    gap: 10px;
+    gap: 8px;
   }
 
   .tf-inventory-shell .tf-page-head{
@@ -4977,33 +4981,33 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .inv-mobile-sticky{
-    padding: 10px;
-    gap: 8px;
+    padding: 9px;
+    gap: 7px;
     border-radius: 16px;
   }
 
   .inv-mobile-search input{
-    min-height: 44px;
-    font-size: 15px;
+    min-height: 42px;
+    font-size: 14px;
   }
 
   .inv-mobile-quick-actions{
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .inv-mobile-quick-actions .btn{
-    min-height: 38px;
+    min-height: 36px;
     padding-inline: 10px;
-    font-size: 13px;
+    font-size: 12px;
   }
 
-  .inv-mobile-quick-actions .btn:nth-child(2){
+  .inv-mobile-quick-actions .btn:nth-child(1){
     grid-column: 1 / -1;
   }
 
   .inv-filters{
-    padding: 12px;
+    padding: 10px;
     border-radius: 18px;
   }
 
@@ -5025,42 +5029,99 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .inv-view-toggle .btn{
-    min-height: 36px;
-    padding-inline: 10px;
-    font-size: 13px;
+    min-height: 34px;
+    padding-inline: 9px;
+    font-size: 12px;
   }
 
   .inv-filter-row{
-    gap: 8px;
+    gap: 6px;
   }
 
   .inv-filter-row select{
-    min-height: 42px;
-    font-size: 14px;
+    min-height: 40px;
+    font-size: 13px;
   }
 
   .inv-mobile-section{
-    border-radius: 16px;
+    border-radius: 15px;
   }
 
   .inv-mobile-section-summary{
-    min-height: 44px;
-    padding: 0 14px;
-    font-size: 15px;
+    min-height: 42px;
+    padding: 10px 12px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
 
   .inv-mobile-section-body{
-    padding: 0 12px 12px;
+    padding: 0 10px 10px;
+  }
+
+  .inv-mobile-summary-copy{
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .inv-mobile-summary-title{
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .inv-mobile-summary-subtitle{
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--ink-muted);
+  }
+
+  .inv-mobile-summary-meta{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .inv-mobile-summary-pill{
+    min-height: 24px;
+    padding: 0 9px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--ink-border) 72%, transparent);
+    background: color-mix(in srgb, var(--surface-elevated) 88%, #fff 12%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  .inv-mobile-summary-pill.muted{
+    color: var(--ink-muted);
+  }
+
+  .inv-mobile-summary-pill.ok{
+    border-color: color-mix(in srgb, var(--ok) 34%, var(--ink-border));
+  }
+
+  .inv-mobile-summary-pill.warn{
+    border-color: color-mix(in srgb, var(--warn) 34%, var(--ink-border));
   }
 
   .inv-mobile-section .tf-stat-grid{
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+    gap: 6px;
   }
 
   .inv-mobile-section .tf-stat-card{
-    min-height: 64px;
-    padding: 10px;
+    min-height: 56px;
+    padding: 8px;
   }
 
   .inv-mobile-section .small{
@@ -5069,7 +5130,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .inv-quick-empty{
-    padding: 2px 0 0;
+    padding: 0;
+  }
+
+  .inv-favorites.is-empty .inv-mobile-section-body{
+    padding-top: 2px;
   }
 
   .tf-items-panel{
@@ -5316,12 +5381,12 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     font-size: 12px;
   }
 
-  .inv-mobile-quick-actions .btn:nth-child(1),
+  .inv-mobile-quick-actions .btn:nth-child(2),
   .inv-mobile-quick-actions .btn:nth-child(3){
     grid-column: auto;
   }
 
-  .inv-mobile-quick-actions .btn:nth-child(2){
+  .inv-mobile-quick-actions .btn:nth-child(1){
     grid-column: 1 / -1;
   }
 
@@ -5343,6 +5408,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .inv-mobile-section-summary{
     min-height: 40px;
     font-size: 14px;
+    padding: 9px 10px;
+  }
+
+  .inv-mobile-summary-subtitle{
+    font-size: 10px;
+  }
+
+  .inv-mobile-summary-pill{
+    min-height: 22px;
+    padding-inline: 8px;
+    font-size: 10px;
   }
 
   .inv-mobile-section .tf-stat-grid{

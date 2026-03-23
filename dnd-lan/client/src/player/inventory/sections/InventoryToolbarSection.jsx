@@ -49,8 +49,8 @@ export default function InventoryToolbarSection({
             />
           </div>
           <div className="inv-mobile-quick-actions">
-            <button className="btn secondary" onClick={onOpenTransfers}>Передачи</button>
             <button className="btn" onClick={onStartAdd} disabled={readOnly}><Plus className="icon" aria-hidden="true" />Добавить</button>
+            <button className="btn secondary" onClick={onOpenTransfers}>Передачи</button>
             <button className="btn secondary" onClick={onRefresh}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
           </div>
         </div>
