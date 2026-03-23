@@ -10,7 +10,7 @@ import { io as clientIo } from "socket.io-client";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-socket-auth-role-"));
 process.env.DND_LAN_DATA_DIR = tmpDir;
 
-const { initDb, getDb, getPartyId, closeDb } = await import("../src/db.js");
+const { initDb, getDb, getSinglePartyId, closeDb } = await import("../src/db.js");
 const { createSocketServer } = await import("../src/sockets.js");
 const { createDmUser, signDmToken, getDmCookieName } = await import("../src/auth.js");
 const { getPlayerCookieName } = await import("../src/sessionAuth.js");
@@ -67,7 +67,7 @@ function createDmToken() {
 
 function createPlayerSession() {
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const t = Date.now();
   const playerId = db.prepare(
     "INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)"

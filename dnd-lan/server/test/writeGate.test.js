@@ -11,7 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
-const { initDb, getDb, getPartyId } = await import("../src/db.js");
+const { initDb, getDb, getSinglePartyId } = await import("../src/db.js");
 const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { setDegraded, clearDegraded } = await import("../src/degraded.js");
 const { assertWritable } = await import("../src/writeGate.js");
@@ -43,7 +43,7 @@ function dmCookie() {
 function createPlayerToken() {
   const db = getDb();
   const t = now();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const playerId = db
     .prepare("INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)")
     .run(partyId, `Player-${randId(4)}`, "offline", t, 0, t).lastInsertRowid;

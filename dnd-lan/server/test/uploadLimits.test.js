@@ -14,7 +14,7 @@ process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 process.env.BACKUP_IMPORT_MAX_BYTES = "204800";
 
-const { getDb, initDb, getPartyId, DB_PATH } = await import("../src/db.js");
+const { getDb, initDb, getSinglePartyId, DB_PATH } = await import("../src/db.js");
 const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { ensureUploads } = await import("../src/uploads.js");
 const { uploadsDir } = await import("../src/paths.js");
@@ -47,7 +47,7 @@ function dmCookie() {
 
 function createMonster(name = "Goblin") {
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const t = now();
   return db.prepare(
     "INSERT INTO monsters(party_id, name, type, habitat, cr, stats, abilities, description, is_hidden, created_at, updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)"
@@ -156,7 +156,7 @@ test("backup import rejects archives with more than one party", async () => {
 test("backup import rolls back DB and uploads when replacement fails", async () => {
   const cookie = dmCookie();
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
 
   db.prepare("UPDATE parties SET name=? WHERE id=?").run("Original Party", partyId);
   const uploadsRoot = uploadsDir;
@@ -190,7 +190,7 @@ test("backup import rolls back DB and uploads when replacement fails", async () 
 test("backup import rolls back DB and uploads when reloadDb fails", async () => {
   const cookie = dmCookie();
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
 
   db.prepare("UPDATE parties SET name=? WHERE id=?").run("Before Reload Fail", partyId);
   const uploadsRoot = uploadsDir;

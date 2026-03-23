@@ -8,7 +8,7 @@ import express from "express";
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-tickets-proof-test-"));
 process.env.DND_LAN_DATA_DIR = tmpDir;
 
-const { getDb, getPartyId, initDb } = await import("../src/db.js");
+const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
 
@@ -27,7 +27,7 @@ test.after(() => {
 
 function createPlayer(displayName = "Player") {
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const t = now();
   return db.prepare(
     "INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)"
@@ -40,7 +40,7 @@ function createSession(playerId) {
   const token = `tok_${playerId}_${t}`;
   db.prepare(
     "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,?,?,?)"
-  ).run(token, playerId, getPartyId(), t, t + 24 * 60 * 60 * 1000, 0, 0, 0);
+  ).run(token, playerId, getSinglePartyId(), t, t + 24 * 60 * 60 * 1000, 0, 0, 0);
   return token;
 }
 

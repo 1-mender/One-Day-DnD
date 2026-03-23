@@ -11,7 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
-const { initDb, getDb, getPartyId } = await import("../src/db.js");
+const { initDb, getDb, getSinglePartyId } = await import("../src/db.js");
 const { createDmUser, signDmToken } = await import("../src/auth.js");
 const { eventsRouter } = await import("../src/routes/events.js");
 const { now } = await import("../src/util.js");
@@ -37,7 +37,7 @@ function dmCookie() {
 
 function seedEvents(count = 2) {
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const t = now();
   for (let i = 0; i < count; i += 1) {
     db.prepare(

@@ -11,7 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
-const { getDb, initDb, getPartyId } = await import("../src/db.js");
+const { getDb, initDb, getSinglePartyId } = await import("../src/db.js");
 const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { profileRouter } = await import("../src/routes/profile.js");
 const { now } = await import("../src/util.js");
@@ -38,7 +38,7 @@ function dmCookie() {
 
 function createPlayer(displayName = "Player One") {
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const t = now();
   return db.prepare(
     "INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)"
@@ -52,7 +52,7 @@ function createSession(playerId, { impersonated = 0, impersonatedWrite = 0 } = {
   const expiresAt = t + 7 * 24 * 60 * 60 * 1000;
   db.prepare(
     "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,?,?,?)"
-  ).run(token, playerId, getPartyId(), t, expiresAt, 0, impersonated, impersonatedWrite);
+  ).run(token, playerId, getSinglePartyId(), t, expiresAt, 0, impersonated, impersonatedWrite);
   return token;
 }
 

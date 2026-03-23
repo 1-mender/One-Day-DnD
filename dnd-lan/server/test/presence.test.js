@@ -11,7 +11,7 @@ const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-presence-"));
 process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.PRESENCE_GRACE_MS = "100";
 
-const { initDb, getDb, getPartyId, closeDb } = await import("../src/db.js");
+const { initDb, getDb, getSinglePartyId, closeDb } = await import("../src/db.js");
 const { createSocketServer } = await import("../src/sockets.js");
 
 function sleep(ms) {
@@ -35,7 +35,7 @@ function createPlayerWithSession(db, partyId) {
 test("presence keeps online with multiple sockets and grace-offline", async (t) => {
   initDb();
   const db = getDb();
-  const partyId = getPartyId();
+  const partyId = getSinglePartyId();
   const { playerId, token } = createPlayerWithSession(db, partyId);
 
   const app = express();

@@ -9,7 +9,7 @@ const uploadsDir = path.join(tmpDir, "uploads_test");
 process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.DND_LAN_UPLOADS_DIR = uploadsDir;
 
-const { initDb, getDb, getPartyId } = await import("../src/db.js");
+const { initDb, getDb, getSinglePartyId } = await import("../src/db.js");
 const { ensureUploads } = await import("../src/uploads.js");
 const { scanAndCleanupUploads } = await import("../src/cleanupUploads.js");
 const { now } = await import("../src/util.js");
@@ -18,7 +18,7 @@ initDb();
 ensureUploads();
 
 const db = getDb();
-const partyId = getPartyId();
+const partyId = getSinglePartyId();
 const t = now();
 
 const monsterId = db.prepare(
