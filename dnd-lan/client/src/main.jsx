@@ -10,7 +10,7 @@ import "./styles/cartographer.css";
 import "@fontsource/eb-garamond";
 import "@fontsource/im-fell-english";
 import { ToastProvider } from "./foundation/providers/index.js";
-import ErrorBoundary from "./components/ui/ErrorBoundary.jsx";
+import { ErrorBoundary } from "./foundation/primitives/index.js";
 import { t } from "./i18n/index.js";
 
 function showBootstrapError(error) {
