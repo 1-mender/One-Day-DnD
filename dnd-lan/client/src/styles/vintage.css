@@ -1631,46 +1631,6 @@ a:hover{ color: #000; }
     stroke-width: 2.2;
   }
 .inv-title{ font-weight: 1000; font-size: 18px; }
-.inv-actions{ display:flex; flex-wrap:wrap; gap:8px; }
-.inv-actions.compact{
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-.inv-desc{
-  line-height: 1.45;
-}
-.inv-desc-lite{
-  font-size: 13px;
-  color: var(--inkSoft);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.inv-card[data-visibility="hidden"]{
-  opacity: .88;
-}
-.inv-card[data-favorite="true"]{
-  border-color: rgba(170,125,45,.55);
-  box-shadow:
-    0 10px 20px rgba(0,0,0,.18),
-    0 0 0 2px rgba(200,150,60,.22);
-}
-.inv-card[data-favorite="true"] .inv-title{
-  text-shadow: 0 1px 0 rgba(255,255,255,.65);
-}
-.inv-shelf{
-  perspective: none;
-}
-.inv-shelf .inv-card{
-  transform: none;
-  transition: transform .16s ease, box-shadow .16s ease;
-  box-shadow: 0 8px 18px rgba(0,0,0,.14);
-}
-.inv-shelf .inv-card:hover{
-  transform: translateY(-1px);
-  box-shadow: 0 12px 22px rgba(0,0,0,.18);
-}
 .inv-quick-bar{
   margin-bottom: 12px;
   padding: 8px 10px;
@@ -1845,13 +1805,6 @@ a:hover{ color: #000; }
 }
 
 @media (prefers-reduced-motion: reduce){
-  .inv-shelf .inv-card{
-    transition: none;
-    transform: none;
-  }
-  .inv-shelf .inv-card:hover{
-    transform: none;
-  }
   .polaroid .inner::after{
     animation: none;
   }
@@ -3503,10 +3456,8 @@ a:hover{ color: #000; }
 }
 
 .inv-slot-zone{
-  border: 1px solid rgba(70,55,30,.2);
   border-radius: 14px;
   padding: 10px;
-  background: rgba(255,255,255,.22);
 }
 
 .inv-slot-zone.touch-optimized{
@@ -3558,27 +3509,17 @@ a:hover{ color: #000; }
   gap: 8px;
   padding: 8px 10px;
   border-radius: 12px;
-  border: 1px solid rgba(70,55,30,.25);
-  background: rgba(255,255,255,.4);
 }
 
 .inv-slot-cell{
   min-height: 90px;
   border-radius: 12px;
-  border: 1px dashed rgba(70,55,30,.28);
-  background: rgba(255,255,255,.34);
   position: relative;
   transition: border-color .18s ease, background .18s ease, transform .18s ease;
 }
 
 .inv-slot-cell.active{
-  border-color: rgba(50,95,40,.58);
-  background: rgba(180, 220, 160, .26);
   transform: translateY(-1px);
-}
-
-.inv-slot-cell.tap-target-armed{
-  border-color: rgba(69, 114, 56, .48);
 }
 
 .inv-slot-cell.touch-lite{
@@ -3589,35 +3530,21 @@ a:hover{ color: #000; }
   border-style: solid;
 }
 
-.inv-slot-empty{
-  width: 100%;
-  height: 100%;
-}
-
 .inv-slot-item{
   position: absolute;
   inset: 0;
   border-radius: 12px;
-  border: 1px solid rgba(70,55,30,.20);
-  background:
-    var(--noise),
-    linear-gradient(180deg, #fbf3df, #e8d5b3);
   display: grid;
   grid-template-rows: 1fr auto;
   grid-template-columns: 1fr auto;
   gap: 4px;
   padding: 8px;
-  box-shadow: 0 6px 14px rgba(33, 26, 17, .18);
   overflow: visible;
 }
 
 .inv-slot-item.dragging{
   opacity: .86;
   box-shadow: 0 12px 20px rgba(20, 30, 12, .35);
-}
-
-.inv-slot-item.selected-for-move{
-  box-shadow: 0 0 0 2px rgba(58, 117, 52, .48), 0 10px 20px rgba(20, 30, 12, .26);
 }
 
 .inv-slot-item.touch-lite{
@@ -3635,167 +3562,6 @@ a:hover{ color: #000; }
   cursor: pointer;
   color: inherit;
   padding: 0;
-}
-
-.inv-slot-icon{
-  width: 18px;
-  height: 18px;
-}
-
-.inv-slot-fallback{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 5px;
-  border: 1px solid rgba(70,55,30,.22);
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: .2px;
-}
-
-.inv-slot-name{
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1.2;
-  max-height: 2.4em;
-  overflow: hidden;
-}
-
-.inv-slot-board-wrap.touch-lite .inv-slot-name{
-  font-size: 11px;
-  line-height: 1.25;
-  max-height: 2.5em;
-}
-
-.inv-slot-board-wrap.touch-lite .inv-slot-icon{
-  width: 20px;
-  height: 20px;
-}
-
-.inv-slot-meta{
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.inv-slot-qty,
-.inv-slot-reserved{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  border: 1px solid rgba(70,55,30,.24);
-  background: rgba(255,255,255,.6);
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.inv-slot-reserved{
-  border-color: rgba(126, 80, 25, .34);
-  background: rgba(250, 205, 132, .45);
-}
-
-.inv-slot-handle{
-  justify-self: end;
-  align-self: end;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid rgba(70,55,30,.2);
-  background: rgba(255,255,255,.62);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.inv-slot-handle:active{
-  cursor: grabbing;
-}
-
-.inv-slot-handle.split-armed{
-  border-color: rgba(58, 117, 52, .55);
-  background: rgba(184, 224, 168, .52);
-}
-
-.inv-slot-handle:disabled{
-  cursor: not-allowed;
-  opacity: .55;
-}
-
-.inv-slot-actions{
-  display: inline-flex;
-  gap: 4px;
-  justify-self: end;
-  align-self: end;
-}
-
-.inv-slot-menu-btn{
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  border: 1px solid rgba(70,55,30,.2);
-  background: rgba(255,255,255,.62);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.inv-slot-menu{
-  position: absolute;
-  right: 6px;
-  bottom: 6px;
-  min-width: 150px;
-  border-radius: 10px;
-  border: 1px solid rgba(70,55,30,.3);
-  background:
-    var(--noise),
-    linear-gradient(180deg, #fff7e5, #eedec0);
-  box-shadow: 0 12px 20px rgba(20, 15, 10, .24);
-  z-index: 14;
-  padding: 6px;
-  display: grid;
-  gap: 4px;
-}
-
-.inv-slot-menu button{
-  border: 1px solid transparent;
-  background: transparent;
-  border-radius: 8px;
-  padding: 6px 8px;
-  text-align: left;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.inv-slot-menu button:hover{
-  background: rgba(255,255,255,.45);
-  border-color: rgba(70,55,30,.2);
-}
-
-.inv-slot-menu button.danger{
-  color: #7f2e24;
-}
-
-.inv-slot-menu button:disabled{
-  opacity: .56;
-  cursor: not-allowed;
-}
-
-.inv-slot-board-wrap.touch-optimized .inv-slot-handle,
-.inv-slot-board-wrap.touch-optimized .inv-slot-menu-btn{
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
 }
 
 .inv-slot-board-wrap.touch-optimized .inv-slot-cell{

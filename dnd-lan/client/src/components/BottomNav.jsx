@@ -43,6 +43,7 @@ export default function BottomNav({ items = [] }) {
 
   const isPathActive = (to) => location.pathname === to || location.pathname.startsWith(`${to}/`);
   const secondaryActive = secondary.some((item) => isPathActive(item.to));
+  const visibleCount = primary.length + (secondary.length ? 1 : 0);
 
   useEffect(() => {
     if (typeof window === "undefined") return () => {};
@@ -115,7 +116,11 @@ export default function BottomNav({ items = [] }) {
 
   return (
     <nav className="bottom-nav" role="navigation" aria-label={t("bottomNav.ariaLabel", null, "Нижняя навигация")}>
-      <div className="bottom-nav-inner" ref={rootRef}>
+      <div
+        className="bottom-nav-inner"
+        ref={rootRef}
+        style={compactMobile ? { "--bottom-nav-cols": String(visibleCount) } : undefined}
+      >
         {primary.map((it) => (
           <NavLink
             key={it.to}
