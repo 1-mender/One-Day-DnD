@@ -182,7 +182,3 @@ export function setJoinCode(join_code) {
 export function parseJsonArray(s) {
   return jsonParse(s, []);
 }
-
-// Legacy aliases kept for older tests and scripts while server code migrates to explicit naming.
-export const getPartyId = getSinglePartyId;
-export const getParty = getSingleParty;
