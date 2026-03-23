@@ -27,7 +27,7 @@ export default function ContainerGrid({
   onCancelSplitArm
 }) {
   const displayCols = touchLiteMode ? getTouchLiteCols(container.key) : container.cols;
-  const minCell = touchLiteMode ? (compactTouch ? 0 : 104) : touchOptimized ? (compactTouch ? 0 : 92) : 0;
+  const minCell = touchLiteMode ? (compactTouch ? 0 : 86) : touchOptimized ? (compactTouch ? 0 : 76) : 0;
   const gridMinWidth = touchOptimized && minCell > 0 ? (displayCols * minCell + (displayCols - 1) * 10) : null;
   const gridNode = (
     <div

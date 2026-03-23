@@ -95,7 +95,6 @@ export const ru = {
     "navNotes": "Заметки",
     "navShop": "Магазин",
     "navBestiary": "Бестиарий",
-    "navTestDrive": "Тест-драйв",
     "offlineDetails": "Проблема с подключением к серверу.",
     "impersonationTitle": "Имперсонализация DM:",
     "impersonationAsPlayer": "как игрок",

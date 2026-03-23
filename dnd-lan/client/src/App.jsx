@@ -2,7 +2,6 @@ import React, { Suspense, lazy } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { SocketProvider } from "./context/SocketContext.jsx";
 import { t } from "./i18n/index.js";
-import VintageShell from "./components/vintage/VintageShell.jsx";
 
 import Join from "./player/Join.jsx";
 import Waiting from "./player/Waiting.jsx";
@@ -20,7 +19,6 @@ const Bestiary = lazy(() => import("./player/Bestiary.jsx"));
 const Profile = lazy(() => import("./player/Profile.jsx"));
 const Arcade = lazy(() => import("./player/Arcade.jsx"));
 const ShopJoe = lazy(() => import("./player/ShopJoe.jsx"));
-const TestDrive = lazy(() => import("./player/TestDrive.jsx"));
 
 const DMDashboard = lazy(() => import("./dm/DMDashboard.jsx"));
 const DMLobby = lazy(() => import("./dm/DMLobby.jsx"));
@@ -52,16 +50,6 @@ export default function App() {
       <Routes>
         {/* Player */}
         <Route path="/" element={<Join />} />
-        <Route
-          path="/test-drive"
-          element={withSuspense(
-            <VintageShell layout="spread" pageKey="/test-drive">
-              <div className="container padBottom">
-                <TestDrive />
-              </div>
-            </VintageShell>
-          )}
-        />
         <Route path="/waiting" element={<SocketProvider role="waiting"><Waiting /></SocketProvider>} />
         <Route path="/app" element={<SocketProvider role="player"><PlayerLayout /></SocketProvider>}>
           <Route index element={<Navigate to="players" replace />} />
@@ -73,7 +61,6 @@ export default function App() {
           <Route path="arcade" element={withSuspense(<Arcade />)} />
           <Route path="shop" element={withSuspense(<ShopJoe />)} />
           <Route path="bestiary" element={withSuspense(<Bestiary />)} />
-          <Route path="test-drive" element={withSuspense(<TestDrive />)} />
         </Route>
 
         {/* DM */}

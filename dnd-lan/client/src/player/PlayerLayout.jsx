@@ -7,7 +7,7 @@ import VintageShell from "../components/vintage/VintageShell.jsx";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useSocket } from "../context/SocketContext.jsx";
-import { Backpack, BookOpen, Gamepad2, Send, ShoppingBag, Sparkles, StickyNote, Users, UserRound } from "lucide-react";
+import { Backpack, BookOpen, Gamepad2, Send, ShoppingBag, StickyNote, Users, UserRound } from "lucide-react";
 import { t } from "../i18n/index.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
@@ -29,8 +29,7 @@ const ROUTE_TO_ICON = {
   "/app/transfers": Send,
   "/app/notes": StickyNote,
   "/app/shop": ShoppingBag,
-  "/app/bestiary": BookOpen,
-  "/app/test-drive": Sparkles
+  "/app/bestiary": BookOpen
 };
 const ROUTE_TO_LABEL = {
   "/app/players": "playerLayout.navPlayers",
@@ -40,8 +39,7 @@ const ROUTE_TO_LABEL = {
   "/app/transfers": "playerLayout.navTransfers",
   "/app/notes": "playerLayout.navNotes",
   "/app/shop": "playerLayout.navShop",
-  "/app/bestiary": "playerLayout.navBestiary",
-  "/app/test-drive": "playerLayout.navTestDrive"
+  "/app/bestiary": "playerLayout.navBestiary"
 };
 
 export default function PlayerLayout() {
@@ -262,7 +260,7 @@ export default function PlayerLayout() {
     const optionalOrder = bestiaryEnabled
       ? OPTIONAL_NAV_BASE_ORDER
       : OPTIONAL_NAV_BASE_ORDER.filter((route) => route !== "/app/bestiary");
-    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalOrder, "/app/test-drive"];
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalOrder];
     return selectedRoutes.map((to) => ({
       to,
       label: t(ROUTE_TO_LABEL[to]),
