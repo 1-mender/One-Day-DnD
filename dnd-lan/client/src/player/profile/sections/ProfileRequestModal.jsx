@@ -6,7 +6,6 @@ import {
   RACE_OPTIONS,
   getPresetStatsLabel,
   getRaceValue,
-  mergePreset,
   setRaceInStats
 } from "../../profileDomain.js";
 
@@ -14,7 +13,9 @@ const INPUT_STYLE = { width: "100%" };
 
 export default function ProfileRequestModal({ controller }) {
   const {
+    applyRequestPreset,
     readOnly,
+    requestableFields,
     requestDraft,
     requestOpen,
     requestPresets,
@@ -24,10 +25,17 @@ export default function ProfileRequestModal({ controller }) {
     setRequestReason,
     submitRequest
   } = controller;
+  const canRequestBasic = requestableFields.some((field) => ["characterName", "classRole", "level"].includes(field));
+  const canRequestStats = requestableFields.includes("stats");
+  const canRequestBio = requestableFields.includes("bio");
+  const canRequestAvatar = requestableFields.includes("avatarUrl");
 
   return (
     <Modal open={requestOpen} title="Запрос изменения профиля" onClose={() => setRequestOpen(false)}>
       <div className="list">
+        <div className="small note-hint">
+          Здесь показаны только поля, которые нельзя изменить напрямую.
+        </div>
         <div className="preset-panel">
           <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
             <div className="title">Шаблоны профиля</div>
@@ -39,7 +47,7 @@ export default function ProfileRequestModal({ controller }) {
                 key={preset.id || preset.key || preset.title}
                 type="button"
                 className="preset-card"
-                onClick={() => setRequestDraft((current) => mergePreset(current, preset))}
+                onClick={() => applyRequestPreset(preset)}
               >
                 <div className="preset-title">{preset.title}</div>
                 <div className="small">{preset.subtitle}</div>
@@ -61,58 +69,78 @@ export default function ProfileRequestModal({ controller }) {
           style={INPUT_STYLE}
         />
         <div className="small">{String(requestReason || "").length}/500</div>
-        <input
-          value={requestDraft.characterName}
-          onChange={(event) => setRequestDraft({ ...requestDraft, characterName: event.target.value })}
-          placeholder="Имя персонажа"
-          aria-label="Имя персонажа"
-          maxLength={80}
-          style={INPUT_STYLE}
-        />
-        <input
-          value={requestDraft.classRole}
-          onChange={(event) => setRequestDraft({ ...requestDraft, classRole: event.target.value })}
-          placeholder="Класс / роль"
-          aria-label="Класс или роль"
-          maxLength={80}
-          style={INPUT_STYLE}
-        />
-        <input
-          value={requestDraft.level}
-          onChange={(event) => setRequestDraft({ ...requestDraft, level: event.target.value })}
-          placeholder="Уровень"
-          aria-label="Уровень"
-          style={INPUT_STYLE}
-        />
-        <select
-          value={getRaceValue(requestDraft.stats)}
-          onChange={(event) => setRequestDraft({ ...requestDraft, stats: setRaceInStats(requestDraft.stats, event.target.value) })}
-          aria-label="Раса"
-          style={INPUT_STYLE}
-        >
-          {RACE_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-        <StatsEditor value={requestDraft.stats} onChange={(stats) => setRequestDraft({ ...requestDraft, stats })} readOnly={readOnly} />
-        <textarea
-          value={requestDraft.bio}
-          onChange={(event) => setRequestDraft({ ...requestDraft, bio: event.target.value })}
-          rows={6}
-          maxLength={2000}
-          placeholder="Биография (до 2000 символов)"
-          aria-label="Биография"
-          style={INPUT_STYLE}
-        />
-        <div className="small">{String(requestDraft.bio || "").length}/2000</div>
-        <input
-          value={requestDraft.avatarUrl}
-          onChange={(event) => setRequestDraft({ ...requestDraft, avatarUrl: event.target.value })}
-          placeholder="URL аватара"
-          aria-label="URL аватара"
-          maxLength={512}
-          style={INPUT_STYLE}
-        />
+        {canRequestBasic ? (
+          <>
+            {requestableFields.includes("characterName") ? (
+              <input
+                value={requestDraft.characterName}
+                onChange={(event) => setRequestDraft({ ...requestDraft, characterName: event.target.value })}
+                placeholder="Имя персонажа"
+                aria-label="Имя персонажа"
+                maxLength={80}
+                style={INPUT_STYLE}
+              />
+            ) : null}
+            {requestableFields.includes("classRole") ? (
+              <input
+                value={requestDraft.classRole}
+                onChange={(event) => setRequestDraft({ ...requestDraft, classRole: event.target.value })}
+                placeholder="Класс / роль"
+                aria-label="Класс или роль"
+                maxLength={80}
+                style={INPUT_STYLE}
+              />
+            ) : null}
+            {requestableFields.includes("level") ? (
+              <input
+                value={requestDraft.level}
+                onChange={(event) => setRequestDraft({ ...requestDraft, level: event.target.value })}
+                placeholder="Уровень"
+                aria-label="Уровень"
+                style={INPUT_STYLE}
+              />
+            ) : null}
+          </>
+        ) : null}
+        {canRequestStats ? (
+          <>
+            <select
+              value={getRaceValue(requestDraft.stats)}
+              onChange={(event) => setRequestDraft({ ...requestDraft, stats: setRaceInStats(requestDraft.stats, event.target.value) })}
+              aria-label="Раса"
+              style={INPUT_STYLE}
+            >
+              {RACE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <StatsEditor value={requestDraft.stats} onChange={(stats) => setRequestDraft({ ...requestDraft, stats })} readOnly={readOnly} />
+          </>
+        ) : null}
+        {canRequestBio ? (
+          <>
+            <textarea
+              value={requestDraft.bio}
+              onChange={(event) => setRequestDraft({ ...requestDraft, bio: event.target.value })}
+              rows={6}
+              maxLength={2000}
+              placeholder="Биография (до 2000 символов)"
+              aria-label="Биография"
+              style={INPUT_STYLE}
+            />
+            <div className="small">{String(requestDraft.bio || "").length}/2000</div>
+          </>
+        ) : null}
+        {canRequestAvatar ? (
+          <input
+            value={requestDraft.avatarUrl}
+            onChange={(event) => setRequestDraft({ ...requestDraft, avatarUrl: event.target.value })}
+            placeholder="URL аватара"
+            aria-label="URL аватара"
+            maxLength={512}
+            style={INPUT_STYLE}
+          />
+        ) : null}
         <button className="btn" onClick={submitRequest}>
           <Send className="icon" aria-hidden="true" />Отправить запрос
         </button>

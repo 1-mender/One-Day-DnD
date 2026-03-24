@@ -21,6 +21,15 @@ const DEFAULT_PRESET_ACCESS = {
   hideLocal: false
 };
 
+const PROFILE_FIELDS = [
+  "characterName",
+  "classRole",
+  "level",
+  "stats",
+  "bio",
+  "avatarUrl"
+];
+
 export function useProfileController() {
   const toast = useToast();
   const { socket } = useSocket();
@@ -139,12 +148,17 @@ export function useProfileController() {
 
   const editableFields = useMemo(() => profile?.editableFields || [], [profile?.editableFields]);
   const allowRequests = !!profile?.allowRequests;
+  const requestableFields = useMemo(
+    () => PROFILE_FIELDS.filter((field) => !editableFields.includes(field)),
+    [editableFields]
+  );
   const canEdit = useCallback(
     (field) => editableFields.includes(field) && !readOnly,
     [editableFields, readOnly]
   );
   const canEditBasic = ["characterName", "classRole", "level"].some((field) => canEdit(field));
   const canEditAny = editableFields.length > 0 && !readOnly;
+  const canRequestAny = requestableFields.length > 0 && allowRequests && !readOnly;
 
   const openEdit = useCallback(
     (mode) => {
@@ -209,6 +223,14 @@ export function useProfileController() {
     setRequestOpen(true);
   }, [profile]);
 
+  const applyEditPreset = useCallback((preset) => {
+    setDraft((current) => mergeAllowedPreset(current, preset, editableFields));
+  }, [editableFields]);
+
+  const applyRequestPreset = useCallback((preset) => {
+    setRequestDraft((current) => mergeAllowedPreset(current, preset, requestableFields));
+  }, [requestableFields]);
+
   const submitRequest = useCallback(async () => {
     if (!playerId || !profile) return;
     const changes = diffProfile(profile, requestDraft);
@@ -251,6 +273,7 @@ export function useProfileController() {
     canEdit,
     canEditAny,
     canEditBasic,
+    canRequestAny,
     draft,
     editMode,
     editPresets,
@@ -267,6 +290,7 @@ export function useProfileController() {
     playerId,
     presetAccess,
     profile,
+    requestableFields,
     raceBonus,
     raceBonusLabel,
     raceHint,
@@ -282,6 +306,8 @@ export function useProfileController() {
     requests,
     requestsRef,
     saveEdit,
+    applyEditPreset,
+    applyRequestPreset,
     setDraft,
     setEditMode,
     setRequestDraft,
@@ -303,4 +329,16 @@ function createDraftFromProfile(profile) {
     bio: profile?.bio || "",
     avatarUrl: profile?.avatarUrl || ""
   };
+}
+
+function mergeAllowedPreset(current, preset, allowedFields) {
+  const merged = mergePresets([preset], true, false)[0];
+  if (!merged) return current;
+  const next = { ...current };
+  for (const field of allowedFields || []) {
+    if (Object.hasOwn(merged, field)) {
+      next[field] = merged[field];
+    }
+  }
+  return next;
 }

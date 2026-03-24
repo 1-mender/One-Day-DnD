@@ -6,7 +6,6 @@ import {
   RACE_OPTIONS,
   getPresetStatsLabel,
   getRaceValue,
-  mergePreset,
   setRaceInStats
 } from "../../profileDomain.js";
 
@@ -14,6 +13,7 @@ const INPUT_STYLE = { width: "100%" };
 
 export default function ProfileEditModal({ controller }) {
   const {
+    applyEditPreset,
     canEdit,
     draft,
     editMode,
@@ -41,7 +41,7 @@ export default function ProfileEditModal({ controller }) {
                 key={preset.id || preset.key || preset.title}
                 type="button"
                 className="preset-card"
-                onClick={() => setDraft((current) => mergePreset(current, preset))}
+                onClick={() => applyEditPreset(preset)}
               >
                 <div className="preset-title">{preset.title}</div>
                 <div className="small">{preset.subtitle}</div>
