@@ -51,20 +51,20 @@ export default function DMBestiaryManageSection({ controller }) {
           onChange={onPickImport}
         />
         <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Импорт JSON (проверка)</button>
-        <select value={portMode} onChange={(event) => setPortMode(event.target.value)} aria-label="Режим импорта бестиария" className="u-select-control">
+        <select value={portMode} onChange={(event) => setPortMode(event.target.value)} aria-label="Режим импорта бестиария" className="u-select-control" disabled={readOnly || portBusy}>
           <option value="merge">режим: слияние</option>
           <option value="replace">режим: замена</option>
         </select>
-        <select value={portMatch} onChange={(event) => setPortMatch(event.target.value)} aria-label="Сопоставление при импорте" className="u-select-control">
+        <select value={portMatch} onChange={(event) => setPortMatch(event.target.value)} aria-label="Сопоставление при импорте" className="u-select-control" disabled={readOnly || portBusy}>
           <option value="name">сопоставление: по имени</option>
           <option value="id">сопоставление: по id</option>
         </select>
-        <select value={portOnExisting} onChange={(event) => setPortOnExisting(event.target.value)} aria-label="Действие при совпадении монстров" className="u-select-control">
+        <select value={portOnExisting} onChange={(event) => setPortOnExisting(event.target.value)} aria-label="Действие при совпадении монстров" className="u-select-control" disabled={readOnly || portBusy}>
           <option value="update">при совпадении: обновлять</option>
           <option value="skip">при совпадении: пропустить</option>
         </select>
         <label className="row u-row-gap-6">
-          <input type="checkbox" checked={portImagesMeta} onChange={(event) => setPortImagesMeta(event.target.checked)} />
+          <input type="checkbox" checked={portImagesMeta} onChange={(event) => setPortImagesMeta(event.target.checked)} disabled={readOnly || portBusy} />
           <span className="small">импортировать метаданные картинок</span>
         </label>
       </div>
@@ -86,7 +86,7 @@ export default function DMBestiaryManageSection({ controller }) {
           <div className="row u-row-gap-8 u-row-wrap u-mt-10">
             <button className="btn" onClick={applyImport} disabled={readOnly || portBusy || !portPendingFile}>Применить</button>
             <button className="btn secondary" onClick={() => portPendingFile && runDryRun(portPendingFile)} disabled={readOnly || portBusy || !portPendingFile}>Пересчитать</button>
-            <button className="btn secondary" onClick={resetPlan} disabled={portBusy}>Сбросить</button>
+            <button className="btn secondary" onClick={resetPlan} disabled={readOnly || portBusy}>Сбросить</button>
           </div>
         </div>
       ) : null}

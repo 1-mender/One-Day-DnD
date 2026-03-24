@@ -231,6 +231,26 @@ export function useDmBestiaryController() {
     }
   }, []);
 
+  const updatePortMode = useCallback((value) => {
+    if (readOnly) return;
+    setPortMode(value);
+  }, [readOnly]);
+
+  const updatePortMatch = useCallback((value) => {
+    if (readOnly) return;
+    setPortMatch(value);
+  }, [readOnly]);
+
+  const updatePortOnExisting = useCallback((value) => {
+    if (readOnly) return;
+    setPortOnExisting(value);
+  }, [readOnly]);
+
+  const updatePortImagesMeta = useCallback((value) => {
+    if (readOnly) return;
+    setPortImagesMeta(value);
+  }, [readOnly]);
+
   const runDryRun = useCallback(async (file) => {
     if (readOnly) return;
     setPortErr("");
@@ -289,11 +309,12 @@ export function useDmBestiaryController() {
   }, [portMode, portPendingFile, readOnly, runImport]);
 
   const resetPlan = useCallback(() => {
+    if (readOnly) return;
     setPortPlan(null);
     setPortPendingFile(null);
     setPortMsg("");
     setPortErr("");
-  }, []);
+  }, [readOnly]);
 
   const onPickImport = useCallback(async (event) => {
     const file = event.target.files?.[0];
@@ -344,10 +365,10 @@ export function useDmBestiaryController() {
     selectedId,
     setForm,
     setOpen,
-    setPortImagesMeta,
-    setPortMatch,
-    setPortMode,
-    setPortOnExisting,
+    setPortImagesMeta: updatePortImagesMeta,
+    setPortMatch: updatePortMatch,
+    setPortMode: updatePortMode,
+    setPortOnExisting: updatePortOnExisting,
     setQ,
     setReplaceConfirmOpen,
     setVis,

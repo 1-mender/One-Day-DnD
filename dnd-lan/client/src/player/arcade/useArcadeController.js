@@ -230,7 +230,18 @@ export function useArcadeController() {
   }
 
   function setMode(gameKey, modeKey) {
+    if (readOnly) return;
     setSelectedModes((prev) => ({ ...prev, [gameKey]: modeKey }));
+  }
+
+  function selectOutcome(value) {
+    if (readOnly) return;
+    setOutcome(value);
+  }
+
+  function selectPerformance(value) {
+    if (readOnly) return;
+    setPerformance(value);
   }
 
   function formatGameModeLabel(gameKey, modeKey) {
@@ -379,9 +390,9 @@ export function useArcadeController() {
     activeRules,
     activeMode,
     outcome,
-    setOutcome,
+    setOutcome: selectOutcome,
     performance,
-    setPerformance,
+    setPerformance: selectPerformance,
     busy,
     queueBusy,
     queueGame,

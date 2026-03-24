@@ -297,6 +297,7 @@ export default function Arcade() {
                       type="button"
                       className={`mode-chip${selectedModeKey === mode.key ? " active" : ""}`}
                       onClick={() => setMode(g.key, mode.key)}
+                      disabled={readOnly}
                     >
                       {mode.label}
                     </button>
@@ -450,8 +451,8 @@ export default function Arcade() {
                 : t("arcade.rulesUnavailable", null, "Правила недоступны")}
             </div>
             <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")}>{t("arcade.outcomeWin", null, "Победа")}</button>
-              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")}>{t("arcade.outcomeLoss", null, "Поражение")}</button>
+              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")} disabled={busy || readOnly}>{t("arcade.outcomeWin", null, "Победа")}</button>
+              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")} disabled={busy || readOnly}>{t("arcade.outcomeLoss", null, "Поражение")}</button>
             </div>
             {outcome === "win" ? (
               <div className="list">
@@ -462,6 +463,7 @@ export default function Arcade() {
                       key={opt.key}
                       className={`btn ${performance === opt.key ? "" : "secondary"}`}
                       onClick={() => setPerformance(opt.key)}
+                      disabled={busy || readOnly}
                     >
                       {opt.label} x{opt.multiplier}
                     </button>
