@@ -376,6 +376,7 @@ export default function DMEvents() {
               aria-label="Подтверждение удаления событий"
               className="u-w-full"
               autoFocus
+              disabled={readOnly}
             />
           </>
         ) : null}

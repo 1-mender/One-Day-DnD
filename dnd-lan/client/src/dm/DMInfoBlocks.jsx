@@ -308,15 +308,15 @@ export default function DMInfoBlocks() {
 <Modal open={open} title={edit ? t("dmInfoBlocks.editBlock", null, "Редактировать блок") : t("dmInfoBlocks.newBlock", null, "Новый блок")} onClose={() => setOpen(false)}>
         <div className="list">
           {err && <div className="badge off">{t("common.error")}: {err}</div>}
-          <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" aria-label="Заголовок инфоблока" style={inp} />
+          <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" aria-label="Заголовок инфоблока" style={inp} disabled={readOnly} />
           <div className="row">
-            <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} aria-label="Категория инфоблока" style={inp}>
+            <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} aria-label="Категория инфоблока" style={inp} disabled={readOnly}>
               <option value="lore">lore</option>
               <option value="quest">quest</option>
               <option value="note">note</option>
               <option value="other">other</option>
             </select>
-            <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} aria-label="Доступ к инфоблоку" style={inp}>
+            <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} aria-label="Доступ к инфоблоку" style={inp} disabled={readOnly}>
               <option value="dm">{t("dmInfoBlocks.accessDmOnly", null, "DM-only")}</option>
               <option value="all">{t("dmInfoBlocks.accessAllPlayers", null, "All players")}</option>
               <option value="selected">{t("dmInfoBlocks.accessSelectedPlayers", null, "Selected players")}</option>
@@ -334,6 +334,7 @@ export default function DMInfoBlocks() {
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={readOnly}
                         onChange={(e) => {
                           const set = new Set(form.selectedPlayerIds || []);
                           e.target.checked ? set.add(p.id) : set.delete(p.id);
@@ -362,6 +363,7 @@ export default function DMInfoBlocks() {
             aria-label="Содержание инфоблока"
             rows={8}
             style={inp}
+            disabled={readOnly}
           />
           <input
             value={form.tagsText ?? (form.tags || []).join(", ")}
@@ -369,6 +371,7 @@ export default function DMInfoBlocks() {
             placeholder="Теги (через запятую)"
             aria-label="Теги инфоблока через запятую"
             style={inp}
+            disabled={readOnly}
           />
           <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
         </div>

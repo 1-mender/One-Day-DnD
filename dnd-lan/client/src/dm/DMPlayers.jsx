@@ -98,6 +98,7 @@ export default function DMPlayers() {
   }
 
   function startEdit(player) {
+    if (readOnly) return;
     setEditPlayer(player);
     setEditName(player?.displayName || "");
     setEditOpen(true);
@@ -125,6 +126,7 @@ export default function DMPlayers() {
   }
 
   async function confirmRemovePlayer() {
+    if (readOnly) return;
     if (!removeTarget) return;
     setErr("");
     try {
@@ -148,6 +150,7 @@ export default function DMPlayers() {
   }
 
   function openTickets(player) {
+    if (readOnly) return;
     setTicketPlayer(player);
     setTicketDelta("");
     setTicketSet("");
@@ -362,6 +365,7 @@ export default function DMPlayers() {
             aria-label={t("dmPlayers.editPlaceholder")}
             className="u-w-full"
             maxLength={80}
+            disabled={readOnly}
           />
           <button className="btn" onClick={saveEdit} disabled={readOnly}>{t("common.save")}</button>
         </div>
@@ -397,6 +401,7 @@ export default function DMPlayers() {
               placeholder={t("dmPlayers.ticketDelta")}
               aria-label={t("dmPlayers.ticketDelta")}
               className="u-w-full"
+              disabled={readOnly}
             />
             <input
               value={ticketSet}
@@ -404,6 +409,7 @@ export default function DMPlayers() {
               placeholder={t("dmPlayers.ticketSet")}
               aria-label={t("dmPlayers.ticketSet")}
               className="u-w-full"
+              disabled={readOnly}
             />
             <input
               value={ticketReason}
@@ -412,6 +418,7 @@ export default function DMPlayers() {
               aria-label={t("dmPlayers.ticketReason")}
               className="u-w-full"
               maxLength={120}
+              disabled={readOnly}
             />
             <button className="btn" onClick={applyTickets} disabled={readOnly}>{t("dmPlayers.ticketApply")}</button>
           </div>
