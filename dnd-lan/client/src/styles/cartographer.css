@@ -2627,6 +2627,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   margin: 14px 0 12px;
 }
 
+.tf-shop-shell .shop-overview{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 0;
+}
+
+.tf-shop-shell .shop-overview-hint{
+  margin-top: 6px;
+  color: rgba(232, 225, 214, 0.8);
+}
+
 .tf-shop-shell .shop-summary .tf-stat-card{
   background:
     linear-gradient(180deg, rgba(87, 95, 104, 0.82), rgba(41, 46, 51, 0.94));
@@ -2656,6 +2668,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   gap: 16px;
 }
 
+.tf-shop-shell .shop-section-meta{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
 .tf-shop-shell .shop-section-title{
   color: #efe7da;
 }
@@ -2677,6 +2696,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     inset 0 1px 0 rgba(255,255,255,0.76),
     0 14px 24px rgba(64, 53, 38, 0.14);
   transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.tf-shop-shell .tf-shop-card.is-buyable{
+  border-color: rgba(109, 138, 87, 0.32);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.76),
+    0 16px 28px rgba(64, 53, 38, 0.16);
 }
 
 .tf-shop-shell .tf-shop-card:hover{
@@ -2769,6 +2795,19 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   border-top: 1px solid rgba(118, 100, 70, 0.1);
 }
 
+.tf-shop-shell .shop-actions-live{
+  align-items: center;
+}
+
+.tf-shop-shell .shop-status-card{
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(118, 100, 70, 0.1);
+}
+
 .tf-shop-shell .tf-shop-buy-btn{
   min-width: 94px;
   min-height: 44px;
@@ -2820,6 +2859,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     display: none;
   }
 
+  .tf-shop-shell .shop-overview{
+    gap: 6px;
+  }
+
+  .tf-shop-shell .shop-overview .badge{
+    font-size: 11px;
+  }
+
   .tf-shop-shell .shop-hero{
     gap: 10px;
   }
@@ -2861,6 +2908,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     gap: 6px;
   }
 
+  .tf-shop-shell .shop-section-meta{
+    align-items: flex-start;
+  }
+
   .tf-shop-shell .tf-shop-section{
     padding: 14px 12px;
     border-radius: 20px;
@@ -2899,6 +2950,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
+  }
+
+  .tf-shop-shell .shop-status-card{
+    gap: 6px;
   }
 
   .tf-shop-shell .tf-shop-price,

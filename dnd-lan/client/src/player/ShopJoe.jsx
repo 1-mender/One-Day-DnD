@@ -37,6 +37,96 @@ export default function ShopJoe() {
   );
   const totalPurchases = Number(purchaseSummary?.totalPurchases || 0);
   const topItemTitle = purchaseSummary?.topItemTitle || "—";
+  const shopSections = React.useMemo(() => {
+    return catalog
+      .map((section) => {
+        const items = section.items
+          .map((item) => {
+            const itemRule = rules?.shop?.[item.key];
+            const itemMissingInRules = !!rules && !itemRule;
+            const itemDisabled = itemRule?.enabled === false;
+            const dailyLimit = itemRule?.dailyLimit;
+            const usedToday = usage?.purchasesToday?.[item.key] || 0;
+            const itemPrice = resolvePrice(item.key, item.price, rules);
+            const limitReached = isLimitReached(item.key, rules, usage);
+            const disabledReason = getBuyDisabledReason({
+              readOnly,
+              loading,
+              rules,
+              ticketsEnabled,
+              itemDisabled,
+              itemMissingInRules,
+              balance,
+              itemPrice,
+              limitReached,
+              pendingItemKey,
+              itemKey: item.key
+            });
+            const isDisabled = !!disabledReason;
+            const isPendingThis = pendingItemKey === item.key;
+            const isAvailableNow = !isDisabled;
+            const canExistInCatalog = !itemMissingInRules && !itemDisabled;
+            return {
+              ...item,
+              itemRule,
+              itemMissingInRules,
+              itemDisabled,
+              dailyLimit,
+              usedToday,
+              itemPrice,
+              limitReached,
+              disabledReason,
+              isDisabled,
+              isPendingThis,
+              isAvailableNow,
+              canExistInCatalog
+            };
+          })
+          .sort((left, right) => {
+            const leftRank = left.isAvailableNow ? 0 : 1;
+            const rightRank = right.isAvailableNow ? 0 : 1;
+            if (leftRank !== rightRank) return leftRank - rightRank;
+            if (left.itemPrice !== right.itemPrice) return left.itemPrice - right.itemPrice;
+            return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
+          });
+
+        const availableCount = items.filter((item) => item.isAvailableNow).length;
+        const enabledItems = items.filter((item) => item.canExistInCatalog && !item.limitReached);
+        const cheapestEnabledPrice = enabledItems.length
+          ? Math.min(...enabledItems.map((item) => item.itemPrice))
+          : null;
+
+        return {
+          ...section,
+          items,
+          availableCount,
+          cheapestEnabledPrice
+        };
+      })
+      .sort((left, right) => {
+        const leftRank = left.availableCount > 0 ? 0 : 1;
+        const rightRank = right.availableCount > 0 ? 0 : 1;
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        const leftPrice = left.cheapestEnabledPrice ?? Number.POSITIVE_INFINITY;
+        const rightPrice = right.cheapestEnabledPrice ?? Number.POSITIVE_INFINITY;
+        if (leftPrice !== rightPrice) return leftPrice - rightPrice;
+        return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
+      });
+  }, [balance, catalog, loading, pendingItemKey, readOnly, rules, ticketsEnabled, usage]);
+
+  const availableNowCount = React.useMemo(
+    () => shopSections.reduce((acc, section) => acc + section.availableCount, 0),
+    [shopSections]
+  );
+  const cheapestEnabledPrice = React.useMemo(() => {
+    const prices = shopSections
+      .map((section) => section.cheapestEnabledPrice)
+      .filter((price) => Number.isFinite(price));
+    return prices.length ? Math.min(...prices) : null;
+  }, [shopSections]);
+  const ticketsNeededForCheapest = Number.isFinite(cheapestEnabledPrice)
+    ? Math.max(0, Number(cheapestEnabledPrice) - balance)
+    : 0;
 
   function toastPurchaseError(error) {
     const message = formatError(error);
@@ -96,10 +186,23 @@ export default function ShopJoe() {
         </div>
       </div>
 
+      <div className="shop-overview">
+        <span className="badge ok">Доступно сейчас: {availableNowCount}</span>
+        <span className="badge secondary">Баланс: {balance}</span>
+        {Number.isFinite(cheapestEnabledPrice) ? (
+          <span className="badge">От {priceLabel(cheapestEnabledPrice)}</span>
+        ) : null}
+      </div>
+      {ticketsEnabled && availableNowCount === 0 && Number.isFinite(cheapestEnabledPrice) ? (
+        <div className="small shop-overview-hint">
+          До первой покупки не хватает ещё {ticketsNeededForCheapest} {ticketWord(ticketsNeededForCheapest)}.
+        </div>
+      ) : null}
+
       <div className="shop-summary tf-stat-grid">
         <div className="tf-stat-card">
           <div className="small">Доступных секций</div>
-          <strong>{catalog.length}</strong>
+          <strong>{shopSections.length}</strong>
         </div>
         <div className="tf-stat-card">
           <div className="small">Покупок сегодня</div>
@@ -131,73 +234,61 @@ export default function ShopJoe() {
       <hr />
 
       <div className="list">
-        {catalog.map((section) => (
+        {shopSections.map((section) => (
           <div key={section.key} className="paper-note tavern-section tf-panel tf-shop-section">
             <div className="row shop-section-head" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
               <div className="tf-section-copy">
                 <div className="tf-section-kicker">{"Merchant shelf"}</div>
                 <div className="title shop-section-title">{section.title}</div>
               </div>
-              <div className="small shop-section-subtitle">{section.subtitle}</div>
+              <div className="shop-section-meta">
+                {section.availableCount > 0 ? (
+                  <span className="badge ok">Можно купить: {section.availableCount}</span>
+                ) : null}
+                <div className="small shop-section-subtitle">{section.subtitle}</div>
+              </div>
             </div>
             <div className="shop-grid" style={{ marginTop: 10 }}>
               {section.items.map((item) => {
-                const itemRule = rules?.shop?.[item.key];
-                const itemMissingInRules = !!rules && !itemRule;
-                const itemDisabled = itemRule?.enabled === false;
-                const cardBlocked = itemMissingInRules || itemDisabled;
-                const dailyLimit = itemRule?.dailyLimit;
-                const usedToday = usage?.purchasesToday?.[item.key] || 0;
-                const itemPrice = resolvePrice(item.key, item.price, rules);
-                const limitReached = isLimitReached(item.key, rules, usage);
-                const disabledReason = getBuyDisabledReason({
-                  readOnly,
-                  loading,
-                  rules,
-                  ticketsEnabled,
-                  itemDisabled,
-                  itemMissingInRules,
-                  balance,
-                  itemPrice,
-                  limitReached,
-                  pendingItemKey,
-                  itemKey: item.key
-                });
-                const isDisabled = !!disabledReason;
-                const isPendingThis = pendingItemKey === item.key;
+                const cardBlocked = item.itemMissingInRules || item.itemDisabled;
 
                 return (
-                  <div key={item.key} className={`item taped shop-card tf-shop-card${cardBlocked ? " disabled-card" : ""}`}>
+                  <div key={item.key} className={`item taped shop-card tf-shop-card${cardBlocked ? " disabled-card" : ""}${item.isAvailableNow ? " is-buyable" : " is-locked"}`}>
                     <div className="shop-head">
                       <div className="shop-item-title">{item.title}</div>
                       <span className={`badge ${cardBlocked ? "off" : `badge-impact ${item.impactClass}`}`}>
-                        {itemMissingInRules ? "Нет в правилах" : itemDisabled ? "Закрыто" : item.impact}
+                        {item.itemMissingInRules ? "Нет в правилах" : item.itemDisabled ? "Закрыто" : item.impact}
                       </span>
                     </div>
                     <div className="small shop-card-blurb">{item.blurb}</div>
                     <div className="shop-meta">
                       <span className="meta-chip tf-shop-chip">
-                        {"Лимит: "}{formatLimit(item.limit, dailyLimit)}
+                        {"Лимит: "}{formatLimit(item.limit, item.dailyLimit)}
                       </span>
                       <span className="meta-chip tf-shop-chip">{item.note}</span>
-                      {dailyLimit ? (
+                      {item.dailyLimit ? (
                         <span className="meta-chip tf-shop-chip">
-                          {"Сегодня: "}{usedToday}/{dailyLimit}
+                          {"Сегодня: "}{item.usedToday}/{item.dailyLimit}
                         </span>
                       ) : null}
                     </div>
-                    <div className="row shop-actions" style={{ justifyContent: "space-between" }}>
-                      <span className="ticket-pill tf-shop-price">{priceLabel(itemPrice)}</span>
-                      <button
-                        className="btn secondary tf-shop-buy-btn"
-                        disabled={isDisabled}
-                        title={disabledReason || "Купить"}
-                        onClick={() => handleBuy(item.key)}
-                      >
-                        {isPendingThis ? "Покупаем..." : "Купить"}
-                      </button>
-                    </div>
-                    {disabledReason ? <div className="small shop-disabled-note">{disabledReason}</div> : null}
+                    {item.isAvailableNow ? (
+                      <div className="row shop-actions shop-actions-live" style={{ justifyContent: "space-between" }}>
+                        <span className="ticket-pill tf-shop-price">{priceLabel(item.itemPrice)}</span>
+                        <button
+                          className="btn secondary tf-shop-buy-btn"
+                          title="Купить"
+                          onClick={() => handleBuy(item.key)}
+                        >
+                          {item.isPendingThis ? "Покупаем..." : "Купить"}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="shop-status-card">
+                        <span className="ticket-pill tf-shop-price">{priceLabel(item.itemPrice)}</span>
+                        <div className="small shop-disabled-note">{item.disabledReason}</div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
