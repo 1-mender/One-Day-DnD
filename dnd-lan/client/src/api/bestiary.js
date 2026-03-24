@@ -22,6 +22,14 @@ export const bestiaryApi = {
     const queryString = params.toString();
     return request(`/api/bestiary/images${queryString ? `?${queryString}` : ""}`, { method: "GET" });
   },
+  dmBestiaryImagesBatch: (ids, { limitPer = 0 } = {}) => {
+    const list = Array.isArray(ids) ? ids : [];
+    const params = new URLSearchParams();
+    if (list.length) params.set("ids", list.join(","));
+    if (limitPer) params.set("limitPer", String(limitPer));
+    const queryString = params.toString();
+    return request(`/api/bestiary/dm/images${queryString ? `?${queryString}` : ""}`, { method: "GET" });
+  },
   dmBestiaryCreate: (monster) => request("/api/bestiary", { method: "POST", body: JSON.stringify(monster) }),
   dmBestiaryUpdate: (id, monster) => request(`/api/bestiary/${id}`, { method: "PUT", body: JSON.stringify(monster) }),
   dmBestiaryDelete: (id) => request(`/api/bestiary/${id}`, { method: "DELETE" }),

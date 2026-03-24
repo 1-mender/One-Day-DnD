@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { t } from "../i18n/index.js";
 import { getFocusable, getTrapFocusTarget, shouldCloseOnBackdropMouseDown } from "./modalA11y.js";
 
-export default function Modal({ open, title, children, onClose }) {
+export default function Modal({ open, title, children, onClose, headerless = false, className = "", bodyClassName = "" }) {
   const dialogRef = useRef(null);
   const lastFocusedRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -92,7 +92,7 @@ export default function Modal({ open, title, children, onClose }) {
     >
       <div
         ref={dialogRef}
-        className="vintage-modal tf-modal"
+        className={`vintage-modal tf-modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={title ? titleId : undefined}
@@ -101,18 +101,20 @@ export default function Modal({ open, title, children, onClose }) {
         onKeyDown={onDialogKeyDown}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="vintage-modal-header tf-modal-header">
-          <div id={title ? titleId : undefined} className="vintage-modal-title tf-modal-title">{title || ""}</div>
-          <button
-            type="button"
-            className="btn secondary tf-modal-close"
-            onClick={() => onCloseRef.current?.()}
-            aria-label={t("common.close", null, "Close")}
-          >
-            X
-          </button>
-        </div>
-        <div className="vintage-modal-body tf-modal-body" role="document">{children}</div>
+        {!headerless ? (
+          <div className="vintage-modal-header tf-modal-header">
+            <div id={title ? titleId : undefined} className="vintage-modal-title tf-modal-title">{title || ""}</div>
+            <button
+              type="button"
+              className="btn secondary tf-modal-close"
+              onClick={() => onCloseRef.current?.()}
+              aria-label={t("common.close", null, "Close")}
+            >
+              X
+            </button>
+          </div>
+        ) : null}
+        <div className={`vintage-modal-body tf-modal-body ${bodyClassName}`.trim()} role="document">{children}</div>
       </div>
     </div>
   );

@@ -38,7 +38,7 @@ export function useDmBestiaryController() {
     const ids = (list || []).map((monster) => monster.id).filter(Boolean);
     if (!ids.length) return;
     try {
-      const response = await api.bestiaryImagesBatch(ids, { limitPer: 1 });
+      const response = await api.dmBestiaryImagesBatch(ids, { limitPer: 1 });
       const map = new Map();
       if (Array.isArray(response.items)) {
         for (const item of response.items) map.set(item.monsterId || item.id, item.images || []);

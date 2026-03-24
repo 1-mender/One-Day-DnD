@@ -143,8 +143,8 @@ bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
   res.json({ items: rows });
 });
 
-// Batch images by monster ids: GET /api/bestiary/images?ids=1,2,3&limitPer=1
-bestiaryImagesRouter.get("/images", dmAuthMiddleware, (req, res) => {
+// DM batch images by monster ids: GET /api/bestiary/dm/images?ids=1,2,3&limitPer=1
+bestiaryImagesRouter.get("/dm/images", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
   const idsParam = String(req.query.ids || "").trim();

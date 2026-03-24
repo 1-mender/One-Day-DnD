@@ -157,27 +157,50 @@ export default function Bestiary() {
         </div>
       )}
 
-      <Modal open={open} title={cur?.name || ""} onClose={() => { setOpen(false); setCurId(null); }}>
+      <Modal
+        open={open}
+        title={cur?.name || ""}
+        headerless
+        className="bestiary-sheet-modal"
+        bodyClassName="bestiary-sheet-body"
+        onClose={() => { setOpen(false); setCurId(null); }}
+      >
         <div className="bestiary-modal">
-        <div className="small bestiary-modal-meta">
-          {t("bestiary.meta", {
-            type: cur?.type || "—",
-            habitat: cur?.habitat || "—"
-          }, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"}`)}
-        </div>
-        <div className="bestiary-modal-threat">
-          <span className="small">{t("bestiary.threatLabel", null, "Угроза")}</span>
-          <ThreatBadge cr={cur?.cr} />
-        </div>
-        <hr />
-        <div className="bestiary-gallery" style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12, marginBottom: 10 }}>
-          {gallery.map((im) => (
-            <PolaroidFrame key={im.id} src={im.url} alt="" fallback="IMG" className={lite ? "sm" : "lg"} />
-          ))}
-        </div>
-        <div className="bestiary-modal-body">
-          <MarkdownView source={cur?.description} />
-        </div>
+          <div className="bestiary-modal-hero">
+            <div className="bestiary-modal-photo-float">
+              <div className="bestiary-gallery bestiary-gallery-float" style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12 }}>
+                {gallery.map((im) => (
+                  <PolaroidFrame key={im.id} src={im.url} alt="" fallback="IMG" className={lite ? "sm" : "lg"} />
+                ))}
+              </div>
+            </div>
+            <button
+              type="button"
+              className="btn secondary bestiary-modal-close"
+              onClick={() => {
+                setOpen(false);
+                setCurId(null);
+              }}
+              aria-label={t("common.close", null, "Close")}
+            >
+              X
+            </button>
+            <div className="bestiary-modal-heading">{cur?.name || ""}</div>
+          </div>
+          <div className="small bestiary-modal-meta">
+            {t("bestiary.meta", {
+              type: cur?.type || "—",
+              habitat: cur?.habitat || "—"
+            }, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"}`)}
+          </div>
+          <div className="bestiary-modal-threat">
+            <span className="small">{t("bestiary.threatLabel", null, "Угроза")}</span>
+            <ThreatBadge cr={cur?.cr} />
+          </div>
+          <hr />
+          <div className="bestiary-modal-body">
+            <MarkdownView source={cur?.description} />
+          </div>
         </div>
       </Modal>
     </div>

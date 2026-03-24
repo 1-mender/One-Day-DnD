@@ -12,9 +12,10 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 process.env.DM_COOKIE = "dm_token_test";
 
-const { initDb, getDb, getSinglePartyId } = await import("../src/db.js");
+const { initDb, getDb, getSinglePartyId, setPartySettings } = await import("../src/db.js");
 const { createDmUser, signDmToken } = await import("../src/auth.js");
 const { ensureUploads } = await import("../src/uploads.js");
+const { bestiaryRouter } = await import("../src/routes/bestiary.js");
 const { infoUploadsRouter } = await import("../src/routes/infoUploads.js");
 const { bestiaryImagesRouter } = await import("../src/routes/bestiaryImages.js");
 const { now } = await import("../src/util.js");
@@ -27,6 +28,7 @@ const app = express();
 app.use(cookieParser());
 app.use("/api/info-blocks", infoUploadsRouter);
 app.use("/api/bestiary", bestiaryImagesRouter);
+app.use("/api/bestiary", bestiaryRouter);
 
 const server = app.listen(0);
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -166,4 +168,28 @@ test("bestiary upload accepts heif-family images and normalizes them to jpeg", a
   assert.equal(out.data.ok, true);
   assert.match(String(out.data.image?.url || ""), /^\/uploads\/bestiary\/.+\.jpg$/);
   assert.equal(out.data.image?.mime, "image/jpeg");
+});
+
+test("player bestiary images endpoint returns visible monster images without DM auth", async () => {
+  const monsterId = createMonster("Visible Beast");
+  setPartySettings(getSinglePartyId(), { bestiary_enabled: 1 });
+  const uploadOut = await upload(`/api/bestiary/${monsterId}/images`, {
+    body: PNG_1X1,
+    mime: "image/png",
+    filename: "monster.png"
+  });
+  assert.equal(uploadOut.res.status, 200);
+
+  const playerId = createPlayer("Viewer");
+  const playerToken = createPlayerSession(playerId, "player-bestiary-viewer");
+  const res = await fetch(`${base}/api/bestiary/images?ids=${monsterId}&limitPer=1`, {
+    headers: { "x-player-token": playerToken }
+  });
+  const data = await res.json().catch(() => ({}));
+
+  assert.equal(res.status, 200);
+  assert.ok(Array.isArray(data.items));
+  assert.equal(data.items[0]?.monsterId, monsterId);
+  assert.equal(Array.isArray(data.items[0]?.images), true);
+  assert.ok(String(data.items[0]?.images?.[0]?.url || "").includes("/uploads/bestiary/"));
 });
