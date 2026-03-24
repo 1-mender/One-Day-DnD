@@ -27,6 +27,8 @@ export default function ProfileContent({ controller }) {
     requestsRef,
     setReqStatus
   } = controller;
+  const heroMonogram = getHeroMonogram(profile);
+  const showRaceBonus = raceBonus !== 0;
 
   return (
     <div className="list profile-visibility-flow">
@@ -71,7 +73,7 @@ export default function ProfileContent({ controller }) {
               </div>
               <div className="character-info profile-info">
                 <div className="profile-nameplate-wrap">
-                  <div className="profile-sigil">?</div>
+                  <div className="profile-sigil" aria-hidden="true">{heroMonogram}</div>
                   <div>
                     <div className="character-nameplate profile-nameplate">{profile.characterName || "Без имени"}</div>
                     <div className="small profile-name-subtitle">Персонаж партии</div>
@@ -80,9 +82,11 @@ export default function ProfileContent({ controller }) {
                 <div className="small character-race profile-race-row" title={raceHint} aria-label={raceHint}>
                   <span className="character-race-label">Раса:</span>
                   <span className="character-race-value">{raceLabel}</span>
-                  <span className={`badge profile-race-bonus ${raceBonus > 0 ? "ok" : raceBonus < 0 ? "off" : "secondary"}`}>
-                    {raceBonusLabel}
-                  </span>
+                  {showRaceBonus ? (
+                    <span className={`badge profile-race-bonus ${raceBonus > 0 ? "ok" : "off"}`}>
+                      {raceBonusLabel}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="profile-hero-stats">
                   <div className="profile-stat-plaque">
@@ -219,7 +223,7 @@ export default function ProfileContent({ controller }) {
               {reqLoading ? (
                 <Skeleton h={80} w="100%" />
               ) : requests.length === 0 ? (
-                <EmptyState title="Нет запросов" hint="История запросов пока пустая." />
+                <EmptyState className="profile-request-empty" title="Нет запросов" hint="История запросов пока пустая." />
               ) : (
                 <div className="list profile-request-list" ref={requestsRef}>
                   {requests.map((requestItem) => (
@@ -274,9 +278,25 @@ function getStatusLabel(status) {
 }
 
 function formatEditableFieldLabel(value) {
-  return String(value || "")
+  const key = String(value || "");
+  const labels = {
+    avatarUrl: "Аватар",
+    bio: "Биография",
+    stats: "Статы",
+    level: "Уровень",
+    classRole: "Класс / роль",
+    characterName: "Имя персонажа"
+  };
+  if (labels[key]) return labels[key];
+  return key
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/[_-]+/g, " ")
     .trim()
     .replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function getHeroMonogram(profile) {
+  const candidate = profile?.characterName || profile?.classRole || "";
+  const letter = String(candidate).trim().slice(0, 1).toUpperCase();
+  return letter || "P";
 }
