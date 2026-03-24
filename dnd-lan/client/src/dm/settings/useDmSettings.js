@@ -1,27 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api } from "../../api.js";
 import { useSocket } from "../../context/SocketContext.jsx";
 import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { ERROR_CODES } from "../../lib/errorCodes.js";
 import { formatError } from "../../lib/formatError.js";
-import {
-  applyTicketGamePatch,
-  applyTicketRulesPatch,
-  applyTicketShopPatch,
-  buildGeneralChanges,
-  createDailyQuestDraft,
-  isDailyQuestChanged,
-  isGameChanged,
-  isShopChanged
-} from "./domain/ticketRulesEditor.js";
-import {
-  DEFAULT_PRESET_ACCESS,
-  addProfilePresetItem,
-  normalizePresetAccess,
-  removeProfilePresetItem,
-  updateProfilePresetData,
-  updateProfilePresetItem
-} from "./domain/presetsEditor.js";
+import { useDmProfilePresets } from "./hooks/useDmProfilePresets.js";
+import { useDmTicketRules } from "./hooks/useDmTicketRules.js";
 
 export function useDmSettings() {
   const [joinEnabled, setJoinEnabled] = useState(false);
@@ -35,21 +19,11 @@ export function useDmSettings() {
   const [info, setInfo] = useState(null);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
-  const [ticketRules, setTicketRules] = useState(null);
-  const [ticketRulesBase, setTicketRulesBase] = useState(null);
-  const [showOnlyChanged, setShowOnlyChanged] = useState(false);
-  const [ticketBusy, setTicketBusy] = useState(false);
-  const [ticketMsg, setTicketMsg] = useState("");
-  const [ticketErr, setTicketErr] = useState("");
-  const [questConfirm, setQuestConfirm] = useState(null);
-  const [profilePresets, setProfilePresets] = useState([]);
-  const [presetAccess, setPresetAccess] = useState(DEFAULT_PRESET_ACCESS);
-  const [presetBusy, setPresetBusy] = useState(false);
-  const [presetMsg, setPresetMsg] = useState("");
-  const [presetErr, setPresetErr] = useState("");
 
   const { socket } = useSocket();
   const readOnly = useReadOnly();
+  const { hydrateTicketRules, ...ticketRulesState } = useDmTicketRules({ readOnly });
+  const { hydrateProfilePresets, ...profilePresetsState } = useDmProfilePresets({ readOnly });
 
   const load = useCallback(async () => {
     setErr("");
@@ -63,14 +37,12 @@ export function useDmSettings() {
       setJoinEnabled(!!jc.enabled);
       setJoinCode(jc.joinCode || "");
       setInfo(si);
-      setTicketRules(tr?.rules || null);
-      setTicketRulesBase(tr?.rules || null);
-      setProfilePresets(Array.isArray(presets?.presets) ? presets.presets : []);
-      setPresetAccess(normalizePresetAccess(presets?.access));
+      hydrateTicketRules(tr?.rules || null);
+      hydrateProfilePresets(presets?.presets, presets?.access);
     } catch (e) {
       setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
     }
-  }, []);
+  }, [hydrateProfilePresets, hydrateTicketRules]);
 
   useEffect(() => {
     if (!socket) return () => {};
@@ -83,22 +55,6 @@ export function useDmSettings() {
   }, [load, socket]);
 
   const lanUrl = info?.urls?.[0] || (info?.ips?.[0] && info?.port ? `http://${info.ips[0]}:${info.port}` : "");
-  const ticketDirty = useMemo(() => {
-    if (!ticketRules || !ticketRulesBase) return false;
-    return JSON.stringify(ticketRules) !== JSON.stringify(ticketRulesBase);
-  }, [ticketRules, ticketRulesBase]);
-  const ticketBase = ticketRulesBase || {};
-  const ticketCur = ticketRules || {};
-  const generalChanges = buildGeneralChanges(ticketCur, ticketBase);
-  const dailyQuestChanged = isDailyQuestChanged(ticketCur, ticketBase);
-  const showGeneralBlock = !showOnlyChanged || Object.values(generalChanges).some(Boolean);
-  const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
-  const showDailyQuestBlock = !showOnlyChanged || dailyQuestChanged;
-
-  const gameEntries = Object.entries(ticketCur.games || {});
-  const shopEntries = Object.entries(ticketCur.shop || {});
-  const filteredGames = showOnlyChanged ? gameEntries.filter(([key, g]) => isGameChanged(ticketBase, key, g)) : gameEntries;
-  const filteredShop = showOnlyChanged ? shopEntries.filter(([key, item]) => isShopChanged(ticketBase, key, item)) : shopEntries;
 
   async function saveJoinCode() {
     if (readOnly) return;
@@ -135,170 +91,6 @@ export function useDmSettings() {
       setShowPass(false);
     } catch (e) {
       setErr(formatError(e));
-    }
-  }
-
-  function updateTicketRules(patch) {
-    setTicketRules((prev) => applyTicketRulesPatch(prev, patch));
-  }
-
-  function addDailyQuest() {
-    const draft = createDailyQuestDraft();
-    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    pool.push(draft);
-    const activeKey = ticketRules?.dailyQuest?.activeKey || draft.key;
-    updateTicketRules({ dailyQuest: { pool, activeKey } });
-  }
-
-  function updateDailyQuest(idx, patch) {
-    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    if (!pool[idx]) return;
-    pool[idx] = { ...pool[idx], ...(patch || {}) };
-    updateTicketRules({ dailyQuest: { pool } });
-  }
-
-  function removeDailyQuest(idx) {
-    const pool = [...(ticketRules?.dailyQuest?.pool || [])];
-    const removed = pool.splice(idx, 1)[0];
-    let activeKey = ticketRules?.dailyQuest?.activeKey || "";
-    if (removed?.key && removed.key === activeKey) {
-      activeKey = pool.find((q) => q.enabled !== false)?.key || pool[0]?.key || "";
-    }
-    updateTicketRules({ dailyQuest: { pool, activeKey } });
-  }
-
-  function setActiveDailyQuest(key) {
-    updateTicketRules({ dailyQuest: { activeKey: key } });
-  }
-
-  function resetDailyQuestToday() {
-    if (readOnly) return;
-    const activeKey = ticketRules?.dailyQuest?.activeKey || "";
-    if (!activeKey) {
-      setTicketErr("Нет активного ежедневного квеста.");
-      return;
-    }
-    setQuestConfirm({ action: "reset", activeKey });
-  }
-
-  function reassignDailyQuestToday() {
-    if (readOnly) return;
-    const activeKey = ticketRules?.dailyQuest?.activeKey || "";
-    if (!activeKey) {
-      setTicketErr("Нет активного ежедневного квеста.");
-      return;
-    }
-    setQuestConfirm({ action: "reassign", activeKey });
-  }
-
-  async function confirmDailyQuestAction() {
-    if (!questConfirm || readOnly) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      if (questConfirm.action === "reset") {
-        await api.dmTicketsResetQuest(questConfirm.activeKey);
-        setTicketMsg("Ежедневный квест сброшен на сегодня.");
-      }
-      if (questConfirm.action === "reassign") {
-        await api.dmTicketsSetActiveQuest(questConfirm.activeKey);
-        setTicketMsg("Ежедневный квест переназначен на сегодня.");
-        setTicketRulesBase((prev) => (
-          prev ? { ...prev, dailyQuest: { ...(prev.dailyQuest || {}), activeKey: questConfirm.activeKey } } : prev
-        ));
-      }
-      setQuestConfirm(null);
-    } catch (e) {
-      setTicketErr(formatError(e));
-    } finally {
-      setTicketBusy(false);
-    }
-  }
-
-  function closeQuestConfirm() {
-    setQuestConfirm(null);
-  }
-
-  function updateTicketGame(key, patch) {
-    setTicketRules((prev) => applyTicketGamePatch(prev, key, patch));
-  }
-
-  function updateTicketShop(key, patch) {
-    setTicketRules((prev) => applyTicketShopPatch(prev, key, patch));
-  }
-
-  async function saveTicketRules() {
-    if (readOnly) return;
-    if (!ticketRules) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      const r = await api.dmTicketsUpdateRules({
-        enabled: ticketRules.enabled ?? true,
-        rules: ticketRules
-      });
-      setTicketRules(r.rules || null);
-      setTicketRulesBase(r.rules || null);
-      setTicketMsg("Правила сохранены.");
-    } catch (e) {
-      setTicketErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
-    } finally {
-      setTicketBusy(false);
-    }
-  }
-
-  async function resetTicketRules() {
-    if (readOnly) return;
-    setTicketErr("");
-    setTicketMsg("");
-    setTicketBusy(true);
-    try {
-      const r = await api.dmTicketsUpdateRules({ reset: true });
-      setTicketRules(r.rules || null);
-      setTicketRulesBase(r.rules || null);
-      setTicketMsg("Правила сброшены к дефолту.");
-    } catch (e) {
-      setTicketErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
-    } finally {
-      setTicketBusy(false);
-    }
-  }
-
-  function addPreset() {
-    setProfilePresets((prev) => addProfilePresetItem(prev));
-  }
-
-  function removePreset(idx) {
-    setProfilePresets((prev) => removeProfilePresetItem(prev, idx));
-  }
-
-  function updatePreset(idx, patch) {
-    setProfilePresets((prev) => updateProfilePresetItem(prev, idx, patch));
-  }
-
-  function updatePresetData(idx, patch) {
-    setProfilePresets((prev) => updateProfilePresetData(prev, idx, patch));
-  }
-
-  async function saveProfilePresets() {
-    if (readOnly) return;
-    setPresetErr("");
-    setPresetMsg("");
-    setPresetBusy(true);
-    try {
-      const r = await api.dmProfilePresetsUpdate({
-        presets: profilePresets || [],
-        access: presetAccess || {}
-      });
-      setProfilePresets(Array.isArray(r?.presets) ? r.presets : []);
-      setPresetAccess(r?.access || presetAccess);
-      setPresetMsg("Пресеты сохранены.");
-    } catch (e) {
-      setPresetErr(formatError(e));
-    } finally {
-      setPresetBusy(false);
     }
   }
 
@@ -351,49 +143,13 @@ export function useDmSettings() {
     setShowPass,
     msg,
     err,
-    ticketRules,
-    showOnlyChanged,
-    setShowOnlyChanged,
-    ticketBusy,
-    ticketMsg,
-    ticketErr,
-    questConfirm,
-    closeQuestConfirm,
-    profilePresets,
-    presetAccess,
-    setPresetAccess,
-    presetBusy,
-    presetMsg,
-    presetErr,
     readOnly,
     lanUrl,
-    ticketDirty,
-    generalChanges,
-    showGeneralBlock,
-    showGeneralInputs,
-    showDailyQuestBlock,
-    filteredGames,
-    filteredShop,
     saveJoinCode,
     changePassword,
-    updateTicketRules,
-    addDailyQuest,
-    updateDailyQuest,
-    removeDailyQuest,
-    setActiveDailyQuest,
-    resetDailyQuestToday,
-    reassignDailyQuestToday,
-    confirmDailyQuestAction,
-    updateTicketGame,
-    updateTicketShop,
-    saveTicketRules,
-    resetTicketRules,
-    addPreset,
-    removePreset,
-    updatePreset,
-    updatePresetData,
-    saveProfilePresets,
     exportZip,
-    importZip
+    importZip,
+    ...ticketRulesState,
+    ...profilePresetsState
   };
 }
