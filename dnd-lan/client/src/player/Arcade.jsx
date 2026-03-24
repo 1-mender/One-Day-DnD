@@ -1,4 +1,4 @@
-import React, { Suspense, lazy } from "react";
+import React, { Suspense, lazy, useMemo } from "react";
 import Modal from "../components/Modal.jsx";
 import { t } from "../i18n/index.js";
 import {
@@ -81,10 +81,47 @@ export default function Arcade() {
     arcadeMetrics,
   } = useArcadeController();
 
+  const questProgress = Math.max(
+    0,
+    Math.min(
+      100,
+      Number(dailyQuest?.goal || 0) > 0
+        ? Math.round((Number(dailyQuest?.progress || 0) / Number(dailyQuest.goal)) * 100)
+        : 0
+    )
+  );
+
+  const rankedGames = useMemo(() => {
+    return [...games].sort((left, right) => {
+      const leftReason = getDisabledReason(left.key);
+      const rightReason = getDisabledReason(right.key);
+      const leftEntry = Number(rules?.games?.[left.key]?.entryCost || 0);
+      const rightEntry = Number(rules?.games?.[right.key]?.entryCost || 0);
+      const leftScore = leftReason ? 1 : 0;
+      const rightScore = rightReason ? 1 : 0;
+
+      if (leftScore !== rightScore) return leftScore - rightScore;
+      if (leftEntry !== rightEntry) return leftEntry - rightEntry;
+      return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
+    });
+  }, [games, getDisabledReason, rules]);
+
+  const availableNowCount = useMemo(
+    () => rankedGames.filter((game) => !getDisabledReason(game.key)).length,
+    [getDisabledReason, rankedGames]
+  );
+
+  const freePlayableCount = useMemo(
+    () => rankedGames.filter((game) => !getDisabledReason(game.key) && Number(rules?.games?.[game.key]?.entryCost || 0) === 0).length,
+    [getDisabledReason, rankedGames, rules]
+  );
+
+  const lockedCount = Math.max(0, rankedGames.length - availableNowCount);
+
   return (
     <div className={`card taped arcade-shell${lite ? " page-lite arcade-lite" : ""}`.trim()}>
-      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-        <div>
+      <div className="row arcade-hero" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <div className="arcade-hero-copy">
           <div className="arcade-title">Fish • Зал мини-игр</div>
           <div className="small">Fish — аркада мини‑игр с билетами и наградами.</div>
           <div className="small">Сыграй, собери серию и обменяй билеты у DJO.</div>
@@ -106,10 +143,67 @@ export default function Arcade() {
           билеты.
         </div>
       </div>
+      <div className="arcade-overview" style={{ marginTop: 10 }}>
+        <span className="badge ok">Доступно сейчас: {availableNowCount}</span>
+        <span className="badge secondary">Бесплатно: {freePlayableCount}</span>
+        {lockedCount ? <span className="badge">Закрыто сейчас: {lockedCount}</span> : null}
+      </div>
+      {balance <= 0 ? (
+        <div className="small arcade-overview-hint">
+          Начни с бесплатных игр и ежедневного квеста, чтобы заработать первые билеты.
+        </div>
+      ) : null}
+      {dailyQuest ? (
+        <div className="paper-note arcade-note arcade-quest-note" style={{ marginTop: 10 }}>
+          <div className="arcade-quest-head">
+            <div className="title">{t("arcade.dailyQuest", null, "Ежедневный квест")}</div>
+            {dailyQuest.completed ? (
+              <span className={`badge ${dailyQuest.rewarded ? "ok" : "warn"}`}>
+                {dailyQuest.rewarded ? "Выполнено" : "Награда готова"}
+              </span>
+            ) : null}
+          </div>
+          <div className="small arcade-quest-copy" style={{ marginTop: 6 }}>
+            {dailyQuest.title}: {dailyQuest.description}
+          </div>
+          <div className="arcade-quest-track" aria-hidden="true">
+            <div className="arcade-quest-bar" style={{ width: `${questProgress}%` }} />
+          </div>
+          <div className="row arcade-quest-metrics" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+            <span className="badge">
+              Прогресс: {dailyQuest.progress}/{dailyQuest.goal}
+            </span>
+            <span className="badge secondary">
+              Награда: {dailyQuest.reward} билета
+            </span>
+            {questUpdated ? (
+              <span className="badge ok">Обновлено</span>
+            ) : null}
+          </div>
+          {dailyQuest.rewarded && dailyQuest.rewardGranted != null ? (
+            <div className="small" style={{ marginTop: 6 }}>
+              Получено: {dailyQuest.rewardGranted}
+            </div>
+          ) : null}
+          {questHistoryRows.length ? (
+            <div className="small" style={{ marginTop: 8 }}>
+              История: {questHistoryRows.map((r) => `${formatDayKey(r.dayKey)}${r.rewardGranted ? `(+${r.rewardGranted})` : ""}`).join(", ")}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <div className="paper-note arcade-queue-note" style={{ marginTop: 10 }}>
-        <div className="title">{t("arcade.quickMatchTitle", null, "Быстрый матч")}</div>
-        <div className="small" style={{ marginTop: 6 }}>
-          {t("arcade.quickMatchHint", null, "Очередь, реванш и короткая история матчей.")}
+        <div className="arcade-queue-head">
+          <div>
+            <div className="title">{t("arcade.quickMatchTitle", null, "Быстрый матч")}</div>
+            <div className="small arcade-queue-copy">
+              {t("arcade.quickMatchHint", null, "Очередь, реванш и короткая история матчей.")}
+            </div>
+          </div>
+          <div className="arcade-queue-stats">
+            <span className="badge secondary">{t("arcade.winRate", null, "Винрейт")}: {Math.round(Number(arcadeMetrics?.winRate || 0) * 100)}%</span>
+            <span className="badge secondary">{t("arcade.matches", null, "Матчи")}: {Number(arcadeMetrics?.matches || 0)}</span>
+          </div>
         </div>
         <div className="arcade-queue-row" style={{ marginTop: 8 }}>
           {queueState ? (
@@ -156,11 +250,7 @@ export default function Arcade() {
           )}
         </div>
         <div className="small arcade-queue-meta" style={{ marginTop: 8 }}>
-          {t("arcade.winRate", null, "Винрейт")}: {Math.round(Number(arcadeMetrics?.winRate || 0) * 100)}%
-          {" • "}
           {t("arcade.avgQueue", null, "Средняя очередь")}: {arcadeMetrics?.avgQueueWaitMs != null ? formatDurationMs(arcadeMetrics.avgQueueWaitMs) : "—"}
-          {" • "}
-          {t("arcade.matches", null, "Матчи")}: {Number(arcadeMetrics?.matches || 0)}
         </div>
         {matchHistory.length ? (
           <div className="arcade-queue-history" style={{ marginTop: 8 }}>
@@ -191,40 +281,6 @@ export default function Arcade() {
           </div>
         ) : null}
       </div>
-      {dailyQuest ? (
-        <div className="paper-note arcade-note" style={{ marginTop: 10 }}>
-          <div className="title">{t("arcade.dailyQuest", null, "Ежедневный квест")}</div>
-          <div className="small" style={{ marginTop: 6 }}>
-            {dailyQuest.title}: {dailyQuest.description}
-          </div>
-          <div className="row" style={{ gap: 8, flexWrap: "wrap", marginTop: 8 }}>
-            <span className="badge">
-              Прогресс: {dailyQuest.progress}/{dailyQuest.goal}
-            </span>
-            <span className="badge secondary">
-              Награда: {dailyQuest.reward} билета
-            </span>
-            {questUpdated ? (
-              <span className="badge ok">Обновлено</span>
-            ) : null}
-            {dailyQuest.completed ? (
-              <span className={`badge ${dailyQuest.rewarded ? "ok" : "warn"}`}>
-                {dailyQuest.rewarded ? "Выполнено" : "Готово к награде"}
-              </span>
-            ) : null}
-          </div>
-          {dailyQuest.rewarded && dailyQuest.rewardGranted != null ? (
-            <div className="small" style={{ marginTop: 6 }}>
-              Получено: {dailyQuest.rewardGranted}
-            </div>
-          ) : null}
-          {questHistoryRows.length ? (
-            <div className="small" style={{ marginTop: 8 }}>
-              История: {questHistoryRows.map((r) => `${formatDayKey(r.dayKey)}${r.rewardGranted ? `(+${r.rewardGranted})` : ""}`).join(", ")}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
       {!ticketsEnabled ? (
         <div className="badge off" style={{ marginTop: 8 }}>Аркада закрыта DM</div>
       ) : null}
@@ -235,59 +291,42 @@ export default function Arcade() {
       <hr />
 
       <div className="arcade-grid">
-        {games.map((g) => {
-          const rulesToShow = lite ? g.rules.slice(0, 2) : g.rules;
-          const hasMoreRules = lite && g.rules.length > rulesToShow.length;
+        {rankedGames.map((g) => {
+          const rulesToShow = g.rules.slice(0, 2);
+          const hasMoreRules = g.rules.length > rulesToShow.length;
           const remaining = getGameRemaining(g.key);
           const disabledReason = getDisabledReason(g.key);
           const canPlay = !disabledReason;
           const difficultyLabel = localizeTagValue(getUiText(g.key, "difficulty", g.difficulty), "difficulty");
           const riskLabel = localizeTagValue(getUiText(g.key, "risk", g.risk), "risk");
           const timeLabel = localizeTagValue(getUiText(g.key, "time", g.time), "time");
+          const entryCost = Number(rules?.games?.[g.key]?.entryCost || 0);
+          const rewardLabel = formatRewardValue(g.key, "—");
+          const usageLabel = remaining ? `Лимит: ${remaining.used}/${remaining.lim}` : null;
           const modes = Array.isArray(g.modes) ? g.modes : [];
           const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
-          return rules?.games?.[g.key]?.enabled === false ? (
-            <div key={g.key} className="item taped arcade-card disabled-card">
+          const gameDisabledByDm = rules?.games?.[g.key]?.enabled === false;
+          return (
+            <div key={g.key} className={`item taped arcade-card${canPlay ? " is-playable" : " is-locked"}${entryCost === 0 ? " is-free" : ""}`}>
               <div className="arcade-head">
                 <div className="arcade-card-title">{g.title}</div>
-                <span className="badge off">Недоступно</span>
-              </div>
-              <div className="small arcade-blurb">{g.blurb}</div>
-              <div className="rule-list">
-                {rulesToShow.map((rule, idx) => (
-                  <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
-                ))}
-                {hasMoreRules ? (
-                  <div className="rule-more small">+ ещё {g.rules.length - rulesToShow.length}</div>
-                ) : null}
-              </div>
-              <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
-                <span className="ticket-pill">{formatRewardValue(g.key, "—")}</span>
-                <button className="btn secondary" disabled>Недоступно</button>
-              </div>
-            </div>
-          ) : (
-            <div key={g.key} className="item taped arcade-card">
-              <div className="arcade-head">
-                <div className="arcade-card-title">{g.title}</div>
-                <span
-                  className={`badge badge-impact ${impactClass(difficultyLabel)}`}
-                  title={`Сложность: ${difficultyLabel}`}
-                >
-                  {difficultyLabel}
-                </span>
+                {gameDisabledByDm ? (
+                  <span className="badge off">Закрыто</span>
+                ) : (
+                  <span
+                    className={`badge badge-impact ${impactClass(difficultyLabel)}`}
+                    title={`Сложность: ${difficultyLabel}`}
+                  >
+                    {difficultyLabel}
+                  </span>
+                )}
               </div>
               <div className="small arcade-blurb">{g.blurb}</div>
               <div className="arcade-meta">
                 <span className="meta-chip" title={`Время: ${timeLabel}`}>Время: {timeLabel}</span>
                 <span className="meta-chip" title={`Риск: ${riskLabel}`}>Риск: {riskLabel}</span>
                 <span className="meta-chip">{formatEntryValue(g.key, 0)}</span>
-                {remaining ? (
-                  <span className="meta-chip">Попытки: {remaining.used}/{remaining.lim}</span>
-                ) : null}
-                {remaining ? (
-                  <span className="meta-chip">Осталось: {remaining.left}</span>
-                ) : null}
+                {usageLabel ? <span className="meta-chip">{usageLabel}</span> : null}
               </div>
               {modes.length > 1 ? (
                 <div className="arcade-modes">
@@ -312,19 +351,22 @@ export default function Arcade() {
                   <div className="rule-more small">+ ещё {g.rules.length - rulesToShow.length}</div>
                 ) : null}
               </div>
-              <div className="row arcade-actions" style={{ justifyContent: "space-between" }}>
-                <span className="ticket-pill">{formatRewardValue(g.key, "—")}</span>
-                <button
-                  className="btn secondary"
-                  disabled={!canPlay}
-                  onClick={() => openGame(g.key)}
-                >
-                  Играть
-                </button>
-              </div>
-              {!canPlay && disabledReason ? (
-                <div className="small" style={{ marginTop: 6 }}>{disabledReason}</div>
-              ) : null}
+              {canPlay ? (
+                <div className="row arcade-actions arcade-actions-live" style={{ justifyContent: "space-between" }}>
+                  <span className="ticket-pill">{rewardLabel}</span>
+                  <button
+                    className="btn secondary arcade-action-btn"
+                    onClick={() => openGame(g.key)}
+                  >
+                    Играть
+                  </button>
+                </div>
+              ) : (
+                <div className="arcade-status-card">
+                  <span className="ticket-pill">{rewardLabel}</span>
+                  <div className="small arcade-status-hint">{disabledReason}</div>
+                </div>
+              )}
             </div>
           );
         })}

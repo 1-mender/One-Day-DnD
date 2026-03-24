@@ -1954,6 +1954,17 @@ a:hover{ color: #000; }
   gap: 6px;
   min-width: 170px;
 }
+.arcade-hero{
+  align-items: flex-start !important;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.arcade-hero-copy{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 620px;
+}
 .ticket-card{
   position: relative;
   padding: 8px 14px;
@@ -2419,6 +2430,61 @@ a:hover{ color: #000; }
 .arcade-queue-meta{
   opacity: .82;
 }
+.arcade-overview{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.arcade-overview-hint{
+  margin-top: 6px;
+  opacity: .84;
+}
+.arcade-queue-head{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+.arcade-queue-copy{
+  margin-top: 6px;
+}
+.arcade-queue-stats{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.arcade-quest-note{
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.arcade-quest-head{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.arcade-quest-copy{
+  margin-top: 0 !important;
+}
+.arcade-quest-track{
+  position: relative;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(90,70,40,.22);
+  background: rgba(255,255,255,.55);
+}
+.arcade-quest-bar{
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #607f4f, #88a866);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.4);
+}
+.arcade-quest-metrics{
+  margin-top: 0 !important;
+}
 .arcade-queue-history{
   display:flex;
   flex-direction: column;
@@ -2476,6 +2542,35 @@ a:hover{ color: #000; }
 }
 .disabled-card .btn{
   pointer-events: none;
+}
+.arcade-card.is-playable{
+  border-color: rgba(102,135,84,.42);
+}
+.arcade-card.is-playable::after{
+  opacity: .34;
+  background: radial-gradient(220px 140px at 100% 0%, rgba(175,205,150,.28), transparent 65%);
+}
+.arcade-card.is-free{
+  border-color: rgba(125,152,89,.46);
+}
+.arcade-status-card{
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(90,70,40,.16);
+  background: rgba(255,255,255,.35);
+}
+.arcade-status-hint{
+  opacity: .88;
+}
+.arcade-actions-live{
+  align-items: center;
+}
+.arcade-action-btn{
+  min-width: 132px;
 }
 
 .arcade-play-modal .row{
@@ -3181,6 +3276,108 @@ a:hover{ color: #000; }
 }
 
 @media (max-width: 420px){
+  .arcade-shell{
+    padding: 10px;
+  }
+  .arcade-overview{
+    gap: 6px;
+  }
+  .arcade-overview .badge{
+    font-size: 11px;
+  }
+  .arcade-title{
+    font-size: 18px;
+  }
+  .arcade-banner,
+  .arcade-queue-note,
+  .arcade-note{
+    padding: 10px 12px;
+  }
+  .ticket-bank{
+    width: 100%;
+    min-width: 0;
+    align-items: flex-start;
+  }
+  .ticket-meta{
+    text-align: left;
+  }
+  .arcade-grid{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .arcade-card{
+    transform: none;
+    gap: 6px;
+  }
+  .arcade-card::after{
+    opacity: .22;
+  }
+  .arcade-head{
+    align-items: flex-start;
+  }
+  .arcade-card-title{
+    font-size: 15px;
+    line-height: 1.2;
+  }
+  .arcade-blurb{
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .arcade-meta{
+    gap: 5px;
+  }
+  .meta-chip{
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+  .arcade-modes{
+    margin: 2px 0 0;
+  }
+  .mode-chip{
+    padding: 3px 9px;
+    font-size: 10px;
+  }
+  .rule-list{
+    gap: 3px;
+    font-size: 11px;
+  }
+  .rule-line{
+    padding-left: 10px;
+  }
+  .rule-line::before{
+    top: 5px;
+    width: 5px;
+    height: 5px;
+  }
+  .ticket-pill{
+    padding: 6px 10px;
+  }
+  .arcade-actions-live{
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .arcade-action-btn{
+    width: 100%;
+    min-width: 0;
+  }
+  .arcade-status-card{
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  .arcade-quest-head{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arcade-queue-head{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arcade-queue-stats{
+    justify-content: flex-start;
+  }
+  .arcade-quest-track{
+    height: 8px;
+  }
   .tavern-shop .shop-title{
     font-size: 18px;
   }
