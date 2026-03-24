@@ -1,6 +1,7 @@
 import React from "react";
-import { getTouchLiteCols, makeSlotKey } from "./inventoryGridDomain.js";
-import SlotCell from "./SlotCell.jsx";
+import ContainerGridBody from "./ContainerGridBody.jsx";
+import ContainerGridSection from "./ContainerGridSection.jsx";
+import { getTouchLiteCols } from "./inventoryGridDomain.js";
 
 export default function ContainerGrid({
   container,
@@ -27,69 +28,36 @@ export default function ContainerGrid({
   onCancelSplitArm
 }) {
   const visualCols = touchOptimized ? getTouchLiteCols(container.key) : container.cols;
-  const gridNode = (
-    <div
-      className="inv-slot-grid"
-      style={{
-        gridTemplateColumns: `repeat(${visualCols}, minmax(0, 1fr))`
-      }}
-    >
-      {Array.from({ length: rows * container.cols }).map((_, index) => {
-        const slotX = index % container.cols;
-        const slotY = Math.floor(index / container.cols);
-        const key = makeSlotKey(container.key, slotX, slotY);
-        const item = itemBySlot.get(key) || null;
-        return (
-          <SlotCell
-            key={key}
-            container={container.key}
-            slotX={slotX}
-            slotY={slotY}
-            item={item}
-            readOnly={readOnly}
-            onItemOpen={onItemOpen}
-            onTransferItem={onTransferItem}
-            onToggleFavoriteItem={onToggleFavoriteItem}
-            onDeleteItem={onDeleteItem}
-            onSplitItem={onSplitItem}
-            onQuickEquipItem={onQuickEquipItem}
-            onKeyboardMoveItem={onKeyboardMoveItem}
-            touchOptimized={touchOptimized}
-            touchLiteMode={touchLiteMode}
-            tapToMoveMode={tapToMoveMode}
-            selectedMoveId={selectedMoveId}
-            onToggleMoveSelection={onToggleMoveSelection}
-            onTapTargetSlot={onTapTargetSlot}
-            splitArmedId={splitArmedId}
-            onArmSplit={onArmSplit}
-            onCancelSplitArm={onCancelSplitArm}
-          />
-        );
-      })}
-    </div>
-  );
-
-  if (touchLiteMode && container.key !== "backpack") {
-    return (
-      <details className="inv-slot-zone tf-slot-zone touch-collapsed" data-container={container.key} open={hasItems}>
-        <summary className="inv-slot-zone-head">
-          <h4>{container.label}</h4>
-          <span className="badge secondary">{hasItems ? "есть предметы" : "пусто"}</span>
-        </summary>
-        {gridNode}
-      </details>
-    );
-  }
-
   return (
-    <section
-      className={`inv-slot-zone tf-slot-zone${touchOptimized ? " touch-optimized" : ""}`.trim()}
-      data-container={container.key}
+    <ContainerGridSection
+      container={container}
+      touchLiteMode={touchLiteMode}
+      touchOptimized={touchOptimized}
+      hasItems={hasItems}
     >
-      <div className="inv-slot-zone-head">
-        <h4>{container.label}</h4>
-      </div>
-      {gridNode}
-    </section>
+      <ContainerGridBody
+        container={container}
+        rows={rows}
+        itemBySlot={itemBySlot}
+        readOnly={readOnly}
+        onItemOpen={onItemOpen}
+        onTransferItem={onTransferItem}
+        onToggleFavoriteItem={onToggleFavoriteItem}
+        onDeleteItem={onDeleteItem}
+        onSplitItem={onSplitItem}
+        onQuickEquipItem={onQuickEquipItem}
+        onKeyboardMoveItem={onKeyboardMoveItem}
+        touchOptimized={touchOptimized}
+        touchLiteMode={touchLiteMode}
+        tapToMoveMode={tapToMoveMode}
+        selectedMoveId={selectedMoveId}
+        onToggleMoveSelection={onToggleMoveSelection}
+        onTapTargetSlot={onTapTargetSlot}
+        splitArmedId={splitArmedId}
+        onArmSplit={onArmSplit}
+        onCancelSplitArm={onCancelSplitArm}
+        visualCols={visualCols}
+      />
+    </ContainerGridSection>
   );
 }
