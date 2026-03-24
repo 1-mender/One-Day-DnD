@@ -2010,45 +2010,43 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .bestiary-sheet-modal{
-  overflow: visible;
+  overflow: hidden;
 }
 
 .bestiary-sheet-body{
   position: relative;
-  overflow: visible;
-  max-height: none;
-  padding-top: 18px;
+  overflow: auto;
 }
 
 .bestiary-modal-hero{
-  position: relative;
   display: grid;
   gap: 10px;
-  padding-top: 68px;
 }
 
-.bestiary-modal-photo-float{
-  position: absolute;
-  left: 50%;
-  top: -54px;
-  transform: translateX(-50%);
-  z-index: 2;
-}
-
-.bestiary-modal-portrait{
-  width: 92px;
-  height: 92px;
-  border-radius: 18px;
-  border: 1px solid rgba(118, 100, 70, 0.18);
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243, 236, 223, 0.94));
+.bestiary-modal-hero-card{
+  position: relative;
+  border-radius: 20px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background:
+    radial-gradient(circle at top right, rgba(109, 138, 87, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255,255,255,0.98), rgba(243, 236, 223, 0.94));
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.82),
-    0 14px 24px rgba(64, 53, 38, 0.18);
+    0 14px 24px rgba(64, 53, 38, 0.14);
+  padding: 14px;
+}
+
+.bestiary-modal-portrait-stage{
+  width: 100%;
+  min-height: 220px;
+  border-radius: 18px;
+  border: 1px solid rgba(118, 100, 70, 0.18);
+  background: rgba(255,255,255,0.9);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 10px;
+  padding: 12px;
 }
 
 .bestiary-modal-portrait-image{
@@ -2075,8 +2073,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .bestiary-modal-close{
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 12px;
+  right: 12px;
   min-width: 46px;
   min-height: 46px;
   padding-inline: 0;
@@ -2084,8 +2082,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .bestiary-modal-heading{
-  padding-right: 58px;
-  margin-top: 4px;
   color: #2f271d;
   font-weight: 900;
   font-size: 22px;
@@ -2108,11 +2104,6 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .bestiary-gallery{
   margin-top: 2px;
   margin-bottom: 2px;
-}
-
-.bestiary-gallery-float{
-  width: max-content;
-  max-width: min(180px, calc(100vw - 84px));
 }
 
 .bestiary-modal-body{
@@ -3497,34 +3488,29 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .bestiary-modal-hero{
     gap: 8px;
-    padding-top: 62px;
   }
 
-  .bestiary-modal-photo-float{
-    top: -48px;
+  .bestiary-modal-hero-card{
+    padding: 10px;
+    border-radius: 18px;
   }
 
-  .bestiary-modal-portrait{
-    width: 84px;
-    height: 84px;
+.bestiary-modal-portrait-stage{
+    min-height: 180px;
     border-radius: 16px;
-    padding: 8px;
+    padding: 10px;
   }
 
   .bestiary-modal-close{
     min-width: 42px;
     min-height: 42px;
+    top: 10px;
+    right: 10px;
   }
 
   .bestiary-modal-heading{
-    padding-right: 50px;
-    margin-top: 2px;
     font-size: 18px;
     line-height: 1.06;
-  }
-
-  .bestiary-gallery-float{
-    max-width: min(156px, calc(100vw - 96px));
   }
 }
 

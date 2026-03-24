@@ -167,8 +167,8 @@ export default function Bestiary() {
       >
         <div className="bestiary-modal">
           <div className="bestiary-modal-hero">
-            <div className="bestiary-modal-photo-float">
-              <div className="bestiary-modal-portrait" aria-hidden="true">
+            <div className="bestiary-modal-hero-card">
+              <div className="bestiary-modal-portrait-stage" aria-hidden="true">
                 {primaryImage?.url ? (
                   <img
                     src={primaryImage.url}
@@ -181,18 +181,18 @@ export default function Bestiary() {
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                className="btn secondary bestiary-modal-close"
+                onClick={() => {
+                  setOpen(false);
+                  setCurId(null);
+                }}
+                aria-label={t("common.close", null, "Close")}
+              >
+                X
+              </button>
             </div>
-            <button
-              type="button"
-              className="btn secondary bestiary-modal-close"
-              onClick={() => {
-                setOpen(false);
-                setCurId(null);
-              }}
-              aria-label={t("common.close", null, "Close")}
-            >
-              X
-            </button>
             <div className="bestiary-modal-heading">{cur?.name || ""}</div>
           </div>
           <div className="small bestiary-modal-meta">
