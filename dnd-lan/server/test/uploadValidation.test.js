@@ -47,6 +47,27 @@ function createMonster(name = "Goblin") {
   ).run(partyId, name, "beast", "cave", "1/4", "{}", "[]", "", 0, t, t).lastInsertRowid;
 }
 
+function createPlayer(displayName = "Uploader") {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = now();
+  return Number(
+    db.prepare(
+      "INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)"
+    ).run(partyId, displayName, "offline", t, 0, t).lastInsertRowid
+  );
+}
+
+function createPlayerSession(playerId, token = `player-${Date.now()}-${Math.random()}`) {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = now();
+  db.prepare(
+    "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,?,?,?)"
+  ).run(token, playerId, partyId, t, t + 3600, 0, 0, 0);
+  return token;
+}
+
 async function upload(pathname, { field = "file", body, mime, filename = "payload.bin", cookie = dmCookie() } = {}) {
   const form = new FormData();
   form.append(field, new Blob([body], { type: mime }), filename);
@@ -85,6 +106,33 @@ test("info upload normalizes extension by detected MIME", async () => {
   assert.equal(out.data.ok, true);
   assert.match(String(out.data.url || ""), /^\/uploads\/assets\/.+\.png$/);
   assert.equal(out.data.mime, "image/png");
+});
+
+test("info upload does not fall back to player avatar branch when DM cookie is invalid", async () => {
+  const playerId = createPlayer("Avatar Fallback");
+  const playerToken = createPlayerSession(playerId, "player-upload-token");
+  const out = await upload("/api/info-blocks/upload", {
+    body: PNG_1X1,
+    mime: "image/png",
+    filename: "avatar.png",
+    cookie: `${process.env.DM_COOKIE}=broken-token`
+  });
+
+  assert.equal(out.res.status, 401);
+  assert.equal(out.data.error, "not_authenticated");
+
+  const playerOut = await fetch(`${base}/api/info-blocks/upload`, {
+    method: "POST",
+    headers: { "x-player-token": playerToken },
+    body: (() => {
+      const form = new FormData();
+      form.append("file", new Blob([PNG_1X1], { type: "image/png" }), "avatar.png");
+      return form;
+    })()
+  });
+  const playerData = await playerOut.json().catch(() => ({}));
+  assert.equal(playerOut.status, 404);
+  assert.equal(playerData.error, "profile_not_created");
 });
 
 test("bestiary upload rejects spoofed image payload", async () => {

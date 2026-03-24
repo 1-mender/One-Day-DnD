@@ -2,6 +2,7 @@ import express from "express";
 import fs from "node:fs";
 import path from "node:path";
 import multer from "multer";
+import { getDmCookieName } from "../auth.js";
 import { getDb } from "../db.js";
 import { jsonParse, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
@@ -53,7 +54,12 @@ const upload = multer({
 const PLAYER_IMAGE_MIMES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 function dmOrAvatarUpload(req, res, next) {
-  if (getDmPayloadFromRequest(req)) {
+  const dmCookie = String(req?.cookies?.[getDmCookieName()] || "");
+  const dm = getDmPayloadFromRequest(req);
+  if (dmCookie && !dm) {
+    return res.status(401).json({ error: "not_authenticated" });
+  }
+  if (dm) {
     req.isPlayerUpload = false;
     return next();
   }

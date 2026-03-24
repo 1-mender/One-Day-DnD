@@ -350,9 +350,16 @@ export default function DMInfoBlocks() {
           )}
 
           <div className="row u-row-gap-8">
-            <input ref={fileRef} type="file" className="u-hidden-input" aria-label="Загрузить файл в инфоблок" onChange={onPickFile} />
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,application/pdf,text/plain,.md,.markdown"
+              className="u-hidden-input"
+              aria-label="Загрузить файл в инфоблок"
+              onChange={onPickFile}
+            />
             <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
-            <div className="small">Вставит markdown для картинки/файла</div>
+            <div className="small">Поддерживаются JPG, PNG, WEBP, GIF, PDF и текст/Markdown.</div>
           </div>
 
           <textarea
