@@ -1,7 +1,6 @@
 import React from "react";
-import { EmptyState, ErrorBanner, Skeleton } from "../../../foundation/primitives/index.js";
-import InventoryItemCard from "../../../components/vintage/InventoryItemCard.jsx";
-import InventorySlotGrid from "../../InventorySlotGrid.jsx";
+import { ErrorBanner } from "../../../foundation/primitives/index.js";
+import InventoryItemsBody from "./InventoryItemsBody.jsx";
 
 export default function InventoryItemsSection({
   err,
@@ -38,61 +37,26 @@ export default function InventoryItemsSection({
         <div className={`small${compactItemsHead ? " inv-items-head-meta" : ""}`.trim()}>Режим: {viewLabel}</div>
       </div>
       <ErrorBanner message={err} onRetry={load} />
-
-      {loading ? (
-        <div className="list">
-          <div className="item"><Skeleton h={86} w="100%" /></div>
-          <div className="item"><Skeleton h={86} w="100%" /></div>
-          <div className="item"><Skeleton h={86} w="100%" /></div>
-        </div>
-      ) : view === "slots" ? (
-        filtered.length === 0 ? (
-          <EmptyState
-            title={hasAny ? "Ничего не найдено" : "Инвентарь пуст"}
-            hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
-          />
-        ) : (
-          <InventorySlotGrid
-            items={filtered}
-            readOnly={readOnly}
-            busy={layoutSaving}
-            touchOptimized={isNarrowScreen}
-            onMove={moveLayoutItems}
-            onItemOpen={(item) => startEdit(item)}
-            onTransferItem={(item) => startTransfer(item)}
-            onToggleFavoriteItem={(item) => toggleFavorite(item)}
-            onDeleteItem={(item) => del(item.id)}
-            onSplitItem={handleGridSplitRequest}
-            onQuickEquipItem={(item) => quickEquip(item)}
-          />
-        )
-      ) : filtered.length === 0 ? (
-        <EmptyState
-          title={hasAny ? "Ничего не найдено" : "Инвентарь пуст"}
-          hint={hasAny ? "Попробуйте изменить фильтры или поиск." : "Добавьте предмет, чтобы начать."}
-        />
-      ) : (
-        <div
-          className={`list inv-shelf tf-item-list ${view === "grid" ? "inv-grid tf-item-grid" : ""}`.trim()}
-          data-view={view}
-          ref={lite ? null : listRef}
-        >
-          {filtered.map((item) => (
-            <InventoryItemCard
-              key={item.id}
-              item={item}
-              readOnly={readOnly}
-              actionsVariant={actionsVariant}
-              lite={lite}
-              onEdit={() => startEdit(item)}
-              onDelete={() => del(item.id)}
-              onToggleVisibility={() => toggleVisibility(item)}
-              onToggleFavorite={() => toggleFavorite(item)}
-              onTransfer={() => startTransfer(item)}
-            />
-          ))}
-        </div>
-      )}
+      <InventoryItemsBody
+        loading={loading}
+        view={view}
+        filtered={filtered}
+        hasAny={hasAny}
+        readOnly={readOnly}
+        layoutSaving={layoutSaving}
+        isNarrowScreen={isNarrowScreen}
+        moveLayoutItems={moveLayoutItems}
+        startEdit={startEdit}
+        startTransfer={startTransfer}
+        toggleFavorite={toggleFavorite}
+        del={del}
+        handleGridSplitRequest={handleGridSplitRequest}
+        quickEquip={quickEquip}
+        lite={lite}
+        listRef={listRef}
+        actionsVariant={actionsVariant}
+        toggleVisibility={toggleVisibility}
+      />
     </div>
   );
 }
