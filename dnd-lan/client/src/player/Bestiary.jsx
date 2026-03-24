@@ -84,7 +84,7 @@ export default function Bestiary() {
 
   const cur = useMemo(() => items.find((m) => m.id === curId) || null, [curId, items]);
   const gallery = lite ? (cur?.images || []).slice(0, 1) : (cur?.images || []);
-  const gridCols = lite || isNarrowScreen ? "repeat(auto-fill, minmax(120px, 1fr))" : "repeat(auto-fill, minmax(170px, 1fr))";
+  const primaryImage = gallery[0] || null;
 
   if (!enabled) return <div className="card taped"><div className="badge warn">{t("bestiary.disabled", null, "Бестиарий отключён DM")}</div></div>;
 
@@ -168,10 +168,18 @@ export default function Bestiary() {
         <div className="bestiary-modal">
           <div className="bestiary-modal-hero">
             <div className="bestiary-modal-photo-float">
-              <div className="bestiary-gallery bestiary-gallery-float" style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12 }}>
-                {gallery.map((im) => (
-                  <PolaroidFrame key={im.id} src={im.url} alt="" fallback="IMG" className={lite ? "sm" : "lg"} />
-                ))}
+              <div className="bestiary-modal-portrait" aria-hidden="true">
+                {primaryImage?.url ? (
+                  <img
+                    src={primaryImage.url}
+                    alt=""
+                    className="bestiary-modal-portrait-image"
+                  />
+                ) : (
+                  <div className="bestiary-modal-portrait-fallback">
+                    {(cur?.name || "??").slice(0, 2).toUpperCase()}
+                  </div>
+                )}
               </div>
             </div>
             <button
