@@ -2,15 +2,20 @@ import { PointerSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core
 import { useEffect, useMemo, useState } from "react";
 import {
   CONTAINERS,
-  CONTAINER_BY_KEY,
   buildRowsByContainer,
   isSplittableItem,
   makeSlotKey,
-  normalizeContainer,
   normalizeItems,
   parseItemId,
   parseSlotId
 } from "./inventoryGridDomain.js";
+import {
+  buildInventoryMovePayload,
+  getKeyboardTargetSlot,
+  getTargetItemForSlot,
+  isSameInventorySlot,
+} from "./inventoryGridMoveDomain.js";
+import { useMediaQuery } from "./useMediaQuery.js";
 
 export function useInventoryGridController({
   items,
@@ -61,26 +66,10 @@ export function useInventoryGridController({
 
   const moveItemByKeyboard = async (item, deltaX, deltaY) => {
     if (readOnly || busy || typeof onMove !== "function" || !item) return;
-    const container = normalizeContainer(item.container);
-    const spec = CONTAINER_BY_KEY[container];
-    if (!spec) return;
-    const maxRows = Number(rowsByContainer[container]) || spec.rows || spec.minRows || 1;
-    const slotX = Number(item.slotX) + Number(deltaX || 0);
-    const slotY = Number(item.slotY) + Number(deltaY || 0);
-    if (!Number.isInteger(slotX) || !Number.isInteger(slotY)) return;
-    if (slotX < 0 || slotX >= spec.cols || slotY < 0 || slotY >= maxRows) return;
-    if (slotX === item.slotX && slotY === item.slotY) return;
-
-    const target = itemBySlot.get(makeSlotKey(container, slotX, slotY));
-    const moves = [{ id: item.id, container, slotX, slotY }];
-    if (target && target.id !== item.id) {
-      moves.push({
-        id: target.id,
-        container: item.container,
-        slotX: item.slotX,
-        slotY: item.slotY
-      });
-    }
+    const targetSlot = getKeyboardTargetSlot({ item, deltaX, deltaY, rowsByContainer });
+    if (!targetSlot || isSameInventorySlot(item, targetSlot)) return;
+    const target = getTargetItemForSlot(itemBySlot, targetSlot);
+    const moves = buildInventoryMovePayload({ item, targetSlot, target });
     await onMove(moves);
   };
 
@@ -93,24 +82,12 @@ export function useInventoryGridController({
       setSelectedMoveId(null);
       return;
     }
-    if (
-      selected.container === targetSlot.container
-      && selected.slotX === targetSlot.slotX
-      && selected.slotY === targetSlot.slotY
-    ) {
+    if (isSameInventorySlot(selected, targetSlot)) {
       setSelectedMoveId(null);
       return;
     }
-    const target = itemBySlot.get(makeSlotKey(targetSlot.container, targetSlot.slotX, targetSlot.slotY));
-    const moves = [{ id: selected.id, ...targetSlot }];
-    if (target && target.id !== selected.id) {
-      moves.push({
-        id: target.id,
-        container: selected.container,
-        slotX: selected.slotX,
-        slotY: selected.slotY
-      });
-    }
+    const target = getTargetItemForSlot(itemBySlot, targetSlot);
+    const moves = buildInventoryMovePayload({ item: selected, targetSlot, target });
     await onMove(moves);
     setSelectedMoveId(null);
   };
@@ -168,26 +145,14 @@ export function useInventoryGridController({
     if (!draggedId || !overSlot) return;
     const dragged = itemsById.get(draggedId);
     if (!dragged) return;
-    if (
-      dragged.container === overSlot.container
-      && dragged.slotX === overSlot.slotX
-      && dragged.slotY === overSlot.slotY
-    ) return;
-    const target = itemBySlot.get(makeSlotKey(overSlot.container, overSlot.slotX, overSlot.slotY));
+    if (isSameInventorySlot(dragged, overSlot)) return;
+    const target = getTargetItemForSlot(itemBySlot, overSlot);
     if (mode === "split") {
       if (typeof onSplitItem === "function") onSplitItem(dragged, overSlot, target || null);
       return;
     }
     if (typeof onMove !== "function") return;
-    const moves = [{ id: dragged.id, ...overSlot }];
-    if (target && target.id !== dragged.id) {
-      moves.push({
-        id: target.id,
-        container: dragged.container,
-        slotX: dragged.slotX,
-        slotY: dragged.slotY
-      });
-    }
+    const moves = buildInventoryMovePayload({ item: dragged, targetSlot: overSlot, target });
     await onMove(moves);
   };
 
@@ -213,26 +178,4 @@ export function useInventoryGridController({
     onDragCancel,
     onDragEnd
   };
-}
-
-function useMediaQuery(query) {
-  const [matches, setMatches] = useState(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return false;
-    return window.matchMedia(query).matches;
-  });
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return () => {};
-    const media = window.matchMedia(query);
-    const update = () => setMatches(media.matches);
-    update();
-    if (media.addEventListener) media.addEventListener("change", update);
-    else if (media.addListener) media.addListener(update);
-    return () => {
-      if (media.removeEventListener) media.removeEventListener("change", update);
-      else if (media.removeListener) media.removeListener(update);
-    };
-  }, [query]);
-
-  return matches;
 }
