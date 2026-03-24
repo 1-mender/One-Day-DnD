@@ -6,7 +6,12 @@ import { getFocusable, getTrapFocusTarget, shouldCloseOnBackdropMouseDown } from
 export default function Modal({ open, title, children, onClose }) {
   const dialogRef = useRef(null);
   const lastFocusedRef = useRef(null);
+  const onCloseRef = useRef(onClose);
   const titleId = useId();
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return () => {};
@@ -30,7 +35,7 @@ export default function Modal({ open, title, children, onClose }) {
     const onKeyDown = (event) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose?.();
+        onCloseRef.current?.();
       }
     };
 
@@ -55,7 +60,7 @@ export default function Modal({ open, title, children, onClose }) {
         lastFocusedRef.current.focus({ preventScroll: true });
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const onDialogKeyDown = (event) => {
     if (event.key !== "Tab") return;
@@ -82,7 +87,7 @@ export default function Modal({ open, title, children, onClose }) {
     <div
       className="vintage-modal-overlay tf-modal-overlay"
       onMouseDown={(event) => {
-        if (shouldCloseOnBackdropMouseDown(event.target, event.currentTarget)) onClose?.();
+        if (shouldCloseOnBackdropMouseDown(event.target, event.currentTarget)) onCloseRef.current?.();
       }}
     >
       <div
@@ -101,7 +106,7 @@ export default function Modal({ open, title, children, onClose }) {
           <button
             type="button"
             className="btn secondary tf-modal-close"
-            onClick={onClose}
+            onClick={() => onCloseRef.current?.()}
             aria-label={t("common.close", null, "Close")}
           >
             X
