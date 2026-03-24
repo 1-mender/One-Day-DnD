@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import sharp from "sharp";
 
 const IMAGE_MIMES = new Set([
   "image/jpeg",
@@ -100,6 +101,18 @@ export function sniffFileMime(filePath, { allowText = true } = {}) {
   }
 }
 
+async function detectMimeBySharp(filePath) {
+  try {
+    const meta = await sharp(filePath).metadata();
+    const format = String(meta?.format || "").toLowerCase();
+    if (format === "heif" || format === "heic") return "image/heif";
+    if (format === "avif") return "image/avif";
+    return "";
+  } catch {
+    return "";
+  }
+}
+
 function uniquePath(targetPath) {
   if (!fs.existsSync(targetPath)) return targetPath;
   const dir = path.dirname(targetPath);
@@ -148,7 +161,7 @@ export function normalizeAllowedMimes(mimes) {
   return out;
 }
 
-export function finalizeUploadedFile(file, {
+export async function finalizeUploadedFile(file, {
   allowText = true,
   allowedMimes = new Set(),
   deniedMimes = DANGEROUS_UPLOAD_MIMES
@@ -156,7 +169,15 @@ export function finalizeUploadedFile(file, {
   const srcPath = file?.path || "";
   if (!srcPath) return { ok: false, error: "file_required" };
 
-  const detectedMime = sniffFileMime(srcPath, { allowText });
+  let detectedMime = sniffFileMime(srcPath, { allowText });
+  let transcodeToJpeg = false;
+  if (!detectedMime) {
+    const sharpMime = await detectMimeBySharp(srcPath);
+    if (sharpMime === "image/heif" || sharpMime === "image/avif") {
+      detectedMime = "image/jpeg";
+      transcodeToJpeg = true;
+    }
+  }
   if (!detectedMime) {
     safeUnlink(srcPath);
     return { ok: false, error: "unsupported_file_type" };
@@ -180,9 +201,15 @@ export function finalizeUploadedFile(file, {
   const base = sanitizeBaseName(originalBase);
   const desired = uniquePath(path.join(path.dirname(srcPath), `${base}${ext}`));
   try {
-    if (desired !== srcPath) fs.renameSync(srcPath, desired);
+    if (transcodeToJpeg) {
+      await sharp(srcPath).jpeg({ quality: 88 }).toFile(desired);
+      safeUnlink(srcPath);
+    } else if (desired !== srcPath) {
+      fs.renameSync(srcPath, desired);
+    }
   } catch {
     safeUnlink(srcPath);
+    safeUnlink(desired);
     return { ok: false, error: "upload_failed" };
   }
 

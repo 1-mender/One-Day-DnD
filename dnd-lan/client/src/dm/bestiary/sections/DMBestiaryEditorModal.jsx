@@ -45,14 +45,14 @@ export default function DMBestiaryEditorModal({ controller }) {
         <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
 
         <div className="u-mt-10 u-fw-800">Изображения</div>
-        <div className="small">PNG/JPG/WEBP/GIF до 5MB</div>
+        <div className="small">PNG/JPG/WEBP/GIF/HEIC до 5MB</div>
         {!edit ? <div className="small">Сначала сохраните монстра, чтобы загрузить картинки.</div> : null}
 
         <div className="row u-row-gap-8 u-mt-10">
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
             className="u-hidden-input"
             aria-label="Загрузить изображение монстра"
             onChange={onPickFile}

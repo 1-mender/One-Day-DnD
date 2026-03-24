@@ -4,7 +4,7 @@ import path from "node:path";
 import multer from "multer";
 import { getDmCookieName } from "../auth.js";
 import { getDb } from "../db.js";
-import { jsonParse, now, randId, wrapMulter } from "../util.js";
+import { asyncHandler, jsonParse, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
 import {
   ensureSessionWritable,
@@ -76,7 +76,7 @@ function dmOrAvatarUpload(req, res, next) {
   return next();
 }
 
-infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("file")), (req, res) => {
+infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("file")), asyncHandler(async (req, res) => {
   const f = req.file;
   if (!f) return res.status(400).json({ error: "file_required" });
 
@@ -85,7 +85,7 @@ infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("fi
     return res.status(415).json({ error: "unsupported_file_type" });
   }
 
-  const normalized = finalizeUploadedFile(f, {
+  const normalized = await finalizeUploadedFile(f, {
     allowText: !req.isPlayerUpload,
     allowedMimes: req.isPlayerUpload ? PLAYER_IMAGE_MIMES : INFO_UPLOAD_ALLOWED_MIMES
   });
@@ -105,4 +105,4 @@ infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("fi
     originalName: f.originalname || "",
     mime: normalized.mime
   });
-});
+}));

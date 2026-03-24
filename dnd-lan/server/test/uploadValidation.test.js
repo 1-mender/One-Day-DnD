@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import express from "express";
 import cookieParser from "cookie-parser";
+import sharp from "sharp";
 
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-upload-validation-"));
 process.env.DND_LAN_DATA_DIR = tmpDir;
@@ -85,6 +86,14 @@ const PNG_1X1 = Buffer.from(
   "base64"
 );
 const FAKE_BINARY = Buffer.from([0x00, 0xff, 0x88, 0x13, 0x00, 0x45, 0x99, 0xaa]);
+const AVIF_1X1 = await sharp({
+  create: {
+    width: 1,
+    height: 1,
+    channels: 3,
+    background: { r: 180, g: 140, b: 90 }
+  }
+}).avif({ quality: 70 }).toBuffer();
 
 test("info upload rejects spoofed image payload", async () => {
   const out = await upload("/api/info-blocks/upload", {
@@ -144,4 +153,17 @@ test("bestiary upload rejects spoofed image payload", async () => {
   });
   assert.equal(out.res.status, 415);
   assert.equal(out.data.error, "unsupported_file_type");
+});
+
+test("bestiary upload accepts heif-family images and normalizes them to jpeg", async () => {
+  const monsterId = createMonster("Phone Photo");
+  const out = await upload(`/api/bestiary/${monsterId}/images`, {
+    body: AVIF_1X1,
+    mime: "image/avif",
+    filename: "phone.avif"
+  });
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data.ok, true);
+  assert.match(String(out.data.image?.url || ""), /^\/uploads\/bestiary\/.+\.jpg$/);
+  assert.equal(out.data.image?.mime, "image/jpeg");
 });

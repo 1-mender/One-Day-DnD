@@ -5,7 +5,7 @@ import sharp from "sharp";
 import multer from "multer";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getSinglePartyId } from "../db.js";
-import { now, randId, wrapMulter } from "../util.js";
+import { asyncHandler, now, randId, wrapMulter } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 import { DANGEROUS_UPLOAD_MIMES, finalizeUploadedFile, safeUnlink } from "../uploadSecurity.js";
@@ -63,7 +63,7 @@ async function handleUpload(req, res) {
     return res.status(415).json({ error: "unsupported_file_type" });
   }
 
-  const normalized = finalizeUploadedFile(f, {
+  const normalized = await finalizeUploadedFile(f, {
     allowText: false,
     allowedMimes: ALLOWED_IMAGE_MIMES
   });
@@ -189,14 +189,10 @@ bestiaryImagesRouter.get("/images", dmAuthMiddleware, (req, res) => {
   res.json({ items: grouped });
 });
 
-bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), (req, res) => {
-  return handleUpload(req, res);
-});
+bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), asyncHandler(handleUpload));
 
 // legacy alias: accepts field "image"
-bestiaryImagesRouter.post("/:monsterId/image", dmAuthMiddleware, wrapMulter(upload.single("image")), (req, res) => {
-  return handleUpload(req, res);
-});
+bestiaryImagesRouter.post("/:monsterId/image", dmAuthMiddleware, wrapMulter(upload.single("image")), asyncHandler(handleUpload));
 
 bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => {
   const db = getDb();

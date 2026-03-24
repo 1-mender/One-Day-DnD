@@ -101,7 +101,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif"
               onChange={handleAvatarFileChange}
               aria-label="Загрузка аватара"
               disabled={readOnly}
