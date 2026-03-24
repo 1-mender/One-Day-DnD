@@ -168,7 +168,12 @@ export const ru = {
     "search": "Поиск по имени...",
     "showMore": "Показать ещё",
     "open": "Открыть",
-    "meta": "Тип: {type} • Среда: {habitat} • CR: {cr}"
+    "meta": "Тип: {type} • Среда: {habitat}",
+    "threatLabel": "Угроза",
+    "threatUnknown": "Неясно",
+    "threatLow": "Низкая",
+    "threatMedium": "Опасная",
+    "threatHigh": "Критическая"
   },
   "profile": {
     "myProfile": "Твой профиль",

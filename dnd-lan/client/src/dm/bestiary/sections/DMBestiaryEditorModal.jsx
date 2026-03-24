@@ -49,7 +49,14 @@ export default function DMBestiaryEditorModal({ controller }) {
         {!edit ? <div className="small">Сначала сохраните монстра, чтобы загрузить картинки.</div> : null}
 
         <div className="row u-row-gap-8 u-mt-10">
-          <input ref={fileRef} type="file" accept="image/*" className="u-hidden-input" aria-label="Загрузить изображение монстра" onChange={onPickFile} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="u-hidden-input"
+            aria-label="Загрузить изображение монстра"
+            onChange={onPickFile}
+          />
           <button className="btn" onClick={() => fileRef.current?.click()} disabled={readOnly || !edit}>+ Загрузить</button>
         </div>
 

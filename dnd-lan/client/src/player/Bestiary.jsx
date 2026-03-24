@@ -162,9 +162,12 @@ export default function Bestiary() {
         <div className="small bestiary-modal-meta">
           {t("bestiary.meta", {
             type: cur?.type || "—",
-            habitat: cur?.habitat || "—",
-            cr: cur?.cr || "—"
-          }, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"} • CR: ${cur?.cr || "—"}`)}
+            habitat: cur?.habitat || "—"
+          }, `Тип: ${cur?.type || "—"} • Среда: ${cur?.habitat || "—"}`)}
+        </div>
+        <div className="bestiary-modal-threat">
+          <span className="small">{t("bestiary.threatLabel", null, "Угроза")}</span>
+          <ThreatBadge cr={cur?.cr} />
         </div>
         <hr />
         <div className="bestiary-gallery" style={{ display: "grid", gridTemplateColumns: gridCols, gap: 12, marginBottom: 10 }}>
@@ -309,10 +312,48 @@ function MonsterCard({ m, lite, thumb, onOpen, attachImages }) {
       )}
       <div className="kv bestiary-card-copy" style={{ flex: 1 }}>
         <div className="bestiary-card-name">{m.name}</div>
-        <div className="small">{m.type || "—"} • CR: {m.cr || "—"}</div>
+        <div className="small">{m.type || "—"}</div>
+        <ThreatBadge cr={m.cr} compact />
       </div>
       <span className="badge secondary">{t("bestiary.open", null, "Открыть")}</span>
     </div>
+  );
+}
+
+function parseCrValue(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return NaN;
+  if (value.includes("/")) {
+    const [left, right] = value.split("/").map((part) => Number(part.trim()));
+    if (Number.isFinite(left) && Number.isFinite(right) && right > 0) return left / right;
+    return NaN;
+  }
+  const normalized = value.replace(",", ".");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : NaN;
+}
+
+function getThreatBand(cr) {
+  const value = parseCrValue(cr);
+  if (!Number.isFinite(value) || value < 0) {
+    return { tone: "gray", icon: "?", label: t("bestiary.threatUnknown", null, "Неясно") };
+  }
+  if (value <= 1) {
+    return { tone: "green", icon: "☠", label: t("bestiary.threatLow", null, "Низкая") };
+  }
+  if (value <= 4) {
+    return { tone: "orange", icon: "☠☠", label: t("bestiary.threatMedium", null, "Опасная") };
+  }
+  return { tone: "red", icon: "☠☠☠", label: t("bestiary.threatHigh", null, "Критическая") };
+}
+
+function ThreatBadge({ cr, compact = false }) {
+  const band = getThreatBand(cr);
+  return (
+    <span className={`bestiary-threat bestiary-threat-${band.tone}${compact ? " compact" : ""}`.trim()}>
+      <span className="bestiary-threat-icon" aria-hidden="true">{band.icon}</span>
+      <span className="bestiary-threat-text">{band.label}</span>
+    </span>
   );
 }
 
