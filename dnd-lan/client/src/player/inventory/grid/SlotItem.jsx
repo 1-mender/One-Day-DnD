@@ -1,9 +1,10 @@
 import { useDraggable } from "@dnd-kit/core";
 import { GripVertical, MoreHorizontal } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { ActionSheet } from "../../../foundation/primitives/index.js";
 import { pickInventoryIcon } from "../../../components/vintage/inventoryItemCard/iconDomain.js";
-import { isSplittableItem, makeItemId, normalizeContainer } from "./inventoryGridDomain.js";
+import { isSplittableItem, makeItemId } from "./inventoryGridDomain.js";
+import SlotItemMenu from "./SlotItemMenu.jsx";
+import { buildTapTargetSlot, getSlotHandleLabel, getSlotItemAvailability } from "./slotItemDomain.js";
 
 export default function SlotItem({
   item,
@@ -37,10 +38,9 @@ export default function SlotItem({
   const menuBtnRef = useRef(null);
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
   const icon = pickInventoryIcon(item);
-  const qty = Math.max(1, Number(item.qty) || 1);
-  const reservedQty = Math.max(0, Number(item.reservedQty ?? item.reserved_qty) || 0);
-  const availableQty = Math.max(0, qty - reservedQty);
+  const { qty, reservedQty, availableQty } = getSlotItemAvailability(item);
   const canSplit = isSplittableItem(item);
+  const handleLabel = getSlotHandleLabel({ readOnly, tapToMoveMode, selectedForMove });
 
   const clearSplitTimer = (target) => {
     const timer = Number(target?.dataset?.splitTimer || 0);
@@ -93,11 +93,7 @@ export default function SlotItem({
             return;
           }
           if (tapToMoveMode && moveSelectionActive) {
-            onTapTargetSlot?.({
-              container: normalizeContainer(item.container),
-              slotX: Number(item.slotX),
-              slotY: Number(item.slotY)
-            });
+            onTapTargetSlot?.(buildTapTargetSlot(item));
             return;
           }
           onOpen?.(item);
@@ -133,20 +129,8 @@ export default function SlotItem({
           type="button"
           className={`inv-slot-handle${splitArmed ? " split-armed" : ""}`.trim()}
           disabled={readOnly}
-          title={
-            readOnly
-              ? "Недоступно в режиме только чтения"
-              : tapToMoveMode
-                ? (selectedForMove ? "Отменить выбор предмета" : "Выбрать предмет для перемещения")
-                : "Перетащить предмет"
-          }
-          aria-label={
-            readOnly
-              ? "Недоступно в режиме только чтения"
-              : tapToMoveMode
-                ? (selectedForMove ? "Отменить выбор предмета" : "Выбрать предмет для перемещения")
-                : "Перетащить предмет"
-          }
+          title={handleLabel}
+          aria-label={handleLabel}
           onClick={(event) => {
             if (!tapToMoveMode) return;
             event.preventDefault();
@@ -188,61 +172,22 @@ export default function SlotItem({
           <MoreHorizontal className="icon" aria-hidden="true" />
         </button>
       </div>
-      {menuOpen && !touchOptimized ? (
-        <div
-          className="inv-slot-menu"
-          ref={menuRef}
-          role="menu"
-          onKeyDown={(event) => {
-            if (event.key !== "Tab") return;
-            const menu = menuRef.current;
-            const focusable = menu
-              ? Array.from(menu.querySelectorAll("button:not(:disabled)"))
-              : [];
-            if (!focusable.length) {
-              setMenuOpen(false);
-              return;
-            }
-            const currentIndex = focusable.indexOf(document.activeElement);
-            const nextIndex = event.shiftKey
-              ? (currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1)
-              : (currentIndex < 0 || currentIndex >= focusable.length - 1 ? 0 : currentIndex + 1);
-            event.preventDefault();
-            focusable[nextIndex]?.focus();
-          }}
-        >
-          <button type="button" onClick={() => { onOpen?.(item); setMenuOpen(false); }}>Редактировать</button>
-          <button type="button" onClick={() => { onQuickEquipItem?.(item); setMenuOpen(false); }} disabled={readOnly}>Быстро экипировать</button>
-          <button type="button" onClick={() => { onTransferItem?.(item); setMenuOpen(false); }} disabled={readOnly || availableQty <= 0}>Передать</button>
-          <button type="button" onClick={() => { onSplitItem?.(item); setMenuOpen(false); }} disabled={readOnly || !canSplit}>Разделить стак</button>
-          <button type="button" onClick={() => { onToggleFavoriteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>Избранное</button>
-          <button type="button" className="danger" onClick={() => { onDeleteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>Удалить</button>
-        </div>
-      ) : null}
-      {touchOptimized ? (
-        <ActionSheet open={menuOpen} title={item.name || "Действия"} onClose={() => setMenuOpen(false)}>
-          <div className="action-sheet-actions">
-            <button type="button" className="action-sheet-item" onClick={() => { onOpen?.(item); setMenuOpen(false); }}>
-              <span>Редактировать</span>
-            </button>
-            <button type="button" className="action-sheet-item" onClick={() => { onQuickEquipItem?.(item); setMenuOpen(false); }} disabled={readOnly}>
-              <span>Быстро экипировать</span>
-            </button>
-            <button type="button" className="action-sheet-item" onClick={() => { onTransferItem?.(item); setMenuOpen(false); }} disabled={readOnly || availableQty <= 0}>
-              <span>Передать</span>
-            </button>
-            <button type="button" className="action-sheet-item" onClick={() => { onSplitItem?.(item); setMenuOpen(false); }} disabled={readOnly || !canSplit}>
-              <span>Разделить стак</span>
-            </button>
-            <button type="button" className="action-sheet-item" onClick={() => { onToggleFavoriteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>
-              <span>Избранное</span>
-            </button>
-            <button type="button" className="action-sheet-item danger" onClick={() => { onDeleteItem?.(item); setMenuOpen(false); }} disabled={readOnly}>
-              <span>Удалить</span>
-            </button>
-          </div>
-        </ActionSheet>
-      ) : null}
+      <SlotItemMenu
+        item={item}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        menuRef={menuRef}
+        touchOptimized={touchOptimized}
+        readOnly={readOnly}
+        availableQty={availableQty}
+        canSplit={canSplit}
+        onOpen={onOpen}
+        onQuickEquipItem={onQuickEquipItem}
+        onTransferItem={onTransferItem}
+        onSplitItem={onSplitItem}
+        onToggleFavoriteItem={onToggleFavoriteItem}
+        onDeleteItem={onDeleteItem}
+      />
     </div>
   );
 }
