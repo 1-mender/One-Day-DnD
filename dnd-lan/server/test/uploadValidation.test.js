@@ -119,6 +119,19 @@ test("info upload normalizes extension by detected MIME", async () => {
   assert.equal(out.data.mime, "image/png");
 });
 
+test("info upload accepts heif-family images and normalizes them to jpeg", async () => {
+  const out = await upload("/api/info-blocks/upload", {
+    body: AVIF_1X1,
+    mime: "image/avif",
+    filename: "lore-image.avif"
+  });
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data.ok, true);
+  assert.match(String(out.data.url || ""), /^\/uploads\/assets\/.+\.jpg$/);
+  assert.equal(out.data.mime, "image/jpeg");
+  assert.match(String(out.data.markdown || ""), /^!\[\]\(\/uploads\/assets\/.+\.jpg\)$/);
+});
+
 test("info upload does not fall back to player avatar branch when DM cookie is invalid", async () => {
   const playerId = createPlayer("Avatar Fallback");
   const playerToken = createPlayerSession(playerId, "player-upload-token");

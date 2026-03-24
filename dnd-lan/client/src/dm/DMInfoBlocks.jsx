@@ -3,6 +3,7 @@ import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
 import { ActionMenu } from "../foundation/primitives/index.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -180,7 +181,7 @@ export default function DMInfoBlocks() {
       const r = await api.dmInfoUploadAsset(f);
       insertAtCursor(`\n${r.markdown}\n`);
     } catch (e) {
-      setErr(formatError(e));
+      setErr(formatError(e, ERROR_CODES.UPLOAD_FAILED));
     } finally {
       ev.target.value = "";
     }
@@ -353,13 +354,13 @@ export default function DMInfoBlocks() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,.heic,.heif,application/pdf,text/plain,.md,.markdown"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.avif,image/heic,image/heif,.heic,.heif,application/pdf,text/plain,.md,.markdown"
               className="u-hidden-input"
               aria-label="Загрузить файл в инфоблок"
               onChange={onPickFile}
             />
             <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
-            <div className="small">Поддерживаются JPG, PNG, WEBP, GIF, HEIC, PDF и текст/Markdown.</div>
+            <div className="small">Поддерживаются JPG, PNG, WEBP, GIF, AVIF, HEIC, PDF и текст/Markdown.</div>
           </div>
 
           <textarea
