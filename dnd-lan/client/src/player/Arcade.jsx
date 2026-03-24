@@ -192,7 +192,7 @@ export default function Arcade() {
           ) : null}
         </div>
       ) : null}
-      <div className="paper-note arcade-queue-note" style={{ marginTop: 10 }}>
+      <div className="paper-note arcade-queue-note arcade-queue-note-compact" style={{ marginTop: 10 }}>
         <div className="arcade-queue-head">
           <div>
             <div className="title">{t("arcade.quickMatchTitle", null, "Быстрый матч")}</div>
@@ -292,11 +292,11 @@ export default function Arcade() {
 
       <div className="arcade-grid">
         {rankedGames.map((g) => {
-          const rulesToShow = g.rules.slice(0, 2);
-          const hasMoreRules = g.rules.length > rulesToShow.length;
           const remaining = getGameRemaining(g.key);
           const disabledReason = getDisabledReason(g.key);
           const canPlay = !disabledReason;
+          const rulesToShow = canPlay ? g.rules.slice(0, 2) : g.rules.slice(0, 1);
+          const hasMoreRules = g.rules.length > rulesToShow.length;
           const difficultyLabel = localizeTagValue(getUiText(g.key, "difficulty", g.difficulty), "difficulty");
           const riskLabel = localizeTagValue(getUiText(g.key, "risk", g.risk), "risk");
           const timeLabel = localizeTagValue(getUiText(g.key, "time", g.time), "time");
@@ -307,7 +307,7 @@ export default function Arcade() {
           const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
           const gameDisabledByDm = rules?.games?.[g.key]?.enabled === false;
           return (
-            <div key={g.key} className={`item taped arcade-card${canPlay ? " is-playable" : " is-locked"}${entryCost === 0 ? " is-free" : ""}`}>
+            <div key={g.key} className={`item taped arcade-card${canPlay ? " is-playable" : " is-locked compact-locked"}${entryCost === 0 ? " is-free" : ""}`}>
               <div className="arcade-head">
                 <div className="arcade-card-title">{g.title}</div>
                 {gameDisabledByDm ? (
@@ -363,8 +363,8 @@ export default function Arcade() {
                 </div>
               ) : (
                 <div className="arcade-status-card">
-                  <span className="ticket-pill">{rewardLabel}</span>
                   <div className="small arcade-status-hint">{disabledReason}</div>
+                  <span className="ticket-pill arcade-ticket-pill-muted">{rewardLabel}</span>
                 </div>
               )}
             </div>

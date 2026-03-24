@@ -2454,6 +2454,12 @@ a:hover{ color: #000; }
   gap: 6px;
   justify-content: flex-end;
 }
+.arcade-queue-note-compact .title{
+  margin-bottom: 0;
+}
+.arcade-queue-note-compact .arcade-queue-copy{
+  opacity: .84;
+}
 .arcade-quest-note{
   display: flex;
   flex-direction: column;
@@ -2565,6 +2571,12 @@ a:hover{ color: #000; }
 }
 .arcade-status-hint{
   opacity: .88;
+}
+.arcade-ticket-pill-muted{
+  background: linear-gradient(180deg, #f2e0af, #e6cb82);
+  color: #604926;
+  border-color: rgba(126, 103, 58, .26);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34);
 }
 .arcade-actions-live{
   align-items: center;
@@ -3293,6 +3305,9 @@ a:hover{ color: #000; }
   .arcade-note{
     padding: 10px 12px;
   }
+  .arcade-queue-note-compact{
+    gap: 6px;
+  }
   .ticket-bank{
     width: 100%;
     min-width: 0;
@@ -3371,9 +3386,34 @@ a:hover{ color: #000; }
   .arcade-queue-head{
     flex-direction: column;
     align-items: flex-start;
+    gap: 6px;
   }
   .arcade-queue-stats{
     justify-content: flex-start;
+  }
+  .arcade-queue-copy{
+    margin-top: 3px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+  .arcade-queue-stats .badge{
+    font-size: 11px;
+    padding: 4px 8px;
+  }
+  .compact-locked .arcade-blurb{
+    margin-bottom: 2px;
+  }
+  .compact-locked .rule-list{
+    gap: 2px;
+  }
+  .compact-locked .rule-more{
+    display: none;
+  }
+  .compact-locked .arcade-status-card{
+    padding: 7px 9px;
+  }
+  .compact-locked .arcade-ticket-pill-muted{
+    padding: 5px 9px;
   }
   .arcade-quest-track{
     height: 8px;
