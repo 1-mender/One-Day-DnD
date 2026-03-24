@@ -29,6 +29,8 @@ export default function ProfileContent({ controller }) {
   } = controller;
   const heroMonogram = getHeroMonogram(profile);
   const showRaceBonus = raceBonus !== 0;
+  const accessState = getProfileAccessState({ editableFields, allowRequests, readOnly });
+  const requestCallout = getRequestCallout({ allowRequests, canEditAny, readOnly });
 
   return (
     <div className="list profile-visibility-flow">
@@ -95,7 +97,7 @@ export default function ProfileContent({ controller }) {
                   </div>
                   <div className="profile-stat-plaque">
                     <span className="profile-stat-label">Режим</span>
-                    <span className="profile-stat-value">{readOnly ? "Просмотр" : "Редактируемый"}</span>
+                    <span className="profile-stat-value">{accessState.label}</span>
                   </div>
                 </div>
                 {canEditBasic ? (
@@ -172,19 +174,19 @@ export default function ProfileContent({ controller }) {
             )}
           </div>
 
-          {allowRequests && !readOnly ? (
+          {requestCallout ? (
             <div className="paper-note profile-section profile-request-callout tf-panel">
               <div className="profile-flex-head">
                 <div className="tf-section-copy">
                   <div className="profile-section-kicker tf-section-kicker">Путь через мастера</div>
-                  <div className="title profile-card-title">Запросить изменение</div>
+                  <div className="title profile-card-title">{requestCallout.title}</div>
                 </div>
                 <button className="btn profile-request-btn" onClick={openRequest}>
-                  <Send className="icon" aria-hidden="true" />Запросить изменение
+                  <Send className="icon" aria-hidden="true" />{requestCallout.buttonLabel}
                 </button>
               </div>
               <div className="small note-hint profile-callout-hint">
-                Используйте запрос, если прямое редактирование запрещено.
+                {requestCallout.hint}
               </div>
             </div>
           ) : null}
@@ -300,3 +302,46 @@ function getHeroMonogram(profile) {
   const letter = String(candidate).trim().slice(0, 1).toUpperCase();
   return letter || "P";
 }
+
+function getProfileAccessState({ editableFields, allowRequests, readOnly }) {
+  if (readOnly) {
+    return { key: "read_only", label: "Просмотр" };
+  }
+
+  const editableCount = Array.isArray(editableFields) ? editableFields.length : 0;
+  if (editableCount >= ALL_EDITABLE_FIELDS.length) {
+    return { key: "full_edit", label: "Полный доступ" };
+  }
+  if (editableCount > 0) {
+    return { key: "partial_edit", label: "Частичное редактирование" };
+  }
+  if (allowRequests) {
+    return { key: "request_only", label: "Только запрос" };
+  }
+  return { key: "view_only", label: "Только просмотр" };
+}
+
+function getRequestCallout({ allowRequests, canEditAny, readOnly }) {
+  if (readOnly || !allowRequests) return null;
+  if (canEditAny) {
+    return {
+      title: "Запрос для закрытых полей",
+      buttonLabel: "Отправить запрос",
+      hint: "Часть полей можно редактировать сразу. Для остальных изменений используйте запрос к DM."
+    };
+  }
+  return {
+    title: "Запросить изменение",
+    buttonLabel: "Отправить запрос",
+    hint: "Прямое редактирование отключено. Изменения профиля отправляются через DM."
+  };
+}
+
+const ALL_EDITABLE_FIELDS = [
+  "avatarUrl",
+  "bio",
+  "stats",
+  "level",
+  "classRole",
+  "characterName"
+];
