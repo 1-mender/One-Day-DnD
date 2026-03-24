@@ -2,7 +2,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { GripVertical, MoreHorizontal } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { ActionSheet } from "../../../foundation/primitives/index.js";
-import { pickInventoryIcon } from "../../../components/vintage/InventoryItemCard.jsx";
+import { pickInventoryIcon } from "../../../components/vintage/inventoryItemCard/iconDomain.js";
 import { isSplittableItem, makeItemId, normalizeContainer } from "./inventoryGridDomain.js";
 
 export default function SlotItem({

@@ -1,5 +1,5 @@
 import React from "react";
-import { pickInventoryIcon } from "../../../components/vintage/InventoryItemCard.jsx";
+import { pickInventoryIcon } from "../../../components/vintage/inventoryItemCard/iconDomain.js";
 
 export default function InventoryFavoritesSection({
   isNarrowScreen,
