@@ -38,6 +38,7 @@ export const ERROR_MESSAGES_RU = {
   invalid_slot: "Некорректный слот в инвентаре.",
   inventory_full: "В инвентаре больше нет свободного места.",
   slot_occupied: "Этот слот уже занят другим предметом.",
+  selected_players_required: "Нужно выбрать хотя бы одного игрока.",
   invalid_equipment_slot: "Этот предмет нельзя поместить в выбранный слот экипировки.",
   not_equipable: "Предмет нельзя экипировать.",
   invalid_qty: "Некорректное количество.",

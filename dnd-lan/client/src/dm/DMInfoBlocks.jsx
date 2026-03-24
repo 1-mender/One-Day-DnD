@@ -81,6 +81,18 @@ export default function DMInfoBlocks() {
     setOpen(true);
   }
 
+  function startSelectedAccessEdit(block) {
+    if (readOnly || !block) return;
+    setErr("");
+    setEdit(block);
+    setForm({
+      ...block,
+      access: "selected",
+      selectedPlayerIds: Array.isArray(block.selectedPlayerIds) ? block.selectedPlayerIds.map(Number) : []
+    });
+    setOpen(true);
+  }
+
   function selectBlock(id) {
     if (!id) setSelectedIdParam("");
     else setSelectedIdParam(String(id));
@@ -89,6 +101,10 @@ export default function DMInfoBlocks() {
   async function setAccess(block, access) {
     if (readOnly) return;
     if (!block) return;
+    if (access === "selected") {
+      startSelectedAccessEdit(block);
+      return;
+    }
     setErr("");
     try {
       const payload = {
@@ -107,10 +123,15 @@ export default function DMInfoBlocks() {
   async function save() {
     if (readOnly) return;
     setErr("");
+    const selectedPlayerIds = (form.selectedPlayerIds || []).map(Number).filter((id) => Number.isFinite(id) && id > 0);
+    if (form.access === "selected" && !selectedPlayerIds.length) {
+      setErr("Выберите хотя бы одного игрока");
+      return;
+    }
     const payload = {
       ...form,
       tags: (form.tagsText || "").split(",").map(s=>s.trim()).filter(Boolean),
-      selectedPlayerIds: (form.selectedPlayerIds || []).map(Number)
+      selectedPlayerIds
     };
     delete payload.tagsText;
     try {
@@ -226,7 +247,7 @@ export default function DMInfoBlocks() {
                       { label: t("dmInfoBlocks.delete", null, "Удалить"), onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
                       { label: t("dmInfoBlocks.showAll", null, "Показать всем"), onClick: () => setAccess(b, "all"), disabled: readOnly },
                       { label: t("dmInfoBlocks.onlyDm", null, "Только DM"), onClick: () => setAccess(b, "dm"), disabled: readOnly },
-                      { label: t("dmInfoBlocks.onlySelected", null, "Выбранным"), onClick: () => setAccess(b, "selected"), disabled: readOnly }
+                      { label: t("dmInfoBlocks.onlySelected", null, "Выбранным"), onClick: () => startSelectedAccessEdit(b), disabled: readOnly }
                     ]}
                   />
                 </div>
@@ -267,7 +288,7 @@ export default function DMInfoBlocks() {
                 <div className="row u-row-gap-8 u-row-wrap u-mt-12">
                   <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>{t("dmInfoBlocks.showAll", null, "Показать всем")}</button>
                   <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>{t("dmInfoBlocks.onlyDm", null, "Только DM")}</button>
-                  <button className="btn secondary" onClick={() => setAccess(selected, "selected")} disabled={readOnly}>{t("dmInfoBlocks.onlySelected", null, "Выбранным")}</button>
+                  <button className="btn secondary" onClick={() => startSelectedAccessEdit(selected)} disabled={readOnly}>{t("dmInfoBlocks.onlySelected", null, "Выбранным")}</button>
                   <button className="btn danger" onClick={() => del(selected.id)} disabled={readOnly}>{t("dmInfoBlocks.delete", null, "Удалить")}</button>
                 </div>
               </>

@@ -17,6 +17,13 @@ function normalizeSelectedIds(db, partyId, selected) {
   ).all(partyId, ...ids).map((r) => Number(r.id));
 }
 
+function validateSelectedAccess(access, selected) {
+  if (access === "selected" && (!Array.isArray(selected) || !selected.length)) {
+    return { error: "selected_players_required" };
+  }
+  return null;
+}
+
 infoBlocksRouter.get("/", (req, res) => {
   const db = getDb();
   const isDm = isDmRequest(req);
@@ -65,6 +72,8 @@ infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
   const t = now();
   const access = ["dm", "all", "selected"].includes(b.access) ? b.access : "dm";
   const selected = normalizeSelectedIds(db, partyId, b.selectedPlayerIds);
+  const selectedErr = validateSelectedAccess(access, selected);
+  if (selectedErr) return res.status(400).json(selectedErr);
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : [];
 
   const id = db.prepare(
@@ -110,6 +119,8 @@ infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const selected = Array.isArray(b.selectedPlayerIds)
     ? normalizeSelectedIds(db, partyId, b.selectedPlayerIds)
     : jsonParse(cur.selected_player_ids, []);
+  const selectedErr = validateSelectedAccess(access, selected);
+  if (selectedErr) return res.status(400).json(selectedErr);
   const tags = Array.isArray(b.tags) ? b.tags.map(String) : jsonParse(cur.tags, []);
 
   db.prepare(
