@@ -24,6 +24,7 @@ export default function PasswordSettingsSection({
           placeholder={"Новый пароль"}
           aria-label="Новый пароль DM"
           style={inp}
+          disabled={readOnly}
         />
         <input
           type={showPass ? "text" : "password"}
@@ -32,8 +33,9 @@ export default function PasswordSettingsSection({
           placeholder={"Повторите пароль"}
           aria-label="Повторите новый пароль DM"
           style={inp}
+          disabled={readOnly}
         />
-        <button className="btn secondary" onClick={() => setShowPass((v) => !v)}>
+        <button className="btn secondary" onClick={() => setShowPass((v) => !v)} disabled={readOnly}>
           {showPass ? "Скрыть" : "Показать"}
         </button>
         <button className="btn" onClick={changePassword} disabled={readOnly}>{"Сменить"}</button>

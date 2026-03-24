@@ -45,10 +45,12 @@ export function useDmTicketRules({ readOnly }) {
   }, []);
 
   function updateTicketRules(patch) {
+    if (readOnly) return;
     setTicketRules((prev) => applyTicketRulesPatch(prev, patch));
   }
 
   function addDailyQuest() {
+    if (readOnly) return;
     const draft = createDailyQuestDraft();
     const pool = [...(ticketRules?.dailyQuest?.pool || [])];
     pool.push(draft);
@@ -57,6 +59,7 @@ export function useDmTicketRules({ readOnly }) {
   }
 
   function updateDailyQuest(index, patch) {
+    if (readOnly) return;
     const pool = [...(ticketRules?.dailyQuest?.pool || [])];
     if (!pool[index]) return;
     pool[index] = { ...pool[index], ...(patch || {}) };
@@ -64,6 +67,7 @@ export function useDmTicketRules({ readOnly }) {
   }
 
   function removeDailyQuest(index) {
+    if (readOnly) return;
     const pool = [...(ticketRules?.dailyQuest?.pool || [])];
     const removed = pool.splice(index, 1)[0];
     let activeKey = ticketRules?.dailyQuest?.activeKey || "";
@@ -74,6 +78,7 @@ export function useDmTicketRules({ readOnly }) {
   }
 
   function setActiveDailyQuest(key) {
+    if (readOnly) return;
     updateTicketRules({ dailyQuest: { activeKey: key } });
   }
 
@@ -127,10 +132,12 @@ export function useDmTicketRules({ readOnly }) {
   }
 
   function updateTicketGame(key, patch) {
+    if (readOnly) return;
     setTicketRules((prev) => applyTicketGamePatch(prev, key, patch));
   }
 
   function updateTicketShop(key, patch) {
+    if (readOnly) return;
     setTicketRules((prev) => applyTicketShopPatch(prev, key, patch));
   }
 

@@ -21,7 +21,7 @@ function DailyQuestPreview({ ticketRules }) {
   );
 }
 
-function DailyQuestCard({ quest, index, activeKey, updateDailyQuest, removeDailyQuest }) {
+function DailyQuestCard({ quest, index, activeKey, readOnly, updateDailyQuest, removeDailyQuest }) {
   return (
     <div className="item settings-card">
       <div className="settings-head">
@@ -35,10 +35,11 @@ function DailyQuestCard({ quest, index, activeKey, updateDailyQuest, removeDaily
               type="checkbox"
               checked={quest.enabled !== false}
               onChange={(e) => updateDailyQuest(index, { enabled: e.target.checked })}
+              disabled={readOnly}
             />
             <span>{"Вкл"}</span>
           </label>
-          <button className="btn danger" onClick={() => removeDailyQuest(index)}>{"Удалить"}</button>
+          <button className="btn danger" onClick={() => removeDailyQuest(index)} disabled={readOnly}>{"Удалить"}</button>
         </div>
       </div>
       <div className="settings-fields">
@@ -49,6 +50,7 @@ function DailyQuestCard({ quest, index, activeKey, updateDailyQuest, removeDaily
           aria-label="Заголовок ежедневного квеста"
           maxLength={80}
           title={RULE_TIPS.dailyQuestTitle}
+          disabled={readOnly}
         />
         <input
           value={quest.description || ""}
@@ -57,6 +59,7 @@ function DailyQuestCard({ quest, index, activeKey, updateDailyQuest, removeDaily
           aria-label="Описание ежедневного квеста"
           maxLength={160}
           title={RULE_TIPS.dailyQuestDescription}
+          disabled={readOnly}
         />
         <input
           type="number"
@@ -66,6 +69,7 @@ function DailyQuestCard({ quest, index, activeKey, updateDailyQuest, removeDaily
           placeholder={"Цель"}
           aria-label="Цель ежедневного квеста"
           title={RULE_TIPS.dailyQuestGoal}
+          disabled={readOnly}
         />
         <input
           type="number"
@@ -75,6 +79,7 @@ function DailyQuestCard({ quest, index, activeKey, updateDailyQuest, removeDaily
           placeholder={"Награда"}
           aria-label="Награда ежедневного квеста"
           title={RULE_TIPS.dailyQuestReward}
+          disabled={readOnly}
         />
       </div>
       <div className="settings-sub">key: {quest.key || "—"}</div>
@@ -108,10 +113,11 @@ export default function TicketRulesDailyQuestBlock({
             type="checkbox"
             checked={ticketRules?.dailyQuest?.enabled !== false}
             onChange={(e) => updateTicketRules({ dailyQuest: { enabled: e.target.checked } })}
+            disabled={readOnly}
           />
           <span>{"Включить ежедневный квест"}</span>
         </label>
-        <button className="btn secondary" onClick={addDailyQuest}>+ {"Добавить"}</button>
+        <button className="btn secondary" onClick={addDailyQuest} disabled={readOnly}>+ {"Добавить"}</button>
         <button className="btn secondary" onClick={resetDailyQuestToday} disabled={readOnly || ticketBusy}>
           {"Сбросить на сегодня"}
         </button>
@@ -126,6 +132,7 @@ export default function TicketRulesDailyQuestBlock({
           onChange={(e) => setActiveDailyQuest(e.target.value)}
           aria-label="Активный ежедневный квест"
           title={RULE_TIPS.dailyQuestTitle}
+          disabled={readOnly}
         >
           {(ticketRules?.dailyQuest?.pool || []).map((quest) => (
             <option key={quest.key} value={quest.key}>
@@ -147,6 +154,7 @@ export default function TicketRulesDailyQuestBlock({
             quest={quest}
             index={index}
             activeKey={ticketRules?.dailyQuest?.activeKey}
+            readOnly={readOnly}
             updateDailyQuest={updateDailyQuest}
             removeDailyQuest={removeDailyQuest}
           />

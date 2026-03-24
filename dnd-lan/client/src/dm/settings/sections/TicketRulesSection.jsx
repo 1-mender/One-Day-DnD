@@ -43,6 +43,7 @@ export default function TicketRulesSection({
             type="checkbox"
             checked={showOnlyChanged}
             onChange={(e) => setShowOnlyChanged(e.target.checked)}
+            disabled={readOnly}
           />
           <span>{"Показать только изменённые"}</span>
         </label>
@@ -70,6 +71,7 @@ export default function TicketRulesSection({
             generalChanges={generalChanges}
             showGeneralInputs={showGeneralInputs}
             ticketRules={ticketRules}
+            readOnly={readOnly}
             updateTicketRules={updateTicketRules}
           />
 
@@ -90,12 +92,14 @@ export default function TicketRulesSection({
           <TicketRulesGamesBlock
             showOnlyChanged={showOnlyChanged}
             filteredGames={filteredGames}
+            readOnly={readOnly}
             updateTicketGame={updateTicketGame}
           />
 
           <TicketRulesShopBlock
             showOnlyChanged={showOnlyChanged}
             filteredShop={filteredShop}
+            readOnly={readOnly}
             updateTicketShop={updateTicketShop}
           />
         </div>

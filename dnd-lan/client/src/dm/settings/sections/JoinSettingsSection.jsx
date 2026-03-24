@@ -28,9 +28,9 @@ export default function JoinSettingsSection({
           placeholder={"Например: 1234"}
           aria-label="Код партии"
           style={inp}
-          disabled={!joinEnabled}
+          disabled={readOnly || !joinEnabled}
         />
-        <button className="btn secondary" onClick={() => setShowJoin((v) => !v)} disabled={!joinEnabled}>
+        <button className="btn secondary" onClick={() => setShowJoin((v) => !v)} disabled={readOnly || !joinEnabled}>
           {showJoin ? "Скрыть" : "Показать"}
         </button>
         <button className="btn" onClick={saveJoinCode} disabled={readOnly}>{"Сохранить"}</button>

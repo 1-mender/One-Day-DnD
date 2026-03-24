@@ -23,18 +23,22 @@ export function useDmProfilePresets({ readOnly }) {
   }, []);
 
   function addPreset() {
+    if (readOnly) return;
     setProfilePresets((prev) => addProfilePresetItem(prev));
   }
 
   function removePreset(index) {
+    if (readOnly) return;
     setProfilePresets((prev) => removeProfilePresetItem(prev, index));
   }
 
   function updatePreset(index, patch) {
+    if (readOnly) return;
     setProfilePresets((prev) => updateProfilePresetItem(prev, index, patch));
   }
 
   function updatePresetData(index, patch) {
+    if (readOnly) return;
     setProfilePresets((prev) => updateProfilePresetData(prev, index, patch));
   }
 

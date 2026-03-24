@@ -1,7 +1,7 @@
 import React from "react";
 import { RULE_TIPS, SHOP_LABELS } from "../domain/settingsConstants.js";
 
-export default function TicketRulesShopBlock({ showOnlyChanged, filteredShop, updateTicketShop }) {
+export default function TicketRulesShopBlock({ showOnlyChanged, filteredShop, readOnly, updateTicketShop }) {
   return (
     <div className="paper-note">
       <div className="title">{"Инвентарь (магазин)"}</div>
@@ -18,6 +18,7 @@ export default function TicketRulesShopBlock({ showOnlyChanged, filteredShop, up
                     type="checkbox"
                     checked={item.enabled !== false}
                     onChange={(e) => updateTicketShop(key, { enabled: e.target.checked })}
+                    disabled={readOnly}
                   />
                   <span>{"Вкл"}</span>
                 </label>
@@ -31,6 +32,7 @@ export default function TicketRulesShopBlock({ showOnlyChanged, filteredShop, up
                   placeholder={"Цена"}
                   aria-label={`Цена товара: ${SHOP_LABELS[key] || key}`}
                   title={RULE_TIPS.shopPrice}
+                  disabled={readOnly}
                 />
                 <input
                   type="number"
@@ -40,6 +42,7 @@ export default function TicketRulesShopBlock({ showOnlyChanged, filteredShop, up
                   placeholder={"Лимит/день"}
                   aria-label={`Дневной лимит товара: ${SHOP_LABELS[key] || key}`}
                   title={RULE_TIPS.shopDailyLimit}
+                  disabled={readOnly}
                 />
               </div>
               <div className="settings-sub">{"Лимит 0 = без ограничения."}</div>

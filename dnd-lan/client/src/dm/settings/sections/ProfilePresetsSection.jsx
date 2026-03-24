@@ -30,6 +30,7 @@ export default function ProfilePresetsSection({
             type="checkbox"
             checked={presetAccess.enabled !== false}
             onChange={(e) => setPresetAccess({ ...presetAccess, enabled: e.target.checked })}
+            disabled={readOnly}
           />
           <span>{"Включить пресеты для игроков"}</span>
         </label>
@@ -38,6 +39,7 @@ export default function ProfilePresetsSection({
             type="checkbox"
             checked={presetAccess.playerEdit !== false}
             onChange={(e) => setPresetAccess({ ...presetAccess, playerEdit: e.target.checked })}
+            disabled={readOnly}
           />
           <span>{"Разрешить применение в прямом редактировании"}</span>
         </label>
@@ -46,6 +48,7 @@ export default function ProfilePresetsSection({
             type="checkbox"
             checked={presetAccess.playerRequest !== false}
             onChange={(e) => setPresetAccess({ ...presetAccess, playerRequest: e.target.checked })}
+            disabled={readOnly}
           />
           <span>{"Разрешить применение в запросах"}</span>
         </label>
@@ -54,6 +57,7 @@ export default function ProfilePresetsSection({
             type="checkbox"
             checked={!!presetAccess.hideLocal}
             onChange={(e) => setPresetAccess({ ...presetAccess, hideLocal: e.target.checked })}
+            disabled={readOnly}
           />
           <span>Скрыть локальные пресеты (только мастер)</span>
         </label>
@@ -81,6 +85,7 @@ export default function ProfilePresetsSection({
                     aria-label="Название пресета профиля"
                     maxLength={80}
                     style={inp}
+                    disabled={readOnly}
                   />
                   <input
                     value={preset.subtitle || ""}
@@ -89,6 +94,7 @@ export default function ProfilePresetsSection({
                     aria-label="Подзаголовок пресета"
                     maxLength={160}
                     style={inp}
+                    disabled={readOnly}
                   />
                   <div className="row u-row-gap-8 u-row-wrap">
                     <input
@@ -99,6 +105,7 @@ export default function ProfilePresetsSection({
                       maxLength={80}
                       style={inp}
                       className="u-minw-220"
+                      disabled={readOnly}
                     />
                     <input
                       value={preset.data?.classRole || ""}
@@ -108,6 +115,7 @@ export default function ProfilePresetsSection({
                       maxLength={80}
                       style={inp}
                       className="u-minw-220"
+                      disabled={readOnly}
                     />
                     <input
                       value={preset.data?.level ?? ""}
@@ -116,6 +124,7 @@ export default function ProfilePresetsSection({
                       aria-label="Уровень в пресете"
                       style={inp}
                       className="u-minw-140"
+                      disabled={readOnly}
                     />
                   </div>
                   <div className="kv">
@@ -153,6 +162,7 @@ export default function ProfilePresetsSection({
                     placeholder={"Биография"}
                     aria-label="Биография в пресете"
                     style={inp}
+                    disabled={readOnly}
                   />
                   <input
                     value={preset.data?.avatarUrl || ""}
@@ -161,6 +171,7 @@ export default function ProfilePresetsSection({
                     aria-label="URL аватара в пресете"
                     maxLength={512}
                     style={inp}
+                    disabled={readOnly}
                   />
                 </div>
               </div>

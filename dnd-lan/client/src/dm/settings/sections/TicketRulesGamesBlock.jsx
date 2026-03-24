@@ -1,7 +1,7 @@
 import React from "react";
 import { GAME_LABELS, RULE_TIPS } from "../domain/settingsConstants.js";
 
-export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, updateTicketGame }) {
+export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, readOnly, updateTicketGame }) {
   return (
     <div className="paper-note">
       <div className="title">{"Игры"}</div>
@@ -18,6 +18,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                     type="checkbox"
                     checked={game.enabled !== false}
                     onChange={(e) => updateTicketGame(key, { enabled: e.target.checked })}
+                    disabled={readOnly}
                   />
                   <span>{"Вкл"}</span>
                 </label>
@@ -31,6 +32,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   placeholder={"Вход"}
                   aria-label={`Стоимость входа: ${GAME_LABELS[key] || key}`}
                   title={RULE_TIPS.entryCost}
+                  disabled={readOnly}
                 />
                 <input
                   type="number"
@@ -40,6 +42,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   placeholder={"Мин"}
                   aria-label={`Минимальная награда: ${GAME_LABELS[key] || key}`}
                   title={RULE_TIPS.rewardMin}
+                  disabled={readOnly}
                 />
                 <input
                   type="number"
@@ -49,6 +52,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   placeholder={"Макс"}
                   aria-label={`Максимальная награда: ${GAME_LABELS[key] || key}`}
                   title={RULE_TIPS.rewardMax}
+                  disabled={readOnly}
                 />
                 <input
                   type="number"
@@ -58,6 +62,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   placeholder={"Штраф"}
                   aria-label={`Штраф за поражение: ${GAME_LABELS[key] || key}`}
                   title={RULE_TIPS.lossPenalty}
+                  disabled={readOnly}
                 />
                 <input
                   type="number"
@@ -67,6 +72,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   placeholder={"Лимит/день"}
                   aria-label={`Дневной лимит: ${GAME_LABELS[key] || key}`}
                   title={RULE_TIPS.dailyLimit}
+                  disabled={readOnly}
                 />
               </div>
               <div className="settings-fields">
@@ -77,6 +83,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   aria-label={`UI сложность: ${GAME_LABELS[key] || key}`}
                   maxLength={40}
                   title={RULE_TIPS.uiDifficulty}
+                  disabled={readOnly}
                 />
                 <input
                   value={game.ui?.risk ?? ""}
@@ -85,6 +92,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   aria-label={`UI риск: ${GAME_LABELS[key] || key}`}
                   maxLength={40}
                   title={RULE_TIPS.uiRisk}
+                  disabled={readOnly}
                 />
                 <input
                   value={game.ui?.time ?? ""}
@@ -93,6 +101,7 @@ export default function TicketRulesGamesBlock({ showOnlyChanged, filteredGames, 
                   aria-label={`UI время: ${GAME_LABELS[key] || key}`}
                   maxLength={40}
                   title={RULE_TIPS.uiTime}
+                  disabled={readOnly}
                 />
               </div>
               <div className="settings-sub">{"Награда и штрафы задают диапазон билетов."}</div>

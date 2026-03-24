@@ -7,6 +7,7 @@ export default function TicketRulesGeneralBlock({
   generalChanges,
   showGeneralInputs,
   ticketRules,
+  readOnly,
   updateTicketRules
 }) {
   if (!showGeneralBlock) {
@@ -21,6 +22,7 @@ export default function TicketRulesGeneralBlock({
             type="checkbox"
             checked={ticketRules.enabled !== false}
             onChange={(e) => updateTicketRules({ enabled: e.target.checked })}
+            disabled={readOnly}
           />
           <span>{"Включить аркаду и билеты"}</span>
         </label>
@@ -37,6 +39,7 @@ export default function TicketRulesGeneralBlock({
               placeholder={"Дневной лимит"}
               aria-label="Дневной лимит билетов"
               title={RULE_TIPS.dailyEarnCap}
+              disabled={readOnly}
             />
           ) : null}
           {!showOnlyChanged || generalChanges.streakMax ? (
@@ -48,6 +51,7 @@ export default function TicketRulesGeneralBlock({
               placeholder={"Серия max"}
               aria-label="Максимум серии побед"
               title={RULE_TIPS.streakMax}
+              disabled={readOnly}
             />
           ) : null}
           {!showOnlyChanged || generalChanges.streakStep ? (
@@ -60,6 +64,7 @@ export default function TicketRulesGeneralBlock({
               placeholder={"Серия шаг"}
               aria-label="Шаг бонуса серии"
               title={RULE_TIPS.streakStep}
+              disabled={readOnly}
             />
           ) : null}
           {!showOnlyChanged || generalChanges.streakFlatBonus ? (
@@ -71,6 +76,7 @@ export default function TicketRulesGeneralBlock({
               placeholder={"Бонус серии"}
               aria-label="Фиксированный бонус серии"
               title={RULE_TIPS.streakFlatBonus}
+              disabled={readOnly}
             />
           ) : null}
         </div>
