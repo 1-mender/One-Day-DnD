@@ -1,10 +1,33 @@
 import React from "react";
 import { RULE_TIPS, SHOP_LABELS } from "../domain/settingsConstants.js";
 
-export default function TicketRulesShopBlock({ showOnlyChanged, filteredShop, readOnly, updateTicketShop }) {
+export default function TicketRulesShopBlock({
+  showOnlyChanged,
+  filteredShop,
+  readOnly,
+  ticketRules,
+  generalChanges,
+  updateTicketRules,
+  updateTicketShop
+}) {
   return (
     <div className="paper-note">
       <div className="title">{"Инвентарь (магазин)"}</div>
+      {!showOnlyChanged || generalChanges?.dailyShopCap ? (
+        <div className="settings-fields u-mt-8">
+          <input
+            type="number"
+            min="0"
+            value={ticketRules?.dailyShopCap ?? 0}
+            onChange={(e) => updateTicketRules({ dailyShopCap: Number(e.target.value) || 0 })}
+            placeholder={"Покупок/день на игрока"}
+            aria-label="Дневной лимит покупок лавки на игрока"
+            title={RULE_TIPS.dailyShopCap}
+            disabled={readOnly}
+          />
+        </div>
+      ) : null}
+      <div className="settings-sub">{"Общий лимит 0 = без ограничения по количеству покупок за день."}</div>
       <div className="settings-grid u-mt-8">
         {showOnlyChanged && filteredShop.length === 0 ? (
           <div className="badge warn">{"Нет изменённых правил для магазина."}</div>

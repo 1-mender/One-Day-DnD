@@ -2,6 +2,7 @@ export function buildGeneralChanges(ticketCur, ticketBase) {
   return {
     enabled: (ticketCur?.enabled ?? true) !== (ticketBase?.enabled ?? true),
     dailyEarnCap: (ticketCur?.dailyEarnCap ?? 0) !== (ticketBase?.dailyEarnCap ?? 0),
+    dailyShopCap: (ticketCur?.dailyShopCap ?? 0) !== (ticketBase?.dailyShopCap ?? 0),
     streakMax: (ticketCur?.streak?.max ?? 0) !== (ticketBase?.streak?.max ?? 0),
     streakStep: (ticketCur?.streak?.step ?? 0) !== (ticketBase?.streak?.step ?? 0),
     streakFlatBonus: (ticketCur?.streak?.flatBonus ?? 0) !== (ticketBase?.streak?.flatBonus ?? 0)

@@ -11,6 +11,7 @@ export const DEFAULT_TICKET_RULES = {
   enabled: true,
   dailyEarnCap: 14,
   dailySpendCap: 0,
+  dailyShopCap: 0,
   streak: {
     max: 3,
     step: 0.05,

@@ -54,6 +54,7 @@ export const ERROR_MESSAGES_RU = {
   tickets_disabled: "Аркада и билеты сейчас отключены.",
   game_disabled: "Эта игра сейчас недоступна.",
   not_enough_tickets: "Недостаточно билетов для действия.",
+  daily_shop_limit: "Достигнут дневной лимит покупок в магазине.",
   daily_game_limit: "Достигнут дневной лимит попыток.",
   daily_spend_cap: "Достигнут дневной лимит трат.",
   invalid_performance: "Некорректный бонус за выполнение.",

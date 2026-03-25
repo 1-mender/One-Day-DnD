@@ -3,6 +3,7 @@ import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../foundation/providers/index.js";
 import { formatError } from "../lib/formatError.js";
 import ShopMascotStall from "./shop/ShopMascotStall.jsx";
+import ChestOpenModal from "./shop/ChestOpenModal.jsx";
 import { buildShopCatalog } from "./shop/shopCatalog.js";
 
 function ticketWord(value) {
@@ -24,10 +25,14 @@ export default function ShopJoe() {
   const toast = useToast();
   const { state, rules, usage, loading, err, purchase, readOnly } = useTickets();
   const [pendingItemKey, setPendingItemKey] = React.useState("");
+  const [openedChestReward, setOpenedChestReward] = React.useState(null);
   const pendingRef = React.useRef(false);
   const errorToastRef = React.useRef({ message: "", at: 0 });
 
   const balance = Number(state?.balance || 0);
+  const totalPurchasesToday = getTotalPurchasesToday(usage);
+  const dailyShopCap = Number(rules?.dailyShopCap || 0);
+  const shopDailyCapReached = dailyShopCap > 0 && totalPurchasesToday >= dailyShopCap;
   const ticketsEnabled = rules?.enabled !== false;
   const catalog = React.useMemo(() => buildShopCatalog(rules?.shop), [rules?.shop]);
   const itemTitleMap = React.useMemo(() => buildItemTitleMap(catalog), [catalog]);
@@ -59,6 +64,7 @@ export default function ShopJoe() {
               balance,
               itemPrice,
               limitReached,
+              shopDailyCapReached,
               pendingItemKey,
               itemKey: item.key
             });
@@ -112,7 +118,7 @@ export default function ShopJoe() {
         if (leftPrice !== rightPrice) return leftPrice - rightPrice;
         return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
       });
-  }, [balance, catalog, loading, pendingItemKey, readOnly, rules, ticketsEnabled, usage]);
+  }, [balance, catalog, loading, pendingItemKey, readOnly, rules, shopDailyCapReached, ticketsEnabled, usage]);
 
   const availableNowCount = React.useMemo(
     () => shopSections.reduce((acc, section) => acc + section.availableCount, 0),
@@ -158,6 +164,9 @@ export default function ShopJoe() {
         ? Number(res.state.balance)
         : Math.max(0, balance - Number(price || 0));
       const receipt = `Товар: ${itemTitle} • Списано: ${priceLabel(price)} • Остаток: ${nextBalance} ${ticketWord(nextBalance)}`;
+      if (itemKey === "chest" && res?.result?.reward?.type === "inventory_item") {
+        setOpenedChestReward(res.result.reward);
+      }
       toast.success(receipt, "Чек лавки Джо");
     } catch (e) {
       toastPurchaseError(e);
@@ -189,13 +198,20 @@ export default function ShopJoe() {
       <div className="shop-overview">
         <span className="badge ok">Доступно сейчас: {availableNowCount}</span>
         <span className="badge secondary">Баланс: {balance}</span>
+        {dailyShopCap > 0 ? (
+          <span className={`badge ${shopDailyCapReached ? "warn" : "secondary"}`}>
+            Покупок сегодня: {totalPurchasesToday}/{dailyShopCap}
+          </span>
+        ) : null}
         {Number.isFinite(cheapestEnabledPrice) ? (
           <span className="badge">От {priceLabel(cheapestEnabledPrice)}</span>
         ) : null}
       </div>
       {ticketsEnabled && availableNowCount === 0 && Number.isFinite(cheapestEnabledPrice) ? (
         <div className="small shop-overview-hint">
-          До первой покупки не хватает ещё {ticketsNeededForCheapest} {ticketWord(ticketsNeededForCheapest)}.
+          {shopDailyCapReached
+            ? "На сегодня общий лимит покупок в лавке уже исчерпан."
+            : `До первой покупки не хватает ещё ${ticketsNeededForCheapest} ${ticketWord(ticketsNeededForCheapest)}.`}
         </div>
       ) : null}
 
@@ -277,10 +293,10 @@ export default function ShopJoe() {
                         <span className="ticket-pill tf-shop-price">{priceLabel(item.itemPrice)}</span>
                         <button
                           className="btn secondary tf-shop-buy-btn"
-                          title="Купить"
+                          title={item.key === "chest" ? "Открыть сундук" : "Купить"}
                           onClick={() => handleBuy(item.key)}
                         >
-                          {item.isPendingThis ? "Покупаем..." : "Купить"}
+                          {item.isPendingThis ? (item.key === "chest" ? "Открываем..." : "Покупаем...") : (item.key === "chest" ? "Открыть" : "Купить")}
                         </button>
                       </div>
                     ) : (
@@ -296,6 +312,11 @@ export default function ShopJoe() {
           </div>
         ))}
       </div>
+      <ChestOpenModal
+        open={!!openedChestReward}
+        reward={openedChestReward}
+        onClose={() => setOpenedChestReward(null)}
+      />
     </div>
   );
 }
@@ -327,6 +348,10 @@ function buildPurchaseSummary(usage, itemTitleMap) {
     topItemCount,
     topItemTitle: topItemKey ? (itemTitleMap[topItemKey] || toHumanLabel(topItemKey)) : ""
   };
+}
+
+function getTotalPurchasesToday(usage) {
+  return Object.values(usage?.purchasesToday || {}).reduce((sum, raw) => sum + Math.max(0, Number(raw || 0)), 0);
 }
 
 function toHumanLabel(value) {
@@ -363,6 +388,7 @@ function getBuyDisabledReason({
   balance,
   itemPrice,
   limitReached,
+  shopDailyCapReached,
   pendingItemKey,
   itemKey
 }) {
@@ -371,6 +397,7 @@ function getBuyDisabledReason({
   if (readOnly) return "Режим только чтения.";
   if (!rules) return loading ? "Загружаем правила магазина..." : "Правила магазина недоступны.";
   if (!ticketsEnabled) return "Лавка закрыта мастером.";
+  if (shopDailyCapReached) return "Общий дневной лимит покупок уже исчерпан.";
   if (itemMissingInRules) return "Товар отсутствует в текущих правилах лавки.";
   if (itemDisabled) return "Товар отключен мастером.";
   if (limitReached) return "Дневной лимит по товару исчерпан.";

@@ -32,7 +32,7 @@ export function useDmTicketRules({ readOnly }) {
   const generalChanges = buildGeneralChanges(ticketCur, ticketBase);
   const dailyQuestChanged = isDailyQuestChanged(ticketCur, ticketBase);
   const showGeneralBlock = !showOnlyChanged || Object.values(generalChanges).some(Boolean);
-  const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
+  const showGeneralInputs = !showOnlyChanged || generalChanges.dailyEarnCap || generalChanges.dailyShopCap || generalChanges.streakMax || generalChanges.streakStep || generalChanges.streakFlatBonus;
   const showDailyQuestBlock = !showOnlyChanged || dailyQuestChanged;
   const gameEntries = Object.entries(ticketCur.games || {});
   const shopEntries = Object.entries(ticketCur.shop || {});

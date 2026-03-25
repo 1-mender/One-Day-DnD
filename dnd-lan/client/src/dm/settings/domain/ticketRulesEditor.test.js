@@ -12,12 +12,13 @@ import {
 } from "./ticketRulesEditor.js";
 
 test("buildGeneralChanges detects changed fields", () => {
-  const base = { enabled: true, dailyEarnCap: 10, streak: { max: 2, step: 0.1, flatBonus: 1 } };
-  const cur = { enabled: false, dailyEarnCap: 10, streak: { max: 3, step: 0.1, flatBonus: 1 } };
+  const base = { enabled: true, dailyEarnCap: 10, dailyShopCap: 1, streak: { max: 2, step: 0.1, flatBonus: 1 } };
+  const cur = { enabled: false, dailyEarnCap: 10, dailyShopCap: 2, streak: { max: 3, step: 0.1, flatBonus: 1 } };
   const diff = buildGeneralChanges(cur, base);
   assert.equal(diff.enabled, true);
   assert.equal(diff.streakMax, true);
   assert.equal(diff.dailyEarnCap, false);
+  assert.equal(diff.dailyShopCap, true);
 });
 
 test("rule patch helpers keep nested shape", () => {

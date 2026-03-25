@@ -29,6 +29,7 @@ export function normalizeRules(rules) {
   out.enabled = out.enabled !== false;
   out.dailyEarnCap = clampInt(out.dailyEarnCap, 0, 9999);
   out.dailySpendCap = clampInt(out.dailySpendCap, 0, 9999);
+  out.dailyShopCap = clampInt(out.dailyShopCap, 0, 9999);
 
   const streak = out.streak || {};
   out.streak = {

@@ -100,6 +100,9 @@ export default function TicketRulesSection({
             showOnlyChanged={showOnlyChanged}
             filteredShop={filteredShop}
             readOnly={readOnly}
+            ticketRules={ticketRules}
+            generalChanges={generalChanges}
+            updateTicketRules={updateTicketRules}
             updateTicketShop={updateTicketShop}
           />
         </div>

@@ -2978,6 +2978,158 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   line-height: 1.5;
 }
 
+.tf-chest-modal{
+  max-width: 540px;
+}
+
+.tf-chest-modal-body{
+  overflow: visible;
+}
+
+.tf-chest-shell{
+  display: grid;
+  gap: 14px;
+}
+
+.tf-chest-overline{
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #87715a;
+}
+
+.tf-chest-title{
+  font-family: var(--font-display);
+  font-size: 32px;
+  line-height: 1.02;
+  color: #2e261c;
+}
+
+.tf-chest-hint{
+  margin-top: -6px;
+}
+
+.tf-chest-reel{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(128, 106, 74, 0.18);
+  background:
+    radial-gradient(circle at top, rgba(178, 138, 59, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(242, 233, 216, 0.94));
+}
+
+.tf-chest-reel-card{
+  min-height: 92px;
+  border-radius: 18px;
+  border: 1px solid rgba(118, 100, 70, 0.18);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244, 236, 221, 0.94));
+  display: grid;
+  place-items: center;
+  color: #6a5536;
+  transform: scale(0.9);
+  opacity: 0.5;
+  transition: transform 160ms ease, opacity 160ms ease, box-shadow 160ms ease;
+}
+
+.tf-chest-reel-card svg{
+  width: 34px;
+  height: 34px;
+}
+
+.tf-chest-reel-card.is-center{
+  transform: scale(1);
+  opacity: 1;
+  box-shadow: 0 14px 24px rgba(64, 53, 38, 0.12);
+}
+
+.tf-chest-reel-card.is-winning{
+  border-color: rgba(178, 138, 59, 0.42);
+  background:
+    radial-gradient(circle at top, rgba(255, 227, 153, 0.42), transparent 58%),
+    linear-gradient(180deg, rgba(255,255,255,1), rgba(247, 240, 220, 0.96));
+}
+
+.tf-chest-reel.is-spinning .tf-chest-reel-card.is-center{
+  animation: tf-chest-pulse 0.45s ease-in-out infinite;
+}
+
+.tf-chest-reward-card{
+  border-radius: 22px;
+  border: 1px solid rgba(118, 100, 70, 0.18);
+  background: linear-gradient(180deg, rgba(251, 247, 238, 0.98), rgba(240, 230, 208, 0.94));
+  padding: 14px 16px;
+  box-shadow: var(--tf-shadow-soft);
+  opacity: 0.52;
+  transform: translateY(4px);
+  transition: opacity 200ms ease, transform 200ms ease;
+}
+
+.tf-chest-reward-card.is-visible{
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tf-chest-reward-head{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tf-chest-reward-icon{
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(239, 228, 206, 0.94));
+  display: grid;
+  place-items: center;
+  color: #6a5536;
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.tf-chest-reward-icon svg{
+  width: 28px;
+  height: 28px;
+}
+
+.tf-chest-reward-copy{
+  display: grid;
+  gap: 4px;
+}
+
+.tf-chest-reward-name{
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1.05;
+  color: #2e261c;
+}
+
+.tf-chest-reward-desc{
+  margin-top: 10px;
+  color: #665746;
+  line-height: 1.55;
+}
+
+.tf-chest-rarity{
+  width: fit-content;
+}
+
+.tf-rarity-common{ background: rgba(140, 150, 125, 0.22); }
+.tf-rarity-uncommon{ background: rgba(107, 154, 120, 0.2); }
+.tf-rarity-rare{ background: rgba(104, 137, 168, 0.2); }
+.tf-rarity-very_rare{ background: rgba(132, 113, 168, 0.22); }
+.tf-rarity-legendary{ background: rgba(178, 138, 59, 0.24); }
+
+@keyframes tf-chest-pulse{
+  0%{ transform: scale(1); }
+  50%{ transform: scale(1.04); }
+  100%{ transform: scale(1); }
+}
+
 .tf-shop-shell .shop-mascot-stall{
   margin-top: 14px;
   border-color: rgba(128, 138, 149, 0.3);
@@ -3110,6 +3262,34 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .tf-shop-shell .shop-disabled-note{
     margin-top: 6px;
     font-size: 12px;
+  }
+
+  .tf-chest-title{
+    font-size: 26px;
+  }
+
+  .tf-chest-reel{
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .tf-chest-reel-card{
+    min-height: 78px;
+    border-radius: 16px;
+  }
+
+  .tf-chest-reel-card svg{
+    width: 28px;
+    height: 28px;
+  }
+
+  .tf-chest-reward-card{
+    border-radius: 18px;
+    padding: 12px 14px;
+  }
+
+  .tf-chest-reward-name{
+    font-size: 21px;
   }
 }
 
