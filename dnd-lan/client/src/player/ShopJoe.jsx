@@ -33,6 +33,9 @@ export default function ShopJoe() {
   const totalPurchasesToday = getTotalPurchasesToday(usage);
   const dailyShopCap = Number(rules?.dailyShopCap || 0);
   const shopDailyCapReached = dailyShopCap > 0 && totalPurchasesToday >= dailyShopCap;
+  const remainingShopPurchases = dailyShopCap > 0
+    ? Math.max(0, dailyShopCap - totalPurchasesToday)
+    : null;
   const ticketsEnabled = rules?.enabled !== false;
   const catalog = React.useMemo(() => buildShopCatalog(rules?.shop), [rules?.shop]);
   const itemTitleMap = React.useMemo(() => buildItemTitleMap(catalog), [catalog]);
@@ -124,6 +127,10 @@ export default function ShopJoe() {
     () => shopSections.reduce((acc, section) => acc + section.availableCount, 0),
     [shopSections]
   );
+  const availableSectionCount = React.useMemo(
+    () => shopSections.filter((section) => section.availableCount > 0).length,
+    [shopSections]
+  );
   const cheapestEnabledPrice = React.useMemo(() => {
     const prices = shopSections
       .map((section) => section.cheapestEnabledPrice)
@@ -200,25 +207,27 @@ export default function ShopJoe() {
         <span className="badge secondary">Баланс: {balance}</span>
         {dailyShopCap > 0 ? (
           <span className={`badge ${shopDailyCapReached ? "warn" : "secondary"}`}>
-            Покупок сегодня: {totalPurchasesToday}/{dailyShopCap}
+            Лимит лавки: {remainingShopPurchases}/{dailyShopCap}
           </span>
         ) : null}
         {Number.isFinite(cheapestEnabledPrice) ? (
           <span className="badge">От {priceLabel(cheapestEnabledPrice)}</span>
         ) : null}
       </div>
-      {ticketsEnabled && availableNowCount === 0 && Number.isFinite(cheapestEnabledPrice) ? (
+      {ticketsEnabled && (dailyShopCap > 0 || (availableNowCount === 0 && Number.isFinite(cheapestEnabledPrice))) ? (
         <div className="small shop-overview-hint">
           {shopDailyCapReached
             ? "На сегодня общий лимит покупок в лавке уже исчерпан."
-            : `До первой покупки не хватает ещё ${ticketsNeededForCheapest} ${ticketWord(ticketsNeededForCheapest)}.`}
+            : dailyShopCap > 0
+              ? `Сегодня в лавке осталось ещё ${remainingShopPurchases} покупок.`
+              : `До первой покупки не хватает ещё ${ticketsNeededForCheapest} ${ticketWord(ticketsNeededForCheapest)}.`}
         </div>
       ) : null}
 
       <div className="shop-summary tf-stat-grid">
         <div className="tf-stat-card">
-          <div className="small">Доступных секций</div>
-          <strong>{shopSections.length}</strong>
+          <div className="small">Доступно секций</div>
+          <strong>{availableSectionCount}</strong>
         </div>
         <div className="tf-stat-card">
           <div className="small">Покупок сегодня</div>

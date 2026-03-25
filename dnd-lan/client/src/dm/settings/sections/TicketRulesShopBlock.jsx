@@ -12,9 +12,10 @@ export default function TicketRulesShopBlock({
 }) {
   return (
     <div className="paper-note">
-      <div className="title">{"Инвентарь (магазин)"}</div>
+      <div className="title">{"Лавка (магазин)"}</div>
       {!showOnlyChanged || generalChanges?.dailyShopCap ? (
         <div className="settings-fields u-mt-8">
+          <div className="settings-sub">{"Общий лимит покупок в лавке на одного игрока за день"}</div>
           <input
             type="number"
             min="0"
