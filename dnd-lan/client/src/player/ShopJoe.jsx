@@ -55,6 +55,7 @@ export default function ShopJoe() {
             const itemDisabled = itemRule?.enabled === false;
             const dailyLimit = itemRule?.dailyLimit;
             const usedToday = usage?.purchasesToday?.[item.key] || 0;
+            const remainingToday = dailyLimit ? Math.max(0, Number(dailyLimit) - Number(usedToday || 0)) : null;
             const itemPrice = resolvePrice(item.key, item.price, rules);
             const limitReached = isLimitReached(item.key, rules, usage);
             const disabledReason = getBuyDisabledReason({
@@ -82,6 +83,7 @@ export default function ShopJoe() {
               itemDisabled,
               dailyLimit,
               usedToday,
+              remainingToday,
               itemPrice,
               limitReached,
               disabledReason,
@@ -131,6 +133,17 @@ export default function ShopJoe() {
     () => shopSections.filter((section) => section.availableCount > 0).length,
     [shopSections]
   );
+  const shopLimitItems = React.useMemo(() => (
+    shopSections
+      .flatMap((section) => section.items)
+      .filter((item) => Number(item.dailyLimit || 0) > 0)
+      .sort((left, right) => {
+        const leftRemaining = Number(left.remainingToday ?? 0);
+        const rightRemaining = Number(right.remainingToday ?? 0);
+        if (leftRemaining !== rightRemaining) return leftRemaining - rightRemaining;
+        return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
+      })
+  ), [shopSections]);
   const cheapestEnabledPrice = React.useMemo(() => {
     const prices = shopSections
       .map((section) => section.cheapestEnabledPrice)
@@ -238,6 +251,23 @@ export default function ShopJoe() {
           <strong>{topItemTitle}</strong>
         </div>
       </div>
+      {(dailyShopCap > 0 || shopLimitItems.length > 0) ? (
+        <div className="shop-banner tf-panel tf-command-bar" style={{ marginTop: 10 }}>
+          <div className="banner-title">{"Ограничения на сегодня"}</div>
+          <div className="shop-overview">
+            {dailyShopCap > 0 ? (
+              <span className={`badge ${shopDailyCapReached ? "warn" : "secondary"}`}>
+                Общий лимит: {remainingShopPurchases}/{dailyShopCap}
+              </span>
+            ) : null}
+            {shopLimitItems.map((item) => (
+              <span key={item.key} className={`badge ${item.remainingToday > 0 ? "secondary" : "warn"}`}>
+                {item.title}: {item.remainingToday}/{item.dailyLimit}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <ShopMascotStall
         balance={balance}
@@ -293,7 +323,7 @@ export default function ShopJoe() {
                       <span className="meta-chip tf-shop-chip">{item.note}</span>
                       {item.dailyLimit ? (
                         <span className="meta-chip tf-shop-chip">
-                          {"Сегодня: "}{item.usedToday}/{item.dailyLimit}
+                          {"Осталось сегодня: "}{item.remainingToday}/{item.dailyLimit}
                         </span>
                       ) : null}
                     </div>
