@@ -26,6 +26,7 @@ export default function ShopJoe() {
   const { state, rules, usage, loading, err, purchase, readOnly } = useTickets();
   const [pendingItemKey, setPendingItemKey] = React.useState("");
   const [openedChestReward, setOpenedChestReward] = React.useState(null);
+  const [showAllLimits, setShowAllLimits] = React.useState(false);
   const pendingRef = React.useRef(false);
   const errorToastRef = React.useRef({ message: "", at: 0 });
 
@@ -144,6 +145,10 @@ export default function ShopJoe() {
         return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
       })
   ), [shopSections]);
+  const visibleShopLimitItems = React.useMemo(
+    () => (showAllLimits ? shopLimitItems : shopLimitItems.slice(0, 4)),
+    [shopLimitItems, showAllLimits]
+  );
   const cheapestEnabledPrice = React.useMemo(() => {
     const prices = shopSections
       .map((section) => section.cheapestEnabledPrice)
@@ -252,15 +257,26 @@ export default function ShopJoe() {
         </div>
       </div>
       {(dailyShopCap > 0 || shopLimitItems.length > 0) ? (
-        <div className="shop-banner tf-panel tf-command-bar" style={{ marginTop: 10 }}>
-          <div className="banner-title">{"Ограничения на сегодня"}</div>
+        <div className="shop-banner tf-panel tf-command-bar shop-limit-banner" style={{ marginTop: 10 }}>
+          <div className="row" style={{ justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <div className="banner-title">{"Ограничения на сегодня"}</div>
+            {shopLimitItems.length > 4 ? (
+              <button
+                type="button"
+                className="btn secondary shop-limit-toggle"
+                onClick={() => setShowAllLimits((prev) => !prev)}
+              >
+                {showAllLimits ? "Свернуть" : "Показать все"}
+              </button>
+            ) : null}
+          </div>
           <div className="shop-overview">
             {dailyShopCap > 0 ? (
               <span className={`badge ${shopDailyCapReached ? "warn" : "secondary"}`}>
                 Общий лимит: {remainingShopPurchases}/{dailyShopCap}
               </span>
             ) : null}
-            {shopLimitItems.map((item) => (
+            {visibleShopLimitItems.map((item) => (
               <span key={item.key} className={`badge ${item.remainingToday > 0 ? "secondary" : "warn"}`}>
                 {item.title}: {item.remainingToday}/{item.dailyLimit}
               </span>
@@ -320,13 +336,13 @@ export default function ShopJoe() {
                       <span className="meta-chip tf-shop-chip">
                         {"Лимит: "}{formatLimit(item.limit, item.dailyLimit)}
                       </span>
-                      <span className="meta-chip tf-shop-chip">{item.note}</span>
                       {item.dailyLimit ? (
                         <span className="meta-chip tf-shop-chip">
                           {"Осталось сегодня: "}{item.remainingToday}/{item.dailyLimit}
                         </span>
                       ) : null}
                     </div>
+                    <div className="small shop-note-text">{item.note}</div>
                     {item.isAvailableNow ? (
                       <div className="row shop-actions shop-actions-live" style={{ justifyContent: "space-between" }}>
                         <span className="ticket-pill tf-shop-price">{priceLabel(item.itemPrice)}</span>
@@ -340,7 +356,7 @@ export default function ShopJoe() {
                       </div>
                     ) : (
                       <div className="shop-status-card">
-                        <span className="ticket-pill tf-shop-price">{priceLabel(item.itemPrice)}</span>
+                        <span className="ticket-pill tf-shop-price tf-shop-price-disabled">{priceLabel(item.itemPrice)}</span>
                         <div className="small shop-disabled-note">{item.disabledReason}</div>
                       </div>
                     )}
