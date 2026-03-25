@@ -2930,6 +2930,30 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   font-weight: 700;
 }
 
+.tf-shop-shell .tf-shop-chip.is-healthy{
+  border-color: rgba(92, 128, 82, 0.22);
+  background: rgba(230, 240, 225, 0.94);
+  color: #5b7453;
+}
+
+.tf-shop-shell .tf-shop-chip.is-low{
+  border-color: rgba(177, 146, 84, 0.24);
+  background: rgba(245, 234, 206, 0.96);
+  color: #8a6a2f;
+}
+
+.tf-shop-shell .tf-shop-chip.is-exhausted{
+  border-color: rgba(165, 102, 85, 0.24);
+  background: rgba(244, 225, 219, 0.96);
+  color: #9a594b;
+}
+
+.badge.badge-limit-low{
+  background: rgba(241, 223, 173, 0.92);
+  color: #7d5d1d;
+  border-color: rgba(176, 139, 72, 0.24);
+}
+
 .tf-shop-shell .tf-shop-price{
   min-height: 38px;
   padding: 0 14px;

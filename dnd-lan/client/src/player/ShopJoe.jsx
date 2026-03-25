@@ -272,12 +272,12 @@ export default function ShopJoe() {
           </div>
           <div className="shop-overview">
             {dailyShopCap > 0 ? (
-              <span className={`badge ${shopDailyCapReached ? "warn" : "secondary"}`}>
+              <span className={`badge ${shopDailyCapReached ? "warn" : getLimitTone(remainingShopPurchases, dailyShopCap)}`}>
                 Общий лимит: {remainingShopPurchases}/{dailyShopCap}
               </span>
             ) : null}
             {visibleShopLimitItems.map((item) => (
-              <span key={item.key} className={`badge ${item.remainingToday > 0 ? "secondary" : "warn"}`}>
+              <span key={item.key} className={`badge ${getLimitTone(item.remainingToday, item.dailyLimit)}`}>
                 {item.title}: {item.remainingToday}/{item.dailyLimit}
               </span>
             ))}
@@ -337,7 +337,7 @@ export default function ShopJoe() {
                         {"Лимит: "}{formatLimit(item.limit, item.dailyLimit)}
                       </span>
                       {item.dailyLimit ? (
-                        <span className="meta-chip tf-shop-chip">
+                        <span className={`meta-chip tf-shop-chip ${getShopLimitChipClass(item.remainingToday, item.dailyLimit)}`}>
                           {"Осталось сегодня: "}{item.remainingToday}/{item.dailyLimit}
                         </span>
                       ) : null}
@@ -424,6 +424,24 @@ function resolvePrice(itemKey, fallback, rules) {
 function formatLimit(fallback, dailyLimit) {
   if (dailyLimit) return `до ${dailyLimit} в день`;
   return fallback || "-";
+}
+
+function getLimitTone(remaining, total) {
+  const safeTotal = Math.max(0, Number(total || 0));
+  const safeRemaining = Math.max(0, Number(remaining || 0));
+  if (!safeTotal) return "secondary";
+  if (safeRemaining <= 0) return "warn";
+  if (safeRemaining <= Math.ceil(safeTotal / 2)) return "badge-limit-low";
+  return "ok";
+}
+
+function getShopLimitChipClass(remaining, total) {
+  const safeTotal = Math.max(0, Number(total || 0));
+  const safeRemaining = Math.max(0, Number(remaining || 0));
+  if (!safeTotal) return "";
+  if (safeRemaining <= 0) return "is-exhausted";
+  if (safeRemaining <= Math.ceil(safeTotal / 2)) return "is-low";
+  return "is-healthy";
 }
 
 function isLimitReached(itemKey, rules, usage) {
