@@ -4716,6 +4716,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   align-items: center;
 }
 
+.dm-dashboard-url-actions{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
 .dm-dashboard-section-title{
   font-family: var(--font-ui);
   font-size: 15px;
@@ -4821,6 +4828,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .dm-dashboard-head-meta{
     justify-content: flex-start;
+  }
+
+  .dm-dashboard-url-actions{
+    width: 100%;
+    align-items: stretch;
   }
 
   .dm-dashboard-toggle{

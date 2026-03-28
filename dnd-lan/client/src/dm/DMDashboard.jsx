@@ -8,6 +8,7 @@ import { Globe2, QrCode, RadioTower, Users } from "lucide-react";
 export default function DMDashboard() {
   const [info, setInfo] = useState(null);
   const [players, setPlayers] = useState([]);
+  const [copyMsg, setCopyMsg] = useState("");
   const { socket } = useSocket();
 
   const load = useCallback(async () => {
@@ -38,6 +39,17 @@ export default function DMDashboard() {
   const idleCount = players.filter((player) => String(player.status || "offline") === "idle").length;
   const offlineCount = players.length - onlineCount - idleCount;
 
+  async function copyUrl() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopyMsg("URL скопирован.");
+      window.setTimeout(() => setCopyMsg(""), 1800);
+    } catch {
+      setCopyMsg("Не удалось скопировать.");
+      window.setTimeout(() => setCopyMsg(""), 1800);
+    }
+  }
+
   return (
     <div className="spread-grid dm-dashboard-grid">
       <div className="spread-col">
@@ -66,6 +78,10 @@ export default function DMDashboard() {
               <div className="small">Оффлайн</div>
               <strong>{offlineCount}</strong>
             </div>
+            <div className="tf-stat-card">
+              <div className="small">Всего игроков</div>
+              <strong>{players.length}</strong>
+            </div>
           </div>
 
           <div className="list dm-dashboard-stack">
@@ -73,12 +89,17 @@ export default function DMDashboard() {
               <div className="tf-section-copy">
                 <div className="tf-section-kicker">Party access</div>
                 <div className="dm-dashboard-section-title">URL для игроков</div>
+                <div className="small">Главная точка входа для шеринга и QR.</div>
               </div>
-              <div className="dm-dashboard-url-chip">
-                <Globe2 className="icon" aria-hidden="true" />
-                <span>{url}</span>
+              <div className="dm-dashboard-url-actions">
+                <div className="dm-dashboard-url-chip">
+                  <Globe2 className="icon" aria-hidden="true" />
+                  <span>{url}</span>
+                </div>
+                <button className="btn secondary" onClick={copyUrl}>Копировать URL</button>
               </div>
             </div>
+            {copyMsg ? <div className="badge ok">{copyMsg}</div> : null}
 
             {info && (
               <div className="paper-note tf-panel dm-dashboard-note">
@@ -105,7 +126,7 @@ export default function DMDashboard() {
                 </div>
                 <Users className="dm-dashboard-icon" aria-hidden="true" />
               </div>
-              <div className="small">Online/Offline обновляется по WebSocket</div>
+              <div className="small">Online/Offline обновляется по WebSocket. Список полезен как быстрый пульт контроля.</div>
               <hr />
               <div className="list dm-dashboard-roster-list">
                 {players.map((p) => (
@@ -126,7 +147,7 @@ export default function DMDashboard() {
         </div>
       </div>
 
-      <div className="spread-col">
+        <div className="spread-col">
         <div className="dm-dashboard-side-stack">
           <QRCodeCard url={url} className="scrap-card paper-stack tilt-1 tf-panel tf-dm-dashboard-qr" />
           <div className="tf-panel dm-dashboard-radio-card">
@@ -141,7 +162,7 @@ export default function DMDashboard() {
               <div className="item dm-dashboard-brief-item">
                 <div className="kv">
                   <div className="dm-dashboard-player-name">Подключение</div>
-                  <div className="small">LAN URL активен и готов для QR-шеринга.</div>
+                  <div className="small">Игроки заходят по одному URL: вручную или через QR.</div>
                 </div>
                 <span className="badge ok">READY</span>
               </div>
@@ -151,6 +172,15 @@ export default function DMDashboard() {
                   <div className="small">Статусы игроков приходят через WebSocket.</div>
                 </div>
                 <span className="badge secondary">{players.length}</span>
+              </div>
+              <div className="item dm-dashboard-brief-item">
+                <div className="kv">
+                  <div className="dm-dashboard-player-name">Бестиарий</div>
+                  <div className="small">Игрокам сейчас {info?.settings?.bestiaryEnabled ? "доступен" : "скрыт"} общий каталог монстров.</div>
+                </div>
+                <span className={`badge ${info?.settings?.bestiaryEnabled ? "ok" : "off"}`}>
+                  {info?.settings?.bestiaryEnabled ? "ON" : "OFF"}
+                </span>
               </div>
               <div className="item dm-dashboard-brief-item">
                 <div className="kv">
