@@ -4934,6 +4934,94 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   color: var(--map-ink);
 }
 
+.dm-settings-fold{
+  border-radius: 22px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.9), rgba(244, 236, 221, 0.82));
+  box-shadow: var(--tf-shadow-soft);
+  overflow: clip;
+}
+
+.dm-settings-fold-summary{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 0;
+  background: transparent;
+  color: var(--map-ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.dm-settings-fold-main{
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dm-settings-fold-title{
+  font-weight: 800;
+}
+
+.dm-settings-fold-description{
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--map-muted);
+}
+
+.dm-settings-fold-meta{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.dm-settings-fold-badge{
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(117, 102, 74, 0.28);
+  background: rgba(242, 235, 219, 0.92);
+  color: var(--map-muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.dm-settings-fold-icon{
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(117, 102, 74, 0.28);
+  background: rgba(255,255,255,0.88);
+  font-size: 22px;
+  line-height: 1;
+  box-shadow: 0 8px 16px rgba(69, 57, 42, 0.08);
+}
+
+.dm-settings-fold.is-open .dm-settings-fold-summary{
+  border-bottom: 1px solid rgba(118, 100, 70, 0.1);
+}
+
+.dm-settings-fold-body{
+  padding: 12px;
+}
+
+.dm-settings-fold-body > .card{
+  margin: 0;
+}
+
 .tf-dm-settings-shell > .list > .card{
   border-radius: 22px;
   border-color: rgba(118, 100, 70, 0.18);
