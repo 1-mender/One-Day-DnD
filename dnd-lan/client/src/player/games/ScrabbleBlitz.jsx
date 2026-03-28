@@ -1,16 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { makeProof } from "../../lib/gameProof.js";
+import { api } from "../../api.js";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
-const LETTERS = "АБВГДЕЖЗИКЛМНОПРСТУФХЦЧШЩЫЭЮЯ";
+const LETTERS = "АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЭЮЯ";
 const RARE = new Set(["Ф", "Щ", "Ъ", "Э", "Ю", "Я"]);
 
-function pickLetters(count) {
-  const out = [];
-  for (let i = 0; i < count; i += 1) {
-    out.push(LETTERS[Math.floor(Math.random() * LETTERS.length)]);
+function makeRng(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   }
-  return out;
+  return () => {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return (h & 0xfffffff) / 0xfffffff;
+  };
+}
+
+function buildSeededRack(seed, rackSize) {
+  const size = Number(rackSize || 0);
+  if (!seed || size < 3) return [];
+  const rng = makeRng(`${seed}:scrabble:${size}`);
+  return Array.from({ length: size }, () => LETTERS[Math.floor(rng() * LETTERS.length)]);
 }
 
 function normalizeWord(word) {
@@ -40,6 +50,10 @@ export default function ScrabbleBlitzGame({
 }) {
   const timeLimit = Number(mode?.timeLimit || 60);
   const rackSize = Number(mode?.rackSize || 7);
+  const [seed, setSeed] = useState("");
+  const [seedProof, setSeedProof] = useState("");
+  const [seedBusy, setSeedBusy] = useState(false);
+  const [seedErr, setSeedErr] = useState("");
   const [rack, setRack] = useState([]);
   const [word, setWord] = useState("");
   const [timeLeft, setTimeLeft] = useState(timeLimit);
@@ -58,21 +72,48 @@ export default function ScrabbleBlitzGame({
   const normalizedWord = useMemo(() => normalizeWord(word), [word]);
   const isWordPlayable = useMemo(() => canFormWordFromRack(normalizedWord, rack), [normalizedWord, rack]);
 
+  const requestSeed = useCallback(async () => {
+    setSeedBusy(true);
+    setSeedErr("");
+    try {
+      const issued = await api.ticketsSeed("scrabble");
+      const nextSeed = String(issued?.seed || "");
+      const nextProof = String(issued?.proof || "");
+      if (!nextSeed || !nextProof) throw new Error("seed_unavailable");
+      setSeed(nextSeed);
+      setSeedProof(nextProof);
+    } catch {
+      setSeed("");
+      setSeedProof("");
+      setRack([]);
+      setSeedErr("Не удалось загрузить буквы раунда. Попробуйте ещё раз.");
+    } finally {
+      setSeedBusy(false);
+    }
+  }, []);
+
   const resetGame = useCallback(() => {
-    setRack(pickLetters(rackSize));
+    if (!seed) return;
+    setRack(buildSeededRack(seed, rackSize));
     setWord("");
     setTimeLeft(timeLimit);
     setStatus("playing");
     setResult(null);
     setSettling(false);
     setApiErr("");
+    setSeedErr("");
     endAtRef.current = Date.now() + timeLimit * 1000;
-  }, [rackSize, timeLimit]);
+  }, [rackSize, seed, timeLimit]);
 
   useEffect(() => {
     if (!open) return;
+    requestSeed().catch(() => {});
+  }, [open, requestSeed]);
+
+  useEffect(() => {
+    if (!open || !seed) return;
     resetGame();
-  }, [open, resetGame]);
+  }, [open, resetGame, seed]);
 
   useEffect(() => {
     if (!open || status !== "playing") return;
@@ -92,18 +133,17 @@ export default function ScrabbleBlitzGame({
     const performance = status === "win"
       ? (normalized.length >= 6 ? "long" : hasRare ? "rare" : "normal")
       : "normal";
-    const payload = { modeKey, word: normalized, rack };
-    const proof = makeProof("", payload);
+    const payload = { modeKey, word: normalized };
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance, payload, proof })
+    onSubmitResult({ outcome: status, performance, payload, seed, proof: seedProof })
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, word, rack, modeKey]);
+  }, [status, onSubmitResult, settling, result, word, rack, modeKey, seed, seedProof]);
 
   function handleSubmit() {
-    if (status !== "playing" || disabled || readOnly) return;
+    if (status !== "playing" || disabled || readOnly || seedBusy || !seed || !seedProof) return;
     if (!isWordPlayable) {
       setStatus("loss");
       return;
@@ -151,15 +191,17 @@ export default function ScrabbleBlitzGame({
             onChange={(e) => setWord(e.target.value)}
             placeholder="Введи слово"
             aria-label="Слово из доступных букв"
-            disabled={disabled || readOnly || status !== "playing"}
+            disabled={disabled || readOnly || seedBusy || !seed || !seedProof || status !== "playing"}
           />
-          <button className="btn" onClick={handleSubmit} disabled={disabled || readOnly || status !== "playing" || !normalizedWord}>
+          <button className="btn" onClick={handleSubmit} disabled={disabled || readOnly || seedBusy || !seed || !seedProof || status !== "playing" || !normalizedWord}>
             Проверить
           </button>
         </div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
+        {seedBusy ? <div className="badge warn">Подготавливаю набор букв...</div> : null}
+        {seedErr ? <div className="badge off">{seedErr}</div> : null}
 
         {status !== "playing" ? (
           <div className={`scrabble-result ${status}`}>
@@ -177,7 +219,7 @@ export default function ScrabbleBlitzGame({
             ) : null}
             <div className="row" style={{ gap: 8 }}>
               {result && !settling ? (
-                <button className="btn" onClick={resetGame}>Сыграть снова</button>
+                <button className="btn" onClick={() => requestSeed().catch(() => {})} disabled={seedBusy}>Сыграть снова</button>
               ) : null}
               <button className="btn secondary" onClick={onClose}>Закрыть</button>
             </div>

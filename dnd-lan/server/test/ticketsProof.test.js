@@ -11,6 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
+const { buildSeededScrabbleRack } = await import("../src/tickets/domain/playValidation.js");
 
 initDb();
 
@@ -293,6 +294,9 @@ test("scrabble rare performance requires rare letter in word", async () => {
 
   const seedOut = await api("/api/tickets/seed?gameKey=scrabble", { token });
   assert.equal(seedOut.res.status, 200);
+  const rack = buildSeededScrabbleRack(seedOut.data.seed, 7);
+  const nonRareWord = rack.filter((ch) => !["Ф", "Щ", "Ъ", "Э", "Ю", "Я"].includes(ch)).slice(0, 3).join("");
+  assert.equal(nonRareWord.length, 3);
 
   const out = await api("/api/tickets/play", {
     method: "POST",
@@ -303,8 +307,7 @@ test("scrabble rare performance requires rare letter in word", async () => {
       performance: "rare",
       payload: {
         modeKey: "normal",
-        word: "\u0410\u0411\u0412",
-        rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
+        word: nonRareWord
       },
       seed: seedOut.data.seed,
       proof: seedOut.data.proof,
@@ -314,8 +317,7 @@ test("scrabble rare performance requires rare letter in word", async () => {
         performance: "rare",
         payload: {
           modeKey: "normal",
-          word: "\u0410\u0411\u0412",
-          rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
+          word: nonRareWord
         }
       })
     }
@@ -323,6 +325,80 @@ test("scrabble rare performance requires rare letter in word", async () => {
 
   assert.equal(out.res.status, 400);
   assert.equal(out.data.error, "invalid_proof");
+});
+
+test("scrabble ignores spoofed rack and validates against seeded letters", async () => {
+  const playerId = createPlayer("Scrabble-Seeded");
+  const token = createSession(playerId);
+  seedTickets(playerId, 20);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=scrabble", { token });
+  assert.equal(seedOut.res.status, 200);
+  const rack = buildSeededScrabbleRack(seedOut.data.seed, 7);
+  const seededWord = rack.slice(0, 3).join("");
+  assert.equal(seededWord.length, 3);
+
+  const valid = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "scrabble",
+      outcome: "win",
+      performance: "normal",
+      payload: {
+        modeKey: "normal",
+        word: seededWord,
+        rack: ["Я", "Я", "Я", "Я", "Я", "Я", "Я"]
+      },
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "scrabble",
+        outcome: "win",
+        performance: "normal",
+        payload: {
+          modeKey: "normal",
+          word: seededWord,
+          rack: ["Я", "Я", "Я", "Я", "Я", "Я", "Я"]
+        }
+      })
+    }
+  });
+
+  assert.equal(valid.res.status, 200);
+
+  const secondSeedOut = await api("/api/tickets/seed?gameKey=scrabble", { token });
+  assert.equal(secondSeedOut.res.status, 200);
+
+  const invalid = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "scrabble",
+      outcome: "win",
+      performance: "normal",
+      payload: {
+        modeKey: "normal",
+        word: "ЯЯЯ",
+        rack: ["Я", "Я", "Я", "Я", "Я", "Я", "Я"]
+      },
+      seed: secondSeedOut.data.seed,
+      proof: secondSeedOut.data.proof,
+      clientProof: makeClientProof(secondSeedOut.data.seed, {
+        gameKey: "scrabble",
+        outcome: "win",
+        performance: "normal",
+        payload: {
+          modeKey: "normal",
+          word: "ЯЯЯ",
+          rack: ["Я", "Я", "Я", "Я", "Я", "Я", "Я"]
+        }
+      })
+    }
+  });
+
+  assert.equal(invalid.res.status, 400);
+  assert.equal(invalid.data.error, "invalid_proof");
 });
 
 test("dice accepts valid deterministic payload", async () => {

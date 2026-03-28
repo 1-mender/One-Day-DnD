@@ -3,6 +3,7 @@ import { GAME_CATALOG } from "../../gameCatalog.js";
 
 const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
 const SCRABBLE_ALPHABET = new Set(Array.from("\u0410\u0411\u0412\u0413\u0414\u0415\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042D\u042E\u042F"));
+const SCRABBLE_LETTERS = "\u0410\u0411\u0412\u0413\u0414\u0415\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042D\u042E\u042F";
 const DICE_MODE_RULES = Object.freeze({
   classic: { allowReroll: true, targetScore: 2 },
   risk: { allowReroll: true, targetScore: 4 },
@@ -98,6 +99,13 @@ function intInRange(value, min, max) {
 
 function normalizeScrabbleWord(word) {
   return String(word || "").trim().toUpperCase();
+}
+
+export function buildSeededScrabbleRack(seed, rackSize) {
+  const size = Number(rackSize || 0);
+  if (!seed || !intInRange(size, 3, 12)) return [];
+  const rng = makeRng(`${seed}:scrabble:${size}`);
+  return Array.from({ length: size }, () => SCRABBLE_LETTERS[Math.floor(rng() * SCRABBLE_LETTERS.length)]);
 }
 
 function canFormScrabbleWord(word, rack) {
@@ -277,13 +285,10 @@ export function validateDicePayload(payload, outcome, performanceKey, seed) {
   return true;
 }
 
-export function validateScrabblePayload(payload, outcome, performanceKey) {
+export function validateScrabblePayload(payload, outcome, performanceKey, seed) {
   const mode = getCatalogMode("scrabble", payload?.modeKey);
   if (!mode) return false;
-  const rackRaw = Array.isArray(payload?.rack) ? payload.rack : [];
-  const rack = rackRaw
-    .map((item) => normalizeScrabbleWord(item))
-    .filter(Boolean);
+  const rack = buildSeededScrabbleRack(seed, Number(mode.rackSize || 7));
   if (!intInRange(rack.length, 3, 12)) return false;
   if (rack.length !== Number(mode.rackSize || 7)) return false;
   if (!rack.every((ch) => ch.length === 1)) return false;
