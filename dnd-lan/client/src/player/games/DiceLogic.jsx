@@ -131,8 +131,12 @@ export default function DiceLogicGame({
   const [result, setResult] = useState(null);
   const [settling, setSettling] = useState(false);
   const [apiErr, setApiErr] = useState("");
+  const [rollFx, setRollFx] = useState(false);
+  const [resultFx, setResultFx] = useState(false);
   const endAtRef = useRef(0);
   const submittedRef = useRef(false);
+  const rollFxTimeoutRef = useRef(null);
+  const resultFxTimeoutRef = useRef(null);
 
   const currentRoll = useMemo(() => {
     if (!seed || !baseRoll.length) return [];
@@ -180,6 +184,22 @@ export default function DiceLogicGame({
     }
   }, []);
 
+  const triggerRollFx = useCallback((duration = 780) => {
+    if (rollFxTimeoutRef.current) clearTimeout(rollFxTimeoutRef.current);
+    setRollFx(true);
+    rollFxTimeoutRef.current = setTimeout(() => {
+      setRollFx(false);
+      rollFxTimeoutRef.current = null;
+    }, duration);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (rollFxTimeoutRef.current) clearTimeout(rollFxTimeoutRef.current);
+      if (resultFxTimeoutRef.current) clearTimeout(resultFxTimeoutRef.current);
+    };
+  }, []);
+
   const resetFromSeed = useCallback(() => {
     if (!seed) return;
     setBaseRoll(rollDice(seed, "roll1"));
@@ -190,9 +210,11 @@ export default function DiceLogicGame({
     setResult(null);
     setSettling(false);
     setApiErr("");
+    setResultFx(false);
     submittedRef.current = false;
     endAtRef.current = Date.now() + Number(modeConfig.timeLimit || DEFAULT_MODE.timeLimit) * 1000;
-  }, [modeConfig.timeLimit, seed]);
+    triggerRollFx(860);
+  }, [modeConfig.timeLimit, seed, triggerRollFx]);
 
   useEffect(() => {
     if (!open) return;
@@ -218,6 +240,12 @@ export default function DiceLogicGame({
 
   useEffect(() => {
     if (status === "playing") return;
+    if (resultFxTimeoutRef.current) clearTimeout(resultFxTimeoutRef.current);
+    setResultFx(true);
+    resultFxTimeoutRef.current = setTimeout(() => {
+      setResultFx(false);
+      resultFxTimeoutRef.current = null;
+    }, 1100);
     if (!onSubmitResult || settling || result || submittedRef.current) return;
     const performance = status === "win"
       ? (currentScore >= 6 ? "elite" : currentScore >= 4 ? "smart" : "normal")
@@ -250,6 +278,7 @@ export default function DiceLogicGame({
     if (disabled || readOnly || status !== "playing" || seedBusy || rerolled || !modeConfig.allowReroll) return;
     if (!rerollMask.some(Boolean)) return;
     setRerolled(true);
+    triggerRollFx();
   }
 
   function finalizeRoll() {
@@ -330,12 +359,13 @@ export default function DiceLogicGame({
           </div>
         </div>
 
-        <div className="dice-grid" role="list" aria-label="Игровые кости">
+        <div className={`dice-grid${rollFx ? " is-rolling" : ""}`} role="list" aria-label="Игровые кости">
           {currentRoll.map((value, index) => (
             <button
               key={`${seed || "dice"}_${index}_${value}`}
               type="button"
-              className={`dice-die${rerollMask[index] ? " selected" : ""}${rerolled && rerollMask[index] ? " rerolled" : ""}`}
+              className={`dice-die${rerollMask[index] ? " selected" : ""}${rerolled && rerollMask[index] ? " rerolled" : ""}${rollFx ? " rolling" : ""}`}
+              style={{ "--dice-delay": `${index * 55}ms` }}
               onClick={() => toggleDie(index)}
               disabled={disabled || readOnly || status !== "playing" || seedBusy || rerolled || !modeConfig.allowReroll}
               aria-label={`Кость ${index + 1}: ${value}${rerollMask[index] ? ", выбрана для переброса" : ""}`}
@@ -377,11 +407,11 @@ export default function DiceLogicGame({
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
-        {seedBusy ? <div className="badge warn">Подготавливаю бросок...</div> : null}
+        {seedBusy || rollFx ? <div className="badge warn">{seedBusy ? "Подготавливаю бросок..." : "Кубики катятся..."}</div> : null}
         {seedErr ? <div className="badge off">{seedErr}</div> : null}
 
         {status !== "playing" ? (
-          <div className={`dice-result ${status}`}>
+          <div className={`dice-result ${status}${resultFx ? " reveal" : ""}`}>
             <div className="dice-result-title">{status === "win" ? "Удачный бросок!" : "Комбинация не дотянула"}</div>
             <div className="dice-result-roll" aria-hidden="true">
               {currentRoll.map((value, index) => (

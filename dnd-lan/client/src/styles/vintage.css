@@ -1199,6 +1199,10 @@ a:hover{ color: #000; }
   margin: 4px 0;
 }
 
+.dice-grid.is-rolling{
+  filter: saturate(1.04);
+}
+
 .dice-brief{
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1242,6 +1246,7 @@ a:hover{ color: #000; }
   justify-content: center;
   position: relative;
   transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+  overflow: hidden;
 }
 
 .dice-die:not(:disabled):hover{
@@ -1255,6 +1260,11 @@ a:hover{ color: #000; }
     0 0 0 2px rgba(139,182,224,.34),
     0 14px 20px rgba(0,0,0,.18);
   transform: translateY(-3px);
+}
+
+.dice-die.rolling{
+  animation: dice-roll-bounce .78s cubic-bezier(.2,.7,.15,1);
+  animation-delay: var(--dice-delay, 0ms);
 }
 
 .dice-die.rerolled{
@@ -1310,6 +1320,21 @@ a:hover{ color: #000; }
   color: #244866;
   background: rgba(214,232,247,.95);
   border: 1px solid rgba(88,132,170,.28);
+}
+
+.dice-die::after{
+  content:"";
+  position: absolute;
+  inset: -30%;
+  background: linear-gradient(120deg, rgba(255,255,255,0), rgba(255,255,255,.38), rgba(255,255,255,0));
+  transform: translateX(-120%) rotate(10deg);
+  pointer-events: none;
+  opacity: 0;
+}
+
+.dice-grid.is-rolling .dice-die::after{
+  animation: dice-roll-shine .78s ease;
+  animation-delay: var(--dice-delay, 0ms);
 }
 
 .dice-category-strip{
@@ -2686,6 +2711,10 @@ a:hover{ color: #000; }
 .arcade-actions-live{
   align-items: center;
 }
+
+.dice-result.reveal{
+  animation: dice-result-reveal .42s ease-out;
+}
 .arcade-action-btn{
   min-width: 132px;
 }
@@ -3108,6 +3137,25 @@ a:hover{ color: #000; }
   font-weight: 900;
 }
 
+@keyframes dice-roll-bounce{
+  0%{ transform: translateY(0) rotate(0deg) scale(1); }
+  18%{ transform: translateY(-8px) rotate(-7deg) scale(1.02); }
+  42%{ transform: translateY(4px) rotate(6deg) scale(.98); }
+  68%{ transform: translateY(-3px) rotate(-3deg) scale(1.01); }
+  100%{ transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+@keyframes dice-roll-shine{
+  0%{ transform: translateX(-120%) rotate(10deg); opacity: 0; }
+  30%{ opacity: .45; }
+  100%{ transform: translateX(130%) rotate(10deg); opacity: 0; }
+}
+
+@keyframes dice-result-reveal{
+  0%{ transform: translateY(8px) scale(.98); opacity: 0; }
+  100%{ transform: translateY(0) scale(1); opacity: 1; }
+}
+
 @keyframes card-shake{
   0%{ transform: translateX(0); }
   25%{ transform: translateX(-4px); }
@@ -3131,6 +3179,9 @@ a:hover{ color: #000; }
   }
   .dice-grid{
     gap: 8px;
+  }
+  .dice-die.rolling{
+    animation-duration: .68s;
   }
   .dice-pip{
     width: 9px;
