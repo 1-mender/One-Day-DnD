@@ -13,6 +13,12 @@ import { t } from "../i18n/index.js";
 
 const empty = { title:"", content:"", category:"note", access:"dm", selectedPlayerIds:[], tags:[] };
 
+function getAccessLabel(access) {
+  if (access === "all") return "Все игроки";
+  if (access === "selected") return "Выбранные";
+  return "Только DM";
+}
+
 export default function DMInfoBlocks() {
   const [items, setItems] = useState([]);
   const [players, setPlayers] = useState([]);
@@ -66,6 +72,7 @@ export default function DMInfoBlocks() {
   }, [items, debouncedQ, cat, acc]);
 
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p.displayName])), [players]);
+  const selectedCount = useMemo(() => items.filter((block) => block.access === "selected").length, [items]);
 
   function startNew() {
     if (readOnly) return;
@@ -203,6 +210,11 @@ export default function DMInfoBlocks() {
             <hr />
             {readOnly ? <div className="badge warn">{t("dmInfoBlocks.readOnly", null, "Режим только чтения: изменения отключены")}</div> : null}
             {err && <div className="badge off">{t("common.error")}: {err}</div>}
+            <div className="dm-info-summary">
+              <span className="badge secondary">Блоков: {filtered.length}</span>
+              <span className="badge secondary">Выбранным: {selectedCount}</span>
+              <span className="badge secondary">Категория: {cat || "все"}</span>
+            </div>
             <div className="row u-row-wrap tf-panel dm-info-toolbar">
               <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} aria-label={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
               <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t("dmInfoBlocks.categoryAll", null, "Категория: все")} className="u-w-160">
@@ -239,7 +251,8 @@ export default function DMInfoBlocks() {
                     <div className="note-title">{b.title}</div>
                     <div className="note-meta">
                       <span className="badge secondary">{b.category}</span>
-                      <span className="badge">{b.access}</span>
+                      <span className="badge">{getAccessLabel(b.access)}</span>
+                      {b.access === "selected" ? <span className="badge secondary">Игроков: {(b.selectedPlayerIds || []).length}</span> : null}
                     </div>
                   </div>
                   <ActionMenu
@@ -265,7 +278,7 @@ export default function DMInfoBlocks() {
                   <div className="tf-page-head-main">
                     <div className="tf-overline">Selected block</div>
                     <div className="u-title-xl tf-page-title">{selected.title}</div>
-                    <div className="small">{selected.category} - {selected.access}</div>
+                    <div className="small">{selected.category} - {getAccessLabel(selected.access)}</div>
                   </div>
                   <div className="row u-row-gap-8">
                     <button className="btn secondary" onClick={() => selectBlock(0)}>Назад к списку</button>
@@ -273,13 +286,17 @@ export default function DMInfoBlocks() {
                   </div>
                 </div>
                 <hr />
+                <div className="dm-info-detail-summary">
+                  <span className="badge secondary">Категория: {selected.category || "note"}</span>
+                  <span className="badge">{getAccessLabel(selected.access)}</span>
+                </div>
                 <div className="row u-row-wrap">
                   {(selected.tags || []).slice(0, 4).map((t) => (
                     <span key={t} className="badge secondary">{t}</span>
                   ))}
                 </div>
                 {selected.access === "selected" ? (
-                  <div className="small u-mt-8">
+                  <div className="small u-mt-8 dm-info-selected-targets">
                     Видят: {(selected.selectedPlayerIds || []).map((id) => playerMap.get(id) || `#${id}`).join(", ") || "-"}
                   </div>
                 ) : null}
@@ -295,7 +312,11 @@ export default function DMInfoBlocks() {
               </>
             ) : (
               <>
-                <div className="small">Выберите блок, чтобы увидеть детали.</div>
+                <div className="dm-info-empty">
+                  <div className="tf-overline">Selected block</div>
+                  <div className="u-fw-800 u-mt-6">Выберите блок</div>
+                  <div className="small u-mt-6">Справа появятся текст, медиа, теги и быстрые действия по доступу.</div>
+                </div>
                 <div className="paper-note u-mt-10 tf-panel">
                   <div className="title">Подсказка</div>
                   <div className="small">Markdown поддерживается для текста и изображений.</div>
@@ -307,26 +328,39 @@ export default function DMInfoBlocks() {
       </div>
 
 <Modal open={open} title={edit ? t("dmInfoBlocks.editBlock", null, "Редактировать блок") : t("dmInfoBlocks.newBlock", null, "Новый блок")} onClose={() => setOpen(false)}>
-        <div className="list">
+        <div className="list dm-info-editor">
           {err && <div className="badge off">{t("common.error")}: {err}</div>}
-          <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" aria-label="Заголовок инфоблока" style={inp} disabled={readOnly} />
-          <div className="row">
-            <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} aria-label="Категория инфоблока" style={inp} disabled={readOnly}>
-              <option value="lore">lore</option>
-              <option value="quest">quest</option>
-              <option value="note">note</option>
-              <option value="other">other</option>
-            </select>
-            <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} aria-label="Доступ к инфоблоку" style={inp} disabled={readOnly}>
-              <option value="dm">{t("dmInfoBlocks.accessDmOnly", null, "DM-only")}</option>
-              <option value="all">{t("dmInfoBlocks.accessAllPlayers", null, "All players")}</option>
-              <option value="selected">{t("dmInfoBlocks.accessSelectedPlayers", null, "Selected players")}</option>
-            </select>
-          </div>
+          <section className="dm-info-editor-section">
+            <div className="tf-overline">Core block</div>
+            <div className="u-fw-800">Основное</div>
+            <div className="small">Заголовок, категория и кому виден этот блок.</div>
+            <div className="list u-mt-10">
+              <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" aria-label="Заголовок инфоблока" style={inp} disabled={readOnly} />
+              <div className="row">
+                <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} aria-label="Категория инфоблока" style={inp} disabled={readOnly}>
+                  <option value="lore">lore</option>
+                  <option value="quest">quest</option>
+                  <option value="note">note</option>
+                  <option value="other">other</option>
+                </select>
+                <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} aria-label="Доступ к инфоблоку" style={inp} disabled={readOnly}>
+                  <option value="dm">{t("dmInfoBlocks.accessDmOnly", null, "DM-only")}</option>
+                  <option value="all">{t("dmInfoBlocks.accessAllPlayers", null, "All players")}</option>
+                  <option value="selected">{t("dmInfoBlocks.accessSelectedPlayers", null, "Selected players")}</option>
+                </select>
+              </div>
+              <div className="dm-info-access-hint">
+                {form.access === "dm" ? "Блок увидит только мастер." : null}
+                {form.access === "all" ? "Блок увидят все игроки." : null}
+                {form.access === "selected" ? "Блок увидят только отмеченные игроки ниже." : null}
+              </div>
+            </div>
+          </section>
 
           {form.access === "selected" && (
-            <div className="card taped">
+            <div className="card taped dm-info-editor-section">
               <div className="u-fw-700">Кто видит</div>
+              <div className="small">Выберите игроков, которым откроется этот блок.</div>
               <div className="list u-mt-8">
                 {players.map((p) => {
                   const checked = (form.selectedPlayerIds || []).includes(p.id);
@@ -350,37 +384,43 @@ export default function DMInfoBlocks() {
             </div>
           )}
 
-          <div className="row u-row-gap-8">
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.avif,image/heic,image/heif,.heic,.heif,application/pdf,text/plain,.md,.markdown"
-              className="u-hidden-input"
-              aria-label="Загрузить файл в инфоблок"
-              onChange={onPickFile}
-            />
-            <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
-            <div className="small">Поддерживаются JPG, PNG, WEBP, GIF, AVIF, HEIC, PDF и текст/Markdown.</div>
-          </div>
+          <section className="dm-info-editor-section">
+            <div className="tf-overline">Content</div>
+            <div className="u-fw-800">Текст и медиа</div>
+            <div className="small">Markdown, изображения, PDF и текстовые вложения.</div>
+            <div className="row u-row-gap-8 u-mt-10">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.avif,image/heic,image/heif,.heic,.heif,application/pdf,text/plain,.md,.markdown"
+                className="u-hidden-input"
+                aria-label="Загрузить файл в инфоблок"
+                onChange={onPickFile}
+              />
+              <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
+              <div className="small">Поддерживаются JPG, PNG, WEBP, GIF, AVIF, HEIC, PDF и текст/Markdown.</div>
+            </div>
 
-          <textarea
-            ref={taRef}
-            value={form.content||""}
-            onChange={(e)=>setForm({ ...form, content: e.target.value })}
-            placeholder="Содержание (markdown/текст)"
-            aria-label="Содержание инфоблока"
-            rows={8}
-            style={inp}
-            disabled={readOnly}
-          />
-          <input
-            value={form.tagsText ?? (form.tags || []).join(", ")}
-            onChange={(e)=>setForm({ ...form, tagsText: e.target.value })}
-            placeholder="Теги (через запятую)"
-            aria-label="Теги инфоблока через запятую"
-            style={inp}
-            disabled={readOnly}
-          />
+            <textarea
+              ref={taRef}
+              value={form.content||""}
+              onChange={(e)=>setForm({ ...form, content: e.target.value })}
+              placeholder="Содержание (markdown/текст)"
+              aria-label="Содержание инфоблока"
+              rows={8}
+              style={inp}
+              disabled={readOnly}
+              className="u-mt-10"
+            />
+            <input
+              value={form.tagsText ?? (form.tags || []).join(", ")}
+              onChange={(e)=>setForm({ ...form, tagsText: e.target.value })}
+              placeholder="Теги (через запятую)"
+              aria-label="Теги инфоблока через запятую"
+              style={inp}
+              disabled={readOnly}
+            />
+          </section>
           <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
         </div>
       </Modal>
