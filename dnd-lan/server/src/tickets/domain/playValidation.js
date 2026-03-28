@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { GAME_CATALOG } from "../../gameCatalog.js";
 
 const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
 const SCRABBLE_ALPHABET = new Set(Array.from("\u0410\u0411\u0412\u0413\u0414\u0415\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042D\u042E\u042F"));
@@ -17,6 +18,13 @@ const DICE_CATEGORY_SCORE = Object.freeze({
   four: 6,
   five: 7
 });
+
+function getCatalogMode(gameKey, modeKey) {
+  const game = GAME_CATALOG.find((item) => item?.key === gameKey) || null;
+  if (!game) return null;
+  const safeModeKey = String(modeKey || "").trim().toLowerCase();
+  return game.modes?.find((mode) => String(mode?.key || "").trim().toLowerCase() === safeModeKey) || null;
+}
 
 function simpleHash(str) {
   let h = 0;
@@ -140,11 +148,13 @@ export function createSeedStore({ ttlMs, nowFn }) {
   return { issueSeed, takeSeed };
 }
 
-export function validateGuessPayload(payload, seed) {
+export function validateGuessPayload(payload, seed, performanceKey) {
   if (!payload?.picks || !Array.isArray(payload.picks)) return false;
   if (!payload.picks.every((p) => p && typeof p.suit === "string" && typeof p.rank === "string")) return false;
+  const mode = getCatalogMode("guess", payload?.modeKey);
+  if (!mode) return false;
   const suits = ["hearts", "diamonds", "clubs", "spades"];
-  const ranks = Array.isArray(payload.ranks) ? payload.ranks : ["A", "K", "Q"];
+  const ranks = Array.isArray(mode.ranks) ? mode.ranks : ["A", "K", "Q"];
   const deck = [];
   for (const suit of suits) {
     for (const rank of ranks) deck.push({ suit, rank });
@@ -152,18 +162,24 @@ export function validateGuessPayload(payload, seed) {
   const shuffled = shuffleWithSeed(deck, seed);
   const targetIndex = Math.floor(makeRng(`${seed}-target`)() * shuffled.length);
   const target = shuffled[targetIndex];
-  const maxAttempts = Number(payload.maxAttempts || 3);
+  const maxAttempts = Number(mode.maxAttempts || 3);
   const picks = payload.picks.slice(0, maxAttempts).map((p) => `${p.suit}:${p.rank}`);
   const targetKey = `${target.suit}:${target.rank}`;
   const winAttempt = picks.findIndex((p) => p === targetKey) + 1;
-  if (payload.outcome === "win") return winAttempt > 0;
+  if (payload.outcome === "win") {
+    if (winAttempt <= 0) return false;
+    const expectedPerformance = winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third";
+    return performanceKey === expectedPerformance;
+  }
   return winAttempt === 0;
 }
 
-export function validateTttPayload(payload) {
+export function validateTttPayload(payload, performanceKey) {
   const moves = Array.isArray(payload?.moves) ? payload.moves : [];
   if (moves.length === 0) return false;
   if (!intInRange(moves.length, 1, 9)) return false;
+  const mode = getCatalogMode("ttt", payload?.modeKey);
+  if (!mode) return false;
   const board = new Array(9).fill(null);
   const playerSymbol = payload?.playerSymbol === "O" ? "O" : "X";
   let player = "X";
@@ -188,6 +204,10 @@ export function validateTttPayload(payload) {
   const winnerSymbol = hasWinner ? board[winner[0]] : null;
   if (payload.outcome === "win") {
     if (moves.length < 5) return false;
+    if (performanceKey === "sweep") {
+      if (Number(mode.roundsToWin || 0) <= 1) return false;
+      if (Number(payload?.aiWins || 0) !== 0) return false;
+    }
     return winnerSymbol === playerSymbol;
   }
   if (payload.outcome === "loss") {
@@ -198,6 +218,8 @@ export function validateTttPayload(payload) {
 }
 
 export function validateMatch3Payload(payload, outcome, performanceKey) {
+  const mode = getCatalogMode("match3", payload?.modeKey);
+  if (!mode) return false;
   const score = Number(payload?.score);
   const target = Number(payload?.target);
   const size = Number(payload?.size);
@@ -208,7 +230,9 @@ export function validateMatch3Payload(payload, outcome, performanceKey) {
   if (!intInRange(Math.floor(target), 60, 500) || target !== Math.floor(target)) return false;
   if (!intInRange(Math.floor(size), 4, 8) || size !== Math.floor(size)) return false;
   if (!intInRange(Math.floor(maxRun), 0, size) || maxRun !== Math.floor(maxRun)) return false;
-  if (!intInRange(Math.floor(movesUsed), 1, size * 4) || movesUsed !== Math.floor(movesUsed)) return false;
+  if (!intInRange(Math.floor(movesUsed), 1, Number(mode.moves || size * 4)) || movesUsed !== Math.floor(movesUsed)) return false;
+  if (target !== Number(mode.target)) return false;
+  if (size !== Number(mode.size)) return false;
 
   if (outcome === "win" && score < target) return false;
   if (outcome === "loss" && score >= target) return false;
@@ -254,11 +278,14 @@ export function validateDicePayload(payload, outcome, performanceKey, seed) {
 }
 
 export function validateScrabblePayload(payload, outcome, performanceKey) {
+  const mode = getCatalogMode("scrabble", payload?.modeKey);
+  if (!mode) return false;
   const rackRaw = Array.isArray(payload?.rack) ? payload.rack : [];
   const rack = rackRaw
     .map((item) => normalizeScrabbleWord(item))
     .filter(Boolean);
   if (!intInRange(rack.length, 3, 12)) return false;
+  if (rack.length !== Number(mode.rackSize || 7)) return false;
   if (!rack.every((ch) => ch.length === 1)) return false;
   if (!rack.every((ch) => SCRABBLE_ALPHABET.has(ch))) return false;
 

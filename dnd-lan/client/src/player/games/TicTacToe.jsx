@@ -74,6 +74,7 @@ export default function TicTacToeGame({
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Обычный";
+  const modeKey = String(mode?.key || "normal");
 
   const winnerLine = useMemo(() => getWinnerLine(board), [board]);
   const winner = useMemo(() => (winnerLine ? board[winnerLine[0]] : getWinner(board)), [board, winnerLine]);
@@ -128,7 +129,13 @@ export default function TicTacToeGame({
     if (status === "playing") return;
     if (!onSubmitResult || settling || result) return;
     const performance = status === "win" && aiWins === 0 && roundsToWin > 1 ? "sweep" : "normal";
-    const payload = { moves, playerSymbol: "X", outcome: status };
+    const payload = {
+      modeKey,
+      moves,
+      playerSymbol: "X",
+      aiWins,
+      outcome: status
+    };
     const proof = makeProof("", payload);
     setSettling(true);
     setApiErr("");
@@ -136,7 +143,7 @@ export default function TicTacToeGame({
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, moves, aiWins, roundsToWin]);
+  }, [status, onSubmitResult, settling, result, moves, aiWins, roundsToWin, modeKey]);
 
   function handlePick(idx) {
     if (status !== "playing" || disabled || readOnly) return;

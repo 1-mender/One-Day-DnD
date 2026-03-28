@@ -53,6 +53,7 @@ export default function ScrabbleBlitzGame({
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
+  const modeKey = String(mode?.key || "normal");
 
   const normalizedWord = useMemo(() => normalizeWord(word), [word]);
   const isWordPlayable = useMemo(() => canFormWordFromRack(normalizedWord, rack), [normalizedWord, rack]);
@@ -91,7 +92,7 @@ export default function ScrabbleBlitzGame({
     const performance = status === "win"
       ? (normalized.length >= 6 ? "long" : hasRare ? "rare" : "normal")
       : "normal";
-    const payload = { word: normalized, rack };
+    const payload = { modeKey, word: normalized, rack };
     const proof = makeProof("", payload);
     setSettling(true);
     setApiErr("");
@@ -99,7 +100,7 @@ export default function ScrabbleBlitzGame({
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, word, rack]);
+  }, [status, onSubmitResult, settling, result, word, rack, modeKey]);
 
   function handleSubmit() {
     if (status !== "playing" || disabled || readOnly) return;

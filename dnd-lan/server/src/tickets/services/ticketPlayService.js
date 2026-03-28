@@ -53,8 +53,8 @@ export function processTicketPlay({ db, io, me, body, takeSeed, nowFn, buildMatc
   const minPlayMs = Number(MIN_ARCADE_PLAY_MS[gameKey] || 0);
   if (outcome === "win" && minPlayMs > 0 && elapsedMs < minPlayMs) return error(400, "invalid_proof");
 
-  if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "")) return error(400, "invalid_proof");
-  if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome })) return error(400, "invalid_proof");
+  if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "", performanceKey)) return error(400, "invalid_proof");
+  if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome }, performanceKey)) return error(400, "invalid_proof");
   if (gameKey === "match3" && !validateMatch3Payload(payload, outcome, performanceKey)) return error(400, "invalid_proof");
   if (gameKey === "dice" && !validateDicePayload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
   if (gameKey === "scrabble" && !validateScrabblePayload(payload, outcome, performanceKey)) return error(400, "invalid_proof");

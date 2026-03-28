@@ -272,6 +272,8 @@ export default function Match3Game({
     resetGame();
   }, [open, resetGame]);
 
+  const modeKey = String(config.key || mode?.key || "normal");
+
   useEffect(() => {
     if (status === "playing") return;
     if (!onSubmitResult || settling || result) return;
@@ -280,6 +282,7 @@ export default function Match3Game({
       ? (maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal")
       : "normal";
     const payload = {
+      modeKey,
       score,
       target: config.target,
       size: config.size,
@@ -293,7 +296,7 @@ export default function Match3Game({
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, score, config, movesLeft]);
+  }, [status, onSubmitResult, settling, result, score, config, movesLeft, modeKey]);
 
   useEffect(() => {
     if (status !== "playing") return;
@@ -383,6 +386,7 @@ export default function Match3Game({
       ? (maxRun >= 5 ? "combo5" : maxRun >= 4 ? "combo4" : "normal")
       : "normal";
     const payload = {
+      modeKey,
       score,
       target: config.target,
       size: config.size,

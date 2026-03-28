@@ -152,8 +152,10 @@ test("play accepts valid ttt payload with issued seed/proof token", async () => 
   const playerId = createPlayer("Proofed");
   const token = createSession(playerId);
   const payload = {
+    modeKey: "normal",
     moves: [0, 3, 1, 4, 2],
     playerSymbol: "X",
+    aiWins: 0,
     outcome: "win"
   };
 
@@ -189,8 +191,10 @@ test("issued seed/proof token is one-time", async () => {
   const playerId = createPlayer("SingleUse");
   const token = createSession(playerId);
   const payload = {
+    modeKey: "normal",
     moves: [0, 3, 1, 4, 2],
     playerSymbol: "X",
+    aiWins: 0,
     outcome: "win"
   };
 
@@ -254,6 +258,7 @@ test("match3 win rejects payload with score below target", async () => {
       outcome: "win",
       performance: "normal",
       payload: {
+        modeKey: "normal",
         score: 10,
         target: 120,
         size: 6,
@@ -267,6 +272,7 @@ test("match3 win rejects payload with score below target", async () => {
         outcome: "win",
         performance: "normal",
         payload: {
+          modeKey: "normal",
           score: 10,
           target: 120,
           size: 6,
@@ -296,6 +302,7 @@ test("scrabble rare performance requires rare letter in word", async () => {
       outcome: "win",
       performance: "rare",
       payload: {
+        modeKey: "normal",
         word: "\u0410\u0411\u0412",
         rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
       },
@@ -306,6 +313,7 @@ test("scrabble rare performance requires rare letter in word", async () => {
         outcome: "win",
         performance: "rare",
         payload: {
+          modeKey: "normal",
           word: "\u0410\u0411\u0412",
           rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
         }
@@ -393,6 +401,86 @@ test("dice rejects mismatched category", async () => {
         gameKey: "dice",
         outcome: "win",
         performance: "elite",
+        payload
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "invalid_proof");
+});
+
+test("guess rejects spoofed first-attempt bonus when payload does not match seeded result", async () => {
+  const playerId = createPlayer("Guess-Spoof");
+  const token = createSession(playerId);
+  seedTickets(playerId, 20);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=guess", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const payload = {
+    modeKey: "normal",
+    picks: [
+      { suit: "hearts", rank: "A" },
+      { suit: "spades", rank: "A" },
+      { suit: "clubs", rank: "A" }
+    ],
+    outcome: "win"
+  };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "guess",
+      outcome: "win",
+      performance: "first",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "guess",
+        outcome: "win",
+        performance: "first",
+        payload
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "invalid_proof");
+});
+
+test("match3 rejects payload with mismatched mode settings", async () => {
+  const playerId = createPlayer("Match3-Mode");
+  const token = createSession(playerId);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=match3", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const payload = {
+    modeKey: "compact",
+    score: 120,
+    target: 120,
+    size: 6,
+    maxRun: 3,
+    movesUsed: 10
+  };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "match3",
+      outcome: "win",
+      performance: "normal",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "match3",
+        outcome: "win",
+        performance: "normal",
         payload
       })
     }

@@ -92,6 +92,7 @@ export default function GuessCardGame({
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Классика";
+  const modeKey = String(modeConfig.key || mode?.key || "easy");
 
   const hints = useMemo(() => {
     if (!target) return [];
@@ -175,9 +176,8 @@ export default function GuessCardGame({
       ? (winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third")
       : "normal";
     const payload = {
+      modeKey,
       picks: pickHistory,
-      ranks: modeConfig.ranks,
-      maxAttempts: modeConfig.maxAttempts,
       outcome: status
     };
     setSettling(true);
@@ -186,7 +186,7 @@ export default function GuessCardGame({
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, winAttempt, pickHistory, seed, seedProof, modeConfig]);
+  }, [status, onSubmitResult, settling, result, winAttempt, pickHistory, seed, seedProof, modeConfig, modeKey]);
 
   function isRevealed(id) {
     return revealedSet.has(id);
@@ -224,9 +224,8 @@ export default function GuessCardGame({
       ? (winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third")
       : "normal";
     const payload = {
+      modeKey,
       picks: pickHistory,
-      ranks: modeConfig.ranks,
-      maxAttempts: modeConfig.maxAttempts,
       outcome: status
     };
     setSettling(true);
