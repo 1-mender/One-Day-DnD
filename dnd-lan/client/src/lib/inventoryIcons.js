@@ -2,15 +2,29 @@ import {
   GiAxeSwing,
   GiBowieKnife,
   GiBowArrow,
+  GiCardExchange,
+  GiCrystalCluster,
+  GiDiploma,
   GiBroadsword,
+  GiEnvelope,
   GiCrossbow,
   GiFlail,
+  GiLockedDoor,
+  GiPadlock,
+  GiPassport,
+  GiPlainDagger,
   GiHalberd,
   GiHammerNails,
   GiKatana,
   GiMaceHead,
+  GiScrollQuill,
   GiShield,
   GiSpears,
+  GiSparkSpirit,
+  GiStonePile,
+  GiStumpRegrowth,
+  GiTicket,
+  GiWaxSeal,
   GiWarAxe,
   GiBreastplate,
   GiHelmet,
@@ -41,7 +55,6 @@ import {
   GiTorch,
   GiRing,
   GiScrollUnfurled,
-  GiScrollQuill,
   GiQuillInk,
   GiSpellBook,
   GiCrystalBall,
@@ -168,7 +181,10 @@ export const INVENTORY_ICON_SECTIONS = [
       { key: "gi_bookmark", label: "Закладка", Icon: GiBookmark },
       { key: "gi_scroll_unfurled", label: "Свиток", Icon: GiScrollUnfurled },
       { key: "gi_scroll_quill", label: "Свиток с пером", Icon: GiScrollQuill },
-      { key: "gi_quill_ink", label: "Перо и чернила", Icon: GiQuillInk }
+      { key: "gi_quill_ink", label: "Перо и чернила", Icon: GiQuillInk },
+      { key: "gi_spell_scroll", label: "Запечатанный свиток", Icon: GiScrollQuill },
+      { key: "gi_envelope", label: "Письмо", Icon: GiEnvelope },
+      { key: "gi_diploma", label: "Грамота", Icon: GiDiploma }
     ]
   },
   {
@@ -179,16 +195,22 @@ export const INVENTORY_ICON_SECTIONS = [
       { key: "gi_shoulder_bag", label: "Сумка через плечо", Icon: GiShoulderBag },
       { key: "gi_key", label: "Ключ", Icon: GiKey },
       { key: "gi_keyring", label: "Связка ключей", Icon: GiKeyring },
+      { key: "gi_ticket", label: "Жетон / билет", Icon: GiTicket },
+      { key: "gi_passport", label: "Пропуск", Icon: GiPassport },
       { key: "gi_lockpicks", label: "Отмычки", Icon: GiLockpicks },
       { key: "gi_chest", label: "Сундук", Icon: GiChest },
       { key: "gi_locked_chest", label: "Запертый сундук", Icon: GiLockedChest },
+      { key: "gi_fluffy_treasure", label: "Мешочек трофеев", Icon: GiShoulderBag },
+      { key: "gi_locked_door", label: "Запертая дверь", Icon: GiLockedDoor },
+      { key: "gi_padlock", label: "Замок", Icon: GiPadlock },
       { key: "gi_lantern", label: "Фонарь", Icon: GiLantern },
       { key: "gi_lantern_flame", label: "Фонарь с огнём", Icon: GiLanternFlame },
       { key: "gi_torch", label: "Факел", Icon: GiTorch },
       { key: "gi_rope_coil", label: "Верёвка", Icon: GiRopeCoil },
       { key: "gi_compass", label: "Компас", Icon: GiCompass },
       { key: "gi_gems", label: "Драгоценности", Icon: GiGems },
-      { key: "gi_ring", label: "Кольцо", Icon: GiRing }
+      { key: "gi_ring", label: "Кольцо", Icon: GiRing },
+      { key: "gi_card_exchange", label: "Карта / жетон прохода", Icon: GiCardExchange }
     ]
   },
   {
@@ -197,7 +219,20 @@ export const INVENTORY_ICON_SECTIONS = [
     items: [
       { key: "gi_coins", label: "Монеты", Icon: GiCoins },
       { key: "gi_gold_stack", label: "Золото", Icon: GiGoldStack },
-      { key: "gi_treasure_map", label: "Карта сокровищ", Icon: GiTreasureMap }
+      { key: "gi_treasure_map", label: "Карта сокровищ", Icon: GiTreasureMap },
+      { key: "gi_crystal_cluster", label: "Кристаллы", Icon: GiCrystalCluster },
+      { key: "gi_stone_pile", label: "Осколки / камни", Icon: GiStonePile }
+    ]
+  },
+  {
+    key: "story",
+    label: "Сюжет и особые",
+    items: [
+      { key: "gi_wax_seal", label: "Печать", Icon: GiWaxSeal },
+      { key: "gi_scroll_seal", label: "Запечатанный приказ", Icon: GiWaxSeal },
+      { key: "gi_spark_spirit", label: "Талисман удачи", Icon: GiSparkSpirit },
+      { key: "gi_plain_dagger", label: "Ритуальный предмет", Icon: GiPlainDagger },
+      { key: "gi_stump_regrowth", label: "Древний артефакт", Icon: GiStumpRegrowth }
     ]
   },
   {

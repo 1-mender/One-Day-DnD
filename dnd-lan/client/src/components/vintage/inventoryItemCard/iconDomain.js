@@ -26,9 +26,12 @@ const TAG_ICON_RULES = [
   { icon: ScrollText, match: ["scroll", "свиток"] },
   { icon: BookOpen, match: ["book", "tome", "grimoire", "книга", "том"] },
   { icon: FlaskConical, match: ["potion", "elixir", "flask", "зель", "эликс"] },
-  { icon: Gem, match: ["gem", "jewel", "ring", "amulet", "камень", "самоцвет", "амулет", "кольц"] },
-  { icon: Crown, match: ["crown", "legendary", "релик", "артефакт"] },
+  { icon: Gem, match: ["gem", "jewel", "ring", "amulet", "камень", "самоцвет", "амулет", "кольц", "кристалл", "осколок"] },
+  { icon: Crown, match: ["crown", "legendary", "релик", "артефакт", "талисман", "печать", "идол"] },
   { icon: Key, match: ["key", "ключ"] },
+  { icon: ScrollText, match: ["letter", "note", "map", "письмо", "запис", "карта", "подсказк"] },
+  { icon: Backpack, match: ["chest", "cache", "сундук", "тайник", "box", "crate"] },
+  { icon: Gem, match: ["token", "pass", "ticket", "жетон", "пропуск", "билет"] },
   { icon: Skull, match: ["necromancy", "skull", "curse", "проклят", "череп"] },
   { icon: Backpack, match: ["bag", "backpack", "рюк", "сумк", "pack"] }
 ];
@@ -40,6 +43,9 @@ function pickFallbackText(tokens) {
   if (tags.some((tag) => tag.includes("potion") || tag.includes("зель") || tag.includes("elixir"))) return "ЗЕЛЬЕ";
   if (tags.some((tag) => tag.includes("scroll") || tag.includes("свит"))) return "СВИТОК";
   if (tags.some((tag) => tag.includes("book") || tag.includes("книга"))) return "КНИГА";
+  if (tags.some((tag) => tag.includes("key") || tag.includes("ключ") || tag.includes("lock"))) return "КЛЮЧ";
+  if (tags.some((tag) => tag.includes("chest") || tag.includes("сундук") || tag.includes("тайник"))) return "ЛУТ";
+  if (tags.some((tag) => tag.includes("map") || tag.includes("карта") || tag.includes("жетон") || tag.includes("пропуск"))) return "МЕТКА";
   if (tags.some((tag) => tag.includes("ring") || tag.includes("amulet") || tag.includes("камень"))) return "АРТЕФ";
   return "ПРЕДМ";
 }
