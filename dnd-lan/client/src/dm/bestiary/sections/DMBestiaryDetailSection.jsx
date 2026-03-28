@@ -1,4 +1,5 @@
 import MarkdownView from "../../../components/markdown/MarkdownView.jsx";
+import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 
 export default function DMBestiaryDetailSection({ controller }) {
   const { readOnly, selectMonster, selected, startEdit, toggleMonsterHidden } = controller;
@@ -19,11 +20,22 @@ export default function DMBestiaryDetailSection({ controller }) {
             </div>
           </div>
           <hr />
-          <div className="row u-row-wrap">
-            {selected.habitat ? <span className="badge secondary">Среда: {selected.habitat}</span> : null}
-            <span className={`badge ${selected.is_hidden ? "off" : "ok"}`}>
-              {selected.is_hidden ? "Скрыт" : "Публичный"}
-            </span>
+          <div className="dm-bestiary-detail-meta">
+            <div className="dm-bestiary-detail-portrait">
+              <PolaroidFrame
+                src={selected.images?.[0]?.url}
+                alt={selected.name}
+                fallback={(selected.name || "?").slice(0, 2).toUpperCase()}
+                className="lg"
+              />
+            </div>
+            <div className="dm-bestiary-detail-badges">
+              {selected.habitat ? <span className="badge secondary">Среда: {selected.habitat}</span> : null}
+              <span className="badge secondary">CR: {selected.cr || "-"}</span>
+              <span className={`badge ${selected.is_hidden ? "off" : "ok"}`}>
+                {selected.is_hidden ? "Скрыт" : "Публичный"}
+              </span>
+            </div>
           </div>
           <div className="row u-row-gap-8 u-row-wrap u-mt-8">
             <button className="btn secondary" onClick={() => toggleMonsterHidden(selected)} disabled={readOnly}>
@@ -43,7 +55,11 @@ export default function DMBestiaryDetailSection({ controller }) {
           ) : null}
         </>
       ) : (
-        <div className="small">Выберите монстра, чтобы увидеть детали.</div>
+        <div className="dm-bestiary-detail-empty">
+          <div className="tf-overline">Selected creature</div>
+          <div className="u-fw-800 u-mt-6">Выберите монстра</div>
+          <div className="small u-mt-6">Слева появится карточка, справа откроются детали, изображения и действия.</div>
+        </div>
       )}
     </div>
   );

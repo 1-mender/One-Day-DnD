@@ -34,28 +34,30 @@ export default function DMBestiaryListSection({ controller }) {
         </div>
         <hr />
         {err ? <div className="badge off">Ошибка: {err}</div> : null}
+        <div className="dm-bestiary-summary">
+          <span className={`badge ${enabled ? "ok" : "off"}`}>{enabled ? "Видно игрокам" : "Скрыто для игроков"}</span>
+          <span className="badge secondary">Монстров: {filtered.length}</span>
+          <span className="badge secondary">Всего в архиве: {controller.items.length}</span>
+        </div>
         <div className="tf-panel tf-command-bar dm-bestiary-toolbar">
           <div className="tf-section-copy">
             <div className="tf-section-kicker">Search archive</div>
             <div className="dm-bestiary-section-title">Поиск и видимость</div>
           </div>
-          <div className="row u-row-wrap">
-          <input
-            value={q}
-            onChange={(event) => setQ(event.target.value)}
-            placeholder="Поиск..."
-            aria-label="Поиск монстров"
-            className="u-w-min-360"
-          />
-          <select value={vis} onChange={(event) => setVis(event.target.value)} aria-label="Фильтр видимости монстров" className="u-w-180">
-            <option value="">Видимость: все</option>
-            <option value="public">Публичные</option>
-            <option value="hidden">Скрытые</option>
-          </select>
-          <span className={`badge ${enabled ? "ok" : "off"}`}>
-            {enabled ? "Видно игрокам" : "Скрыто для игроков"}
-          </span>
-          <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
+          <div className="row u-row-wrap dm-bestiary-toolbar-actions">
+            <input
+              value={q}
+              onChange={(event) => setQ(event.target.value)}
+              placeholder="Поиск..."
+              aria-label="Поиск монстров"
+              className="u-w-min-360"
+            />
+            <select value={vis} onChange={(event) => setVis(event.target.value)} aria-label="Фильтр видимости монстров" className="u-w-180">
+              <option value="">Видимость: все</option>
+              <option value="public">Публичные</option>
+              <option value="hidden">Скрытые</option>
+            </select>
+            <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
           </div>
         </div>
         <div className="list u-list-mt-12 dm-bestiary-list">

@@ -31,17 +31,25 @@ export default function DMBestiaryManageSection({ controller }) {
         <div className="tf-section-kicker">Archive ops</div>
         <div className="u-fw-800 dm-bestiary-section-title">Управление</div>
       </div>
-      <div className="small">Экспорт / импорт / видимость</div>
+      <div className="small">Видимость каталога, экспорт и безопасный импорт.</div>
       <hr />
-      <div className="row u-row-gap-8 u-row-wrap">
+      <div className="dm-bestiary-manage-summary">
+        <span className={`badge ${enabled ? "ok" : "off"}`}>{enabled ? "Каталог открыт игрокам" : "Каталог скрыт"}</span>
+        <span className="badge secondary">Импорт: {portMode === "replace" ? "замена" : "слияние"}</span>
+        <span className="badge secondary">Совпадения: {portOnExisting === "update" ? "обновлять" : "пропускать"}</span>
+      </div>
+      <div className="row u-row-gap-8 u-row-wrap u-mt-10">
         <button className="btn secondary" onClick={toggleEnabled} disabled={readOnly}>
           {enabled ? "Скрыть от игроков" : "Показать игрокам"}
         </button>
-        <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
+        <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить монстра</button>
       </div>
 
-      <div className="row u-row-gap-8 u-row-center-wrap u-mt-10">
-        <button className="btn secondary" onClick={doExport} disabled={portBusy}>Экспорт JSON</button>
+      <div className="dm-bestiary-import-card u-mt-12">
+        <div className="u-fw-800">Импорт и экспорт</div>
+        <div className="small">Сначала проверьте JSON, потом применяйте план.</div>
+        <div className="row u-row-gap-8 u-row-center-wrap u-mt-10">
+          <button className="btn secondary" onClick={doExport} disabled={portBusy}>Экспорт JSON</button>
         <input
           ref={importRef}
           type="file"
@@ -50,23 +58,26 @@ export default function DMBestiaryManageSection({ controller }) {
           aria-label="Импорт бестиария из JSON"
           onChange={onPickImport}
         />
-        <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Импорт JSON (проверка)</button>
-        <select value={portMode} onChange={(event) => setPortMode(event.target.value)} aria-label="Режим импорта бестиария" className="u-select-control" disabled={readOnly || portBusy}>
-          <option value="merge">режим: слияние</option>
-          <option value="replace">режим: замена</option>
-        </select>
-        <select value={portMatch} onChange={(event) => setPortMatch(event.target.value)} aria-label="Сопоставление при импорте" className="u-select-control" disabled={readOnly || portBusy}>
-          <option value="name">сопоставление: по имени</option>
-          <option value="id">сопоставление: по id</option>
-        </select>
-        <select value={portOnExisting} onChange={(event) => setPortOnExisting(event.target.value)} aria-label="Действие при совпадении монстров" className="u-select-control" disabled={readOnly || portBusy}>
-          <option value="update">при совпадении: обновлять</option>
-          <option value="skip">при совпадении: пропустить</option>
-        </select>
-        <label className="row u-row-gap-6">
-          <input type="checkbox" checked={portImagesMeta} onChange={(event) => setPortImagesMeta(event.target.checked)} disabled={readOnly || portBusy} />
-          <span className="small">импортировать метаданные картинок</span>
-        </label>
+          <button className="btn" onClick={() => importRef.current?.click()} disabled={readOnly || portBusy}>Импорт JSON (проверка)</button>
+        </div>
+        <div className="dm-bestiary-import-grid u-mt-10">
+          <select value={portMode} onChange={(event) => setPortMode(event.target.value)} aria-label="Режим импорта бестиария" className="u-select-control" disabled={readOnly || portBusy}>
+            <option value="merge">режим: слияние</option>
+            <option value="replace">режим: замена</option>
+          </select>
+          <select value={portMatch} onChange={(event) => setPortMatch(event.target.value)} aria-label="Сопоставление при импорте" className="u-select-control" disabled={readOnly || portBusy}>
+            <option value="name">сопоставление: по имени</option>
+            <option value="id">сопоставление: по id</option>
+          </select>
+          <select value={portOnExisting} onChange={(event) => setPortOnExisting(event.target.value)} aria-label="Действие при совпадении монстров" className="u-select-control" disabled={readOnly || portBusy}>
+            <option value="update">при совпадении: обновлять</option>
+            <option value="skip">при совпадении: пропустить</option>
+          </select>
+          <label className="row u-row-gap-6 dm-bestiary-import-check">
+            <input type="checkbox" checked={portImagesMeta} onChange={(event) => setPortImagesMeta(event.target.checked)} disabled={readOnly || portBusy} />
+            <span className="small">импортировать метаданные картинок</span>
+          </label>
+        </div>
       </div>
       {portErr ? <div className="badge off u-mt-10">Ошибка: {portErr}</div> : null}
       {portMsg ? <div className="badge ok u-mt-10">{portMsg}</div> : null}

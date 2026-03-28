@@ -5253,6 +5253,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   gap: 12px;
 }
 
+.dm-bestiary-summary{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.dm-bestiary-toolbar-actions{
+  width: 100%;
+  align-items: center;
+}
+
 .dm-bestiary-section-title{
   font-family: var(--font-ui);
   font-size: 15px;
@@ -5275,6 +5287,26 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: var(--tf-shadow-soft);
 }
 
+.dm-bestiary-detail-meta{
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 4px;
+}
+
+.dm-bestiary-detail-badges{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dm-bestiary-detail-empty{
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
 .dm-bestiary-detail-title{
   color: var(--map-ink);
 }
@@ -5285,9 +5317,59 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: var(--tf-shadow-soft);
 }
 
+.dm-bestiary-manage-summary{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dm-bestiary-import-card{
+  border-radius: 18px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(242, 235, 221, 0.94));
+  box-shadow: var(--tf-shadow-soft);
+  padding: 14px;
+}
+
+.dm-bestiary-import-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.dm-bestiary-import-check{
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background: rgba(255,255,255,0.72);
+}
+
+.dm-bestiary-editor{
+  gap: 14px;
+}
+
+.dm-bestiary-editor-section{
+  border-radius: 18px;
+  border: 1px solid rgba(118, 100, 70, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(242, 235, 221, 0.94));
+  box-shadow: var(--tf-shadow-soft);
+  padding: 14px;
+}
+
 @media (max-width: 720px){
   .tf-dm-bestiary-shell{
     padding: 18px;
+  }
+
+  .dm-bestiary-import-grid{
+    grid-template-columns: 1fr;
+  }
+
+  .dm-bestiary-detail-meta{
+    flex-direction: column;
   }
 }
 
