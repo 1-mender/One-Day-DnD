@@ -32,6 +32,15 @@ const CATEGORY_SCORE = {
   five: 7
 };
 
+const DIE_PIPS = {
+  1: [[1, 1]],
+  2: [[0, 0], [2, 2]],
+  3: [[0, 0], [1, 1], [2, 2]],
+  4: [[0, 0], [2, 0], [0, 2], [2, 2]],
+  5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]],
+  6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]]
+};
+
 function makeRng(seed) {
   let h = 0;
   for (let i = 0; i < seed.length; i += 1) {
@@ -81,6 +90,24 @@ function requiredCategoryLabel(targetScore) {
   return "Пара или лучше";
 }
 
+function performanceLabel(score) {
+  if (score >= 6) return "Элитный бросок";
+  if (score >= 4) return "Сильный бросок";
+  if (score >= 2) return "Рабочая комбинация";
+  return "Слабый бросок";
+}
+
+function renderDiePips(value) {
+  const points = DIE_PIPS[Number(value)] || [];
+  return (
+    <span className="dice-die-pips" aria-hidden="true">
+      {points.map(([x, y], idx) => (
+        <span key={`${value}_${idx}`} className={`dice-pip x${x} y${y}`} />
+      ))}
+    </span>
+  );
+}
+
 export default function DiceLogicGame({
   open,
   onClose,
@@ -118,6 +145,16 @@ export default function DiceLogicGame({
   const currentScore = useMemo(() => getCategoryScore(currentCategory), [currentCategory]);
   const meetsTarget = currentScore >= Number(modeConfig.targetScore || 0);
   const selectedCount = rerollMask.reduce((sum, value) => sum + Number(!!value), 0);
+  const currentStage = !modeConfig.allowReroll
+    ? "Один бросок"
+    : rerolled
+      ? "Финальный результат"
+      : "Выбор для реролла";
+  const stageHint = !modeConfig.allowReroll
+    ? "Оцени выпавшую комбинацию и сразу зафиксируй её."
+    : rerolled
+      ? "Переброс уже потрачен. Осталось оценить итоговую комбинацию."
+      : "Отметь кости, которые хочешь перебросить, чтобы улучшить комбинацию.";
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
@@ -257,6 +294,21 @@ export default function DiceLogicGame({
           <button className="btn secondary" onClick={onClose}>Выйти</button>
         </div>
 
+        <div className="dice-brief">
+          <div className="dice-stage-card">
+            <div className="hud-label">Этап</div>
+            <div className="dice-stage-title">{currentStage}</div>
+            <div className="small">{stageHint}</div>
+          </div>
+          <div className={`dice-goal-card${meetsTarget ? " met" : ""}`}>
+            <div className="hud-label">Цель раунда</div>
+            <div className="dice-goal-line">{requiredCategoryLabel(modeConfig.targetScore)}</div>
+            <div className="small">
+              Сейчас: {getCategoryLabel(currentCategory)} • {performanceLabel(currentScore)}
+            </div>
+          </div>
+        </div>
+
         <div className="dice-hud">
           <div className="hud-card">
             <div className="hud-label">Время</div>
@@ -288,12 +340,14 @@ export default function DiceLogicGame({
               disabled={disabled || readOnly || status !== "playing" || seedBusy || rerolled || !modeConfig.allowReroll}
               aria-label={`Кость ${index + 1}: ${value}${rerollMask[index] ? ", выбрана для переброса" : ""}`}
             >
+              {renderDiePips(value)}
               <span className="dice-die-value">{value}</span>
+              {rerollMask[index] ? <span className="dice-die-tag">Реролл</span> : null}
             </button>
           ))}
         </div>
 
-        <div className="small arcade-game-hint">
+        <div className="small arcade-game-hint dice-inline-hint">
           {modeConfig.allowReroll && !rerolled
             ? `Выбери кости для переброса. Сейчас отмечено: ${selectedCount}.`
             : "Оцени итоговую комбинацию и зафиксируй результат."}
@@ -303,7 +357,7 @@ export default function DiceLogicGame({
           {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
             <span
               key={key}
-              className={`meta-chip${currentCategory === key ? " active" : ""}${getCategoryScore(key) >= Number(modeConfig.targetScore || 0) ? " is-target" : ""}`}
+              className={`meta-chip${currentCategory === key ? " active" : ""}${getCategoryScore(key) >= Number(modeConfig.targetScore || 0) ? " is-target" : ""}${meetsTarget && currentCategory === key ? " met" : ""}`}
             >
               {label}
             </span>
@@ -329,6 +383,13 @@ export default function DiceLogicGame({
         {status !== "playing" ? (
           <div className={`dice-result ${status}`}>
             <div className="dice-result-title">{status === "win" ? "Удачный бросок!" : "Комбинация не дотянула"}</div>
+            <div className="dice-result-roll" aria-hidden="true">
+              {currentRoll.map((value, index) => (
+                <span key={`result_${index}_${value}`} className="dice-result-chip">
+                  {value}
+                </span>
+              ))}
+            </div>
             <div className="small">
               Итог: {currentRoll.join(" • ")} • {getCategoryLabel(currentCategory)}
             </div>

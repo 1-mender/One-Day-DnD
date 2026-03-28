@@ -223,26 +223,6 @@ export function validateMatch3Payload(payload, outcome, performanceKey) {
   return true;
 }
 
-export function validateUnoPayload(payload, outcome, performanceKey) {
-  const playerDraws = Number(payload?.playerDraws);
-  const handSize = Number(payload?.handSize);
-  const playerCardsLeft = Number(payload?.playerCardsLeft);
-  const aiCardsLeft = Number(payload?.aiCardsLeft);
-  const turns = Number(payload?.turns);
-
-  if (!intInRange(Math.floor(playerDraws), 0, 60) || playerDraws !== Math.floor(playerDraws)) return false;
-  if (!intInRange(Math.floor(handSize), 3, 12) || handSize !== Math.floor(handSize)) return false;
-  if (!intInRange(Math.floor(playerCardsLeft), 0, 40) || playerCardsLeft !== Math.floor(playerCardsLeft)) return false;
-  if (!intInRange(Math.floor(aiCardsLeft), 0, 40) || aiCardsLeft !== Math.floor(aiCardsLeft)) return false;
-  if (!intInRange(Math.floor(turns), 1, 240) || turns !== Math.floor(turns)) return false;
-  if (playerDraws > turns) return false;
-  if (outcome === "win" && (playerCardsLeft !== 0 || aiCardsLeft <= 0)) return false;
-  if (outcome === "loss" && (aiCardsLeft !== 0 || playerCardsLeft <= 0)) return false;
-  if (outcome === "loss" && performanceKey !== "normal") return false;
-  if (outcome === "win" && performanceKey === "clean" && playerDraws !== 0) return false;
-  return true;
-}
-
 export function validateDicePayload(payload, outcome, performanceKey, seed) {
   const modeKey = String(payload?.modeKey || "").trim().toLowerCase();
   const mode = DICE_MODE_RULES[modeKey];
