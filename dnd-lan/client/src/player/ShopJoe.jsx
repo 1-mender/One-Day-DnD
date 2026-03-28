@@ -2,6 +2,7 @@ import React from "react";
 import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../foundation/providers/index.js";
 import { formatError } from "../lib/formatError.js";
+import { getInventoryIcon } from "../lib/inventoryIcons.js";
 import ShopMascotStall from "./shop/ShopMascotStall.jsx";
 import ChestOpenModal from "./shop/ChestOpenModal.jsx";
 import { buildShopCatalog } from "./shop/shopCatalog.js";
@@ -322,11 +323,19 @@ export default function ShopJoe() {
             <div className="shop-grid" style={{ marginTop: 10 }}>
               {section.items.map((item) => {
                 const cardBlocked = item.itemMissingInRules || item.itemDisabled;
+                const ItemIcon = getInventoryIcon(item.iconKey);
 
                 return (
                   <div key={item.key} className={`item taped shop-card tf-shop-card${cardBlocked ? " disabled-card" : ""}${item.isAvailableNow ? " is-buyable" : " is-locked"}`}>
                     <div className="shop-head">
-                      <div className="shop-item-title">{item.title}</div>
+                      <div className="shop-title-wrap">
+                        {ItemIcon ? (
+                          <span className="shop-item-icon" aria-hidden="true">
+                            <ItemIcon />
+                          </span>
+                        ) : null}
+                        <div className="shop-item-title">{item.title}</div>
+                      </div>
                       <span className={`badge ${cardBlocked ? "off" : `badge-impact ${item.impactClass}`}`}>
                         {item.itemMissingInRules ? "Нет в правилах" : item.itemDisabled ? "Закрыто" : item.impact}
                       </span>

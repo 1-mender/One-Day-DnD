@@ -2878,6 +2878,34 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   margin-bottom: 6px;
 }
 
+.tf-shop-shell .shop-title-wrap{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.tf-shop-shell .shop-item-icon{
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: #35516c;
+  background: linear-gradient(180deg, rgba(248, 245, 238, 0.96), rgba(235, 228, 214, 0.92));
+  border: 1px solid rgba(169, 146, 108, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 8px 20px rgba(143, 123, 85, 0.16);
+}
+
+.tf-shop-shell .shop-item-icon svg{
+  width: 24px;
+  height: 24px;
+}
+
 .tf-shop-shell .shop-item-title{
   color: #2e261c;
   font-size: 28px;
@@ -3280,6 +3308,21 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .tf-shop-shell .shop-item-title{
     font-size: 22px;
+  }
+
+  .tf-shop-shell .shop-title-wrap{
+    gap: 10px;
+  }
+
+  .tf-shop-shell .shop-item-icon{
+    width: 42px;
+    height: 42px;
+    border-radius: 14px;
+  }
+
+  .tf-shop-shell .shop-item-icon svg{
+    width: 21px;
+    height: 21px;
   }
 
   .tf-shop-shell .shop-card-blurb{

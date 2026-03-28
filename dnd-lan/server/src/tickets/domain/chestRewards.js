@@ -20,7 +20,7 @@ const CHEST_LOOT_TABLE = Object.freeze([
       rarity: "uncommon",
       weight: 0,
       visibility: "hidden",
-      tags: ["сундук", "кристалл", "реагент", "icon:gi_rune_stone"]
+      tags: ["сундук", "кристалл", "реагент", "icon:gi_crystal_cluster"]
     }
   },
   {
@@ -56,7 +56,7 @@ const CHEST_LOOT_TABLE = Object.freeze([
       rarity: "rare",
       weight: 0,
       visibility: "hidden",
-      tags: ["сундук", "талисман", "удача", "icon:gi_ring"]
+      tags: ["сундук", "талисман", "удача", "печать", "icon:gi_wax_seal"]
     }
   },
   {
@@ -68,7 +68,7 @@ const CHEST_LOOT_TABLE = Object.freeze([
       rarity: "uncommon",
       weight: 0,
       visibility: "hidden",
-      tags: ["сундук", "свиток", "подсказка", "icon:gi_scroll_unfurled"]
+      tags: ["сундук", "свиток", "подсказка", "icon:gi_scroll_quill"]
     }
   },
   {
@@ -80,7 +80,7 @@ const CHEST_LOOT_TABLE = Object.freeze([
       rarity: "very_rare",
       weight: 0,
       visibility: "hidden",
-      tags: ["сундук", "жетон", "доступ", "icon:gi_crown"]
+      tags: ["сундук", "жетон", "доступ", "пропуск", "icon:gi_passport"]
     }
   },
   {
