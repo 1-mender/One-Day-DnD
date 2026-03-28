@@ -12,6 +12,8 @@ const LINES = [
   [0, 4, 8],
   [2, 4, 6]
 ];
+const CORNERS = [0, 2, 6, 8];
+const SIDES = [1, 3, 5, 7];
 
 function getWinner(board) {
   for (const [a, b, c] of LINES) {
@@ -46,8 +48,13 @@ function pickAiMove(board) {
   const block = findWinningMove(board, "X");
   if (block != null) return block;
   if (!board[4]) return 4;
-  const empty = board.map((v, idx) => (v ? null : idx)).filter((v) => v != null);
-  return empty[Math.floor(Math.random() * empty.length)];
+  for (const idx of CORNERS) {
+    if (!board[idx]) return idx;
+  }
+  for (const idx of SIDES) {
+    if (!board[idx]) return idx;
+  }
+  return null;
 }
 
 export default function TicTacToeGame({
@@ -63,6 +70,7 @@ export default function TicTacToeGame({
   const roundsToWin = Number(mode?.roundsToWin || 2);
   const [board, setBoard] = useState(() => Array(9).fill(null));
   const [moves, setMoves] = useState([]);
+  const [rounds, setRounds] = useState([]);
   const [playerWins, setPlayerWins] = useState(0);
   const [aiWins, setAiWins] = useState(0);
   const [status, setStatus] = useState("playing");
@@ -90,6 +98,7 @@ export default function TicTacToeGame({
   const resetMatch = useCallback(() => {
     setBoard(Array(9).fill(null));
     setMoves([]);
+    setRounds([]);
     setPlayerWins(0);
     setAiWins(0);
     setStatus("playing");
@@ -106,24 +115,31 @@ export default function TicTacToeGame({
   useEffect(() => {
     if (status !== "playing") return;
     if (!winner && !isDraw) return;
+    const roundOutcome = winner === "X" ? "win" : winner === "O" ? "loss" : "draw";
+    const nextRounds = [...rounds, { moves, outcome: roundOutcome }];
     if (winner === "X") {
       const next = playerWins + 1;
       if (next >= roundsToWin) {
+        setRounds(nextRounds);
         setStatus("win");
       } else {
+        setRounds(nextRounds);
         resetRound(next, aiWins);
       }
     } else if (winner === "O") {
       const next = aiWins + 1;
       if (next >= roundsToWin) {
+        setRounds(nextRounds);
         setStatus("loss");
       } else {
+        setRounds(nextRounds);
         resetRound(playerWins, next);
       }
     } else if (isDraw) {
+      setRounds(nextRounds);
       resetRound(playerWins, aiWins);
     }
-  }, [winner, isDraw, playerWins, aiWins, roundsToWin, status, resetRound]);
+  }, [winner, isDraw, playerWins, aiWins, roundsToWin, status, resetRound, rounds, moves]);
 
   useEffect(() => {
     if (status === "playing") return;
@@ -131,9 +147,10 @@ export default function TicTacToeGame({
     const performance = status === "win" && aiWins === 0 && roundsToWin > 1 ? "sweep" : "normal";
     const payload = {
       modeKey,
-      moves,
+      rounds,
       playerSymbol: "X",
       aiWins,
+      playerWins,
       outcome: status
     };
     const proof = makeProof("", payload);
@@ -143,7 +160,7 @@ export default function TicTacToeGame({
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, moves, aiWins, roundsToWin, modeKey]);
+  }, [status, onSubmitResult, settling, result, rounds, aiWins, playerWins, roundsToWin, modeKey]);
 
   function handlePick(idx) {
     if (status !== "playing" || disabled || readOnly) return;

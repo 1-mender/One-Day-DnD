@@ -27,6 +27,19 @@ function getCatalogMode(gameKey, modeKey) {
   return game.modes?.find((mode) => String(mode?.key || "").trim().toLowerCase() === safeModeKey) || null;
 }
 
+const TTT_LINES = Object.freeze([
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6]
+]);
+const TTT_CORNERS = Object.freeze([0, 2, 6, 8]);
+const TTT_SIDES = Object.freeze([1, 3, 5, 7]);
+
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i += 1) {
@@ -119,6 +132,75 @@ function canFormScrabbleWord(word, rack) {
   return true;
 }
 
+function getTttWinner(board) {
+  for (const [a, b, c] of TTT_LINES) {
+    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
+  }
+  return null;
+}
+
+function findTttWinningMove(board, symbol) {
+  for (const [a, b, c] of TTT_LINES) {
+    const line = [board[a], board[b], board[c]];
+    const empties = [a, b, c].filter((idx) => !board[idx]);
+    if (empties.length !== 1) continue;
+    const filled = line.filter(Boolean);
+    if (filled.length === 2 && filled.every((value) => value === symbol)) return empties[0];
+  }
+  return null;
+}
+
+function pickDeterministicTttAiMove(board) {
+  const win = findTttWinningMove(board, "O");
+  if (win != null) return win;
+  const block = findTttWinningMove(board, "X");
+  if (block != null) return block;
+  if (!board[4]) return 4;
+  for (const idx of TTT_CORNERS) {
+    if (!board[idx]) return idx;
+  }
+  for (const idx of TTT_SIDES) {
+    if (!board[idx]) return idx;
+  }
+  return null;
+}
+
+function validateTttRoundMoves(moves, playerSymbol = "X") {
+  const safeMoves = Array.isArray(moves) ? moves : [];
+  if (!safeMoves.length || !intInRange(safeMoves.length, 1, 9)) return { valid: false };
+  if (playerSymbol !== "X") return { valid: false };
+
+  const board = new Array(9).fill(null);
+  let turn = "X";
+  let idx = 0;
+
+  while (idx < safeMoves.length) {
+    let move = safeMoves[idx];
+    if (turn === "O") {
+      const expectedAiMove = pickDeterministicTttAiMove(board);
+      if (expectedAiMove == null || move !== expectedAiMove) return { valid: false };
+    }
+    if (!Number.isInteger(move) || move < 0 || move > 8) return { valid: false };
+    if (board[move]) return { valid: false };
+    board[move] = turn;
+    idx += 1;
+
+    const winnerAfterMove = getTttWinner(board);
+    const hasEmpty = board.some((value) => !value);
+
+    if (winnerAfterMove || !hasEmpty) {
+      if (idx !== safeMoves.length) return { valid: false };
+      if (winnerAfterMove === "X") return { valid: true, outcome: "win" };
+      if (winnerAfterMove === "O") return { valid: true, outcome: "loss" };
+      return { valid: true, outcome: "draw" };
+    }
+
+    turn = turn === "X" ? "O" : "X";
+  }
+
+  return { valid: false };
+}
+
 export function createSeedStore({ ttlMs, nowFn }) {
   const issuedSeeds = new Map();
 
@@ -183,44 +265,46 @@ export function validateGuessPayload(payload, seed, performanceKey) {
 }
 
 export function validateTttPayload(payload, performanceKey) {
-  const moves = Array.isArray(payload?.moves) ? payload.moves : [];
-  if (moves.length === 0) return false;
-  if (!intInRange(moves.length, 1, 9)) return false;
   const mode = getCatalogMode("ttt", payload?.modeKey);
   if (!mode) return false;
-  const board = new Array(9).fill(null);
   const playerSymbol = payload?.playerSymbol === "O" ? "O" : "X";
-  let player = "X";
-  for (const move of moves) {
-    if (!Number.isInteger(move) || move < 0 || move > 8) return false;
-    if (board[move]) return false;
-    board[move] = player;
-    player = player === "X" ? "O" : "X";
+  const rounds = Array.isArray(payload?.rounds)
+    ? payload.rounds
+    : Array.isArray(payload?.moves)
+      ? [{ moves: payload.moves, outcome: payload.outcome }]
+      : [];
+  if (!rounds.length) return false;
+  if (rounds.length > 9) return false;
+
+  let playerWins = 0;
+  let aiWins = 0;
+
+  for (const round of rounds) {
+    const validated = validateTttRoundMoves(round?.moves, playerSymbol);
+    if (!validated.valid) return false;
+    const claimedOutcome = String(round?.outcome || "").trim().toLowerCase();
+    if (claimedOutcome && claimedOutcome !== validated.outcome) return false;
+    if (validated.outcome === "win") playerWins += 1;
+    if (validated.outcome === "loss") aiWins += 1;
   }
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6]
-  ];
-  const winner = lines.find((line) => line.every((idx) => board[idx] && board[idx] === board[line[0]]));
-  const hasWinner = !!winner;
-  const winnerSymbol = hasWinner ? board[winner[0]] : null;
+
+  const roundsToWin = Number(mode.roundsToWin || 1);
   if (payload.outcome === "win") {
-    if (moves.length < 5) return false;
+    if (playerWins < roundsToWin) return false;
+    if (aiWins >= roundsToWin) return false;
     if (performanceKey === "sweep") {
-      if (Number(mode.roundsToWin || 0) <= 1) return false;
-      if (Number(payload?.aiWins || 0) !== 0) return false;
+      if (roundsToWin <= 1) return false;
+      if (aiWins !== 0) return false;
+      if (playerWins !== roundsToWin) return false;
+    } else if (performanceKey !== "normal") {
+      return false;
     }
-    return winnerSymbol === playerSymbol;
+    return true;
   }
   if (payload.outcome === "loss") {
-    if (moves.length < 6) return false;
-    return hasWinner && winnerSymbol !== playerSymbol;
+    if (aiWins < roundsToWin) return false;
+    if (playerWins >= roundsToWin) return false;
+    return performanceKey === "normal";
   }
   return false;
 }

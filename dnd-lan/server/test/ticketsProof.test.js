@@ -81,6 +81,27 @@ function rollDice(seed, suffix) {
   return Array.from({ length: 5 }, () => Math.floor(rng() * 6) + 1);
 }
 
+function shuffleWithSeed(list, seed) {
+  const rng = makeRng(seed);
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+function getGuessTarget(seed, ranks = ["A", "K", "Q", "J"]) {
+  const suits = ["hearts", "diamonds", "clubs", "spades"];
+  const deck = [];
+  for (const suit of suits) {
+    for (const rank of ranks) deck.push({ suit, rank });
+  }
+  const shuffled = shuffleWithSeed(deck, seed);
+  const rng = makeRng(`${seed}-target`);
+  return shuffled[Math.floor(rng() * shuffled.length)];
+}
+
 function classifyDiceRoll(values) {
   const sorted = values.slice().sort((left, right) => left - right);
   const counts = new Map();
@@ -154,9 +175,13 @@ test("play accepts valid ttt payload with issued seed/proof token", async () => 
   const token = createSession(playerId);
   const payload = {
     modeKey: "normal",
-    moves: [0, 3, 1, 4, 2],
+    rounds: [
+      { moves: [0, 4, 7, 2, 6, 8, 3], outcome: "win" },
+      { moves: [0, 4, 7, 2, 6, 8, 3], outcome: "win" }
+    ],
     playerSymbol: "X",
     aiWins: 0,
+    playerWins: 2,
     outcome: "win"
   };
 
@@ -193,9 +218,13 @@ test("issued seed/proof token is one-time", async () => {
   const token = createSession(playerId);
   const payload = {
     modeKey: "normal",
-    moves: [0, 3, 1, 4, 2],
+    rounds: [
+      { moves: [0, 4, 7, 2, 6, 8, 3], outcome: "win" },
+      { moves: [0, 4, 7, 2, 6, 8, 3], outcome: "win" }
+    ],
     playerSymbol: "X",
     aiWins: 0,
+    playerWins: 2,
     outcome: "win"
   };
 
@@ -242,6 +271,48 @@ test("issued seed/proof token is one-time", async () => {
   });
   assert.equal(second.res.status, 400);
   assert.equal(second.data.error, "invalid_seed");
+});
+
+test("ttt rejects round sequence that does not match deterministic AI", async () => {
+  const playerId = createPlayer("Ttt-Spoof");
+  const token = createSession(playerId);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=ttt", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const payload = {
+    modeKey: "normal",
+    rounds: [
+      { moves: [0, 3, 1, 4, 2], outcome: "win" },
+      { moves: [0, 3, 1, 4, 2], outcome: "win" }
+    ],
+    playerSymbol: "X",
+    aiWins: 0,
+    playerWins: 2,
+    outcome: "win"
+  };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "ttt",
+      outcome: "win",
+      performance: "sweep",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "ttt",
+        outcome: "win",
+        performance: "sweep",
+        payload
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "invalid_proof");
 });
 
 test("match3 win rejects payload with score below target", async () => {
@@ -493,14 +564,18 @@ test("guess rejects spoofed first-attempt bonus when payload does not match seed
 
   const seedOut = await api("/api/tickets/seed?gameKey=guess", { token });
   assert.equal(seedOut.res.status, 200);
+  const target = getGuessTarget(seedOut.data.seed);
+  const picks = [
+    { suit: "hearts", rank: "A" },
+    { suit: "spades", rank: "A" },
+    { suit: "clubs", rank: "A" },
+    { suit: "diamonds", rank: "A" }
+  ].filter((pick) => !(pick.suit === target.suit && pick.rank === target.rank)).slice(0, 3);
+  assert.equal(picks.length, 3);
 
   const payload = {
     modeKey: "normal",
-    picks: [
-      { suit: "hearts", rank: "A" },
-      { suit: "spades", rank: "A" },
-      { suit: "clubs", rank: "A" }
-    ],
+    picks,
     outcome: "win"
   };
 
