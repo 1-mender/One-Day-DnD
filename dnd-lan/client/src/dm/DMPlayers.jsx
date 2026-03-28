@@ -222,6 +222,17 @@ export default function DMPlayers() {
     );
   }, [playersWithTickets]);
 
+  const selectedSummary = useMemo(() => {
+    if (!selectedPlayer) return null;
+    const hasProfile = Boolean(selectedPlayer.profileExists);
+    const statusKey = String(selectedPlayer.status || "offline");
+    return {
+      hasProfile,
+      statusLabel: t(`playerStatus.${statusKey}`),
+      lastSeenLabel: selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "Нет данных"
+    };
+  }, [selectedPlayer]);
+
   return (
     <>
       <div className="two-pane dm-players-board" data-detail={selectedPlayer ? "1" : "0"}>
@@ -318,6 +329,12 @@ export default function DMPlayers() {
                   </div>
                 </div>
                 <hr />
+                <div className="dm-player-detail-summary">
+                  <span className={`badge ${selectedSummary?.hasProfile ? "ok" : "warn"}`}>
+                    {selectedSummary?.hasProfile ? "Профиль есть" : "Профиль не создан"}
+                  </span>
+                  <span className="badge secondary">Последний вход: {selectedSummary?.lastSeenLabel}</span>
+                </div>
                 <div className="row u-row-wrap dm-player-detail-badges">
                   <PlayerStatusPill status={selectedPlayer.status} />
                   <span className="badge">{t("dmPlayers.ticketsBadge", { value: selectedPlayer.ticketBalance ?? 0 })}</span>
@@ -326,7 +343,7 @@ export default function DMPlayers() {
                 <div className="dm-player-detail-grid">
                   <div className="tf-stat-card">
                     <div className="small">Статус</div>
-                    <strong>{t(`playerStatus.${String(selectedPlayer.status || "offline")}`)}</strong>
+                    <strong>{selectedSummary?.statusLabel}</strong>
                   </div>
                   <div className="tf-stat-card">
                     <div className="small">Билеты</div>
@@ -336,6 +353,10 @@ export default function DMPlayers() {
                     <div className="small">Серия</div>
                     <strong>{selectedPlayer.ticketStreak ?? 0}</strong>
                   </div>
+                </div>
+                <div className="paper-note dm-player-quick-links">
+                  <div className="title">Быстрые переходы</div>
+                  <div className="small">Открой профиль для детального редактирования или зайди как игрок только для просмотра.</div>
                 </div>
                 <div className="list u-list-mt-12 dm-player-action-list">
                   <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuTickets")}</button>
@@ -350,6 +371,20 @@ export default function DMPlayers() {
                 <div className="tf-overline">Control panel</div>
                 <div className="dm-player-detail-title">Выбор игрока</div>
                 <div className="small">{t("dmPlayers.pickPlayerHint")}</div>
+                <div className="dm-player-empty-summary tf-stat-grid">
+                  <div className="tf-stat-card">
+                    <div className="small">Всего игроков</div>
+                    <strong>{playersWithTickets.length}</strong>
+                  </div>
+                  <div className="tf-stat-card">
+                    <div className="small">С профилем</div>
+                    <strong>{playersWithTickets.filter((player) => player.profileExists).length}</strong>
+                  </div>
+                </div>
+                <div className="paper-note dm-player-empty-note">
+                  <div className="title">Что доступно справа</div>
+                  <div className="small">После выбора игрока появятся быстрые действия, состояние профиля, билеты и переход в карточку игрока.</div>
+                </div>
               </div>
             )}
           </div>
