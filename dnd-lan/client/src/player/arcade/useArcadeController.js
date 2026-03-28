@@ -375,7 +375,7 @@ export function useArcadeController() {
   const handleMatch3Submit = (args) => handleGameSubmit("match3", args);
   const handleGuessSubmit = (args) => handleGameSubmit("guess", args);
   const handleTttSubmit = (args) => handleGameSubmit("ttt", args);
-  const handleUnoSubmit = (args) => handleGameSubmit("uno", args);
+  const handleDiceSubmit = (args) => handleGameSubmit("dice", args);
   const handleScrabbleSubmit = (args) => handleGameSubmit("scrabble", args);
 
   return {
@@ -436,7 +436,7 @@ export function useArcadeController() {
     handleMatch3Submit,
     handleGuessSubmit,
     handleTttSubmit,
-    handleUnoSubmit,
+    handleDiceSubmit,
     handleScrabbleSubmit,
     formatDurationMs,
     localizeOutcome

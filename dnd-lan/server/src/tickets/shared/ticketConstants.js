@@ -8,6 +8,6 @@ export const MIN_ARCADE_PLAY_MS = Object.freeze({
   guess: Number(process.env.TICKETS_MIN_PLAY_MS_GUESS || 0),
   ttt: Number(process.env.TICKETS_MIN_PLAY_MS_TTT || 0),
   match3: Number(process.env.TICKETS_MIN_PLAY_MS_MATCH3 || 0),
-  uno: Number(process.env.TICKETS_MIN_PLAY_MS_UNO || 0),
+  dice: Number(process.env.TICKETS_MIN_PLAY_MS_DICE || process.env.TICKETS_MIN_PLAY_MS_UNO || 0),
   scrabble: Number(process.env.TICKETS_MIN_PLAY_MS_SCRABBLE || 0)
 });

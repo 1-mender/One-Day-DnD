@@ -44,6 +44,14 @@ function createSession(playerId) {
   return token;
 }
 
+function seedTickets(playerId, balance = 20) {
+  const db = getDb();
+  const t = now();
+  db.prepare(
+    "INSERT INTO tickets(player_id, balance, daily_earned, daily_spent, updated_at) VALUES(?,?,?,?,?)"
+  ).run(playerId, balance, 0, 0, t);
+}
+
 function simpleHash(str) {
   let h = 0;
   for (let i = 0; i < str.length; i += 1) {
@@ -54,6 +62,53 @@ function simpleHash(str) {
 
 function makeClientProof(seed, data) {
   return simpleHash(`${seed || ""}:${JSON.stringify(data || {})}`);
+}
+
+function makeRng(seed) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return () => {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    return (h & 0xfffffff) / 0xfffffff;
+  };
+}
+
+function rollDice(seed, suffix) {
+  const rng = makeRng(`${seed}:${suffix}`);
+  return Array.from({ length: 5 }, () => Math.floor(rng() * 6) + 1);
+}
+
+function classifyDiceRoll(values) {
+  const sorted = values.slice().sort((left, right) => left - right);
+  const counts = new Map();
+  for (const value of sorted) counts.set(value, (counts.get(value) || 0) + 1);
+  const groups = Array.from(counts.values()).sort((left, right) => right - left);
+  const distinct = Array.from(counts.keys()).sort((left, right) => left - right);
+  const isStraight = distinct.length === 5 && distinct.every((value, index) => value === distinct[0] + index);
+
+  if (groups[0] === 5) return "five";
+  if (groups[0] === 4) return "four";
+  if (groups[0] === 3 && groups[1] === 2) return "full_house";
+  if (isStraight) return "straight";
+  if (groups[0] === 3) return "three";
+  if (groups[0] === 2 && groups[1] === 2) return "two_pairs";
+  if (groups[0] === 2) return "pair";
+  return "high";
+}
+
+function diceScore(category) {
+  return {
+    high: 0,
+    pair: 1,
+    two_pairs: 2,
+    three: 3,
+    straight: 4,
+    full_house: 5,
+    four: 6,
+    five: 7
+  }[category] ?? 0;
 }
 
 async function api(pathname, { method = "GET", token = "", body } = {}) {
@@ -254,6 +309,91 @@ test("scrabble rare performance requires rare letter in word", async () => {
           word: "\u0410\u0411\u0412",
           rack: ["\u0410", "\u0411", "\u0412", "\u0413", "\u0414", "\u0415", "\u0416"]
         }
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "invalid_proof");
+});
+
+test("dice accepts valid deterministic payload", async () => {
+  const playerId = createPlayer("Dice-Valid");
+  const token = createSession(playerId);
+  seedTickets(playerId, 20);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=dice", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const finalRoll = rollDice(seedOut.data.seed, "roll1");
+  const finalCategory = classifyDiceRoll(finalRoll);
+  const score = diceScore(finalCategory);
+  const targetScore = 1;
+  const outcome = score >= targetScore ? "win" : "loss";
+  const performance = outcome === "win"
+    ? (score >= 6 ? "elite" : score >= 4 ? "smart" : "normal")
+    : "normal";
+  const payload = {
+    modeKey: "single",
+    rerollMask: [0, 0, 0, 0, 0],
+    targetScore,
+    finalCategory,
+    usedReroll: false
+  };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "dice",
+      outcome,
+      performance,
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "dice",
+        outcome,
+        performance,
+        payload
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data?.result?.gameKey, "dice");
+});
+
+test("dice rejects mismatched category", async () => {
+  const playerId = createPlayer("Dice-Invalid");
+  const token = createSession(playerId);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=dice", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const payload = {
+    modeKey: "single",
+    rerollMask: [0, 0, 0, 0, 0],
+    targetScore: 1,
+    finalCategory: "five",
+    usedReroll: false
+  };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "dice",
+      outcome: "win",
+      performance: "elite",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "dice",
+        outcome: "win",
+        performance: "elite",
+        payload
       })
     }
   });

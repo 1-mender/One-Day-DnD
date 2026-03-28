@@ -4,7 +4,7 @@ export const GAME_LABELS = {
   ttt: "Tic-Tac-Toe",
   guess: "Guess Card",
   match3: "Match-3",
-  uno: "Uno Mini",
+  dice: "Dice Logic",
   scrabble: "Scrabble Blitz"
 };
 

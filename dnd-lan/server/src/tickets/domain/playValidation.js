@@ -2,6 +2,21 @@ import crypto from "node:crypto";
 
 const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
 const SCRABBLE_ALPHABET = new Set(Array.from("\u0410\u0411\u0412\u0413\u0414\u0415\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042D\u042E\u042F"));
+const DICE_MODE_RULES = Object.freeze({
+  classic: { allowReroll: true, targetScore: 2 },
+  risk: { allowReroll: true, targetScore: 4 },
+  single: { allowReroll: false, targetScore: 1 }
+});
+const DICE_CATEGORY_SCORE = Object.freeze({
+  high: 0,
+  pair: 1,
+  two_pairs: 2,
+  three: 3,
+  straight: 4,
+  full_house: 5,
+  four: 6,
+  five: 7
+});
 
 function simpleHash(str) {
   let h = 0;
@@ -33,6 +48,30 @@ function makeRng(seed) {
     h = (h * 1664525 + 1013904223) >>> 0;
     return (h & 0xfffffff) / 0xfffffff;
   };
+}
+
+function rollDice(seed, suffix) {
+  const rng = makeRng(`${seed}:${suffix}`);
+  return Array.from({ length: 5 }, () => 1 + Math.floor(rng() * 6));
+}
+
+function classifyDiceRoll(values) {
+  const dice = Array.isArray(values) ? values.map((v) => Number(v)) : [];
+  if (dice.length !== 5 || !dice.every((v) => intInRange(v, 1, 6))) return "high";
+  const counts = new Map();
+  for (const value of dice) counts.set(value, (counts.get(value) || 0) + 1);
+  const groups = Array.from(counts.values()).sort((a, b) => b - a);
+  const sorted = dice.slice().sort((a, b) => a - b);
+  const isStraight = sorted.every((value, index) => index === 0 || value === sorted[index - 1] + 1);
+
+  if (groups[0] === 5) return "five";
+  if (groups[0] === 4) return "four";
+  if (groups[0] === 3 && groups[1] === 2) return "full_house";
+  if (isStraight) return "straight";
+  if (groups[0] === 3) return "three";
+  if (groups[0] === 2 && groups[1] === 2) return "two_pairs";
+  if (groups[0] === 2) return "pair";
+  return "high";
 }
 
 function shuffleWithSeed(list, seed) {
@@ -201,6 +240,36 @@ export function validateUnoPayload(payload, outcome, performanceKey) {
   if (outcome === "loss" && (aiCardsLeft !== 0 || playerCardsLeft <= 0)) return false;
   if (outcome === "loss" && performanceKey !== "normal") return false;
   if (outcome === "win" && performanceKey === "clean" && playerDraws !== 0) return false;
+  return true;
+}
+
+export function validateDicePayload(payload, outcome, performanceKey, seed) {
+  const modeKey = String(payload?.modeKey || "").trim().toLowerCase();
+  const mode = DICE_MODE_RULES[modeKey];
+  if (!mode) return false;
+  const rerollMaskRaw = Array.isArray(payload?.rerollMask) ? payload.rerollMask : [];
+  if (rerollMaskRaw.length !== 5) return false;
+  const rerollMask = rerollMaskRaw.map((value) => (value === true || value === 1 ? 1 : 0));
+  if (rerollMaskRaw.some((value) => ![true, false, 0, 1].includes(value))) return false;
+  if (!mode.allowReroll && rerollMask.some(Boolean)) return false;
+  if (Number(payload?.targetScore) !== Number(mode.targetScore)) return false;
+
+  const firstRoll = rollDice(seed, "roll1");
+  const reroll = rollDice(seed, "reroll");
+  const finalRoll = firstRoll.map((value, index) => (rerollMask[index] ? reroll[index] : value));
+  const finalCategory = classifyDiceRoll(finalRoll);
+  const claimedCategory = String(payload?.finalCategory || "").trim().toLowerCase();
+  if (!claimedCategory || claimedCategory !== finalCategory) return false;
+
+  const score = Number(DICE_CATEGORY_SCORE[finalCategory] || 0);
+  if (outcome === "win" && score < mode.targetScore) return false;
+  if (outcome === "loss" && score >= mode.targetScore) return false;
+
+  const expectedPerformance = outcome === "win"
+    ? (score >= 6 ? "elite" : score >= 4 ? "smart" : "normal")
+    : "normal";
+  if (performanceKey !== expectedPerformance) return false;
+
   return true;
 }
 

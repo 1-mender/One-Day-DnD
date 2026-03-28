@@ -1062,7 +1062,8 @@ a:hover{ color: #000; }
 
 .ttt-overlay,
 .uno-overlay,
-.scrabble-overlay{
+.scrabble-overlay,
+.dice-overlay{
   position: fixed;
   inset: 0;
   background:
@@ -1083,7 +1084,8 @@ a:hover{ color: #000; }
 
 .ttt-panel,
 .uno-panel,
-.scrabble-panel{
+.scrabble-panel,
+.dice-panel{
   width: min(780px, 96vw);
   max-height: 92vh;
   max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 20px);
@@ -1108,7 +1110,8 @@ a:hover{ color: #000; }
 
 .ttt-head,
 .uno-head,
-.scrabble-head{
+.scrabble-head,
+.dice-head{
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -1117,7 +1120,8 @@ a:hover{ color: #000; }
 
 .ttt-title,
 .uno-title,
-.scrabble-title{
+.scrabble-title,
+.dice-title{
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 21px;
@@ -1126,13 +1130,15 @@ a:hover{ color: #000; }
 
 .ttt-panel .small,
 .uno-panel .small,
-.scrabble-panel .small{
+.scrabble-panel .small,
+.dice-panel .small{
   line-height: 1.35;
 }
 
 .ttt-scoreboard,
 .uno-hud,
-.scrabble-hud{
+.scrabble-hud,
+.dice-hud{
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   gap: 8px;
@@ -1140,7 +1146,8 @@ a:hover{ color: #000; }
 
 .ttt-panel .hud-card,
 .uno-panel .hud-card,
-.scrabble-panel .hud-card{
+.scrabble-panel .hud-card,
+.dice-panel .hud-card{
   border-radius: 14px;
   padding: 9px 10px;
   border: 1px solid rgba(70,55,30,.24);
@@ -1242,6 +1249,74 @@ a:hover{ color: #000; }
   justify-content: center;
 }
 
+.dice-grid{
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.dice-die{
+  aspect-ratio: 1;
+  border-radius: 16px;
+  border: 1px solid rgba(40,30,20,.34);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.74), rgba(255,255,255,0) 48%),
+    linear-gradient(180deg, #fff7ec, #ead7b7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.72), 0 10px 16px rgba(0,0,0,.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .14s ease, box-shadow .14s ease, filter .14s ease;
+}
+
+.dice-die:not(:disabled):hover{
+  transform: translateY(-2px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.82), 0 14px 20px rgba(0,0,0,.18);
+}
+
+.dice-die.selected{
+  border-color: rgba(68,112,160,.55);
+  box-shadow:
+    0 0 0 2px rgba(139,182,224,.34),
+    0 14px 20px rgba(0,0,0,.18);
+  transform: translateY(-3px);
+}
+
+.dice-die.rerolled{
+  border-color: rgba(90,132,84,.52);
+}
+
+.dice-die:disabled{
+  cursor: not-allowed;
+}
+
+.dice-die-value{
+  font-family: var(--font-display);
+  font-size: clamp(24px, 3.2vw, 34px);
+  font-weight: 900;
+  color: #2f2217;
+}
+
+.dice-category-strip{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dice-controls{
+  align-items: center;
+}
+
+.dice-category-strip .meta-chip.active{
+  background: linear-gradient(180deg, rgba(67,112,164,.22), rgba(67,112,164,.08));
+  border-color: rgba(67,112,164,.38);
+}
+
+.dice-category-strip .meta-chip.is-target{
+  box-shadow: inset 0 -1px 0 rgba(93,140,82,.24);
+}
+
 .scrabble-rack{
   margin: 2px 0;
   padding: 10px;
@@ -1307,7 +1382,8 @@ a:hover{ color: #000; }
 
 .ttt-result,
 .uno-result,
-.scrabble-result{
+.scrabble-result,
+.dice-result{
   margin-top: 4px;
   padding: 12px;
   border-radius: 16px;
@@ -1321,19 +1397,22 @@ a:hover{ color: #000; }
 
 .ttt-result.win,
 .uno-result.win,
-.scrabble-result.win{
+.scrabble-result.win,
+.dice-result.win{
   background: var(--noise), linear-gradient(180deg,#d5f2d5,#b7e1bb);
 }
 
 .ttt-result.loss,
 .uno-result.loss,
-.scrabble-result.loss{
+.scrabble-result.loss,
+.dice-result.loss{
   background: var(--noise), linear-gradient(180deg,#f2c1c1,#d89a9a);
 }
 
 .ttt-result-title,
 .uno-result-title,
-.scrabble-result-title{
+.scrabble-result-title,
+.dice-result-title{
   font-family: var(--font-display);
   font-weight: 900;
   font-size: 18px;
@@ -2992,7 +3071,8 @@ a:hover{ color: #000; }
 @media (max-width: 520px){
   .ttt-panel,
   .uno-panel,
-  .scrabble-panel{
+  .scrabble-panel,
+  .dice-panel{
     padding: 12px;
   }
   .ttt-board{
@@ -3005,6 +3085,9 @@ a:hover{ color: #000; }
   .uno-card{
     width: 50px;
     height: 72px;
+  }
+  .dice-grid{
+    gap: 8px;
   }
   .scrabble-rack{
     gap: 6px;
@@ -3446,7 +3529,8 @@ a:hover{ color: #000; }
 @media (max-width: 640px){
   .ttt-overlay,
   .uno-overlay,
-  .scrabble-overlay{
+  .scrabble-overlay,
+  .dice-overlay{
     align-items: flex-end;
   }
   .match3-overlay,
@@ -3456,6 +3540,7 @@ a:hover{ color: #000; }
   .ttt-panel,
   .uno-panel,
   .scrabble-panel,
+  .dice-panel,
   .match3-panel,
   .guess-panel{
     width: 100%;
@@ -3466,6 +3551,7 @@ a:hover{ color: #000; }
   }
   .ttt-head,
   .uno-head,
+  .dice-head,
   .scrabble-head,
   .match3-head,
   .guess-head{
@@ -3474,6 +3560,7 @@ a:hover{ color: #000; }
   }
   .ttt-title,
   .uno-title,
+  .dice-title,
   .scrabble-title,
   .match3-title,
   .guess-title{
@@ -3481,6 +3568,7 @@ a:hover{ color: #000; }
   }
   .ttt-head .btn,
   .uno-head .btn,
+  .dice-head .btn,
   .scrabble-head .btn,
   .match3-head .btn,
   .guess-head .btn{

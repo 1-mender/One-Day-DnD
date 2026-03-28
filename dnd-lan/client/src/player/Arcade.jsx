@@ -16,7 +16,7 @@ import { useArcadeController } from "./arcade/useArcadeController.js";
 const Match3Game = lazy(() => import("./games/Match3.jsx"));
 const GuessCardGame = lazy(() => import("./games/GuessCard.jsx"));
 const TicTacToeGame = lazy(() => import("./games/TicTacToe.jsx"));
-const UnoMiniGame = lazy(() => import("./games/UnoMini.jsx"));
+const DiceLogicGame = lazy(() => import("./games/DiceLogic.jsx"));
 const ScrabbleBlitzGame = lazy(() => import("./games/ScrabbleBlitz.jsx"));
 
 export default function Arcade() {
@@ -76,7 +76,7 @@ export default function Arcade() {
     handleMatch3Submit,
     handleGuessSubmit,
     handleTttSubmit,
-    handleUnoSubmit,
+    handleDiceSubmit,
     handleScrabbleSubmit,
     arcadeMetrics,
   } = useArcadeController();
@@ -446,17 +446,17 @@ export default function Arcade() {
             readOnly={readOnly}
           />
         </Suspense>
-      ) : activeGame?.key === "uno" ? (
-        <Suspense fallback={renderGameFallback(activeGame?.title || "Уно-мини", closeGame)}>
-          <UnoMiniGame
+      ) : activeGame?.key === "dice" ? (
+        <Suspense fallback={renderGameFallback(activeGame?.title || "Кости и решение", closeGame)}>
+          <DiceLogicGame
             open={!!activeGame}
             onClose={closeGame}
-            onSubmitResult={handleUnoSubmit}
-            disabled={!ticketsEnabled || rules?.games?.uno?.enabled === false}
-            entryCost={Number(rules?.games?.uno?.entryCost || 0)}
+            onSubmitResult={handleDiceSubmit}
+            disabled={!ticketsEnabled || rules?.games?.dice?.enabled === false}
+            entryCost={Number(rules?.games?.dice?.entryCost || 0)}
             rewardRange={
-              rules?.games?.uno
-                ? `${rules.games.uno.rewardMin}-${rules.games.uno.rewardMax} билетов`
+              rules?.games?.dice
+                ? `${rules.games.dice.rewardMin}-${rules.games.dice.rewardMax} билетов`
                 : "-"
             }
             mode={activeMode}

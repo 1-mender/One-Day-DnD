@@ -53,19 +53,21 @@ export const GAME_CATALOG = [
     ]
   },
   {
-    key: "uno",
-    title: "Уно-мини: Быстрый матч",
-    blurb: "Сбрось все карты быстрее соперника.",
+    key: "dice",
+    title: "Кости и решение: Риск броска",
+    blurb: "Оцени бросок, реши что перебросить и дожми лучшую комбинацию.",
     difficulty: "Средне",
-    time: "5-7 min",
+    time: "2-4 min",
     risk: "Средний",
     rules: [
-      "Победа при нуле карт в руке",
-      "Лишние доборы повышают риск",
-      "Чистая победа даёт бонус"
+      "Ты видишь 5 костей и можешь сделать до 1 реролла",
+      "Сильные комбинации дают повышенный множитель",
+      "В режиме риска нужна более дорогая комбинация"
     ],
     modes: [
-      { key: "normal", label: "Классика", handSize: 5, ai: "standard" }
+      { key: "classic", label: "Классика", allowReroll: true, targetScore: 2, timeLimit: 40 },
+      { key: "risk", label: "Риск", allowReroll: true, targetScore: 4, timeLimit: 32 },
+      { key: "single", label: "Один шанс", allowReroll: false, targetScore: 1, timeLimit: 24 }
     ]
   },
   {

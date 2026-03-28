@@ -71,7 +71,7 @@ export const DEFAULT_TICKET_RULES = {
         combo5: { label: "Комбо 5+", multiplier: 1.2 }
       }
     },
-    uno: {
+    dice: {
       enabled: true,
       entryCost: 1,
       rewardMin: 2,
@@ -81,11 +81,12 @@ export const DEFAULT_TICKET_RULES = {
       ui: {
         difficulty: "СРЕДНЕ",
         risk: "Средний",
-        time: "5-7 min"
+        time: "2-4 min"
       },
       performance: {
-        normal: { label: "Победа", multiplier: 1 },
-        clean: { label: "Без штрафов", multiplier: 1.15 }
+        normal: { label: "Удачный бросок", multiplier: 1 },
+        smart: { label: "Сильная комбинация", multiplier: 1.15 },
+        elite: { label: "Элитная комбинация", multiplier: 1.3 }
       }
     },
     scrabble: {
