@@ -41,6 +41,11 @@ export default function DMLobby() {
     try { await api.dmBan(id); await load(); } catch (e) { setErr(formatError(e)); }
   }
 
+  const uniqueIpCount = new Set(items.map((item) => item.ip).filter(Boolean)).size;
+  const oldestRequest = items.length
+    ? [...items].sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0]
+    : null;
+
   return (
     <div className="spread-grid dm-lobby-grid">
       <div className="spread-col">
@@ -55,8 +60,27 @@ export default function DMLobby() {
           <hr />
           {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
           {err && <div className="badge off">Ошибка: {err}</div>}
+          <div className="dm-lobby-summary tf-stat-grid">
+            <div className="tf-stat-card">
+              <div className="small">Заявок</div>
+              <strong>{items.length}</strong>
+            </div>
+            <div className="tf-stat-card">
+              <div className="small">IP адресов</div>
+              <strong>{uniqueIpCount}</strong>
+            </div>
+            <div className="tf-stat-card">
+              <div className="small">Самая ранняя</div>
+              <strong>{oldestRequest ? new Date(oldestRequest.created_at).toLocaleTimeString() : "—"}</strong>
+            </div>
+          </div>
           <div className="list dm-lobby-list">
-            {items.length === 0 && <div className="badge warn">Нет заявок</div>}
+            {items.length === 0 ? (
+              <div className="paper-note dm-lobby-empty">
+                <div className="title">Нет заявок</div>
+                <div className="small">Когда игроки попросят вход, здесь появятся карточки с именем, временем, IP и быстрыми действиями.</div>
+              </div>
+            ) : null}
             {items.map((r) => (
               <div key={r.id} className="item taped dm-lobby-item">
                 <div className="kv">
@@ -81,7 +105,7 @@ export default function DMLobby() {
             <div className="tf-section-kicker">Moderation guide</div>
             <div style={{ fontWeight: 800 }}>Памятка</div>
           </div>
-          <div className="small">Быстрые правила по модерации</div>
+          <div className="small">Короткий сценарий действий по входящим заявкам.</div>
           <hr />
           <div className="list">
             <div className="item">
@@ -103,9 +127,9 @@ export default function DMLobby() {
               </div>
             </div>
           </div>
-          <div className="paper-note" style={{ marginTop: 10 }}>
+          <div className="paper-note dm-lobby-note" style={{ marginTop: 10 }}>
             <div className="title">Совет</div>
-            <div className="small">Если заявок много — сортируйте по времени.</div>
+            <div className="small">Если видишь повторяющиеся IP или странные имена, сначала отклоняй, а бан используй уже для явного мусора.</div>
           </div>
         </div>
       </div>

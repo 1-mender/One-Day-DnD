@@ -5513,9 +5513,21 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   justify-self: start;
 }
 
+.dm-lobby-summary{
+  margin-bottom: 14px;
+}
+
 .dm-lobby-item{
   align-items: flex-start;
   gap: 14px;
+}
+
+.dm-lobby-empty{
+  border-radius: 18px;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .tf-dm-lobby-guide,
@@ -5527,6 +5539,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.74),
     0 18px 34px rgba(64, 53, 38, 0.08);
+}
+
+.dm-lobby-note{
+  border-radius: 18px;
 }
 
 .dm-info-toolbar{
