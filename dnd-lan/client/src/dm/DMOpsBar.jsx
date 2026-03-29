@@ -5,7 +5,7 @@ import Modal from "../components/Modal.jsx";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { resolveJoinUrl } from "../lib/joinUrl.js";
-import { BookOpen, Coins, Copy, Package2, PlusSquare, QrCode, RefreshCcw, ScrollText, Search, Settings, Users } from "lucide-react";
+import { BookOpen, Coins, Copy, Eye, EyeOff, Package2, PlusSquare, QrCode, RefreshCcw, ScrollText, Search, Settings, Users } from "lucide-react";
 import { formatError } from "../lib/formatError.js";
 import { t } from "../i18n/index.js";
 import { useQuickAccess } from "../lib/useQuickAccess.js";
@@ -293,6 +293,15 @@ export default function DMOpsBar() {
     }
   };
 
+  const openQuickNote = (access) => {
+    setErr("");
+    setQuickNoteForm((prev) => ({
+      ...prev,
+      access: access || "all"
+    }));
+    setQuickNoteOpen(true);
+  };
+
   const applyQuickTickets = async () => {
     if (quickTicketsBusy) return;
     const delta = Number(quickTicketDelta || 0);
@@ -429,10 +438,18 @@ export default function DMOpsBar() {
             <button
               type="button"
               className="btn secondary dm-ops-quick-action"
-              onClick={() => setQuickNoteOpen(true)}
+              onClick={() => openQuickNote("all")}
             >
-              <PlusSquare className="icon" aria-hidden="true" />
-              Быстрый инфоблок
+              <Eye className="icon" aria-hidden="true" />
+              Инфоблок всем
+            </button>
+            <button
+              type="button"
+              className="btn secondary dm-ops-quick-action"
+              onClick={() => openQuickNote("dm")}
+            >
+              <EyeOff className="icon" aria-hidden="true" />
+              Инфоблок DM
             </button>
             <button
               type="button"
@@ -636,7 +653,27 @@ export default function DMOpsBar() {
 
       <Modal open={quickNoteOpen} title="Быстрый инфоблок" onClose={() => !quickNoteBusy && setQuickNoteOpen(false)}>
         <div className="list">
-          <div className="small">Создаёт обычный инфоблок для сессии и сразу открывает его в редакторе.</div>
+          <div className="small">Создаёт сессионный инфоблок и сразу открывает его в редакторе.</div>
+          <div className="row u-row-wrap">
+            <button
+              type="button"
+              className={`btn ${quickNoteForm.access === "all" ? "" : "secondary"}`}
+              onClick={() => setQuickNoteForm((prev) => ({ ...prev, access: "all" }))}
+              disabled={quickNoteBusy}
+            >
+              <Eye className="icon" aria-hidden="true" />
+              Всем
+            </button>
+            <button
+              type="button"
+              className={`btn ${quickNoteForm.access === "dm" ? "" : "secondary"}`}
+              onClick={() => setQuickNoteForm((prev) => ({ ...prev, access: "dm" }))}
+              disabled={quickNoteBusy}
+            >
+              <EyeOff className="icon" aria-hidden="true" />
+              Только DM
+            </button>
+          </div>
           <input
             value={quickNoteForm.title}
             onChange={(event) => setQuickNoteForm((prev) => ({ ...prev, title: event.target.value }))}
@@ -645,16 +682,11 @@ export default function DMOpsBar() {
             className="u-w-full"
             disabled={quickNoteBusy}
           />
-          <select
-            value={quickNoteForm.access}
-            onChange={(event) => setQuickNoteForm((prev) => ({ ...prev, access: event.target.value }))}
-            aria-label="Кому виден быстрый инфоблок"
-            className="u-w-full"
-            disabled={quickNoteBusy}
-          >
-            <option value="all">Все игроки</option>
-            <option value="dm">Только DM</option>
-          </select>
+          <div className="small">
+            {quickNoteForm.access === "all"
+              ? "После создания блок сразу будет доступен всем игрокам."
+              : "После создания блок останется виден только мастеру."}
+          </div>
           <textarea
             value={quickNoteForm.content}
             onChange={(event) => setQuickNoteForm((prev) => ({ ...prev, content: event.target.value }))}
@@ -665,6 +697,7 @@ export default function DMOpsBar() {
             disabled={quickNoteBusy}
           />
           <button type="button" className="btn" onClick={createQuickNote} disabled={quickNoteBusy}>
+            <PlusSquare className="icon" aria-hidden="true" />
             {quickNoteBusy ? "Создаю..." : "Создать и открыть"}
           </button>
         </div>
