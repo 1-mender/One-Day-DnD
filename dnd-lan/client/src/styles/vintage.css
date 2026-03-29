@@ -2542,14 +2542,22 @@ a:hover{ color: #000; }
 }
 
 .arcade-modes{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 6px 0;
-}
-.arcade-queue-row{
-  display:flex;
-  flex-wrap: wrap;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 6px 0;
+  }
+  .arcade-mode-summary{
+    margin-top: 4px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px dashed rgba(95,74,42,.24);
+    background: rgba(255,255,255,.18);
+    line-height: 1.35;
+  }
+  .arcade-queue-row{
+    display:flex;
+    flex-wrap: wrap;
   gap: 8px;
   align-items: center;
 }

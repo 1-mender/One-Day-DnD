@@ -33,6 +33,21 @@ export const DEFAULT_TICKET_RULES = {
       performance: {
         normal: { label: "Победа", multiplier: 1 },
         sweep: { label: "Победа 2-0", multiplier: 1.15 }
+      },
+      modeOverrides: {
+        normal: {
+          rewardMin: 1,
+          rewardMax: 3,
+          dailyLimit: 10
+        },
+        fast: {
+          rewardMin: 1,
+          rewardMax: 2,
+          dailyLimit: 14,
+          ui: {
+            time: "1-2 min"
+          }
+        }
       }
     },
     guess: {
@@ -51,6 +66,39 @@ export const DEFAULT_TICKET_RULES = {
         first: { label: "С первой попытки", multiplier: 1.2 },
         second: { label: "Со второй попытки", multiplier: 1.05 },
         third: { label: "С третьей попытки", multiplier: 1 }
+      },
+      modeOverrides: {
+        easy: {
+          entryCost: 0,
+          rewardMin: 1,
+          rewardMax: 2,
+          lossPenalty: 0,
+          dailyLimit: 10,
+          ui: {
+            difficulty: "ЛЕГКО",
+            risk: "Низкий",
+            time: "2-3 min"
+          }
+        },
+        normal: {
+          entryCost: 1,
+          rewardMin: 2,
+          rewardMax: 4,
+          lossPenalty: 1,
+          dailyLimit: 8
+        },
+        hard: {
+          entryCost: 2,
+          rewardMin: 4,
+          rewardMax: 7,
+          lossPenalty: 2,
+          dailyLimit: 5,
+          ui: {
+            difficulty: "СЛОЖНО",
+            risk: "Высокий",
+            time: "3-4 min"
+          }
+        }
       }
     },
     match3: {
@@ -69,6 +117,39 @@ export const DEFAULT_TICKET_RULES = {
         normal: { label: "Комбо 3", multiplier: 1 },
         combo4: { label: "Комбо 4+", multiplier: 1.1 },
         combo5: { label: "Комбо 5+", multiplier: 1.2 }
+      },
+      modeOverrides: {
+        normal: {
+          entryCost: 1,
+          rewardMin: 2,
+          rewardMax: 5,
+          lossPenalty: 1,
+          dailyLimit: 6
+        },
+        compact: {
+          entryCost: 0,
+          rewardMin: 1,
+          rewardMax: 3,
+          lossPenalty: 0,
+          dailyLimit: 9,
+          ui: {
+            difficulty: "ЛЕГКО",
+            risk: "Низкий",
+            time: "2-3 min"
+          }
+        },
+        chaos: {
+          entryCost: 2,
+          rewardMin: 4,
+          rewardMax: 8,
+          lossPenalty: 2,
+          dailyLimit: 4,
+          ui: {
+            difficulty: "СЛОЖНО",
+            risk: "Высокий",
+            time: "5-7 min"
+          }
+        }
       }
     },
     dice: {
@@ -87,6 +168,38 @@ export const DEFAULT_TICKET_RULES = {
         normal: { label: "Удачный бросок", multiplier: 1 },
         smart: { label: "Сильная комбинация", multiplier: 1.15 },
         elite: { label: "Элитная комбинация", multiplier: 1.3 }
+      },
+      modeOverrides: {
+        classic: {
+          entryCost: 1,
+          rewardMin: 2,
+          rewardMax: 5,
+          lossPenalty: 1,
+          dailyLimit: 5
+        },
+        risk: {
+          entryCost: 2,
+          rewardMin: 4,
+          rewardMax: 8,
+          lossPenalty: 2,
+          dailyLimit: 4,
+          ui: {
+            risk: "Высокий",
+            time: "2-3 min"
+          }
+        },
+        single: {
+          entryCost: 0,
+          rewardMin: 1,
+          rewardMax: 3,
+          lossPenalty: 0,
+          dailyLimit: 8,
+          ui: {
+            difficulty: "ЛЕГКО",
+            risk: "Низкий",
+            time: "1-2 min"
+          }
+        }
       }
     },
     scrabble: {
@@ -105,6 +218,39 @@ export const DEFAULT_TICKET_RULES = {
         normal: { label: "Слово собрано", multiplier: 1 },
         long: { label: "6+ букв", multiplier: 1.2 },
         rare: { label: "Редкая буква", multiplier: 1.1 }
+      },
+      modeOverrides: {
+        normal: {
+          entryCost: 1,
+          rewardMin: 3,
+          rewardMax: 6,
+          lossPenalty: 2,
+          dailyLimit: 5
+        },
+        rush: {
+          entryCost: 1,
+          rewardMin: 2,
+          rewardMax: 5,
+          lossPenalty: 1,
+          dailyLimit: 7,
+          ui: {
+            difficulty: "СРЕДНЕ",
+            risk: "Средний",
+            time: "1-2 min"
+          }
+        },
+        expert: {
+          entryCost: 2,
+          rewardMin: 4,
+          rewardMax: 8,
+          lossPenalty: 2,
+          dailyLimit: 4,
+          ui: {
+            difficulty: "СЛОЖНО",
+            risk: "Высокий",
+            time: "2-4 min"
+          }
+        }
       }
     }
   },

@@ -24,6 +24,54 @@ function clampFloat(value, min = 0, max = 10) {
   return Math.max(min, Math.min(max, n));
 }
 
+function normalizeGameUi(uiRaw) {
+  const src = uiRaw && typeof uiRaw === "object" ? uiRaw : {};
+  return {
+    difficulty: typeof src.difficulty === "string" ? src.difficulty.slice(0, 40) : "",
+    risk: typeof src.risk === "string" ? src.risk.slice(0, 40) : "",
+    time: typeof src.time === "string" ? src.time.slice(0, 40) : ""
+  };
+}
+
+function normalizeModeOverrides(modeOverrides, fallbackGame, fallbackUi) {
+  const source = modeOverrides && typeof modeOverrides === "object" ? modeOverrides : {};
+  const next = {};
+  for (const [modeKey, override] of Object.entries(source)) {
+    const cur = override && typeof override === "object" ? override : {};
+    const rewardMin = clampInt(cur.rewardMin, clampInt(fallbackGame?.rewardMin, 0, 999), 999);
+    const rewardMax = clampInt(cur.rewardMax, clampInt(fallbackGame?.rewardMax, rewardMin, 999), 999);
+    next[modeKey] = {
+      ...cur,
+      entryCost: clampInt(cur.entryCost, clampInt(fallbackGame?.entryCost, 0, 999), 999),
+      rewardMin,
+      rewardMax,
+      lossPenalty: clampInt(cur.lossPenalty, clampInt(fallbackGame?.lossPenalty, 0, 999), 999),
+      dailyLimit: clampInt(cur.dailyLimit, clampInt(fallbackGame?.dailyLimit, 0, 999), 999),
+      ui: {
+        ...fallbackUi,
+        ...normalizeGameUi(cur.ui)
+      }
+    };
+  }
+  return next;
+}
+
+export function resolveGameModeRules(game, modeKey) {
+  const base = game && typeof game === "object" ? game : {};
+  const safeModeKey = String(modeKey || "").trim();
+  if (!safeModeKey) return { ...base };
+  const override = base.modeOverrides?.[safeModeKey];
+  if (!override || typeof override !== "object") return { ...base };
+  return {
+    ...base,
+    ...override,
+    ui: {
+      ...(base.ui || {}),
+      ...(override.ui || {})
+    }
+  };
+}
+
 export function normalizeRules(rules) {
   const out = { ...rules };
   out.enabled = out.enabled !== false;
@@ -43,12 +91,7 @@ export function normalizeRules(rules) {
     const cur = g || {};
     const rewardMin = clampInt(cur.rewardMin, 0, 999);
     const rewardMax = clampInt(cur.rewardMax, rewardMin, 999);
-    const uiRaw = cur.ui && typeof cur.ui === "object" ? cur.ui : {};
-    const ui = {
-      difficulty: typeof uiRaw.difficulty === "string" ? uiRaw.difficulty.slice(0, 40) : "",
-      risk: typeof uiRaw.risk === "string" ? uiRaw.risk.slice(0, 40) : "",
-      time: typeof uiRaw.time === "string" ? uiRaw.time.slice(0, 40) : ""
-    };
+    const ui = normalizeGameUi(cur.ui);
     games[key] = {
       ...cur,
       enabled: cur.enabled !== false,
@@ -57,7 +100,8 @@ export function normalizeRules(rules) {
       rewardMax,
       lossPenalty: clampInt(cur.lossPenalty, 0, 999),
       dailyLimit: clampInt(cur.dailyLimit, 0, 999),
-      ui
+      ui,
+      modeOverrides: normalizeModeOverrides(cur.modeOverrides, cur, ui)
     };
   }
   out.games = games;

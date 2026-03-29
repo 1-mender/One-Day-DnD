@@ -601,6 +601,43 @@ test("guess rejects spoofed first-attempt bonus when payload does not match seed
   assert.equal(out.data.error, "invalid_proof");
 });
 
+test("guess hard mode uses mode-specific entry cost", async () => {
+  const playerId = createPlayer("Guess-Hard-Cost");
+  const token = createSession(playerId);
+  seedTickets(playerId, 1);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=guess", { token });
+  assert.equal(seedOut.res.status, 200);
+  const target = getGuessTarget(seedOut.data.seed, ["A", "K", "Q", "J", "10"]);
+  const payload = {
+    modeKey: "hard",
+    picks: [{ suit: target.suit, rank: target.rank }],
+    outcome: "win"
+  };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "guess",
+      outcome: "win",
+      performance: "first",
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "guess",
+        outcome: "win",
+        performance: "first",
+        payload
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 400);
+  assert.equal(out.data.error, "not_enough_tickets");
+});
+
 test("match3 rejects payload with mismatched mode settings", async () => {
   const playerId = createPlayer("Match3-Mode");
   const token = createSession(playerId);

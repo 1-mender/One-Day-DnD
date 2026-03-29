@@ -17,6 +17,7 @@ import {
   localizeOutcome,
   localizePerformanceLabel
 } from "./domain/arcadeLocalization.js";
+import { resolveArcadeModeRules } from "./domain/arcadeModeRules.js";
 import { submitArcadePlay } from "./usecases/submitArcadePlay.js";
 
 const fallbackGames = [];
@@ -65,7 +66,10 @@ export function useArcadeController() {
     [catalog]
   );
   const activeGame = useMemo(() => games.find((g) => g.key === activeGameKey) || null, [activeGameKey, games]);
-  const activeRules = activeGameKey ? rules?.games?.[activeGameKey] : null;
+  const activeRules = useMemo(
+    () => (activeGameKey ? resolveArcadeModeRules(rules?.games?.[activeGameKey], activeModeKey) : null),
+    [activeGameKey, activeModeKey, rules]
+  );
   const activeMode = useMemo(
     () => activeGame?.modes?.find((mode) => mode.key === activeModeKey) || activeGame?.modes?.[0] || null,
     [activeGame, activeModeKey]
@@ -169,14 +173,22 @@ export function useArcadeController() {
     if (questUpdatedTimer.current) clearTimeout(questUpdatedTimer.current);
   }, []);
 
-  function getDisabledReason(gameKey) {
+  function getGameRulesForMode(gameKey, modeKey = "") {
+    return resolveArcadeModeRules(
+      rules?.games?.[gameKey],
+      modeKey || selectedModes[gameKey] || ""
+    );
+  }
+
+  function getDisabledReason(gameKey, modeKey = "") {
     if (readOnly) return "Режим только чтения: действия отключены";
     if (err) return "Ошибка загрузки правил";
     if (!rules || !ticketsEnabled) return "Аркада закрыта DM";
-    if (rules?.games?.[gameKey]?.enabled === false) return "Игра отключена DM";
-    const entry = Number(rules?.games?.[gameKey]?.entryCost || 0);
+    const gameRules = getGameRulesForMode(gameKey, modeKey);
+    if (gameRules?.enabled === false) return "Игра отключена DM";
+    const entry = Number(gameRules?.entryCost || 0);
     if (balance < entry) return "Недостаточно билетов для входа";
-    if (isGameLimitReached(gameKey, rules, usage)) return "Достигнут дневной лимит попыток";
+    if (isGameLimitReached(gameKey, { games: { [gameKey]: gameRules } }, usage)) return "Достигнут дневной лимит попыток";
     return "";
   }
 
@@ -204,25 +216,25 @@ export function useArcadeController() {
   }
 
   function formatEntryValue(gameKey, fallback) {
-    const entryCost = rules?.games?.[gameKey]?.entryCost;
+    const entryCost = getGameRulesForMode(gameKey)?.entryCost;
     if (entryCost == null) return formatEntry(fallback);
     return formatEntry(entryCost);
   }
 
-  function formatRewardValue(gameKey, fallback) {
-    const game = rules?.games?.[gameKey];
+  function formatRewardValue(gameKey, fallback, modeKey = "") {
+    const game = getGameRulesForMode(gameKey, modeKey);
     if (!game) return fallback;
     return `${game.rewardMin}-${game.rewardMax} билетов`;
   }
 
-  function getUiText(gameKey, field, fallback) {
-    const value = rules?.games?.[gameKey]?.ui?.[field];
+  function getUiText(gameKey, field, fallback, modeKey = "") {
+    const value = getGameRulesForMode(gameKey, modeKey)?.ui?.[field];
     if (typeof value === "string" && value.trim()) return value.trim();
     return fallback;
   }
 
-  function getGameRemaining(gameKey) {
-    const lim = rules?.games?.[gameKey]?.dailyLimit;
+  function getGameRemaining(gameKey, modeKey = "") {
+    const lim = getGameRulesForMode(gameKey, modeKey)?.dailyLimit;
     if (!lim) return null;
     const used = usage?.playsToday?.[gameKey] || 0;
     const left = Math.max(0, lim - used);
@@ -424,6 +436,7 @@ export function useArcadeController() {
     formatEntryValue,
     formatRewardValue,
     getUiText,
+    getGameRulesForMode,
     getDisabledReason,
     getGameRemaining,
     setMode,

@@ -9,6 +9,7 @@ import {
   validateScrabblePayload,
   validateTttPayload
 } from "../domain/playValidation.js";
+import { resolveGameModeRules } from "../domain/rules.js";
 import { MIN_ARCADE_PLAY_MS } from "../shared/ticketConstants.js";
 import { getDayKey, isPlainObject } from "../shared/ticketUtils.js";
 import { maybeGrantDailyQuest } from "./dailyQuestService.js";
@@ -58,6 +59,8 @@ export function processTicketPlay({ db, io, me, body, takeSeed, nowFn, buildMatc
   if (gameKey === "match3" && !validateMatch3Payload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
   if (gameKey === "dice" && !validateDicePayload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
   if (gameKey === "scrabble" && !validateScrabblePayload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
+  const modeKey = String(payload?.modeKey || "").trim();
+  const modeGame = resolveGameModeRules(game, modeKey);
 
   let row = ensureTicketRow(db, me.player.id);
   const dayKey = getDayKey();
@@ -66,12 +69,12 @@ export function processTicketPlay({ db, io, me, body, takeSeed, nowFn, buildMatc
   const playsToday = db
     .prepare("SELECT COUNT(*) as c FROM ticket_plays WHERE player_id=? AND day_key=? AND game_key=?")
     .get(me.player.id, dayKey, gameKey)?.c || 0;
-  if (game.dailyLimit && playsToday >= game.dailyLimit) return error(400, "daily_game_limit");
+  if (modeGame.dailyLimit && playsToday >= modeGame.dailyLimit) return error(400, "daily_game_limit");
 
-  const entryCost = Number(game.entryCost || 0);
+  const entryCost = Number(modeGame.entryCost || 0);
   if (entryCost > 0 && row.balance < entryCost) return error(400, "not_enough_tickets");
 
-  const lossPenalty = Number(game.lossPenalty || 0);
+  const lossPenalty = Number(modeGame.lossPenalty || 0);
   const spendCap = Number(rules.dailySpendCap || 0);
   const currentSpent = Number(row.daily_spent || 0);
   if (spendCap > 0) {
@@ -89,10 +92,10 @@ export function processTicketPlay({ db, io, me, body, takeSeed, nowFn, buildMatc
   let multiplier = 1;
 
   if (outcome === "win") {
-    const perf = game.performance?.[performanceKey];
+    const perf = modeGame.performance?.[performanceKey];
     if (!perf) return error(400, "invalid_performance");
 
-    baseReward = randInt(game.rewardMin, game.rewardMax);
+    baseReward = randInt(modeGame.rewardMin, modeGame.rewardMax);
     streakAfter += 1;
 
     const streakBonusCount = Math.min(streakAfter, rules.streak.max);

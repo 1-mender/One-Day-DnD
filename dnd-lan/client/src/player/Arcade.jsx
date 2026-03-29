@@ -11,6 +11,10 @@ import {
   localizeOutcome,
   localizeTagValue
 } from "./arcade/domain/arcadeLocalization.js";
+import {
+  formatArcadeModeMeta,
+  resolveArcadeModeRules
+} from "./arcade/domain/arcadeModeRules.js";
 import { useArcadeController } from "./arcade/useArcadeController.js";
 
 const Match3Game = lazy(() => import("./games/Match3.jsx"));
@@ -64,6 +68,7 @@ export default function Arcade() {
     formatEntryValue,
     formatRewardValue,
     getUiText,
+    getGameRulesForMode,
     getDisabledReason,
     getGameRemaining,
     setMode,
@@ -95,8 +100,8 @@ export default function Arcade() {
     return [...games].sort((left, right) => {
       const leftReason = getDisabledReason(left.key);
       const rightReason = getDisabledReason(right.key);
-      const leftEntry = Number(rules?.games?.[left.key]?.entryCost || 0);
-      const rightEntry = Number(rules?.games?.[right.key]?.entryCost || 0);
+      const leftEntry = Number(getGameRulesForMode(left.key)?.entryCost || 0);
+      const rightEntry = Number(getGameRulesForMode(right.key)?.entryCost || 0);
       const leftScore = leftReason ? 1 : 0;
       const rightScore = rightReason ? 1 : 0;
 
@@ -104,7 +109,7 @@ export default function Arcade() {
       if (leftEntry !== rightEntry) return leftEntry - rightEntry;
       return String(left.title || left.key).localeCompare(String(right.title || right.key), "ru");
     });
-  }, [games, getDisabledReason, rules]);
+  }, [games, getDisabledReason, getGameRulesForMode]);
 
   const availableNowCount = useMemo(
     () => rankedGames.filter((game) => !getDisabledReason(game.key)).length,
@@ -112,8 +117,8 @@ export default function Arcade() {
   );
 
   const freePlayableCount = useMemo(
-    () => rankedGames.filter((game) => !getDisabledReason(game.key) && Number(rules?.games?.[game.key]?.entryCost || 0) === 0).length,
-    [getDisabledReason, rankedGames, rules]
+    () => rankedGames.filter((game) => !getDisabledReason(game.key) && Number(getGameRulesForMode(game.key)?.entryCost || 0) === 0).length,
+    [getDisabledReason, rankedGames, getGameRulesForMode]
   );
 
   const lockedCount = Math.max(0, rankedGames.length - availableNowCount);
@@ -292,20 +297,23 @@ export default function Arcade() {
 
       <div className="arcade-grid">
         {rankedGames.map((g) => {
-          const remaining = getGameRemaining(g.key);
-          const disabledReason = getDisabledReason(g.key);
+          const modes = Array.isArray(g.modes) ? g.modes : [];
+          const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
+          const selectedMode = modes.find((mode) => mode.key === selectedModeKey) || modes[0] || null;
+          const modeRules = resolveArcadeModeRules(rules?.games?.[g.key], selectedModeKey);
+          const remaining = getGameRemaining(g.key, selectedModeKey);
+          const disabledReason = getDisabledReason(g.key, selectedModeKey);
           const canPlay = !disabledReason;
           const rulesToShow = canPlay ? g.rules.slice(0, 2) : g.rules.slice(0, 1);
           const hasMoreRules = g.rules.length > rulesToShow.length;
-          const difficultyLabel = localizeTagValue(getUiText(g.key, "difficulty", g.difficulty), "difficulty");
-          const riskLabel = localizeTagValue(getUiText(g.key, "risk", g.risk), "risk");
-          const timeLabel = localizeTagValue(getUiText(g.key, "time", g.time), "time");
-          const entryCost = Number(rules?.games?.[g.key]?.entryCost || 0);
-          const rewardLabel = formatRewardValue(g.key, "—");
+          const difficultyLabel = localizeTagValue(getUiText(g.key, "difficulty", g.difficulty, selectedModeKey), "difficulty");
+          const riskLabel = localizeTagValue(getUiText(g.key, "risk", g.risk, selectedModeKey), "risk");
+          const timeLabel = localizeTagValue(getUiText(g.key, "time", g.time, selectedModeKey), "time");
+          const entryCost = Number(modeRules?.entryCost || 0);
+          const rewardLabel = formatRewardValue(g.key, "—", selectedModeKey);
           const usageLabel = remaining ? `Лимит: ${remaining.used}/${remaining.lim}` : null;
-          const modes = Array.isArray(g.modes) ? g.modes : [];
-          const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
-          const gameDisabledByDm = rules?.games?.[g.key]?.enabled === false;
+          const gameDisabledByDm = modeRules?.enabled === false;
+          const modeMeta = formatArcadeModeMeta(g, selectedMode, modeRules);
           return (
             <div key={g.key} className={`item taped arcade-card${canPlay ? " is-playable" : " is-locked compact-locked"}${entryCost === 0 ? " is-free" : ""}`}>
               <div className="arcade-head">
@@ -342,6 +350,9 @@ export default function Arcade() {
                     </button>
                   ))}
                 </div>
+              ) : null}
+              {modeMeta ? (
+                <div className="small arcade-mode-summary">{modeMeta}</div>
               ) : null}
               <div className="rule-list">
                 {rulesToShow.map((rule, idx) => (
@@ -402,10 +413,10 @@ export default function Arcade() {
             onClose={closeGame}
             onSubmitResult={handleMatch3Submit}
             disabled={!ticketsEnabled || rules?.games?.match3?.enabled === false}
-            entryCost={Number(rules?.games?.match3?.entryCost || 0)}
+            entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
-              rules?.games?.match3
-                ? `${rules.games.match3.rewardMin}-${rules.games.match3.rewardMax} билетов`
+              activeRules
+                ? `${activeRules.rewardMin}-${activeRules.rewardMax} билетов`
                 : "-"
             }
             mode={activeMode}
@@ -419,10 +430,10 @@ export default function Arcade() {
             onClose={closeGame}
             onSubmitResult={handleGuessSubmit}
             disabled={!ticketsEnabled || rules?.games?.guess?.enabled === false}
-            entryCost={Number(rules?.games?.guess?.entryCost || 0)}
+            entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
-              rules?.games?.guess
-                ? `${rules.games.guess.rewardMin}-${rules.games.guess.rewardMax} билетов`
+              activeRules
+                ? `${activeRules.rewardMin}-${activeRules.rewardMax} билетов`
                 : "-"
             }
             mode={activeMode}
@@ -436,10 +447,10 @@ export default function Arcade() {
             onClose={closeGame}
             onSubmitResult={handleTttSubmit}
             disabled={!ticketsEnabled || rules?.games?.ttt?.enabled === false}
-            entryCost={Number(rules?.games?.ttt?.entryCost || 0)}
+            entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
-              rules?.games?.ttt
-                ? `${rules.games.ttt.rewardMin}-${rules.games.ttt.rewardMax} билетов`
+              activeRules
+                ? `${activeRules.rewardMin}-${activeRules.rewardMax} билетов`
                 : "-"
             }
             mode={activeMode}
@@ -453,10 +464,10 @@ export default function Arcade() {
             onClose={closeGame}
             onSubmitResult={handleDiceSubmit}
             disabled={!ticketsEnabled || rules?.games?.dice?.enabled === false}
-            entryCost={Number(rules?.games?.dice?.entryCost || 0)}
+            entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
-              rules?.games?.dice
-                ? `${rules.games.dice.rewardMin}-${rules.games.dice.rewardMax} билетов`
+              activeRules
+                ? `${activeRules.rewardMin}-${activeRules.rewardMax} билетов`
                 : "-"
             }
             mode={activeMode}
@@ -470,10 +481,10 @@ export default function Arcade() {
             onClose={closeGame}
             onSubmitResult={handleScrabbleSubmit}
             disabled={!ticketsEnabled || rules?.games?.scrabble?.enabled === false}
-            entryCost={Number(rules?.games?.scrabble?.entryCost || 0)}
+            entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
-              rules?.games?.scrabble
-                ? `${rules.games.scrabble.rewardMin}-${rules.games.scrabble.rewardMax} билетов`
+              activeRules
+                ? `${activeRules.rewardMin}-${activeRules.rewardMax} билетов`
                 : "-"
             }
             mode={activeMode}

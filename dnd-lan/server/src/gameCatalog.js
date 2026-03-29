@@ -12,8 +12,20 @@ export const GAME_CATALOG = [
       "Победа 2:0 даёт повышенный множитель"
     ],
     modes: [
-      { key: "normal", label: "Обычный", roundsToWin: 2, ai: "standard" },
-      { key: "fast", label: "Быстрый", roundsToWin: 1, ai: "standard" }
+      {
+        key: "normal",
+        label: "Обычный",
+        roundsToWin: 2,
+        ai: "standard",
+        summary: "Матч до двух побед. Лучший вход для бесплатной серии."
+      },
+      {
+        key: "fast",
+        label: "Быстрый",
+        roundsToWin: 1,
+        ai: "standard",
+        summary: "Один решающий раунд. Быстрее, но награда скромнее."
+      }
     ]
   },
   {
@@ -29,9 +41,33 @@ export const GAME_CATALOG = [
       "Время раунда ограничено таймером"
     ],
     modes: [
-      { key: "easy", label: "Разминка", ranks: ["A", "K", "Q"], maxAttempts: 4, timeLimit: 50, hintCount: 3 },
-      { key: "normal", label: "Классика", ranks: ["A", "K", "Q", "J"], maxAttempts: 3, timeLimit: 40, hintCount: 3 },
-      { key: "hard", label: "Мастер", ranks: ["A", "K", "Q", "J", "10"], maxAttempts: 3, timeLimit: 32, hintCount: 2 }
+      {
+        key: "easy",
+        label: "Разминка",
+        ranks: ["A", "K", "Q"],
+        maxAttempts: 4,
+        timeLimit: 50,
+        hintCount: 3,
+        summary: "Самый безопасный режим: больше подсказок и бесплатный вход."
+      },
+      {
+        key: "normal",
+        label: "Классика",
+        ranks: ["A", "K", "Q", "J"],
+        maxAttempts: 3,
+        timeLimit: 40,
+        hintCount: 3,
+        summary: "Базовый баланс между риском, временем и наградой."
+      },
+      {
+        key: "hard",
+        label: "Мастер",
+        ranks: ["A", "K", "Q", "J", "10"],
+        maxAttempts: 3,
+        timeLimit: 32,
+        hintCount: 2,
+        summary: "Шире колода, меньше времени и выше награда за точность."
+      }
     ]
   },
   {
@@ -47,9 +83,36 @@ export const GAME_CATALOG = [
       "Комбо 5+ даёт максимальный множитель"
     ],
     modes: [
-      { key: "normal", label: "Классика", size: 6, moves: 18, target: 120, colors: 6, blocks: 0 },
-      { key: "compact", label: "Компакт", size: 5, moves: 14, target: 90, colors: 5, blocks: 0 },
-      { key: "chaos", label: "Хаос", size: 7, moves: 20, target: 180, colors: 7, blocks: 6 }
+      {
+        key: "normal",
+        label: "Классика",
+        size: 6,
+        moves: 18,
+        target: 120,
+        colors: 6,
+        blocks: 0,
+        summary: "Стабильное поле и средняя награда за длинные комбо."
+      },
+      {
+        key: "compact",
+        label: "Компакт",
+        size: 5,
+        moves: 14,
+        target: 90,
+        colors: 5,
+        blocks: 0,
+        summary: "Меньше поле и бесплатный вход. Подходит для быстрой разминки."
+      },
+      {
+        key: "chaos",
+        label: "Хаос",
+        size: 7,
+        moves: 20,
+        target: 180,
+        colors: 7,
+        blocks: 6,
+        summary: "Большое поле с блоками. Дороже вход, но заметно выше награда."
+      }
     ]
   },
   {
@@ -65,9 +128,30 @@ export const GAME_CATALOG = [
       "В режиме риска нужна более дорогая комбинация"
     ],
     modes: [
-      { key: "classic", label: "Классика", allowReroll: true, targetScore: 2, timeLimit: 40 },
-      { key: "risk", label: "Риск", allowReroll: true, targetScore: 4, timeLimit: 32 },
-      { key: "single", label: "Один шанс", allowReroll: false, targetScore: 1, timeLimit: 24 }
+      {
+        key: "classic",
+        label: "Классика",
+        allowReroll: true,
+        targetScore: 2,
+        timeLimit: 40,
+        summary: "Один реролл и спокойный порог для хорошей комбинации."
+      },
+      {
+        key: "risk",
+        label: "Риск",
+        allowReroll: true,
+        targetScore: 4,
+        timeLimit: 32,
+        summary: "Нужна сильная комбинация. Билет дороже, но выигрыш выше."
+      },
+      {
+        key: "single",
+        label: "Один шанс",
+        allowReroll: false,
+        targetScore: 1,
+        timeLimit: 24,
+        summary: "Без реролла и почти без риска. Хорош для быстрого старта."
+      }
     ]
   },
   {
@@ -83,7 +167,27 @@ export const GAME_CATALOG = [
       "Редкие буквы повышают награду"
     ],
     modes: [
-      { key: "normal", label: "Классика", timeLimit: 60, rackSize: 7 }
+      {
+        key: "normal",
+        label: "Классика",
+        timeLimit: 60,
+        rackSize: 7,
+        summary: "Базовый набор букв и мягкий темп на разгон."
+      },
+      {
+        key: "rush",
+        label: "Блиц",
+        timeLimit: 45,
+        rackSize: 6,
+        summary: "Меньше букв и жёстче таймер. Быстрый рискованный раунд."
+      },
+      {
+        key: "expert",
+        label: "Эксперт",
+        timeLimit: 55,
+        rackSize: 8,
+        summary: "Больше букв и выше потолок награды за длинные слова."
+      }
     ]
   }
 ];
