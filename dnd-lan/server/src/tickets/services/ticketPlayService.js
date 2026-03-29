@@ -55,7 +55,7 @@ export function processTicketPlay({ db, io, me, body, takeSeed, nowFn, buildMatc
 
   if (gameKey === "guess" && !validateGuessPayload({ ...payload, outcome }, seed || "", performanceKey)) return error(400, "invalid_proof");
   if (gameKey === "ttt" && !validateTttPayload({ ...payload, outcome }, performanceKey)) return error(400, "invalid_proof");
-  if (gameKey === "match3" && !validateMatch3Payload(payload, outcome, performanceKey)) return error(400, "invalid_proof");
+  if (gameKey === "match3" && !validateMatch3Payload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
   if (gameKey === "dice" && !validateDicePayload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
   if (gameKey === "scrabble" && !validateScrabblePayload(payload, outcome, performanceKey, seed || "")) return error(400, "invalid_proof");
 

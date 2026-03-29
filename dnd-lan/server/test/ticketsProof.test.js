@@ -12,6 +12,13 @@ const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
 const { buildSeededScrabbleRack } = await import("../src/tickets/domain/playValidation.js");
+const {
+  createMatch3Session,
+  findFirstMatch3ValidMove,
+  getMatch3Performance,
+  getMatch3Status,
+  tryMatch3Move
+} = await import("../../shared/match3Domain.js");
 
 initDb();
 
@@ -331,11 +338,7 @@ test("match3 win rejects payload with score below target", async () => {
       performance: "normal",
       payload: {
         modeKey: "normal",
-        score: 10,
-        target: 120,
-        size: 6,
-        maxRun: 3,
-        movesUsed: 12
+        moves: []
       },
       seed: seedOut.data.seed,
       proof: seedOut.data.proof,
@@ -345,11 +348,7 @@ test("match3 win rejects payload with score below target", async () => {
         performance: "normal",
         payload: {
           modeKey: "normal",
-          score: 10,
-          target: 120,
-          size: 6,
-          maxRun: 3,
-          movesUsed: 12
+          moves: []
         }
       })
     }
@@ -611,11 +610,7 @@ test("match3 rejects payload with mismatched mode settings", async () => {
 
   const payload = {
     modeKey: "compact",
-    score: 120,
-    target: 120,
-    size: 6,
-    maxRun: 3,
-    movesUsed: 10
+    moves: [{ from: 0, to: 1 }]
   };
 
   const out = await api("/api/tickets/play", {
@@ -639,4 +634,53 @@ test("match3 rejects payload with mismatched mode settings", async () => {
 
   assert.equal(out.res.status, 400);
   assert.equal(out.data.error, "invalid_proof");
+});
+
+test("match3 accepts seeded replay with valid move history", async () => {
+  const playerId = createPlayer("Match3-Seeded");
+  const token = createSession(playerId);
+  seedTickets(playerId, 20);
+
+  const seedOut = await api("/api/tickets/seed?gameKey=match3", { token });
+  assert.equal(seedOut.res.status, 200);
+
+  const mode = { key: "compact", size: 5, moves: 14, target: 90, colors: 5, blocks: 0 };
+  const session = createMatch3Session(seedOut.data.seed, mode);
+  const moves = [];
+  let guard = 0;
+  while (getMatch3Status(session) === "playing" && guard < 20) {
+    const move = findFirstMatch3ValidMove(session);
+    assert.ok(move, "expected a valid move");
+    const applied = tryMatch3Move(session, move.from, move.to);
+    assert.equal(applied.valid, true);
+    moves.push(move);
+    guard += 1;
+  }
+
+  const outcome = getMatch3Status(session);
+  assert.ok(outcome === "win" || outcome === "loss");
+  const performance = getMatch3Performance(session, outcome);
+  const payload = { modeKey: "compact", moves };
+
+  const out = await api("/api/tickets/play", {
+    method: "POST",
+    token,
+    body: {
+      gameKey: "match3",
+      outcome,
+      performance,
+      payload,
+      seed: seedOut.data.seed,
+      proof: seedOut.data.proof,
+      clientProof: makeClientProof(seedOut.data.seed, {
+        gameKey: "match3",
+        outcome,
+        performance,
+        payload
+      })
+    }
+  });
+
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data?.result?.gameKey, "match3");
 });

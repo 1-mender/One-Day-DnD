@@ -1,5 +1,11 @@
 import crypto from "node:crypto";
 import { GAME_CATALOG } from "../../gameCatalog.js";
+import {
+  createMatch3Session,
+  getMatch3Performance,
+  getMatch3Status,
+  tryMatch3Move
+} from "../../../../shared/match3Domain.js";
 
 const SCRABBLE_RARE = new Set(["\u0424", "\u0429", "\u042A", "\u042D", "\u042E", "\u042F"]);
 const SCRABBLE_ALPHABET = new Set(Array.from("\u0410\u0411\u0412\u0413\u0414\u0415\u0416\u0417\u0418\u0419\u041A\u041B\u041C\u041D\u041E\u041F\u0420\u0421\u0422\u0423\u0424\u0425\u0426\u0427\u0428\u0429\u042A\u042B\u042D\u042E\u042F"));
@@ -309,34 +315,26 @@ export function validateTttPayload(payload, performanceKey) {
   return false;
 }
 
-export function validateMatch3Payload(payload, outcome, performanceKey) {
+export function validateMatch3Payload(payload, outcome, performanceKey, seed) {
   const mode = getCatalogMode("match3", payload?.modeKey);
   if (!mode) return false;
-  const score = Number(payload?.score);
-  const target = Number(payload?.target);
-  const size = Number(payload?.size);
-  const maxRun = Number(payload?.maxRun);
-  const movesUsed = Number(payload?.movesUsed);
+  const moves = Array.isArray(payload?.moves) ? payload.moves : [];
+  if (!moves.length) return false;
+  if (moves.length > Number(mode.moves || 30)) return false;
 
-  if (!intInRange(Math.floor(score), 0, 50000) || score !== Math.floor(score)) return false;
-  if (!intInRange(Math.floor(target), 60, 500) || target !== Math.floor(target)) return false;
-  if (!intInRange(Math.floor(size), 4, 8) || size !== Math.floor(size)) return false;
-  if (!intInRange(Math.floor(maxRun), 0, size) || maxRun !== Math.floor(maxRun)) return false;
-  if (!intInRange(Math.floor(movesUsed), 1, Number(mode.moves || size * 4)) || movesUsed !== Math.floor(movesUsed)) return false;
-  if (target !== Number(mode.target)) return false;
-  if (size !== Number(mode.size)) return false;
+  const session = createMatch3Session(seed, mode);
+  for (let idx = 0; idx < moves.length; idx += 1) {
+    const move = moves[idx] || {};
+    const applied = tryMatch3Move(session, Number(move.from), Number(move.to));
+    if (!applied.valid) return false;
+    if (applied.status !== "playing" && idx !== moves.length - 1) return false;
+  }
 
-  if (outcome === "win" && score < target) return false;
-  if (outcome === "loss" && score >= target) return false;
-  if (outcome === "loss" && performanceKey !== "normal") return false;
-  if (performanceKey === "combo5" && maxRun < 5) return false;
-  if (performanceKey === "combo4" && maxRun < 4) return false;
-
-  // Conservative anti-cheat ceiling based on board size and used turns.
-  const maxPlausibleScore = movesUsed * size * size * 12;
-  if (score > maxPlausibleScore) return false;
-
-  return true;
+  const resolvedOutcome = getMatch3Status(session);
+  if (resolvedOutcome !== outcome) return false;
+  if (getMatch3Performance(session, resolvedOutcome) !== performanceKey) return false;
+  if (resolvedOutcome === "loss" && session.movesUsed !== Number(mode.moves || 0)) return false;
+  return resolvedOutcome !== "playing";
 }
 
 export function validateDicePayload(payload, outcome, performanceKey, seed) {
