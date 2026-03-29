@@ -4,7 +4,7 @@ import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { resolveJoinUrl } from "../lib/joinUrl.js";
-import { Copy, QrCode, RefreshCcw, Search } from "lucide-react";
+import { BookOpen, Copy, Package2, QrCode, RefreshCcw, ScrollText, Search, Settings, Users } from "lucide-react";
 import { formatError } from "../lib/formatError.js";
 import { t } from "../i18n/index.js";
 import { useQuickAccess } from "../lib/useQuickAccess.js";
@@ -21,6 +21,7 @@ export default function DMOpsBar() {
   const [showQuickSwitch, setShowQuickSwitch] = useState(false);
   const [quickQuery, setQuickQuery] = useState("");
   const [quickLoaded, setQuickLoaded] = useState(false);
+  const [bestiaryBusy, setBestiaryBusy] = useState(false);
   const [copied, setCopied] = useState({ url: false, code: false });
   const [err, setErr] = useState("");
   const [quickErr, setQuickErr] = useState("");
@@ -207,10 +208,32 @@ export default function DMOpsBar() {
     players
   ]);
 
+  const quickNavItems = useMemo(() => ([
+    { key: "players", label: "Игроки", icon: Users, onClick: () => navigate("/dm/app/players") },
+    { key: "inventory", label: "Инвентарь", icon: Package2, onClick: () => navigate("/dm/app/inventory") },
+    { key: "bestiary", label: "Бестиарий", icon: BookOpen, onClick: () => navigate("/dm/app/bestiary") },
+    { key: "info", label: "Инфоблоки", icon: ScrollText, onClick: () => navigate("/dm/app/info") },
+    { key: "settings", label: "Настройки", icon: Settings, onClick: () => navigate("/dm/app/settings") }
+  ]), [navigate]);
+
   const openQuickResult = (result) => {
     result?.onSelect?.();
     setShowQuickSwitch(false);
     setQuickQuery("");
+  };
+
+  const toggleBestiaryAccess = async () => {
+    if (bestiaryBusy) return;
+    setBestiaryBusy(true);
+    setErr("");
+    try {
+      await api.dmBestiaryToggle(!info?.settings?.bestiaryEnabled);
+      await loadInfo();
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setBestiaryBusy(false);
+    }
   };
 
   const copyText = async (text, key) => {
@@ -288,6 +311,67 @@ export default function DMOpsBar() {
           <QRCodeCard url={url} className="compact" />
         </div>
       ) : null}
+
+      <div className="dm-ops-quick-actions">
+        <div className="dm-ops-quick-actions-block">
+          <div className="tf-section-copy">
+            <div className="tf-section-kicker">Quick actions</div>
+            <div className="dm-inv-panel-title">Быстрые переходы</div>
+          </div>
+          <div className="dm-ops-quick-actions-grid">
+            {quickNavItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="btn secondary dm-ops-quick-action"
+                  onClick={item.onClick}
+                >
+                  <Icon className="icon" aria-hidden="true" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="dm-ops-quick-actions-block">
+          <div className="tf-section-copy">
+            <div className="tf-section-kicker">Live controls</div>
+            <div className="dm-inv-panel-title">Сессионные переключатели</div>
+          </div>
+          <div className="dm-ops-live-actions">
+            <div className="dm-ops-live-card">
+              <div className="kv">
+                <div className="dm-dashboard-player-name">Бестиарий для игроков</div>
+                <div className="small">
+                  {info?.settings?.bestiaryEnabled
+                    ? "Игроки видят общий каталог монстров."
+                    : "Каталог монстров сейчас скрыт от игроков."}
+                </div>
+              </div>
+              <div className="dm-ops-live-card-actions">
+                <span className={`badge ${info?.settings?.bestiaryEnabled ? "ok" : "off"}`}>
+                  {info?.settings?.bestiaryEnabled ? "ON" : "OFF"}
+                </span>
+                <button
+                  type="button"
+                  className={`btn ${info?.settings?.bestiaryEnabled ? "secondary" : ""}`}
+                  onClick={toggleBestiaryAccess}
+                  disabled={bestiaryBusy}
+                >
+                  {bestiaryBusy
+                    ? "Сохраняю..."
+                    : info?.settings?.bestiaryEnabled
+                      ? "Скрыть"
+                      : "Открыть"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {showQuickSwitch ? (
         <div className="dm-ops-switch">
