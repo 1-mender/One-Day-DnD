@@ -4064,6 +4064,19 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     gap: 8px;
   }
 
+  .dm-ops-scene-tools{
+    display: grid;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px dashed var(--map-line);
+  }
+
+  .dm-ops-scene-tools-grid{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
   .dm-ops-quick-action{
     justify-content: flex-start;
     width: 100%;

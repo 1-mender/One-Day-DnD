@@ -226,6 +226,30 @@ export default function DMOpsBar() {
     { key: "settings", label: "Настройки", icon: Settings, onClick: () => navigate("/dm/app/settings") }
   ]), [navigate]);
 
+  const sceneTemplates = useMemo(() => ([
+    {
+      key: "hint",
+      label: "Подсказка",
+      access: "all",
+      title: "Подсказка сцены",
+      content: "Короткая подсказка для игроков:\n\n- что они замечают\n- на что стоит обратить внимание\n- какой следующий шаг кажется разумным"
+    },
+    {
+      key: "clue",
+      label: "Улика",
+      access: "all",
+      title: "Найдена улика",
+      content: "Игроки находят важную улику:\n\n- где она лежит\n- почему она необычна\n- что она может значить для сцены"
+    },
+    {
+      key: "combat",
+      label: "Боевое описание",
+      access: "all",
+      title: "Боевая сцена",
+      content: "Краткое описание боевой сцены:\n\n- что слышно и видно\n- где угроза\n- что меняется в обстановке прямо сейчас"
+    }
+  ]), []);
+
   const ticketScopeOptions = useMemo(() => ([
     { key: "online", label: "Онлайн", count: players.filter((player) => String(player.status || "") === "online").length },
     { key: "idle", label: "Нет активности", count: players.filter((player) => String(player.status || "") === "idle").length },
@@ -299,6 +323,17 @@ export default function DMOpsBar() {
       ...prev,
       access: access || "all"
     }));
+    setQuickNoteOpen(true);
+  };
+
+  const openQuickTemplate = (template) => {
+    if (!template) return;
+    setErr("");
+    setQuickNoteForm({
+      title: template.title,
+      content: template.content,
+      access: template.access
+    });
     setQuickNoteOpen(true);
   };
 
@@ -459,6 +494,23 @@ export default function DMOpsBar() {
               <Coins className="icon" aria-hidden="true" />
               Билеты по группе
             </button>
+          </div>
+          <div className="dm-ops-scene-tools">
+            <div className="tf-section-kicker">Scene tools</div>
+            <div className="small">Шаблоны для быстрых инфоблоков по ходу сцены.</div>
+            <div className="dm-ops-scene-tools-grid">
+              {sceneTemplates.map((template) => (
+                <button
+                  key={template.key}
+                  type="button"
+                  className="btn secondary dm-ops-quick-action"
+                  onClick={() => openQuickTemplate(template)}
+                >
+                  <ScrollText className="icon" aria-hidden="true" />
+                  {template.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
