@@ -6724,10 +6724,36 @@ body.arcade-modal-open{
   }
 
   .tf-inventory-shell .inv-slot-qty,
-  .tf-inventory-shell .inv-slot-reserved{
-    min-width: 14px;
-    height: 14px;
-    font-size: 8px;
-  }
+.tf-inventory-shell .inv-slot-reserved{
+  min-width: 14px;
+  height: 14px;
+  font-size: 8px;
+}
+}
+
+.dm-quick-access {
+  margin-top: 12px;
+  padding: 12px 14px;
+}
+
+.dm-quick-access-group + .dm-quick-access-group {
+  margin-top: 10px;
+}
+
+.dm-quick-access-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.dm-quick-access-chip {
+  min-height: auto;
+  padding: 8px 12px;
+}
+
+.dm-quick-access-chip.is-pinned {
+  border-color: rgba(88, 125, 78, 0.45);
+  box-shadow: 0 8px 18px rgba(113, 138, 96, 0.14);
 }
 }

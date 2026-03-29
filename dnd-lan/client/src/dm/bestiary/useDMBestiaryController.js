@@ -4,6 +4,7 @@ import { useSocket } from "../../context/SocketContext.jsx";
 import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { useQueryState } from "../../hooks/useQueryState.js";
 import { formatError } from "../../lib/formatError.js";
+import { useQuickAccess } from "../../lib/useQuickAccess.js";
 import { EMPTY_BESTIARY_FORM, filterBestiary } from "./dmBestiaryDomain.js";
 
 export function useDmBestiaryController() {
@@ -98,6 +99,13 @@ export function useDmBestiaryController() {
   const selectedId = Number(selectedIdParam || 0);
   const selected = useMemo(() => items.find((monster) => monster.id === selectedId) || null, [items, selectedId]);
   const filtered = useMemo(() => filterBestiary(items, q, vis), [items, q, vis]);
+  const quickAccess = useQuickAccess("dm_bestiary", items);
+  const { trackRecent } = quickAccess;
+
+  useEffect(() => {
+    if (!selected?.id) return;
+    trackRecent(selected.id);
+  }, [selected?.id, trackRecent]);
 
   const loadImages = useCallback(async (monsterId) => {
     try {
@@ -353,6 +361,7 @@ export function useDmBestiaryController() {
     portOnExisting,
     portPendingFile,
     portPlan,
+    quickAccess,
     q,
     readOnly,
     replaceConfirmOpen,

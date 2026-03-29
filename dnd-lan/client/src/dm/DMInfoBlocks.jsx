@@ -4,6 +4,7 @@ import Modal from "../components/Modal.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
+import { useQuickAccess } from "../lib/useQuickAccess.js";
 import { ActionMenu } from "../foundation/primitives/index.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -70,6 +71,14 @@ export default function DMInfoBlocks() {
       return hay.includes(dq);
     });
   }, [items, debouncedQ, cat, acc]);
+
+  const quickAccess = useQuickAccess("dm_info_blocks", items);
+  const { pinnedItems, recentItems, isPinned, togglePinned, trackRecent } = quickAccess;
+
+  useEffect(() => {
+    if (!selected?.id) return;
+    trackRecent(selected.id);
+  }, [selected?.id, trackRecent]);
 
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p.displayName])), [players]);
   const selectedCount = useMemo(() => items.filter((block) => block.access === "selected").length, [items]);
@@ -215,6 +224,35 @@ export default function DMInfoBlocks() {
               <span className="badge secondary">Выбранным: {selectedCount}</span>
               <span className="badge secondary">Категория: {cat || "все"}</span>
             </div>
+            {(pinnedItems.length || recentItems.length) ? (
+              <div className="tf-panel dm-quick-access">
+                <div className="tf-section-kicker">Quick access</div>
+                {pinnedItems.length ? (
+                  <div className="dm-quick-access-group">
+                    <div className="small">Закреплённые</div>
+                    <div className="dm-quick-access-chips">
+                      {pinnedItems.map((block) => (
+                        <button key={`pin-${block.id}`} className="btn secondary dm-quick-access-chip is-pinned" onClick={() => selectBlock(block.id)}>
+                          {block.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {recentItems.length ? (
+                  <div className="dm-quick-access-group">
+                    <div className="small">Недавние</div>
+                    <div className="dm-quick-access-chips">
+                      {recentItems.map((block) => (
+                        <button key={`recent-${block.id}`} className="btn secondary dm-quick-access-chip" onClick={() => selectBlock(block.id)}>
+                          {block.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="row u-row-wrap tf-panel dm-info-toolbar">
               <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} aria-label={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
               <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t("dmInfoBlocks.categoryAll", null, "Категория: все")} className="u-w-160">
@@ -258,6 +296,7 @@ export default function DMInfoBlocks() {
                   <ActionMenu
                     items={[
                       { label: t("dmInfoBlocks.edit", null, "Редактировать"), onClick: () => startEdit(b), disabled: readOnly },
+                      { label: isPinned(b.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(b.id) },
                       { label: t("dmInfoBlocks.delete", null, "Удалить"), onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
                       { label: t("dmInfoBlocks.showAll", null, "Показать всем"), onClick: () => setAccess(b, "all"), disabled: readOnly },
                       { label: t("dmInfoBlocks.onlyDm", null, "Только DM"), onClick: () => setAccess(b, "dm"), disabled: readOnly },
@@ -287,6 +326,9 @@ export default function DMInfoBlocks() {
                 </div>
                 <hr />
                 <div className="dm-info-detail-summary">
+                  <button className="btn secondary dm-quick-access-chip" onClick={() => togglePinned(selected.id)}>
+                    {isPinned(selected.id) ? "Убрать из закреплённых" : "Закрепить блок"}
+                  </button>
                   <span className="badge secondary">Категория: {selected.category || "note"}</span>
                   <span className="badge">{getAccessLabel(selected.access)}</span>
                 </div>

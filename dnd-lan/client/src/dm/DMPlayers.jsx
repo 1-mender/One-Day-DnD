@@ -8,6 +8,7 @@ import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
+import { useQuickAccess } from "../lib/useQuickAccess.js";
 import { t } from "../i18n/index.js";
 import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
@@ -194,10 +195,18 @@ export default function DMPlayers() {
     });
   }, [players, tickets]);
 
+  const quickAccess = useQuickAccess("dm_players", playersWithTickets);
+  const { pinnedItems, recentItems, isPinned, togglePinned, trackRecent } = quickAccess;
+
   const selectedId = Number(selectedIdParam || 0);
   const selectedPlayer = useMemo(() => {
     return playersWithTickets.find((player) => player.id === selectedId) || null;
   }, [playersWithTickets, selectedId]);
+
+  useEffect(() => {
+    if (!selectedPlayer?.id) return;
+    trackRecent(selectedPlayer.id);
+  }, [selectedPlayer?.id, trackRecent]);
 
   const filtered = useMemo(() => {
     const query = String(q || "").toLowerCase().trim();
@@ -259,6 +268,35 @@ export default function DMPlayers() {
                 <strong>{statusCounts.offline}</strong>
               </div>
             </div>
+            {(pinnedItems.length || recentItems.length) ? (
+              <div className="tf-panel dm-quick-access">
+                <div className="tf-section-kicker">Quick access</div>
+                {pinnedItems.length ? (
+                  <div className="dm-quick-access-group">
+                    <div className="small">Закреплённые</div>
+                    <div className="dm-quick-access-chips">
+                      {pinnedItems.map((player) => (
+                        <button key={`pin-${player.id}`} className="btn secondary dm-quick-access-chip is-pinned" onClick={() => selectPlayer(player.id)}>
+                          {player.displayName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {recentItems.length ? (
+                  <div className="dm-quick-access-group">
+                    <div className="small">Недавние</div>
+                    <div className="dm-quick-access-chips">
+                      {recentItems.map((player) => (
+                        <button key={`recent-${player.id}`} className="btn secondary dm-quick-access-chip" onClick={() => selectPlayer(player.id)}>
+                          {player.displayName}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="tf-panel tf-command-bar dm-players-toolbar">
               <div className="tf-section-copy">
                 <div className="tf-section-kicker">Roster filters</div>
@@ -294,6 +332,7 @@ export default function DMPlayers() {
                       label={t("dmPlayers.menuLabel")}
                       items={[
                         { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
+                        { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
                         { label: t("dmPlayers.menuTickets"), onClick: () => openTickets(player), disabled: readOnly },
                         { label: t("dmPlayers.menuEditName"), onClick: () => startEdit(player), disabled: readOnly },
                         { label: t("dmPlayers.menuAsPlayer"), onClick: () => viewAs(player.id), disabled: readOnly },
@@ -330,6 +369,9 @@ export default function DMPlayers() {
                 </div>
                 <hr />
                 <div className="dm-player-detail-summary">
+                  <button className="btn secondary dm-quick-access-chip" onClick={() => togglePinned(selectedPlayer.id)}>
+                    {isPinned(selectedPlayer.id) ? "Убрать из закреплённых" : "Закрепить игрока"}
+                  </button>
                   <span className={`badge ${selectedSummary?.hasProfile ? "ok" : "warn"}`}>
                     {selectedSummary?.hasProfile ? "Профиль есть" : "Профиль не создан"}
                   </span>

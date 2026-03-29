@@ -2,7 +2,7 @@ import MarkdownView from "../../../components/markdown/MarkdownView.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 
 export default function DMBestiaryDetailSection({ controller }) {
-  const { readOnly, selectMonster, selected, startEdit, toggleMonsterHidden } = controller;
+  const { readOnly, selectMonster, selected, startEdit, toggleMonsterHidden, quickAccess } = controller;
 
   return (
     <div className="card taped scrap-card pane-sticky tf-panel dm-bestiary-detail">
@@ -38,6 +38,9 @@ export default function DMBestiaryDetailSection({ controller }) {
             </div>
           </div>
           <div className="row u-row-gap-8 u-row-wrap u-mt-8">
+            <button className="btn secondary dm-quick-access-chip" onClick={() => quickAccess.togglePinned(selected.id)}>
+              {quickAccess.isPinned(selected.id) ? "Убрать из закреплённых" : "Закрепить монстра"}
+            </button>
             <button className="btn secondary" onClick={() => toggleMonsterHidden(selected)} disabled={readOnly}>
               {selected.is_hidden ? "Сделать публичным" : "Скрыть"}
             </button>

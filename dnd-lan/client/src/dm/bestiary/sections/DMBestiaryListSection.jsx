@@ -18,6 +18,7 @@ export default function DMBestiaryListSection({ controller }) {
     startNew,
     toggleMonsterHidden,
     del,
+    quickAccess,
     vis,
     enabled
   } = controller;
@@ -39,6 +40,35 @@ export default function DMBestiaryListSection({ controller }) {
           <span className="badge secondary">Монстров: {filtered.length}</span>
           <span className="badge secondary">Всего в архиве: {controller.items.length}</span>
         </div>
+        {(quickAccess.pinnedItems.length || quickAccess.recentItems.length) ? (
+          <div className="tf-panel dm-quick-access">
+            <div className="tf-section-kicker">Quick access</div>
+            {quickAccess.pinnedItems.length ? (
+              <div className="dm-quick-access-group">
+                <div className="small">Закреплённые</div>
+                <div className="dm-quick-access-chips">
+                  {quickAccess.pinnedItems.map((monster) => (
+                    <button key={`pin-${monster.id}`} className="btn secondary dm-quick-access-chip is-pinned" onClick={() => selectMonster(monster.id)}>
+                      {monster.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {quickAccess.recentItems.length ? (
+              <div className="dm-quick-access-group">
+                <div className="small">Недавние</div>
+                <div className="dm-quick-access-chips">
+                  {quickAccess.recentItems.map((monster) => (
+                    <button key={`recent-${monster.id}`} className="btn secondary dm-quick-access-chip" onClick={() => selectMonster(monster.id)}>
+                      {monster.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
         <div className="tf-panel tf-command-bar dm-bestiary-toolbar">
           <div className="tf-section-copy">
             <div className="tf-section-kicker">Search archive</div>
@@ -86,6 +116,7 @@ export default function DMBestiaryListSection({ controller }) {
               <ActionMenu
                 items={[
                   { label: "Редактировать", onClick: () => startEdit(monster), disabled: readOnly },
+                  { label: quickAccess.isPinned(monster.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => quickAccess.togglePinned(monster.id) },
                   {
                     label: monster.is_hidden ? "Сделать публичным" : "Скрыть",
                     onClick: () => toggleMonsterHidden(monster),
