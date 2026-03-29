@@ -4058,6 +4058,12 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     gap: 8px;
   }
 
+  .dm-ops-session-actions{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+  }
+
   .dm-ops-quick-action{
     justify-content: flex-start;
     width: 100%;

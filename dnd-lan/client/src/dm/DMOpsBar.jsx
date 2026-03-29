@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
+import Modal from "../components/Modal.jsx";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { resolveJoinUrl } from "../lib/joinUrl.js";
-import { BookOpen, Copy, Package2, QrCode, RefreshCcw, ScrollText, Search, Settings, Users } from "lucide-react";
+import { BookOpen, Coins, Copy, Package2, PlusSquare, QrCode, RefreshCcw, ScrollText, Search, Settings, Users } from "lucide-react";
 import { formatError } from "../lib/formatError.js";
 import { t } from "../i18n/index.js";
 import { useQuickAccess } from "../lib/useQuickAccess.js";
@@ -22,6 +23,15 @@ export default function DMOpsBar() {
   const [quickQuery, setQuickQuery] = useState("");
   const [quickLoaded, setQuickLoaded] = useState(false);
   const [bestiaryBusy, setBestiaryBusy] = useState(false);
+  const [quickNoteOpen, setQuickNoteOpen] = useState(false);
+  const [quickNoteBusy, setQuickNoteBusy] = useState(false);
+  const [quickTicketsOpen, setQuickTicketsOpen] = useState(false);
+  const [quickTicketsBusy, setQuickTicketsBusy] = useState(false);
+  const [quickMsg, setQuickMsg] = useState("");
+  const [quickNoteForm, setQuickNoteForm] = useState({ title: "", content: "", access: "all" });
+  const [quickTicketScope, setQuickTicketScope] = useState("online");
+  const [quickTicketDelta, setQuickTicketDelta] = useState("");
+  const [quickTicketReason, setQuickTicketReason] = useState("");
   const [copied, setCopied] = useState({ url: false, code: false });
   const [err, setErr] = useState("");
   const [quickErr, setQuickErr] = useState("");
@@ -216,6 +226,18 @@ export default function DMOpsBar() {
     { key: "settings", label: "Настройки", icon: Settings, onClick: () => navigate("/dm/app/settings") }
   ]), [navigate]);
 
+  const ticketScopeOptions = useMemo(() => ([
+    { key: "online", label: "Онлайн", count: players.filter((player) => String(player.status || "") === "online").length },
+    { key: "idle", label: "Нет активности", count: players.filter((player) => String(player.status || "") === "idle").length },
+    { key: "offline", label: "Оффлайн", count: players.filter((player) => String(player.status || "offline") === "offline").length },
+    { key: "all", label: "Все игроки", count: players.length }
+  ]), [players]);
+
+  const quickTicketTargets = useMemo(() => {
+    if (quickTicketScope === "all") return players;
+    return players.filter((player) => String(player.status || "offline") === quickTicketScope);
+  }, [players, quickTicketScope]);
+
   const openQuickResult = (result) => {
     result?.onSelect?.();
     setShowQuickSwitch(false);
@@ -233,6 +255,74 @@ export default function DMOpsBar() {
       setErr(formatError(e));
     } finally {
       setBestiaryBusy(false);
+    }
+  };
+
+  const pushQuickMsg = (text) => {
+    setQuickMsg(text);
+    setTimeout(() => setQuickMsg(""), 2200);
+  };
+
+  const createQuickNote = async () => {
+    if (quickNoteBusy) return;
+    const title = String(quickNoteForm.title || "").trim();
+    const content = String(quickNoteForm.content || "").trim();
+    if (!title || !content) {
+      setErr("Заполните заголовок и текст инфоблока");
+      return;
+    }
+    setQuickNoteBusy(true);
+    setErr("");
+    try {
+      const created = await api.dmInfoCreate({
+        title,
+        content,
+        category: "note",
+        access: quickNoteForm.access,
+        selectedPlayerIds: [],
+        tags: []
+      });
+      setQuickNoteOpen(false);
+      setQuickNoteForm({ title: "", content: "", access: "all" });
+      pushQuickMsg("Инфоблок создан");
+      navigate(created?.id ? `/dm/app/info?id=${created.id}` : "/dm/app/info");
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setQuickNoteBusy(false);
+    }
+  };
+
+  const applyQuickTickets = async () => {
+    if (quickTicketsBusy) return;
+    const delta = Number(quickTicketDelta || 0);
+    if (Number.isNaN(delta) || !delta) {
+      setErr("Укажите ненулевое изменение билетов");
+      return;
+    }
+    if (!quickTicketTargets.length) {
+      setErr("В выбранной группе нет игроков");
+      return;
+    }
+    setQuickTicketsBusy(true);
+    setErr("");
+    try {
+      for (const player of quickTicketTargets) {
+        await api.dmTicketsAdjust({
+          playerId: player.id,
+          delta,
+          reason: quickTicketReason
+        });
+      }
+      setQuickTicketsOpen(false);
+      setQuickTicketDelta("");
+      setQuickTicketReason("");
+      await loadPlayers();
+      pushQuickMsg(`Билеты изменены у игроков: ${quickTicketTargets.length}`);
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setQuickTicketsBusy(false);
     }
   };
 
@@ -305,6 +395,7 @@ export default function DMOpsBar() {
           {t("common.error")}: {err}
         </div>
       ) : null}
+      {quickMsg ? <div className="badge ok u-mt-8">{quickMsg}</div> : null}
 
       {showQr ? (
         <div className="dm-ops-qr">
@@ -333,6 +424,24 @@ export default function DMOpsBar() {
                 </button>
               );
             })}
+          </div>
+          <div className="dm-ops-session-actions">
+            <button
+              type="button"
+              className="btn secondary dm-ops-quick-action"
+              onClick={() => setQuickNoteOpen(true)}
+            >
+              <PlusSquare className="icon" aria-hidden="true" />
+              Быстрый инфоблок
+            </button>
+            <button
+              type="button"
+              className="btn secondary dm-ops-quick-action"
+              onClick={() => setQuickTicketsOpen(true)}
+            >
+              <Coins className="icon" aria-hidden="true" />
+              Билеты по группе
+            </button>
           </div>
         </div>
 
@@ -524,6 +633,81 @@ export default function DMOpsBar() {
           )}
         </div>
       ) : null}
+
+      <Modal open={quickNoteOpen} title="Быстрый инфоблок" onClose={() => !quickNoteBusy && setQuickNoteOpen(false)}>
+        <div className="list">
+          <div className="small">Создаёт обычный инфоблок для сессии и сразу открывает его в редакторе.</div>
+          <input
+            value={quickNoteForm.title}
+            onChange={(event) => setQuickNoteForm((prev) => ({ ...prev, title: event.target.value }))}
+            placeholder="Заголовок"
+            aria-label="Заголовок быстрого инфоблока"
+            className="u-w-full"
+            disabled={quickNoteBusy}
+          />
+          <select
+            value={quickNoteForm.access}
+            onChange={(event) => setQuickNoteForm((prev) => ({ ...prev, access: event.target.value }))}
+            aria-label="Кому виден быстрый инфоблок"
+            className="u-w-full"
+            disabled={quickNoteBusy}
+          >
+            <option value="all">Все игроки</option>
+            <option value="dm">Только DM</option>
+          </select>
+          <textarea
+            value={quickNoteForm.content}
+            onChange={(event) => setQuickNoteForm((prev) => ({ ...prev, content: event.target.value }))}
+            placeholder="Текст блока"
+            aria-label="Текст быстрого инфоблока"
+            rows={8}
+            className="u-w-full"
+            disabled={quickNoteBusy}
+          />
+          <button type="button" className="btn" onClick={createQuickNote} disabled={quickNoteBusy}>
+            {quickNoteBusy ? "Создаю..." : "Создать и открыть"}
+          </button>
+        </div>
+      </Modal>
+
+      <Modal open={quickTicketsOpen} title="Билеты по группе" onClose={() => !quickTicketsBusy && setQuickTicketsOpen(false)}>
+        <div className="list">
+          <div className="small">Быстрая массовая корректировка билетов для текущей сессии.</div>
+          <select
+            value={quickTicketScope}
+            onChange={(event) => setQuickTicketScope(event.target.value)}
+            aria-label="Группа игроков для билетов"
+            className="u-w-full"
+            disabled={quickTicketsBusy}
+          >
+            {ticketScopeOptions.map((option) => (
+              <option key={option.key} value={option.key}>
+                {option.label}: {option.count}
+              </option>
+            ))}
+          </select>
+          <input
+            value={quickTicketDelta}
+            onChange={(event) => setQuickTicketDelta(event.target.value)}
+            placeholder="Изменение билетов, например +1 или -2"
+            aria-label="Изменение билетов группе"
+            className="u-w-full"
+            disabled={quickTicketsBusy}
+          />
+          <input
+            value={quickTicketReason}
+            onChange={(event) => setQuickTicketReason(event.target.value)}
+            placeholder="Причина"
+            aria-label="Причина изменения билетов"
+            className="u-w-full"
+            disabled={quickTicketsBusy}
+          />
+          <div className="small">Будет изменено игроков: {quickTicketTargets.length}</div>
+          <button type="button" className="btn" onClick={applyQuickTickets} disabled={quickTicketsBusy}>
+            {quickTicketsBusy ? "Применяю..." : "Применить"}
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }
