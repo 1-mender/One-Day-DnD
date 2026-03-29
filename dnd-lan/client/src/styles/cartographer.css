@@ -4052,6 +4052,28 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     gap: 10px;
   }
 
+  .dm-ops-quick-clusters{
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .dm-ops-quick-cluster{
+    display: grid;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+    border: 1px solid rgba(117, 105, 76, 0.16);
+    background: rgba(255,255,255,0.52);
+  }
+
+  .dm-ops-quick-cluster-title{
+    font-weight: 900;
+    font-size: 17px;
+    line-height: 1.05;
+    color: var(--map-text);
+  }
+
   .dm-ops-quick-actions-grid{
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -4060,15 +4082,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .dm-ops-session-actions{
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: 1fr;
     gap: 8px;
   }
 
   .dm-ops-scene-tools{
     display: grid;
     gap: 8px;
-    padding-top: 4px;
-    border-top: 1px dashed var(--map-line);
+    padding: 10px;
+    border: 1px dashed rgba(117, 105, 76, 0.28);
+    border-radius: 14px;
+    background: rgba(255,255,255,0.38);
   }
 
   .dm-ops-scene-tools-grid{
@@ -4080,6 +4104,13 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .dm-ops-quick-action{
     justify-content: flex-start;
     width: 100%;
+  }
+
+  .dm-ops-quick-action-compact{
+    min-height: 48px;
+    padding: 10px 14px;
+    font-size: 15px;
+    box-shadow: 0 4px 0 rgba(110, 98, 72, 0.2);
   }
 
   .dm-ops-live-actions{
@@ -6896,6 +6927,10 @@ body.arcade-modal-open{
 
   @media (max-width: 920px) {
     .dm-ops-quick-actions{
+      grid-template-columns: 1fr;
+    }
+
+    .dm-ops-quick-clusters{
       grid-template-columns: 1fr;
     }
   }

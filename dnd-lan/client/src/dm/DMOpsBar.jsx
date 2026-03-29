@@ -515,59 +515,70 @@ export default function DMOpsBar() {
         <div className="dm-ops-quick-actions-block">
           <div className="tf-section-copy">
             <div className="tf-section-kicker">Quick actions</div>
-            <div className="dm-inv-panel-title">Быстрые переходы</div>
+            <div className="dm-inv-panel-title">Быстрые действия</div>
           </div>
-          <div className="dm-ops-quick-actions-grid">
-            {quickNavItems.map((item) => {
-              const Icon = item.icon;
-              return (
+          <div className="dm-ops-quick-clusters">
+            <div className="dm-ops-quick-cluster">
+              <div className="tf-section-kicker">Переходы</div>
+              <div className="dm-ops-quick-cluster-title">Быстрые переходы</div>
+              <div className="dm-ops-quick-actions-grid">
+                {quickNavItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className="btn secondary dm-ops-quick-action dm-ops-quick-action-compact"
+                      onClick={item.onClick}
+                    >
+                      <Icon className="icon" aria-hidden="true" />
+                      {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="dm-ops-quick-cluster">
+              <div className="tf-section-kicker">Сцена</div>
+              <div className="dm-ops-quick-cluster-title">Моментальные действия</div>
+              <div className="dm-ops-session-actions">
                 <button
-                  key={item.key}
                   type="button"
-                  className="btn secondary dm-ops-quick-action"
-                  onClick={item.onClick}
+                  className="btn secondary dm-ops-quick-action dm-ops-quick-action-compact"
+                  onClick={() => openQuickNote("all")}
                 >
-                  <Icon className="icon" aria-hidden="true" />
-                  {item.label}
+                  <Eye className="icon" aria-hidden="true" />
+                  Инфоблок всем
                 </button>
-              );
-            })}
-          </div>
-          <div className="dm-ops-session-actions">
-            <button
-              type="button"
-              className="btn secondary dm-ops-quick-action"
-              onClick={() => openQuickNote("all")}
-            >
-              <Eye className="icon" aria-hidden="true" />
-              Инфоблок всем
-            </button>
-            <button
-              type="button"
-              className="btn secondary dm-ops-quick-action"
-              onClick={() => openQuickNote("dm")}
-            >
-              <EyeOff className="icon" aria-hidden="true" />
-              Инфоблок DM
-            </button>
-            <button
-              type="button"
-              className="btn secondary dm-ops-quick-action"
-              onClick={() => setQuickTicketsOpen(true)}
-            >
-              <Coins className="icon" aria-hidden="true" />
-              Билеты по группе
-            </button>
+                <button
+                  type="button"
+                  className="btn secondary dm-ops-quick-action dm-ops-quick-action-compact"
+                  onClick={() => openQuickNote("dm")}
+                >
+                  <EyeOff className="icon" aria-hidden="true" />
+                  Инфоблок DM
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary dm-ops-quick-action dm-ops-quick-action-compact"
+                  onClick={() => setQuickTicketsOpen(true)}
+                >
+                  <Coins className="icon" aria-hidden="true" />
+                  Билеты по группе
+                </button>
+              </div>
+            </div>
           </div>
           <div className="dm-ops-scene-tools">
             <div className="tf-section-kicker">Scene tools</div>
+            <div className="dm-ops-quick-cluster-title">Шаблоны сцены</div>
             <div className="small">Шаблоны для быстрых инфоблоков по ходу сцены.</div>
             <div className="dm-ops-scene-tools-grid">
               {sceneTemplates.map((template) => (
                 <button
                   key={template.key}
                   type="button"
-                  className="btn secondary dm-ops-quick-action"
+                  className="btn secondary dm-ops-quick-action dm-ops-quick-action-compact"
                   onClick={() => openQuickTemplate(template)}
                 >
                   <ScrollText className="icon" aria-hidden="true" />
