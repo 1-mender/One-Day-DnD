@@ -57,6 +57,13 @@ export default function DMOpsBar() {
     setPlayers(p.items || []);
   }, []);
 
+  const loadBlocks = useCallback(async () => {
+    const response = await api.infoBlocks();
+    const items = response.items || [];
+    setBlocks(items);
+    return items;
+  }, []);
+
   const load = useCallback(async () => {
     setErr("");
     try {
@@ -262,6 +269,11 @@ export default function DMOpsBar() {
     return players.filter((player) => String(player.status || "offline") === quickTicketScope);
   }, [players, quickTicketScope]);
 
+  const lastSceneBlock = useMemo(() => {
+    if (!blocks.length) return null;
+    return [...blocks].sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))[0] || null;
+  }, [blocks]);
+
   const openQuickResult = (result) => {
     result?.onSelect?.();
     setShowQuickSwitch(false);
@@ -367,6 +379,58 @@ export default function DMOpsBar() {
       setErr(formatError(e));
     } finally {
       setQuickTicketsBusy(false);
+    }
+  };
+
+  const applyQuickTicketReward = async (delta, scope, reason) => {
+    const targets = players.filter((player) => scope === "all" || String(player.status || "offline") === scope);
+    if (!targets.length) {
+      setErr("Нет игроков для быстрого бонуса");
+      return;
+    }
+    setQuickTicketsBusy(true);
+    setErr("");
+    try {
+      for (const player of targets) {
+        await api.dmTicketsAdjust({
+          playerId: player.id,
+          delta,
+          reason
+        });
+      }
+      await loadPlayers();
+      pushQuickMsg(`Бонус выдан: ${targets.length} игрокам`);
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setQuickTicketsBusy(false);
+    }
+  };
+
+  const updateLastBlockAccess = async (access) => {
+    setQuickNoteBusy(true);
+    setErr("");
+    try {
+      const items = blocks.length ? blocks : await loadBlocks();
+      const latest = [...items].sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0))[0];
+      if (!latest?.id) {
+        setErr("Нет инфоблоков для быстрого действия");
+        return;
+      }
+      await api.dmInfoUpdate(latest.id, {
+        ...latest,
+        access,
+        tags: Array.isArray(latest.tags) ? latest.tags : [],
+        selectedPlayerIds: access === "selected"
+          ? (Array.isArray(latest.selectedPlayerIds) ? latest.selectedPlayerIds.map(Number) : [])
+          : []
+      });
+      await loadBlocks();
+      pushQuickMsg(access === "all" ? "Последний блок открыт всем" : "Последний блок скрыт для игроков");
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setQuickNoteBusy(false);
     }
   };
 
@@ -544,6 +608,58 @@ export default function DMOpsBar() {
                     : info?.settings?.bestiaryEnabled
                       ? "Скрыть"
                       : "Открыть"}
+                </button>
+              </div>
+            </div>
+            <div className="dm-ops-live-card">
+              <div className="kv">
+                <div className="dm-dashboard-player-name">Последний инфоблок</div>
+                <div className="small">
+                  {lastSceneBlock?.title
+                    ? `Сейчас: ${lastSceneBlock.title}`
+                    : "Можно быстро открыть или скрыть последний блок сцены."}
+                </div>
+              </div>
+              <div className="dm-ops-live-card-actions">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => updateLastBlockAccess("dm")}
+                  disabled={quickNoteBusy}
+                >
+                  Только DM
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => updateLastBlockAccess("all")}
+                  disabled={quickNoteBusy}
+                >
+                  Показать всем
+                </button>
+              </div>
+            </div>
+            <div className="dm-ops-live-card">
+              <div className="kv">
+                <div className="dm-dashboard-player-name">Быстрый бонус</div>
+                <div className="small">Мгновенная награда для игроков, которые сейчас онлайн.</div>
+              </div>
+              <div className="dm-ops-live-card-actions">
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => applyQuickTicketReward(1, "online", "Быстрый бонус сцены")}
+                  disabled={quickTicketsBusy}
+                >
+                  +1 онлайн
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => applyQuickTicketReward(3, "online", "Крупный бонус сцены")}
+                  disabled={quickTicketsBusy}
+                >
+                  +3 онлайн
                 </button>
               </div>
             </div>
