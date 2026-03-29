@@ -25,6 +25,10 @@ export default function DMPlayers() {
   const [ticketDelta, setTicketDelta] = useState("");
   const [ticketSet, setTicketSet] = useState("");
   const [ticketReason, setTicketReason] = useState("");
+  const [bulkTicketOpen, setBulkTicketOpen] = useState(false);
+  const [bulkTicketDelta, setBulkTicketDelta] = useState("");
+  const [bulkTicketReason, setBulkTicketReason] = useState("");
+  const [bulkTicketBusy, setBulkTicketBusy] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [q, setQ] = useQueryState("q", "");
   const [statusFilter, setStatusFilter] = useQueryState("status", "all");
@@ -185,6 +189,36 @@ export default function DMPlayers() {
     }
   }
 
+  async function applyBulkTickets() {
+    if (readOnly) return;
+    const delta = Number(bulkTicketDelta || 0);
+    if (Number.isNaN(delta) || !delta) {
+      setErr("Укажите ненулевое изменение билетов");
+      return;
+    }
+    const targets = filtered;
+    if (!targets.length) return;
+    setErr("");
+    setBulkTicketBusy(true);
+    try {
+      for (const player of targets) {
+        await api.dmTicketsAdjust({
+          playerId: player.id,
+          delta,
+          reason: bulkTicketReason
+        });
+      }
+      setBulkTicketOpen(false);
+      setBulkTicketDelta("");
+      setBulkTicketReason("");
+      await loadAll();
+    } catch (error) {
+      setErr(formatError(error));
+    } finally {
+      setBulkTicketBusy(false);
+    }
+  }
+
   const playersWithTickets = useMemo(() => {
     return (players || []).map((player) => {
       const ticketData = tickets[player.id] || {};
@@ -331,6 +365,14 @@ export default function DMPlayers() {
                   onClick={() => savedFilters.savePreset(currentFilterLabel, { q, statusFilter })}
                 >
                   Сохранить фильтр
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setBulkTicketOpen(true)}
+                  disabled={readOnly || !filtered.length}
+                >
+                  Билеты группе
                 </button>
               </FilterBar>
             </div>
@@ -540,6 +582,43 @@ export default function DMPlayers() {
               disabled={readOnly}
             />
             <button className="btn" onClick={applyTickets} disabled={readOnly}>{t("dmPlayers.ticketApply")}</button>
+          </div>
+        </SectionCard>
+      </Modal>
+
+      <Modal open={bulkTicketOpen} title="Массовая корректировка билетов" onClose={() => setBulkTicketOpen(false)}>
+        <SectionCard
+          title="Билеты по фильтру"
+          subtitle={`Будет изменено игроков: ${filtered.length}`}
+        >
+          <div className="small">Применяет изменение ко всем игрокам в текущем отфильтрованном списке.</div>
+          <FilterBar className="u-mt-10">
+            <button className="btn secondary" onClick={() => setBulkTicketDelta("1")} disabled={readOnly || bulkTicketBusy}>+1</button>
+            <button className="btn secondary" onClick={() => setBulkTicketDelta("3")} disabled={readOnly || bulkTicketBusy}>+3</button>
+            <button className="btn secondary" onClick={() => setBulkTicketDelta("-1")} disabled={readOnly || bulkTicketBusy}>-1</button>
+            <button className="btn secondary" onClick={() => setBulkTicketDelta("-3")} disabled={readOnly || bulkTicketBusy}>-3</button>
+          </FilterBar>
+          <div className="list u-mt-10">
+            <input
+              value={bulkTicketDelta}
+              onChange={(e) => setBulkTicketDelta(e.target.value)}
+              placeholder="Изменение билетов"
+              aria-label="Массовое изменение билетов"
+              className="u-w-full"
+              disabled={readOnly || bulkTicketBusy}
+            />
+            <input
+              value={bulkTicketReason}
+              onChange={(e) => setBulkTicketReason(e.target.value)}
+              placeholder="Причина"
+              aria-label="Причина массового изменения"
+              className="u-w-full"
+              maxLength={120}
+              disabled={readOnly || bulkTicketBusy}
+            />
+            <button className="btn" onClick={applyBulkTickets} disabled={readOnly || bulkTicketBusy || !filtered.length}>
+              {bulkTicketBusy ? "Применяю..." : "Применить ко всем"}
+            </button>
           </div>
         </SectionCard>
       </Modal>

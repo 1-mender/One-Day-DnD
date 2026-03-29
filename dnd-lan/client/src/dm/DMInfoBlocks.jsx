@@ -31,6 +31,8 @@ export default function DMInfoBlocks() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form, setForm] = useState(empty);
+  const [bulkAccessTarget, setBulkAccessTarget] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
   const [err, setErr] = useState("");
   const fileRef = useRef(null);
   const taRef = useRef(null);
@@ -212,6 +214,35 @@ export default function DMInfoBlocks() {
     }
   }
 
+  async function applyBulkAccess(access) {
+    if (readOnly) return;
+    const targets = filtered.filter((block) => String(block.access || "") !== access);
+    if (!targets.length) {
+      setBulkAccessTarget("");
+      return;
+    }
+    setErr("");
+    setBulkBusy(true);
+    try {
+      for (const block of targets) {
+        await api.dmInfoUpdate(block.id, {
+          ...block,
+          access,
+          tags: Array.isArray(block.tags) ? block.tags : [],
+          selectedPlayerIds: access === "selected"
+            ? (Array.isArray(block.selectedPlayerIds) ? block.selectedPlayerIds.map(Number) : [])
+            : []
+        });
+      }
+      setBulkAccessTarget("");
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   return (
     <>
       <div className="two-pane dm-info-board" data-detail={selected ? "1" : "0"}>
@@ -279,6 +310,12 @@ export default function DMInfoBlocks() {
               </select>
               <button className="btn secondary" onClick={() => savedFilters.savePreset(currentFilterLabel, { q, cat, acc })}>
                 Сохранить фильтр
+              </button>
+              <button className="btn secondary" onClick={() => setBulkAccessTarget("all")} disabled={readOnly || !filtered.length}>
+                Всем по фильтру
+              </button>
+              <button className="btn secondary" onClick={() => setBulkAccessTarget("dm")} disabled={readOnly || !filtered.length}>
+                Только DM по фильтру
               </button>
             </div>
             {savedFilters.hasPresets ? (
@@ -503,6 +540,28 @@ export default function DMInfoBlocks() {
             />
           </section>
           <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!bulkAccessTarget}
+        title="Массовое изменение доступа"
+        onClose={() => {
+          if (!bulkBusy) setBulkAccessTarget("");
+        }}
+      >
+        <div className="list">
+          <div className="small">
+            Это изменит доступ у {filtered.length} отфильтрованных инфоблоков.
+            Новый режим: {bulkAccessTarget === "all" ? "Все игроки" : "Только DM"}.
+          </div>
+          <button
+            className="btn"
+            onClick={() => applyBulkAccess(bulkAccessTarget)}
+            disabled={readOnly || bulkBusy}
+          >
+            {bulkBusy ? "Применяю..." : "Подтвердить"}
+          </button>
         </div>
       </Modal>
     </>
