@@ -38,6 +38,7 @@ export default function DMInventory() {
     players,
     publicCount,
     q,
+    quickAccess,
     rarity,
     readOnly,
     rowVirtualizer,
@@ -77,6 +78,7 @@ export default function DMInventory() {
       <div className="dm-inv-panels">
         <DMInventoryToolbarSection
           players={players}
+          quickAccess={quickAccess}
           readOnly={readOnly}
           selectedId={selectedId}
           setSelectedId={setSelectedId}

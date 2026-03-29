@@ -9,6 +9,7 @@ import { useReadOnly } from "../hooks/useReadOnly.js";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { useQuickAccess } from "../lib/useQuickAccess.js";
+import { useSavedFilters } from "../lib/useSavedFilters.js";
 import { t } from "../i18n/index.js";
 import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
@@ -197,6 +198,7 @@ export default function DMPlayers() {
 
   const quickAccess = useQuickAccess("dm_players", playersWithTickets);
   const { pinnedItems, recentItems, isPinned, togglePinned, trackRecent } = quickAccess;
+  const savedFilters = useSavedFilters("dm_players");
 
   const selectedId = Number(selectedIdParam || 0);
   const selectedPlayer = useMemo(() => {
@@ -230,6 +232,13 @@ export default function DMPlayers() {
       { online: 0, idle: 0, offline: 0 }
     );
   }, [playersWithTickets]);
+
+  const currentFilterLabel = useMemo(() => {
+    const parts = [];
+    if (statusFilter !== "all") parts.push(`Статус: ${statusFilter}`);
+    if (q.trim()) parts.push(`Поиск: ${q.trim()}`);
+    return parts.length ? parts.join(" • ") : "Все игроки";
+  }, [q, statusFilter]);
 
   const selectedSummary = useMemo(() => {
     if (!selectedPlayer) return null;
@@ -316,8 +325,41 @@ export default function DMPlayers() {
                   <option value="idle">{t("dmPlayers.statusIdle")}</option>
                   <option value="offline">{t("dmPlayers.statusOffline")}</option>
                 </select>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => savedFilters.savePreset(currentFilterLabel, { q, statusFilter })}
+                >
+                  Сохранить фильтр
+                </button>
               </FilterBar>
             </div>
+            {savedFilters.hasPresets ? (
+              <div className="dm-saved-filters">
+                {savedFilters.presets.map((preset) => (
+                  <div key={preset.id} className="dm-saved-filters-item">
+                    <button
+                      type="button"
+                      className="dm-quick-access-chip"
+                      onClick={() => {
+                        setQ(String(preset.values?.q || ""));
+                        setStatusFilter(String(preset.values?.statusFilter || "all"));
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                    <button
+                      type="button"
+                      className="dm-saved-filters-remove"
+                      onClick={() => savedFilters.removePreset(preset.id)}
+                      aria-label={`Удалить фильтр ${preset.label}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="list dm-players-roster">
               {filtered.map((player) => (
                 <PlayerDossierCard

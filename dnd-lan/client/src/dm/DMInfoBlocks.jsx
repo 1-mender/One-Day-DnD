@@ -5,6 +5,7 @@ import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useQuickAccess } from "../lib/useQuickAccess.js";
+import { useSavedFilters } from "../lib/useSavedFilters.js";
 import { ActionMenu } from "../foundation/primitives/index.js";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -73,6 +74,7 @@ export default function DMInfoBlocks() {
   }, [items, debouncedQ, cat, acc]);
 
   const quickAccess = useQuickAccess("dm_info_blocks", items);
+  const savedFilters = useSavedFilters("dm_info_blocks");
   const { pinnedItems, recentItems, isPinned, togglePinned, trackRecent } = quickAccess;
 
   useEffect(() => {
@@ -82,6 +84,13 @@ export default function DMInfoBlocks() {
 
   const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p.displayName])), [players]);
   const selectedCount = useMemo(() => items.filter((block) => block.access === "selected").length, [items]);
+  const currentFilterLabel = useMemo(() => {
+    const parts = [];
+    if (cat) parts.push(`Категория: ${cat}`);
+    if (acc) parts.push(`Доступ: ${getAccessLabel(acc)}`);
+    if (q.trim()) parts.push(`Поиск: ${q.trim()}`);
+    return parts.length ? parts.join(" • ") : "Все инфоблоки";
+  }, [acc, cat, q]);
 
   function startNew() {
     if (readOnly) return;
@@ -268,7 +277,37 @@ export default function DMInfoBlocks() {
                 <option value="all">{t("dmInfoBlocks.accessPlayers", null, "Все игроки")}</option>
                 <option value="selected">{t("dmInfoBlocks.accessSelected", null, "Выбранные")}</option>
               </select>
+              <button className="btn secondary" onClick={() => savedFilters.savePreset(currentFilterLabel, { q, cat, acc })}>
+                Сохранить фильтр
+              </button>
             </div>
+            {savedFilters.hasPresets ? (
+              <div className="dm-saved-filters">
+                {savedFilters.presets.map((preset) => (
+                  <div key={preset.id} className="dm-saved-filters-item">
+                    <button
+                      type="button"
+                      className="dm-quick-access-chip"
+                      onClick={() => {
+                        setQ(String(preset.values?.q || ""));
+                        setCat(String(preset.values?.cat || ""));
+                        setAcc(String(preset.values?.acc || ""));
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                    <button
+                      type="button"
+                      className="dm-saved-filters-remove"
+                      onClick={() => savedFilters.removePreset(preset.id)}
+                      aria-label={`Удалить фильтр ${preset.label}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             <div className="list u-list-mt-12 dm-info-list">
               {filtered.map((b) => (
                 <div

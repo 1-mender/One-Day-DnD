@@ -5,6 +5,7 @@ import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { useQueryState } from "../../hooks/useQueryState.js";
 import { formatError } from "../../lib/formatError.js";
 import { useQuickAccess } from "../../lib/useQuickAccess.js";
+import { useSavedFilters } from "../../lib/useSavedFilters.js";
 import { EMPTY_BESTIARY_FORM, filterBestiary } from "./dmBestiaryDomain.js";
 
 export function useDmBestiaryController() {
@@ -100,6 +101,7 @@ export function useDmBestiaryController() {
   const selected = useMemo(() => items.find((monster) => monster.id === selectedId) || null, [items, selectedId]);
   const filtered = useMemo(() => filterBestiary(items, q, vis), [items, q, vis]);
   const quickAccess = useQuickAccess("dm_bestiary", items);
+  const savedFilters = useSavedFilters("dm_bestiary");
   const { trackRecent } = quickAccess;
 
   useEffect(() => {
@@ -364,6 +366,7 @@ export function useDmBestiaryController() {
     quickAccess,
     q,
     readOnly,
+    savedFilters,
     replaceConfirmOpen,
     resetPlan,
     runDryRun,

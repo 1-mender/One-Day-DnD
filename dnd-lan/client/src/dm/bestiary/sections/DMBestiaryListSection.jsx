@@ -19,9 +19,14 @@ export default function DMBestiaryListSection({ controller }) {
     toggleMonsterHidden,
     del,
     quickAccess,
+    savedFilters,
     vis,
     enabled
   } = controller;
+  const currentFilterLabel = [
+    q.trim() ? `Поиск: ${q.trim()}` : "",
+    vis ? `Видимость: ${vis === "public" ? "публичные" : "скрытые"}` : ""
+  ].filter(Boolean).join(" • ") || "Все монстры";
 
   return (
     <div className="pane pane-list">
@@ -87,9 +92,38 @@ export default function DMBestiaryListSection({ controller }) {
               <option value="public">Публичные</option>
               <option value="hidden">Скрытые</option>
             </select>
+            <button className="btn secondary" onClick={() => savedFilters.savePreset(currentFilterLabel, { q, vis })}>
+              Сохранить фильтр
+            </button>
             <button className="btn" onClick={startNew} disabled={readOnly}>+ Добавить</button>
           </div>
         </div>
+        {savedFilters.hasPresets ? (
+          <div className="dm-saved-filters">
+            {savedFilters.presets.map((preset) => (
+              <div key={preset.id} className="dm-saved-filters-item">
+                <button
+                  type="button"
+                  className="dm-quick-access-chip"
+                  onClick={() => {
+                    setQ(String(preset.values?.q || ""));
+                    setVis(String(preset.values?.vis || ""));
+                  }}
+                >
+                  {preset.label}
+                </button>
+                <button
+                  type="button"
+                  className="dm-saved-filters-remove"
+                  onClick={() => savedFilters.removePreset(preset.id)}
+                  aria-label={`Удалить фильтр ${preset.label}`}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
         <div className="list u-list-mt-12 dm-bestiary-list">
           {filtered.map((monster) => (
             <div

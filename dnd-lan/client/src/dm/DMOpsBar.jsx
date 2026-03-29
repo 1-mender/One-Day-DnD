@@ -1,21 +1,34 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
 import { resolveJoinUrl } from "../lib/joinUrl.js";
-import { Copy, QrCode, RefreshCcw } from "lucide-react";
+import { Copy, QrCode, RefreshCcw, Search } from "lucide-react";
 import { formatError } from "../lib/formatError.js";
 import { t } from "../i18n/index.js";
+import { useQuickAccess } from "../lib/useQuickAccess.js";
 
 export default function DMOpsBar() {
+  const navigate = useNavigate();
   const { socket } = useSocket();
   const [info, setInfo] = useState(null);
   const [joinCode, setJoinCode] = useState("");
   const [players, setPlayers] = useState([]);
+  const [monsters, setMonsters] = useState([]);
+  const [blocks, setBlocks] = useState([]);
   const [showQr, setShowQr] = useState(false);
+  const [showQuickSwitch, setShowQuickSwitch] = useState(false);
+  const [quickQuery, setQuickQuery] = useState("");
+  const [quickLoaded, setQuickLoaded] = useState(false);
   const [copied, setCopied] = useState({ url: false, code: false });
   const [err, setErr] = useState("");
+  const [quickErr, setQuickErr] = useState("");
   const playersRefreshTimerRef = useRef(null);
+  const playerQuick = useQuickAccess("dm_players", players);
+  const playerProfileQuick = useQuickAccess("dm_player_profiles", players);
+  const bestiaryQuick = useQuickAccess("dm_bestiary", monsters);
+  const infoQuick = useQuickAccess("dm_info_blocks", blocks);
 
   const loadInfo = useCallback(async () => {
     const i = await api.serverInfo();
@@ -41,6 +54,21 @@ export default function DMOpsBar() {
       setErr(formatError(e));
     }
   }, [loadInfo, loadPlayers]);
+
+  const loadQuickSwitchData = useCallback(async () => {
+    setQuickErr("");
+    try {
+      const [bestiaryResponse, infoResponse] = await Promise.all([
+        api.bestiaryPage({ limit: 200 }),
+        api.infoBlocks()
+      ]);
+      setMonsters(bestiaryResponse.items || []);
+      setBlocks(infoResponse.items || []);
+      setQuickLoaded(true);
+    } catch (e) {
+      setQuickErr(formatError(e));
+    }
+  }, []);
 
   useEffect(() => {
     if (!socket) return () => {};
@@ -82,6 +110,11 @@ export default function DMOpsBar() {
     };
   }, [load, loadInfo, loadPlayers, socket]);
 
+  useEffect(() => {
+    if (!showQuickSwitch || quickLoaded) return;
+    loadQuickSwitchData().catch(() => {});
+  }, [loadQuickSwitchData, quickLoaded, showQuickSwitch]);
+
   const counts = useMemo(() => {
     return (players || []).reduce((acc, p) => {
       const s = String(p.status || "offline");
@@ -95,6 +128,90 @@ export default function DMOpsBar() {
   const url = resolveJoinUrl(info);
   const joinCodeEnabled = !!info?.party?.joinCodeEnabled;
   const partyName = info?.party?.name;
+  const normalizedQuery = String(quickQuery || "").trim().toLowerCase();
+
+  const quickResults = useMemo(() => {
+    if (!normalizedQuery) return [];
+    const results = [];
+    for (const player of players) {
+      const hay = [
+        player.displayName,
+        player.characterName,
+        player.classRole,
+        player.id
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (hay.includes(normalizedQuery)) {
+        results.push({
+          id: `player-${player.id}`,
+          type: "Игрок",
+          title: player.displayName || `Игрок #${player.id}`,
+          subtitle: player.characterName || `id: ${player.id}`,
+          onSelect: () => {
+            playerQuick.trackRecent(player.id);
+            playerProfileQuick.trackRecent(player.id);
+            navigate(`/dm/app/players/${player.id}/profile`);
+          }
+        });
+      }
+    }
+    for (const monster of monsters) {
+      const hay = [
+        monster.name,
+        monster.type,
+        monster.environment,
+        monster.description
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (hay.includes(normalizedQuery)) {
+        results.push({
+          id: `monster-${monster.id}`,
+          type: "Монстр",
+          title: monster.name || `Монстр #${monster.id}`,
+          subtitle: monster.type || monster.environment || "Бестиарий",
+          onSelect: () => {
+            bestiaryQuick.trackRecent(monster.id);
+            navigate(`/dm/app/bestiary?id=${monster.id}`);
+          }
+        });
+      }
+    }
+    for (const block of blocks) {
+      const hay = [
+        block.title,
+        block.category,
+        block.content,
+        ...(block.tags || [])
+      ].filter(Boolean).join(" ").toLowerCase();
+      if (hay.includes(normalizedQuery)) {
+        results.push({
+          id: `info-${block.id}`,
+          type: "Инфоблок",
+          title: block.title || `Блок #${block.id}`,
+          subtitle: block.category || "Инфоблок",
+          onSelect: () => {
+            infoQuick.trackRecent(block.id);
+            navigate(`/dm/app/info?id=${block.id}`);
+          }
+        });
+      }
+    }
+    return results.slice(0, 12);
+  }, [
+    bestiaryQuick,
+    blocks,
+    infoQuick,
+    monsters,
+    navigate,
+    normalizedQuery,
+    playerProfileQuick,
+    playerQuick,
+    players
+  ]);
+
+  const openQuickResult = (result) => {
+    result?.onSelect?.();
+    setShowQuickSwitch(false);
+    setQuickQuery("");
+  };
 
   const copyText = async (text, key) => {
     if (!text) return;
@@ -119,6 +236,10 @@ export default function DMOpsBar() {
           <span className="badge off">{t("dmOps.offline", null, "Оффлайн")}: {counts.offline}</span>
         </div>
         <div className="dm-ops-actions">
+          <button className="btn secondary" onClick={() => setShowQuickSwitch((value) => !value)} title="Быстрый переход">
+            <Search className="icon" aria-hidden="true" />
+            Быстрый переход
+          </button>
           <button className="btn secondary" onClick={load} title={t("dmOps.refresh", null, "Обновить")}>
             <RefreshCcw className="icon" aria-hidden="true" />
             {t("dmOps.refresh", null, "Обновить")}
@@ -165,6 +286,158 @@ export default function DMOpsBar() {
       {showQr ? (
         <div className="dm-ops-qr">
           <QRCodeCard url={url} className="compact" />
+        </div>
+      ) : null}
+
+      {showQuickSwitch ? (
+        <div className="dm-ops-switch">
+          <div className="tf-section-copy">
+            <div className="tf-section-kicker">Quick switch</div>
+            <div className="dm-inv-panel-title">Быстрый переход по DM</div>
+          </div>
+          <input
+            value={quickQuery}
+            onChange={(event) => setQuickQuery(event.target.value)}
+            placeholder="Игрок, монстр, инфоблок..."
+            aria-label="Быстрый поиск по DM"
+            className="u-w-full"
+          />
+          {quickErr ? <div className="badge off">{quickErr}</div> : null}
+          {!normalizedQuery ? (
+            <div className="dm-ops-switch-grid">
+              {playerQuick.pinnedItems.length || playerProfileQuick.recentItems.length ? (
+                <div className="dm-ops-switch-group">
+                  <div className="tf-section-kicker">Игроки</div>
+                  <div className="dm-quick-access-chips">
+                    {playerQuick.pinnedItems.map((player) => (
+                      <button
+                        key={`ops-player-pin-${player.id}`}
+                        type="button"
+                        className="dm-quick-access-chip is-pinned"
+                        onClick={() => openQuickResult({
+                          onSelect: () => {
+                            playerQuick.trackRecent(player.id);
+                            playerProfileQuick.trackRecent(player.id);
+                            navigate(`/dm/app/players/${player.id}/profile`);
+                          }
+                        })}
+                      >
+                        {player.displayName || `#${player.id}`}
+                      </button>
+                    ))}
+                    {playerProfileQuick.recentItems.map((player) => (
+                      <button
+                        key={`ops-player-recent-${player.id}`}
+                        type="button"
+                        className="dm-quick-access-chip"
+                        onClick={() => openQuickResult({
+                          onSelect: () => {
+                            playerQuick.trackRecent(player.id);
+                            playerProfileQuick.trackRecent(player.id);
+                            navigate(`/dm/app/players/${player.id}/profile`);
+                          }
+                        })}
+                      >
+                        {player.displayName || `#${player.id}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {bestiaryQuick.pinnedItems.length || bestiaryQuick.recentItems.length ? (
+                <div className="dm-ops-switch-group">
+                  <div className="tf-section-kicker">Бестиарий</div>
+                  <div className="dm-quick-access-chips">
+                    {bestiaryQuick.pinnedItems.map((monster) => (
+                      <button
+                        key={`ops-monster-pin-${monster.id}`}
+                        type="button"
+                        className="dm-quick-access-chip is-pinned"
+                        onClick={() => openQuickResult({
+                          onSelect: () => {
+                            bestiaryQuick.trackRecent(monster.id);
+                            navigate(`/dm/app/bestiary?id=${monster.id}`);
+                          }
+                        })}
+                      >
+                        {monster.name || `#${monster.id}`}
+                      </button>
+                    ))}
+                    {bestiaryQuick.recentItems.map((monster) => (
+                      <button
+                        key={`ops-monster-recent-${monster.id}`}
+                        type="button"
+                        className="dm-quick-access-chip"
+                        onClick={() => openQuickResult({
+                          onSelect: () => {
+                            bestiaryQuick.trackRecent(monster.id);
+                            navigate(`/dm/app/bestiary?id=${monster.id}`);
+                          }
+                        })}
+                      >
+                        {monster.name || `#${monster.id}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {infoQuick.pinnedItems.length || infoQuick.recentItems.length ? (
+                <div className="dm-ops-switch-group">
+                  <div className="tf-section-kicker">Инфоблоки</div>
+                  <div className="dm-quick-access-chips">
+                    {infoQuick.pinnedItems.map((block) => (
+                      <button
+                        key={`ops-block-pin-${block.id}`}
+                        type="button"
+                        className="dm-quick-access-chip is-pinned"
+                        onClick={() => openQuickResult({
+                          onSelect: () => {
+                            infoQuick.trackRecent(block.id);
+                            navigate(`/dm/app/info?id=${block.id}`);
+                          }
+                        })}
+                      >
+                        {block.title || `#${block.id}`}
+                      </button>
+                    ))}
+                    {infoQuick.recentItems.map((block) => (
+                      <button
+                        key={`ops-block-recent-${block.id}`}
+                        type="button"
+                        className="dm-quick-access-chip"
+                        onClick={() => openQuickResult({
+                          onSelect: () => {
+                            infoQuick.trackRecent(block.id);
+                            navigate(`/dm/app/info?id=${block.id}`);
+                          }
+                        })}
+                      >
+                        {block.title || `#${block.id}`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              {!quickLoaded ? <div className="small note-hint">Подгружаю каталоги монстров и инфоблоков…</div> : null}
+            </div>
+          ) : (
+            <div className="dm-ops-switch-results">
+              {quickResults.length ? quickResults.map((result) => (
+                <button
+                  key={result.id}
+                  type="button"
+                  className="dm-ops-switch-result"
+                  onClick={() => openQuickResult(result)}
+                >
+                  <div className="tf-section-kicker">{result.type}</div>
+                  <div className="dm-ops-switch-result-title">{result.title}</div>
+                  <div className="small">{result.subtitle}</div>
+                </button>
+              )) : (
+                <div className="small note-hint">Ничего не найдено по текущему запросу.</div>
+              )}
+            </div>
+          )}
         </div>
       ) : null}
     </div>

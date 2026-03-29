@@ -16,15 +16,21 @@ export default function DMPlayerProfile() {
     loading,
     player,
     playerId,
+    players,
+    openPlayerProfile,
     readOnly,
     save,
     setTab,
     showRequestsTab,
     tab,
     updatedLabel,
-    playerRequestsAll
+    playerRequestsAll,
+    quickAccess
   } = controller;
-
+  const pinnedPlayers = quickAccess?.pinnedItems || [];
+  const recentPlayers = quickAccess?.recentItems || [];
+  const isPinned = quickAccess?.isPinned || (() => false);
+  const togglePinned = quickAccess?.togglePinned || (() => {});
   return (
     <div className="card taped no-stamp">
       <div className="row u-row-between-center">
@@ -34,15 +40,61 @@ export default function DMPlayerProfile() {
             Игрок: <b>{player?.displayName || `#${playerId}`}</b> • Обновлён: {updatedLabel}
             {dirty ? " • есть несохранённые изменения" : ""}
           </div>
+          {player ? (
+            <div className="small u-mt-6">
+              {players.length ? `Игроков в партии: ${players.length}` : "Профиль игрока"}
+            </div>
+          ) : null}
         </div>
         <div className="row">
           <button className="btn secondary" onClick={goBack}>Назад</button>
+          <button className={`btn secondary${isPinned(playerId) ? " is-active" : ""}`} onClick={() => togglePinned(playerId)}>
+            {isPinned(playerId) ? "Убрать из закреплённых" : "Закрепить игрока"}
+          </button>
           <button className="btn" onClick={save} disabled={!canSave}>
             <Save className="icon" aria-hidden="true" />Сохранить
           </button>
           {readOnly ? <div className="badge warn">Режим только чтения: изменения отключены</div> : null}
         </div>
       </div>
+      {pinnedPlayers.length || recentPlayers.length ? (
+        <div className="dm-quick-access u-mt-10">
+          {pinnedPlayers.length ? (
+            <div className="dm-quick-access-group">
+              <div className="tf-section-kicker">Закреплённые</div>
+              <div className="dm-quick-access-chips">
+                {pinnedPlayers.map((item) => (
+                  <button
+                    key={`pin-${item.id}`}
+                    type="button"
+                    className={`dm-quick-access-chip is-pinned${item.id === playerId ? " is-active" : ""}`}
+                    onClick={() => openPlayerProfile(item.id)}
+                  >
+                    {item.displayName || `#${item.id}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {recentPlayers.length ? (
+            <div className="dm-quick-access-group">
+              <div className="tf-section-kicker">Недавние</div>
+              <div className="dm-quick-access-chips">
+                {recentPlayers.map((item) => (
+                  <button
+                    key={`recent-${item.id}`}
+                    type="button"
+                    className={`dm-quick-access-chip${item.id === playerId ? " is-active" : ""}`}
+                    onClick={() => openPlayerProfile(item.id)}
+                  >
+                    {item.displayName || `#${item.id}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <hr />
 
       <div className="row u-row-gap-8">

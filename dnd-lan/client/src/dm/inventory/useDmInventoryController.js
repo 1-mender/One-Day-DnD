@@ -17,6 +17,7 @@ import {
   filterInventory,
   summarizeInventory
 } from "../../player/inventoryDomain.js";
+import { useQuickAccess } from "../../lib/useQuickAccess.js";
 import { TRANSFER_REFRESH_MS, filterTransfers } from "./dmInventoryDomain.js";
 
 export function useDmInventoryController() {
@@ -44,6 +45,8 @@ export function useDmInventoryController() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
   const listRef = useRef(null);
+  const quickAccess = useQuickAccess("dm_inventory_players", players);
+  const { trackRecent } = quickAccess;
 
   const loadPlayers = useCallback(async () => {
     setErr("");
@@ -108,6 +111,10 @@ export function useDmInventoryController() {
   useEffect(() => {
     if (selectedId) loadInv(selectedId).catch(() => {});
   }, [loadInv, selectedId]);
+
+  useEffect(() => {
+    if (selectedId) trackRecent(selectedId);
+  }, [selectedId, trackRecent]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -324,6 +331,7 @@ export function useDmInventoryController() {
     players,
     publicCount,
     q,
+    quickAccess,
     rarity,
     readOnly,
     rowVirtualizer,

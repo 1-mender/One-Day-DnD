@@ -6,6 +6,7 @@ import { useToast } from "../../foundation/providers/index.js";
 import { useSocket } from "../../context/SocketContext.jsx";
 import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { formatError } from "../../lib/formatError.js";
+import { useQuickAccess } from "../../lib/useQuickAccess.js";
 import {
   EMPTY_DM_PROFILE_FORM,
   hasAnyData,
@@ -36,6 +37,9 @@ export function useDmPlayerProfileController() {
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
   const [profilePresets, setProfilePresets] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const quickAccess = useQuickAccess("dm_player_profiles", players);
+  const { trackRecent } = quickAccess;
 
   const applyProfile = useCallback((nextProfile) => {
     setProfile(nextProfile);
@@ -60,7 +64,9 @@ export function useDmPlayerProfileController() {
         api.dmPlayers(),
         api.playerProfile(playerId)
       ]);
-      const foundPlayer = (playersResponse.items || []).find((item) => item.id === playerId);
+      const nextPlayers = playersResponse.items || [];
+      setPlayers(nextPlayers);
+      const foundPlayer = nextPlayers.find((item) => item.id === playerId);
       setPlayer(foundPlayer || null);
       if (profileResponse.notCreated) {
         setProfile(null);
@@ -129,6 +135,10 @@ export function useDmPlayerProfileController() {
     loadRequests().catch(() => {});
     loadPresets().catch(() => {});
   }, [load, loadPresets, loadRequests]);
+
+  useEffect(() => {
+    if (playerId) trackRecent(playerId);
+  }, [playerId, trackRecent]);
 
   const save = useCallback(async () => {
     if (readOnly || !playerId) return;
@@ -268,12 +278,18 @@ export function useDmPlayerProfileController() {
     loadRequests,
     loading,
     notCreated,
+    openPlayerProfile: (targetId) => {
+      if (!targetId || targetId === playerId) return;
+      navigate(`/dm/app/players/${targetId}/profile`);
+    },
     player,
     playerId,
+    players,
     playerRequests,
     playerRequestsAll,
     profile,
     profilePresets,
+    quickAccess,
     readOnly,
     reject,
     reqLoading,
