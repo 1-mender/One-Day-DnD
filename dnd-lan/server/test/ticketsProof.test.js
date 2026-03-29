@@ -180,6 +180,7 @@ test("play rejects submission without payload/proof", async () => {
 test("play accepts valid ttt payload with issued seed/proof token", async () => {
   const playerId = createPlayer("Proofed");
   const token = createSession(playerId);
+  seedTickets(playerId, 20);
   const payload = {
     modeKey: "normal",
     rounds: [
@@ -223,6 +224,7 @@ test("play accepts valid ttt payload with issued seed/proof token", async () => 
 test("issued seed/proof token is one-time", async () => {
   const playerId = createPlayer("SingleUse");
   const token = createSession(playerId);
+  seedTickets(playerId, 20);
   const payload = {
     modeKey: "normal",
     rounds: [

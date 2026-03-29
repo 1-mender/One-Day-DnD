@@ -13,18 +13,18 @@ export const GAME_CATALOG = [
     ],
     modes: [
       {
-        key: "normal",
-        label: "Обычный",
-        roundsToWin: 2,
-        ai: "standard",
-        summary: "Матч до двух побед. Лучший вход для бесплатной серии."
-      },
-      {
         key: "fast",
         label: "Быстрый",
         roundsToWin: 1,
         ai: "standard",
-        summary: "Один решающий раунд. Быстрее, но награда скромнее."
+        summary: "Один решающий раунд. Бесплатный разогрев перед длинными матчами."
+      },
+      {
+        key: "normal",
+        label: "Обычный",
+        roundsToWin: 2,
+        ai: "standard",
+        summary: "Матч до двух побед. Требует билет, но заметно лучше платит за чистую серию."
       }
     ]
   },
@@ -84,6 +84,16 @@ export const GAME_CATALOG = [
     ],
     modes: [
       {
+        key: "compact",
+        label: "Компакт",
+        size: 5,
+        moves: 14,
+        target: 90,
+        colors: 5,
+        blocks: 0,
+        summary: "Меньше поле и бесплатный вход. Даёт меньше билетов, но быстро разогревает перед длинной сессией."
+      },
+      {
         key: "normal",
         label: "Классика",
         size: 6,
@@ -92,16 +102,6 @@ export const GAME_CATALOG = [
         colors: 6,
         blocks: 0,
         summary: "Стабильное поле и средняя награда за длинные комбо."
-      },
-      {
-        key: "compact",
-        label: "Компакт",
-        size: 5,
-        moves: 14,
-        target: 90,
-        colors: 5,
-        blocks: 0,
-        summary: "Меньше поле и бесплатный вход. Подходит для быстрой разминки."
       },
       {
         key: "chaos",
@@ -129,6 +129,14 @@ export const GAME_CATALOG = [
     ],
     modes: [
       {
+        key: "single",
+        label: "Один шанс",
+        allowReroll: false,
+        targetScore: 1,
+        timeLimit: 24,
+        summary: "Без реролла и с низким потолком награды. Быстрый безопасный старт."
+      },
+      {
         key: "classic",
         label: "Классика",
         allowReroll: true,
@@ -143,14 +151,6 @@ export const GAME_CATALOG = [
         targetScore: 4,
         timeLimit: 32,
         summary: "Нужна сильная комбинация. Билет дороже, но выигрыш выше."
-      },
-      {
-        key: "single",
-        label: "Один шанс",
-        allowReroll: false,
-        targetScore: 1,
-        timeLimit: 24,
-        summary: "Без реролла и почти без риска. Хорош для быстрого старта."
       }
     ]
   },

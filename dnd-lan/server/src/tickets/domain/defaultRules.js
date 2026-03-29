@@ -36,15 +36,24 @@ export const DEFAULT_TICKET_RULES = {
       },
       modeOverrides: {
         normal: {
-          rewardMin: 1,
-          rewardMax: 3,
-          dailyLimit: 10
+          entryCost: 1,
+          rewardMin: 2,
+          rewardMax: 4,
+          lossPenalty: 1,
+          dailyLimit: 8,
+          ui: {
+            difficulty: "СРЕДНЕ",
+            risk: "Средний",
+            time: "3-5 min"
+          }
         },
         fast: {
           rewardMin: 1,
           rewardMax: 2,
-          dailyLimit: 14,
+          dailyLimit: 10,
           ui: {
+            difficulty: "ЛЕГКО",
+            risk: "Низкий",
             time: "1-2 min"
           }
         }
@@ -73,7 +82,7 @@ export const DEFAULT_TICKET_RULES = {
           rewardMin: 1,
           rewardMax: 2,
           lossPenalty: 0,
-          dailyLimit: 10,
+          dailyLimit: 6,
           ui: {
             difficulty: "ЛЕГКО",
             risk: "Низкий",
@@ -129,9 +138,9 @@ export const DEFAULT_TICKET_RULES = {
         compact: {
           entryCost: 0,
           rewardMin: 1,
-          rewardMax: 3,
+          rewardMax: 2,
           lossPenalty: 0,
-          dailyLimit: 9,
+          dailyLimit: 6,
           ui: {
             difficulty: "ЛЕГКО",
             risk: "Низкий",
@@ -140,7 +149,7 @@ export const DEFAULT_TICKET_RULES = {
         },
         chaos: {
           entryCost: 2,
-          rewardMin: 4,
+          rewardMin: 5,
           rewardMax: 8,
           lossPenalty: 2,
           dailyLimit: 4,
@@ -179,7 +188,7 @@ export const DEFAULT_TICKET_RULES = {
         },
         risk: {
           entryCost: 2,
-          rewardMin: 4,
+          rewardMin: 5,
           rewardMax: 8,
           lossPenalty: 2,
           dailyLimit: 4,
@@ -191,9 +200,9 @@ export const DEFAULT_TICKET_RULES = {
         single: {
           entryCost: 0,
           rewardMin: 1,
-          rewardMax: 3,
+          rewardMax: 2,
           lossPenalty: 0,
-          dailyLimit: 8,
+          dailyLimit: 5,
           ui: {
             difficulty: "ЛЕГКО",
             risk: "Низкий",
@@ -230,9 +239,9 @@ export const DEFAULT_TICKET_RULES = {
         rush: {
           entryCost: 1,
           rewardMin: 2,
-          rewardMax: 5,
+          rewardMax: 4,
           lossPenalty: 1,
-          dailyLimit: 7,
+          dailyLimit: 6,
           ui: {
             difficulty: "СРЕДНЕ",
             risk: "Средний",
@@ -241,7 +250,7 @@ export const DEFAULT_TICKET_RULES = {
         },
         expert: {
           entryCost: 2,
-          rewardMin: 4,
+          rewardMin: 5,
           rewardMax: 8,
           lossPenalty: 2,
           dailyLimit: 4,
