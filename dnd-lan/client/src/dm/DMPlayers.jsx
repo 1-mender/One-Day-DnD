@@ -13,6 +13,8 @@ import { useSavedFilters } from "../lib/useSavedFilters.js";
 import { t } from "../i18n/index.js";
 import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 
+const IMP_HANDOFF_STORAGE_PREFIX = "dnd.impersonation.handoff.";
+
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
   const [tickets, setTickets] = useState({});
@@ -87,7 +89,15 @@ export default function DMPlayers() {
     setErr("");
     try {
       const response = await api.dmImpersonate(playerId, "ro");
-      const url = `/app?imp=1&token=${encodeURIComponent(response.playerToken)}`;
+      const handoffId = window.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+      window.localStorage.setItem(
+        `${IMP_HANDOFF_STORAGE_PREFIX}${handoffId}`,
+        JSON.stringify({
+          token: String(response.playerToken || ""),
+          createdAt: Date.now()
+        })
+      );
+      const url = `/app?imp=1&handoff=${encodeURIComponent(handoffId)}`;
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       setErr(formatError(error));

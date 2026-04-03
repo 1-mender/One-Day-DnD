@@ -41,6 +41,28 @@ const ROUTE_TO_LABEL = {
   "/app/shop": "playerLayout.navShop",
   "/app/bestiary": "playerLayout.navBestiary"
 };
+const IMP_HANDOFF_STORAGE_PREFIX = "dnd.impersonation.handoff.";
+const IMP_HANDOFF_TTL_MS = 60_000;
+
+function takeImpersonationHandoff(handoffId) {
+  const key = `${IMP_HANDOFF_STORAGE_PREFIX}${handoffId}`;
+  try {
+    const raw = window.localStorage.getItem(key);
+    window.localStorage.removeItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+    const token = String(parsed?.token || "");
+    const createdAt = Number(parsed?.createdAt || 0);
+    if (!token || !Number.isFinite(createdAt) || Date.now() - createdAt > IMP_HANDOFF_TTL_MS) return "";
+    return token;
+  } catch {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // best-effort cleanup
+    }
+    return "";
+  }
+}
 
 export default function PlayerLayout() {
   const nav = useNavigate();
@@ -89,7 +111,13 @@ export default function PlayerLayout() {
   useEffect(() => {
     const sp = new URLSearchParams(location.search);
     const imp = sp.get("imp") === "1";
-    const token = sp.get("token");
+    const handoffId = String(sp.get("handoff") || "").trim();
+    const token = handoffId
+      ? takeImpersonationHandoff(handoffId)
+      : String(sp.get("token") || "");
+    if (imp && (handoffId || token)) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
     if (!imp || !token) return;
     if (impHandledRef.current.token !== token) {
       impHandledRef.current = { token, applied: false };
@@ -103,7 +131,6 @@ export default function PlayerLayout() {
           storage.setImpMode("ro");
           setImpersonating(true);
           setImpMode("ro");
-          window.history.replaceState({}, "", window.location.pathname);
           if (socket) refreshAuth();
         })
         .catch((e) => {

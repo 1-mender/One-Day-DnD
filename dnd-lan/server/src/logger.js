@@ -15,6 +15,29 @@ export const logger = pino({
   }
 });
 
+const URL_SECRET_QUERY_PARAMS = new Set([
+  "token",
+  "playertoken",
+  "proof",
+  "clientproof"
+]);
+
+function sanitizeReqUrl(rawUrl) {
+  const value = String(rawUrl || "");
+  if (!value) return value;
+  try {
+    const parsed = new URL(value, "http://127.0.0.1");
+    for (const key of Array.from(parsed.searchParams.keys())) {
+      if (URL_SECRET_QUERY_PARAMS.has(String(key || "").toLowerCase())) {
+        parsed.searchParams.set(key, "[Redacted]");
+      }
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return value;
+  }
+}
+
 function genReqId(req, res) {
   const incoming = req.headers["x-request-id"];
   const id = typeof incoming === "string" && incoming.trim()
@@ -27,5 +50,12 @@ function genReqId(req, res) {
 export const httpLogger = pinoHttp({
   logger,
   genReqId,
-  customProps: (req) => ({ requestId: req.id })
+  customProps: (req) => ({ requestId: req.id }),
+  serializers: {
+    req(req) {
+      const out = pino.stdSerializers.req(req);
+      out.url = sanitizeReqUrl(out.url);
+      return out;
+    }
+  }
 });

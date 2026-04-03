@@ -6,15 +6,17 @@ import { getDb, getPartySettings, getSinglePartyId, setPartySettings } from "../
 import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
-import { getRequestPartyId, isDmRequest } from "../sessionAuth.js";
+import { getPlayerSessionFromRequest, getRequestPartyId, isDmRequest } from "../sessionAuth.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 
 export const bestiaryRouter = express.Router();
 
 const MONSTERS_DIR = path.join(uploadsDir, "monsters");
 const BESTIARY_DIR = path.join(uploadsDir, "bestiary");
+const BESTIARY_THUMBS_DIR = path.join(BESTIARY_DIR, "thumbs");
 fs.mkdirSync(MONSTERS_DIR, { recursive: true });
 fs.mkdirSync(BESTIARY_DIR, { recursive: true });
+fs.mkdirSync(BESTIARY_THUMBS_DIR, { recursive: true });
 
 function imageUrl(filename) {
   const bestiaryPath = path.join(BESTIARY_DIR, filename);
@@ -25,6 +27,27 @@ function imageUrl(filename) {
 const DEFAULT_PAGE_LIMIT = Number(process.env.BESTIARY_PAGE_LIMIT || 200);
 const MAX_PAGE_LIMIT = 500;
 const MAX_IMAGE_IDS = 200;
+
+function resolveBestiaryReadContext(req, res) {
+  const isDm = isDmRequest(req);
+  if (isDm) {
+    return {
+      isDm: true,
+      partyId: getRequestPartyId(req, { at: Date.now() }) || getSinglePartyId()
+    };
+  }
+
+  const sess = getPlayerSessionFromRequest(req, { at: Date.now() });
+  if (!sess) {
+    res.status(401).json({ error: "not_authenticated" });
+    return null;
+  }
+
+  return {
+    isDm: false,
+    partyId: sess.party_id
+  };
+}
 
 function decodeCursor(raw) {
   if (!raw) return null;
@@ -83,8 +106,9 @@ function fetchImagesByMonsterIds(db, partyId, monsterIds, limitPer = 0) {
 
 bestiaryRouter.get("/", (req, res) => {
   const db = getDb();
-  const isDm = isDmRequest(req);
-  const partyId = getRequestPartyId(req, { at: Date.now() }) || getSinglePartyId();
+  const ctx = resolveBestiaryReadContext(req, res);
+  if (!ctx) return;
+  const { isDm, partyId } = ctx;
   const settings = getPartySettings(partyId);
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [], nextCursor: null });
@@ -149,8 +173,9 @@ bestiaryRouter.get("/", (req, res) => {
 
 bestiaryRouter.get("/images", (req, res) => {
   const db = getDb();
-  const isDm = isDmRequest(req);
-  const partyId = getRequestPartyId(req, { at: Date.now() }) || getSinglePartyId();
+  const ctx = resolveBestiaryReadContext(req, res);
+  if (!ctx) return;
+  const { isDm, partyId } = ctx;
   const settings = getPartySettings(partyId);
   const ids = parseIdList(req.query.ids, MAX_IMAGE_IDS);
 
@@ -274,7 +299,11 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   for (const row of imageRows) {
     const filename = row?.filename;
     if (!filename) continue;
-    const paths = [path.join(BESTIARY_DIR, filename), path.join(MONSTERS_DIR, filename)];
+    const paths = [
+      path.join(BESTIARY_DIR, filename),
+      path.join(BESTIARY_THUMBS_DIR, `${filename}.thumb.webp`),
+      path.join(MONSTERS_DIR, filename)
+    ];
     for (const p of paths) {
       try {
         if (fs.existsSync(p)) fs.unlinkSync(p);

@@ -6,7 +6,7 @@ import unzipper from "unzipper";
 import multer from "multer";
 import { pipeline } from "node:stream/promises";
 import { dmAuthMiddleware } from "../auth.js";
-import { assertSinglePartyDbFile, closeDb, DATA_DIR, DB_PATH, reloadDb } from "../db.js";
+import { assertSinglePartyDbFile, closeDb, DATA_DIR, DB_PATH, getDb, reloadDb } from "../db.js";
 import { emitSinglePartyEvents } from "../singlePartyEmit.js";
 import { asyncHandler, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
@@ -69,6 +69,11 @@ async function safeExtractZip(zipPath, destDir) {
 backupRouter.get("/export", dmAuthMiddleware, (req, res) => {
   const dbPath = DB_PATH;
   const uploadsPath = uploadsDir;
+  try {
+    getDb().pragma("wal_checkpoint(TRUNCATE)");
+  } catch {
+    // best-effort export consistency checkpoint
+  }
 
   res.setHeader("Content-Type", "application/zip");
   res.setHeader("Content-Disposition", "attachment; filename=\"dnd-lan-backup.zip\"");
@@ -113,6 +118,8 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
     const hadDstDb = fs.existsSync(dstDb);
     const hadDstUploads = fs.existsSync(dstUploads);
     fs.mkdirSync(DATA_DIR, { recursive: true });
+
+    req.app.locals.io?.resetLiveConnections?.();
 
     // close DB before replace
     closeDb();

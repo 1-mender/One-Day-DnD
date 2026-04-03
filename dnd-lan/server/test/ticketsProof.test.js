@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -28,6 +29,7 @@ app.use("/api/tickets", ticketsRouter);
 
 const server = app.listen(0);
 const base = `http://127.0.0.1:${server.address().port}`;
+const issuedProofsBySeed = new Map();
 
 test.after(() => {
   server.close();
@@ -60,16 +62,11 @@ function seedTickets(playerId, balance = 20) {
   ).run(playerId, balance, 0, 0, t);
 }
 
-function simpleHash(str) {
-  let h = 0;
-  for (let i = 0; i < str.length; i += 1) {
-    h = (h * 31 + str.charCodeAt(i)) | 0;
-  }
-  return Math.abs(h).toString(36);
-}
-
 function makeClientProof(seed, data) {
-  return simpleHash(`${seed || ""}:${JSON.stringify(data || {})}`);
+  return crypto
+    .createHmac("sha256", String(issuedProofsBySeed.get(String(seed || "")) || ""))
+    .update(`${seed || ""}:${JSON.stringify(data || {})}`)
+    .digest("hex");
 }
 
 function makeRng(seed) {
@@ -150,6 +147,9 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
   const data = await res.json().catch(() => ({}));
+  if (pathname.startsWith("/api/tickets/seed") && data?.seed && data?.proof) {
+    issuedProofsBySeed.set(String(data.seed), String(data.proof));
+  }
   return { res, data };
 }
 

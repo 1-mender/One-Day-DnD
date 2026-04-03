@@ -210,6 +210,7 @@ bestiaryImagesRouter.delete("/images/:imageId", dmAuthMiddleware, (req, res) => 
 
   const paths = [
     path.join(UPLOAD_DIR, row.filename),
+    path.join(THUMB_DIR, `${row.filename}.thumb.webp`),
     path.join(uploadsDir, "monsters", row.filename)
   ];
   for (const p of paths) {

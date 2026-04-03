@@ -15,7 +15,8 @@ import {
   DANGEROUS_UPLOAD_MIMES,
   finalizeUploadedFile,
   isImageMime,
-  normalizeAllowedMimes
+  normalizeAllowedMimes,
+  safeUnlink
 } from "../uploadSecurity.js";
 
 export const infoUploadsRouter = express.Router();
@@ -82,6 +83,7 @@ infoUploadsRouter.post("/upload", dmOrAvatarUpload, wrapMulter(upload.single("fi
 
   const clientClaimedMime = String(f.mimetype || "").toLowerCase();
   if (DANGEROUS_UPLOAD_MIMES.has(clientClaimedMime)) {
+    safeUnlink(f.path);
     return res.status(415).json({ error: "unsupported_file_type" });
   }
 

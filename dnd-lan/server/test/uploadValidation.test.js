@@ -15,6 +15,7 @@ process.env.DM_COOKIE = "dm_token_test";
 const { initDb, getDb, getSinglePartyId, setPartySettings } = await import("../src/db.js");
 const { createDmUser, signDmToken } = await import("../src/auth.js");
 const { ensureUploads } = await import("../src/uploads.js");
+const { uploadsDir } = await import("../src/paths.js");
 const { bestiaryRouter } = await import("../src/routes/bestiary.js");
 const { infoUploadsRouter } = await import("../src/routes/infoUploads.js");
 const { bestiaryImagesRouter } = await import("../src/routes/bestiaryImages.js");
@@ -96,6 +97,7 @@ const AVIF_1X1 = await sharp({
     background: { r: 180, g: 140, b: 90 }
   }
 }).avif({ quality: 70 }).toBuffer();
+const INFO_ASSETS_DIR = path.join(uploadsDir, "assets");
 
 test("info upload rejects spoofed image payload", async () => {
   const out = await upload("/api/info-blocks/upload", {
@@ -130,6 +132,20 @@ test("info upload accepts heif-family images and normalizes them to jpeg", async
   assert.match(String(out.data.url || ""), /^\/uploads\/assets\/.+\.jpg$/);
   assert.equal(out.data.mime, "image/jpeg");
   assert.match(String(out.data.markdown || ""), /^!\[\]\(\/uploads\/assets\/.+\.jpg\)$/);
+});
+
+test("info upload removes rejected dangerous files from disk", async () => {
+  const before = fs.readdirSync(INFO_ASSETS_DIR).length;
+  const out = await upload("/api/info-blocks/upload", {
+    body: FAKE_BINARY,
+    mime: "application/x-msdownload",
+    filename: "payload.exe"
+  });
+  const after = fs.readdirSync(INFO_ASSETS_DIR).length;
+
+  assert.equal(out.res.status, 415);
+  assert.equal(out.data.error, "unsupported_file_type");
+  assert.equal(after, before);
 });
 
 test("info upload does not fall back to player avatar branch when DM cookie is invalid", async () => {
@@ -183,7 +199,7 @@ test("bestiary upload accepts heif-family images and normalizes them to jpeg", a
   assert.equal(out.data.image?.mime, "image/jpeg");
 });
 
-test("player bestiary images endpoint returns visible monster images without DM auth", async () => {
+test("player bestiary images endpoint requires player auth for non-DM reads", async () => {
   const monsterId = createMonster("Visible Beast");
   setPartySettings(getSinglePartyId(), { bestiary_enabled: 1 });
   const uploadOut = await upload(`/api/bestiary/${monsterId}/images`, {
@@ -192,6 +208,16 @@ test("player bestiary images endpoint returns visible monster images without DM 
     filename: "monster.png"
   });
   assert.equal(uploadOut.res.status, 200);
+
+  const anonRes = await fetch(`${base}/api/bestiary/images?ids=${monsterId}&limitPer=1`);
+  const anonData = await anonRes.json().catch(() => ({}));
+  assert.equal(anonRes.status, 401);
+  assert.equal(anonData.error, "not_authenticated");
+
+  const anonListRes = await fetch(`${base}/api/bestiary`);
+  const anonListData = await anonListRes.json().catch(() => ({}));
+  assert.equal(anonListRes.status, 401);
+  assert.equal(anonListData.error, "not_authenticated");
 
   const playerId = createPlayer("Viewer");
   const playerToken = createPlayerSession(playerId, "player-bestiary-viewer");
@@ -205,4 +231,30 @@ test("player bestiary images endpoint returns visible monster images without DM 
   assert.equal(data.items[0]?.monsterId, monsterId);
   assert.equal(Array.isArray(data.items[0]?.images), true);
   assert.ok(String(data.items[0]?.images?.[0]?.url || "").includes("/uploads/bestiary/"));
+});
+
+test("bestiary image delete removes generated thumbnail", async () => {
+  const monsterId = createMonster("Thumb Cleanup");
+  const uploadOut = await upload(`/api/bestiary/${monsterId}/images`, {
+    body: PNG_1X1,
+    mime: "image/png",
+    filename: "monster.png"
+  });
+  assert.equal(uploadOut.res.status, 200);
+
+  const imageId = Number(uploadOut.data?.image?.id || 0);
+  const filename = path.basename(String(uploadOut.data?.image?.url || ""));
+  const thumbPath = path.join(uploadsDir, "bestiary", "thumbs", `${filename}.thumb.webp`);
+  assert.ok(imageId > 0);
+  assert.ok(filename);
+  assert.equal(fs.existsSync(thumbPath), true);
+
+  const deleteRes = await fetch(`${base}/api/bestiary/images/${imageId}`, {
+    method: "DELETE",
+    headers: { cookie: dmCookie() }
+  });
+  const deleteData = await deleteRes.json().catch(() => ({}));
+  assert.equal(deleteRes.status, 200);
+  assert.equal(deleteData.ok, true);
+  assert.equal(fs.existsSync(thumbPath), false);
 });

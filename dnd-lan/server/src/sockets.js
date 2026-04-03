@@ -114,6 +114,22 @@ export function createSocketServer(httpServer) {
     return originalClose(...args);
   };
 
+  io.resetLiveConnections = () => {
+    shuttingDown = true;
+    for (const timer of offlineTimersByPlayerId.values()) {
+      clearTimeout(timer);
+    }
+    offlineTimersByPlayerId.clear();
+    activeSocketsByPlayerId.clear();
+    io.emit("player:sessionInvalid");
+    setImmediate(() => {
+      io.disconnectSockets(true);
+      offlineTimersByPlayerId.clear();
+      activeSocketsByPlayerId.clear();
+      shuttingDown = false;
+    });
+  };
+
   io.use((socket, next) => {
     const auth = socket.handshake.auth || {};
     const requestedRole = String(auth.role || "").toLowerCase();
@@ -181,7 +197,6 @@ export function createSocketServer(httpServer) {
   });
 
   io.on("connection", (socket) => {
-    const db = getDb();
     const degradedState = getDegradedState();
     socket.emit("system:degraded", degradedState.degraded
       ? { ok: false, reason: degradedState.reason || "not_ready", since: degradedState.since }
@@ -202,6 +217,7 @@ export function createSocketServer(httpServer) {
 
     if (socket.data.role === "player") {
       const token = socket.data.playerToken;
+      const db = getDb();
       const sess = getActiveSessionByToken(token, { db, at: now() });
       if (!sess) {
         socket.emit("player:sessionInvalid");
@@ -238,10 +254,12 @@ export function createSocketServer(httpServer) {
 
       socket.on("player:activity", () => {
         if (getDegradedState().degraded) return;
+        if (shuttingDown) return;
         if (socket.data.impersonated) return;
         const playerId = socket.data.playerId;
         const partyId = socket.data.partyId;
         if (!playerId || !partyId) return;
+        const db = getDb();
         const t = now();
         db.prepare("UPDATE players SET last_seen=? WHERE id=?").run(t, playerId);
 
@@ -261,6 +279,7 @@ export function createSocketServer(httpServer) {
         const playerId = socket.data.playerId;
         const partyId = socket.data.partyId;
         if (!playerId || !partyId) return;
+        const db = getDb();
         const playerName = socket.data.playerName || "Player";
         trackPlayerDisconnect({
           db,
@@ -283,6 +302,7 @@ export function createSocketServer(httpServer) {
             return;
           }
 
+          const db = getDb();
           const nextSess = getActiveSessionByToken(token, { db, at: now() });
           if (!nextSess) {
             socket.emit("player:sessionInvalid");

@@ -1,13 +1,13 @@
 import { logger } from "../../logger.js";
 import { logEvent } from "../../events.js";
 import {
-  makePlayClientProof,
   randInt,
   validateGuessPayload,
   validateDicePayload,
   validateMatch3Payload,
   validateScrabblePayload,
-  validateTttPayload
+  validateTttPayload,
+  verifyPlayClientProof
 } from "../domain/playValidation.js";
 import { resolveGameModeRules } from "../domain/rules.js";
 import { MIN_ARCADE_PLAY_MS } from "../shared/ticketConstants.js";
@@ -42,13 +42,13 @@ export function processTicketPlay({ db, io, me, body, takeSeed, nowFn, buildMatc
   const seedTicket = takeSeed(me.player.id, gameKey, seed, proof);
   if (!seedTicket) return error(400, "invalid_seed");
 
-  const expectedClientProof = makePlayClientProof(seed, {
+  const validClientProof = verifyPlayClientProof(seedTicket.seed, seedTicket.proof, {
     gameKey,
     outcome,
     performance: performanceKey,
     payload
-  });
-  if (!clientProof || clientProof !== expectedClientProof) return error(400, "invalid_proof");
+  }, clientProof);
+  if (!validClientProof) return error(400, "invalid_proof");
 
   const elapsedMs = Math.max(0, nowFn() - Number(seedTicket?.issuedAt || 0));
   const minPlayMs = Number(MIN_ARCADE_PLAY_MS[gameKey] || 0);

@@ -54,13 +54,24 @@ function simpleHash(str) {
   return Math.abs(h).toString(36);
 }
 
-export function makePlayClientProof(seed, data) {
+export function makePlayClientProof(seed, proof, data) {
   const body = `${seed || ""}:${JSON.stringify(data || {})}`;
-  return simpleHash(body);
+  return crypto
+    .createHmac("sha256", String(proof || ""))
+    .update(body)
+    .digest("hex");
+}
+
+export function verifyPlayClientProof(seed, proof, data, clientProof) {
+  const safeClientProof = String(clientProof || "");
+  if (!safeClientProof) return false;
+  if (safeClientProof === makePlayClientProof(seed, proof, data)) return true;
+  const body = `${seed || ""}:${JSON.stringify(data || {})}`;
+  return safeClientProof === simpleHash(`${proof || ""}:${body}`);
 }
 
 function makeSeed() {
-  return Math.random().toString(36).slice(2, 12);
+  return crypto.randomBytes(16).toString("hex");
 }
 
 function seedKey(playerId, gameKey) {

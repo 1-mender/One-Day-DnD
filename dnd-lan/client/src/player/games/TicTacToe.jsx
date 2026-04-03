@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { makeProof } from "../../lib/gameProof.js";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const LINES = [
@@ -153,10 +152,9 @@ export default function TicTacToeGame({
       playerWins,
       outcome: status
     };
-    const proof = makeProof("", payload);
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance, payload, proof })
+    onSubmitResult({ outcome: status, performance, payload })
       .then((r) => setResult(r))
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));

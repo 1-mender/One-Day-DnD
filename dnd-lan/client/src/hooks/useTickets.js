@@ -129,7 +129,7 @@ export function useTickets() {
       nextPayload.seed = String(issued?.seed || "");
       nextPayload.proof = String(issued?.proof || "");
     }
-    nextPayload.clientProof = makeProof(nextPayload.seed || "", {
+    nextPayload.clientProof = await makeProof(nextPayload.seed || "", nextPayload.proof || "", {
       gameKey: String(nextPayload.gameKey || ""),
       outcome: String(nextPayload.outcome || ""),
       performance: String(nextPayload.performance || "normal"),
