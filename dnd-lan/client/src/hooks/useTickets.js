@@ -140,6 +140,20 @@ export function useTickets() {
     return res;
   }, [applyPayload]);
 
+  const startGameSession = useCallback(async (gameKey, payload = {}) => {
+    return api.ticketsGameStart(gameKey, payload);
+  }, []);
+
+  const moveGameSession = useCallback(async (sessionId, payload = {}) => {
+    return api.ticketsGameMove(sessionId, payload);
+  }, []);
+
+  const finishGameSession = useCallback(async (sessionId, payload = {}) => {
+    const res = await api.ticketsGameFinish(sessionId, payload);
+    applyPayload(res);
+    return res;
+  }, [applyPayload]);
+
   const purchase = useCallback(async (payload) => {
     const res = await api.ticketsPurchase(payload);
     applyPayload(res);
@@ -188,6 +202,9 @@ export function useTickets() {
     err,
     refresh,
     play,
+    startGameSession,
+    moveGameSession,
+    finishGameSession,
     purchase,
     queueMatchmaking,
     cancelMatchmaking,

@@ -12,13 +12,23 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
-          if (id.includes("react-router")) return "vendor-router";
-          if (id.includes("react-dom") || id.includes("react")) return "vendor-react";
-          if (id.includes("socket.io-client")) return "vendor-socket";
-          if (id.includes("react-markdown") || id.includes("remark-gfm") || id.includes("rehype-sanitize")) return "vendor-markdown";
-          if (id.includes("@motionone") || id.includes("@formkit/auto-animate")) return "vendor-motion";
           if (id.includes("lucide-react")) return "vendor-icons";
+          if (id.includes("react-router")) return "vendor-router";
+          if (id.includes("socket.io-client")) return "vendor-socket";
+          if (
+            id.includes("react-markdown")
+            || id.includes("remark-")
+            || id.includes("rehype-")
+            || id.includes("micromark")
+            || id.includes("mdast-")
+            || id.includes("hast-")
+            || id.includes("unified")
+            || id.includes("unist-")
+            || id.includes("vfile")
+          ) return "vendor-markdown";
+          if (id.includes("@motionone") || id.includes("@formkit/auto-animate")) return "vendor-motion";
           if (id.includes("qrcode")) return "vendor-qrcode";
+          if (id.includes("react-dom") || id.includes("react")) return "vendor-react";
           return;
         }
       }

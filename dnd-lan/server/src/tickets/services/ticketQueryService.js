@@ -38,6 +38,8 @@ export function issueTicketSeedPayload({ playerId, gameKey, issueSeedFn }) {
   if (!safeGameKey || !GAME_CATALOG.find((game) => game.key === safeGameKey)) {
     return error(400, "invalid_game");
   }
+  // This endpoint only gives one-shot replay protection. Games with client-visible seed
+  // still need per-move server state APIs for full server-authoritative anti-cheat.
   const issued = issueSeedFn(playerId, safeGameKey);
   return ok({ seed: issued.seed, proof: issued.proof, gameKey: safeGameKey });
 }

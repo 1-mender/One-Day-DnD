@@ -6,6 +6,21 @@ export const ticketsApi = {
   ticketsCatalog: () => request("/api/tickets/catalog", { method: "GET" }),
   ticketsSeed: (gameKey) => request(`/api/tickets/seed?gameKey=${encodeURIComponent(gameKey)}`, { method: "GET" }),
   ticketsPlay: (payload) => request("/api/tickets/play", { method: "POST", body: JSON.stringify(payload) }),
+  ticketsGameStart: (gameKey, payload = {}) =>
+    request(`/api/tickets/games/${encodeURIComponent(gameKey)}/start`, {
+      method: "POST",
+      body: JSON.stringify(payload || {})
+    }),
+  ticketsGameMove: (sessionId, payload = {}) =>
+    request(`/api/tickets/games/sessions/${encodeURIComponent(sessionId)}/move`, {
+      method: "POST",
+      body: JSON.stringify(payload || {})
+    }),
+  ticketsGameFinish: (sessionId, payload = {}) =>
+    request(`/api/tickets/games/sessions/${encodeURIComponent(sessionId)}/finish`, {
+      method: "POST",
+      body: JSON.stringify(payload || {})
+    }),
   ticketsPurchase: (payload) => request("/api/tickets/purchase", { method: "POST", body: JSON.stringify(payload) }),
   ticketsQueueMatchmaking: (payload) =>
     request("/api/tickets/matchmaking/queue", { method: "POST", body: JSON.stringify(payload) }),

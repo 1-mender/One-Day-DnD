@@ -36,6 +36,9 @@ export function useArcadeController() {
     loading,
     err,
     play,
+    startGameSession,
+    moveGameSession,
+    finishGameSession,
     queueMatchmaking,
     cancelMatchmaking,
     rematch,
@@ -451,6 +454,9 @@ export function useArcadeController() {
     handleTttSubmit,
     handleDiceSubmit,
     handleScrabbleSubmit,
+    startGameSession,
+    moveGameSession,
+    finishGameSession,
     formatDurationMs,
     localizeOutcome
   };

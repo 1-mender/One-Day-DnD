@@ -2,6 +2,7 @@ import express from "express";
 
 import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
 import { now } from "../util.js";
+import { createArcadeSessionStore } from "../tickets/domain/arcadeSessionStore.js";
 import { createSeedStore } from "../tickets/domain/playValidation.js";
 import { SEED_TTL_MS } from "../tickets/shared/ticketConstants.js";
 import { buildMatchmakingPayload } from "../tickets/services/matchmakingService.js";
@@ -14,9 +15,11 @@ export const ticketsRouter = express.Router();
 validateGameCatalog(GAME_CATALOG);
 
 const auth = createTicketRouteAuth({ nowFn: Date.now });
+const arcadeSessions = createArcadeSessionStore({ ttlMs: SEED_TTL_MS, nowFn: now });
 const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
 
 registerPlayerTicketRoutes(ticketsRouter, {
+  arcadeSessions,
   auth,
   buildMatchmakingPayload,
   issueSeed,

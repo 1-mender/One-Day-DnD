@@ -1,79 +1,39 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../../api.js";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
-const SUITS = ["hearts", "diamonds", "clubs", "spades"];
-const SUIT_LABELS = {
-  hearts: "Черви",
-  diamonds: "Бубны",
-  clubs: "Трефы",
-  spades: "Пики"
-};
 const SUIT_SYMBOLS = {
   hearts: "♥",
   diamonds: "♦",
   clubs: "♣",
   spades: "♠"
 };
-const DEFAULT_MODE = {
-  ranks: ["A", "K", "Q"],
-  maxAttempts: 3,
-  timeLimit: 40,
-  hintCount: 3
-};
 const GRID_COLS = 4;
-
-let cardId = 1;
-const nextId = () => cardId++;
-
-function makeRng(seed) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return () => {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    return (h & 0xfffffff) / 0xfffffff;
-  };
-}
-
-function shuffleWithSeed(arr, seed) {
-  const rng = makeRng(seed);
-  const out = arr.slice();
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(rng() * (i + 1));
-    [out[i], out[j]] = [out[j], out[i]];
-  }
-  return out;
-}
-
-function buildDeck(seed, ranks) {
-  const cards = [];
-  for (const suit of SUITS) {
-    for (const rank of ranks) {
-      cards.push({ id: nextId(), suit, rank, color: suit === "hearts" || suit === "diamonds" ? "red" : "black" });
-    }
-  }
-  return shuffleWithSeed(cards, seed);
-}
 
 export default function GuessCardGame({
   open,
   onClose,
   onSubmitResult,
+  onStartSession,
+  onMoveSession,
+  onFinishSession,
   disabled,
   entryCost = 0,
   rewardRange = "—",
   mode,
   readOnly
 }) {
-  const modeConfig = useMemo(() => ({ ...DEFAULT_MODE, ...(mode || {}) }), [mode]);
-  const [seed, setSeed] = useState("");
-  const [seedProof, setSeedProof] = useState("");
+  const modeConfig = useMemo(() => ({
+    maxAttempts: Number(mode?.maxAttempts || 3),
+    timeLimit: Number(mode?.timeLimit || 40),
+    hintCount: Number(mode?.hintCount || 3),
+    key: String(mode?.key || "easy")
+  }), [mode]);
+  const [sessionId, setSessionId] = useState("");
   const [deck, setDeck] = useState([]);
   const [target, setTarget] = useState(null);
-  const [revealed, setRevealed] = useState([]);
+  const [hints, setHints] = useState([]);
   const [attempt, setAttempt] = useState(1);
+  const [maxAttempts, setMaxAttempts] = useState(modeConfig.maxAttempts);
   const [timeLeft, setTimeLeft] = useState(modeConfig.timeLimit);
   const [status, setStatus] = useState("playing");
   const [busy, setBusy] = useState(false);
@@ -81,12 +41,9 @@ export default function GuessCardGame({
   const [result, setResult] = useState(null);
   const [settling, setSettling] = useState(false);
   const [apiErr, setApiErr] = useState("");
-  const [seedErr, setSeedErr] = useState("");
-  const [seedBusy, setSeedBusy] = useState(false);
-  const [winAttempt, setWinAttempt] = useState(1);
-  const [pickHistory, setPickHistory] = useState([]);
+  const [sessionErr, setSessionErr] = useState("");
+  const [sessionBusy, setSessionBusy] = useState(false);
   const endAtRef = useRef(0);
-  const revealedSet = useMemo(() => new Set(revealed), [revealed]);
 
   const entryLabel = entryCost
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
@@ -94,68 +51,56 @@ export default function GuessCardGame({
   const modeLabel = mode?.label || "Классика";
   const modeKey = String(modeConfig.key || mode?.key || "easy");
 
-  const hints = useMemo(() => {
-    if (!target) return [];
-    return [
-      `Цвет: ${target.color === "red" ? "красная" : "чёрная"}`,
-      `Масть: ${SUIT_LABELS[target.suit]}`,
-      `Ранг: ${target.rank}`
-    ];
-  }, [target]);
+  const applySnapshot = useCallback((snapshot) => {
+    const state = snapshot?.state || {};
+    setSessionId(String(snapshot?.sessionId || ""));
+    setDeck(Array.isArray(state.deck) ? state.deck : []);
+    setTarget(state.target || null);
+    setHints(Array.isArray(state.hints) ? state.hints : []);
+    setAttempt(Math.max(1, Number(state.attempt || 1)));
+    setMaxAttempts(Math.max(1, Number(state.maxAttempts || modeConfig.maxAttempts || 1)));
+    setTimeLeft(Math.max(0, Number(state.timeLeftMs || 0) / 1000));
+    setStatus(String(state.status || "playing"));
+    endAtRef.current = Date.now() + Math.max(0, Number(state.timeLeftMs || 0));
+  }, [modeConfig.maxAttempts]);
 
-  const requestSeed = useCallback(async () => {
-    setSeedBusy(true);
-    setSeedErr("");
+  const startSession = useCallback(async () => {
+    setSessionBusy(true);
+    setSessionErr("");
     try {
-      const res = await api.ticketsSeed("guess");
-      const nextSeed = String(res?.seed || "");
-      const nextProof = String(res?.proof || "");
-      if (!nextSeed || !nextProof) {
-        throw new Error("seed_unavailable");
+      if (!onStartSession) {
+        throw new Error("session_api_unavailable");
       }
-      setSeed(nextSeed);
-      setSeedProof(nextProof);
+      const response = await onStartSession("guess", { modeKey });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot?.sessionId) throw new Error("session_unavailable");
+      applySnapshot(snapshot);
+      setBusy(false);
+      setMissId(null);
+      setResult(null);
+      setSettling(false);
+      setApiErr("");
     } catch {
-      setSeed("");
-      setSeedProof("");
+      setSessionId("");
       setDeck([]);
       setTarget(null);
-      setSeedErr("Не удалось загрузить seed раунда. Попробуйте ещё раз.");
+      setHints([]);
+      setAttempt(1);
+      setMaxAttempts(modeConfig.maxAttempts);
+      setStatus("playing");
+      setResult(null);
+      setSettling(false);
+      setApiErr("");
+      setSessionErr("Не удалось загрузить раунд. Попробуйте ещё раз.");
     } finally {
-      setSeedBusy(false);
+      setSessionBusy(false);
     }
-  }, []);
-
-  const resetGame = useCallback(() => {
-    if (!seed) return;
-    const next = buildDeck(seed, modeConfig.ranks);
-    setDeck(next);
-    const rng = makeRng(`${seed}-target`);
-    setTarget(next[Math.floor(rng() * next.length)]);
-    setRevealed([]);
-    setAttempt(1);
-    setTimeLeft(modeConfig.timeLimit);
-    setStatus("playing");
-    setBusy(false);
-    setMissId(null);
-    setResult(null);
-    setSettling(false);
-    setApiErr("");
-    setSeedErr("");
-    setWinAttempt(1);
-    setPickHistory([]);
-    endAtRef.current = Date.now() + modeConfig.timeLimit * 1000;
-  }, [modeConfig.ranks, modeConfig.timeLimit, seed]);
+  }, [applySnapshot, modeConfig.maxAttempts, modeKey, onStartSession]);
 
   useEffect(() => {
     if (!open) return;
-    requestSeed().catch(() => {});
-  }, [open, requestSeed]);
-
-  useEffect(() => {
-    if (!open || !seed) return;
-    resetGame();
-  }, [open, seed, resetGame]);
+    startSession().catch(() => {});
+  }, [open, startSession]);
 
   useEffect(() => {
     if (!open || status !== "playing") return;
@@ -171,68 +116,61 @@ export default function GuessCardGame({
 
   useEffect(() => {
     if (status === "playing") return;
-    if (!onSubmitResult || settling || result) return;
-    const perf = status === "win"
-      ? (winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third")
-      : "normal";
-    const payload = {
-      modeKey,
-      picks: pickHistory,
-      outcome: status
-    };
+    if (settling || result || !sessionId) return;
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance: perf, payload, seed, proof: seedProof })
-      .then((r) => setResult(r))
+    const finishPromise = onFinishSession
+      ? onFinishSession(sessionId)
+      : onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey } });
+    finishPromise
+      .then((response) => {
+        if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+        setResult(response?.result || response);
+      })
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, winAttempt, pickHistory, seed, seedProof, modeConfig, modeKey]);
+  }, [applySnapshot, modeKey, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
 
   function isRevealed(id) {
-    return revealedSet.has(id);
+    return deck.some((card) => card?.id === id && card?.revealed === true);
   }
 
-  function handlePick(card) {
-    if (busy || seedBusy || !seed || !seedProof || !target || status !== "playing" || disabled || readOnly) return;
-    if (isRevealed(card.id)) return;
-
-    setBusy(true);
-    setRevealed((prev) => [...prev, card.id]);
-    setPickHistory((prev) => [...prev, { suit: card.suit, rank: card.rank }]);
-
-    if (card.id === target.id) {
-      setWinAttempt(attempt);
-      setStatus("win");
-      setBusy(false);
+  async function handlePick(card) {
+    if (busy || sessionBusy || !sessionId || status !== "playing" || disabled || readOnly) return;
+    if (!card?.id || isRevealed(card.id)) return;
+    if (!onMoveSession) {
+      setApiErr("Серверный игровой протокол недоступен.");
       return;
     }
 
-    setMissId(card.id);
-    setTimeout(() => setMissId(null), 220);
-
-    const nextAttempt = attempt + 1;
-    setAttempt(nextAttempt);
-    if (nextAttempt > modeConfig.maxAttempts) {
-      setStatus("loss");
+    setBusy(true);
+    setApiErr("");
+    try {
+      const response = await onMoveSession(sessionId, { cardId: card.id });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot) throw new Error("move_unavailable");
+      applySnapshot(snapshot);
+      if (String(snapshot?.state?.status || "") !== "win") {
+        setMissId(card.id);
+        setTimeout(() => setMissId(null), 220);
+      }
+    } catch (e) {
+      setApiErr(e?.message || String(e));
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   async function retrySettlement() {
-    if (!onSubmitResult || settling) return;
-    const perf = status === "win"
-      ? (winAttempt === 1 ? "first" : winAttempt === 2 ? "second" : "third")
-      : "normal";
-    const payload = {
-      modeKey,
-      picks: pickHistory,
-      outcome: status
-    };
+    if (settling || !sessionId) return;
     setSettling(true);
     setApiErr("");
     try {
-      const r = await onSubmitResult({ outcome: status, performance: perf, payload, seed, proof: seedProof });
-      setResult(r);
+      const response = onFinishSession
+        ? await onFinishSession(sessionId)
+        : await onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey } });
+      if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+      setResult(response?.result || response);
     } catch (e) {
       setApiErr(e?.message || String(e));
     } finally {
@@ -254,7 +192,7 @@ export default function GuessCardGame({
         <div className="guess-hud">
           <div className="hud-card">
             <div className="hud-label">Попытка</div>
-            <div className="hud-value">{Math.min(attempt, modeConfig.maxAttempts)}/{modeConfig.maxAttempts}</div>
+            <div className="hud-value">{Math.min(attempt, maxAttempts)}/{maxAttempts}</div>
           </div>
           <div className="hud-card">
             <div className="hud-label">Время</div>
@@ -262,7 +200,7 @@ export default function GuessCardGame({
           </div>
           <div className="hud-card">
             <div className="hud-label">Осталось</div>
-            <div className="hud-value">{deck.length - revealed.length}</div>
+            <div className="hud-value">{deck.filter((card) => !card?.revealed).length}</div>
           </div>
         </div>
 
@@ -280,7 +218,7 @@ export default function GuessCardGame({
           ))}
         </div>
         <div className="small arcade-game-hint">
-          Выбирай внимательно: осталось попыток {Math.max(0, modeConfig.maxAttempts - attempt + 1)}.
+          Выбирай внимательно: осталось попыток {Math.max(0, maxAttempts - attempt + 1)}.
         </div>
 
         <div
@@ -288,22 +226,25 @@ export default function GuessCardGame({
           style={{ gridTemplateColumns: `repeat(${GRID_COLS}, minmax(0, 1fr))` }}
         >
           {deck.map((card) => {
-            const flipped = isRevealed(card.id) || status !== "playing";
+            const flipped = Boolean(card?.revealed) || status !== "playing";
+            const rank = String(card?.rank || "");
+            const suit = String(card?.suit || "");
+            const color = String(card?.color || "");
             return (
               <button
                 key={card.id}
                 type="button"
                 className={`guess-card${flipped ? " flipped" : ""}${missId === card.id ? " miss" : ""}`}
                 onClick={() => handlePick(card)}
-                disabled={busy || seedBusy || !seed || !seedProof || status !== "playing" || disabled || readOnly}
-                aria-label={`Карта ${card.rank} ${SUIT_SYMBOLS[card.suit]}`}
+                disabled={busy || sessionBusy || !sessionId || status !== "playing" || disabled || readOnly}
+                aria-label={rank && suit ? `Карта ${rank} ${SUIT_SYMBOLS[suit] || ""}` : "Скрытая карта"}
                 data-revealed={flipped ? "true" : "false"}
               >
                 <div className="guess-inner">
                   <div className="guess-face front">?</div>
-                  <div className={`guess-face back ${card.color}`}>
-                    <div className="guess-rank">{card.rank}</div>
-                    <div className="guess-suit">{SUIT_SYMBOLS[card.suit]}</div>
+                  <div className={`guess-face back ${color || "black"}`}>
+                    <div className="guess-rank">{rank || "?"}</div>
+                    <div className="guess-suit">{SUIT_SYMBOLS[suit] || ""}</div>
                   </div>
                 </div>
               </button>
@@ -313,8 +254,8 @@ export default function GuessCardGame({
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
-        {seedBusy ? <div className="badge warn">Загрузка раунда...</div> : null}
-        {seedErr ? <div className="badge off">{seedErr}</div> : null}
+        {sessionBusy ? <div className="badge warn">Загрузка раунда...</div> : null}
+        {sessionErr ? <div className="badge off">{sessionErr}</div> : null}
 
         {status !== "playing" ? (
           <div className={`guess-result ${status}`}>
@@ -334,7 +275,7 @@ export default function GuessCardGame({
             ) : null}
             <div className="row" style={{ gap: 8 }}>
               {result && !settling ? (
-                <button className="btn" onClick={() => requestSeed().catch(() => {})} disabled={seedBusy}>
+                <button className="btn" onClick={() => startSession().catch(() => {})} disabled={sessionBusy}>
                   Сыграть снова
                 </button>
               ) : null}

@@ -83,7 +83,10 @@ export default function Arcade() {
     handleTttSubmit,
     handleDiceSubmit,
     handleScrabbleSubmit,
-    arcadeMetrics,
+    startGameSession,
+    moveGameSession,
+    finishGameSession,
+    arcadeMetrics
   } = useArcadeController();
 
   const questProgress = Math.max(
@@ -429,6 +432,9 @@ export default function Arcade() {
             open={!!activeGame}
             onClose={closeGame}
             onSubmitResult={handleGuessSubmit}
+            onStartSession={startGameSession}
+            onMoveSession={moveGameSession}
+            onFinishSession={finishGameSession}
             disabled={!ticketsEnabled || rules?.games?.guess?.enabled === false}
             entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={

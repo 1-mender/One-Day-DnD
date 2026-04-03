@@ -1,5 +1,10 @@
 import { getDb, getSinglePartyId } from "../../db.js";
 import { isDmRequest } from "../../sessionAuth.js";
+import {
+  processArcadeSessionFinish,
+  processArcadeSessionMove,
+  processArcadeSessionStart
+} from "../services/arcadeSessionService.js";
 import { processMatchmakingQueueCancel, processMatchmakingQueueJoin, processMatchRematchRequest } from "../services/matchmakingActionService.js";
 import { processMatchCompletion } from "../services/matchResolutionService.js";
 import { processTicketPlay } from "../services/ticketPlayService.js";
@@ -13,6 +18,7 @@ import {
 } from "../services/ticketQueryService.js";
 
 export function registerPlayerTicketRoutes(router, {
+  arcadeSessions,
   auth,
   buildMatchmakingPayload,
   issueSeed,
@@ -52,6 +58,45 @@ export function registerPlayerTicketRoutes(router, {
       playerId: me.player.id,
       gameKey: req.query?.gameKey,
       issueSeedFn: issueSeed
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post("/games/:gameKey/start", (req, res) => {
+    const me = auth.requireWritablePlayer(req, res);
+    if (!me) return;
+    const result = processArcadeSessionStart({
+      me,
+      gameKey: req.params?.gameKey,
+      body: req.body,
+      startSession: arcadeSessions.startSession
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post("/games/sessions/:sessionId/move", (req, res) => {
+    const me = auth.requireWritablePlayer(req, res);
+    if (!me) return;
+    const result = processArcadeSessionMove({
+      me,
+      sessionId: req.params?.sessionId,
+      body: req.body,
+      moveSession: arcadeSessions.moveSession
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post("/games/sessions/:sessionId/finish", (req, res) => {
+    const me = auth.requireWritablePlayer(req, res);
+    if (!me) return;
+    const result = processArcadeSessionFinish({
+      db: getDb(),
+      io: req.app.locals.io,
+      me,
+      sessionId: req.params?.sessionId,
+      finishSession: arcadeSessions.finishSession,
+      nowFn,
+      buildMatchmakingPayload
     });
     return res.status(result.status).json(result.body);
   });
