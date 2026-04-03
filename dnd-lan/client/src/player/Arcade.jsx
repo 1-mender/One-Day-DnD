@@ -415,6 +415,9 @@ export default function Arcade() {
             open={!!activeGame}
             onClose={closeGame}
             onSubmitResult={handleMatch3Submit}
+            onStartSession={startGameSession}
+            onMoveSession={moveGameSession}
+            onFinishSession={finishGameSession}
             disabled={!ticketsEnabled || rules?.games?.match3?.enabled === false}
             entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
@@ -452,6 +455,9 @@ export default function Arcade() {
             open={!!activeGame}
             onClose={closeGame}
             onSubmitResult={handleTttSubmit}
+            onStartSession={startGameSession}
+            onMoveSession={moveGameSession}
+            onFinishSession={finishGameSession}
             disabled={!ticketsEnabled || rules?.games?.ttt?.enabled === false}
             entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
@@ -469,6 +475,9 @@ export default function Arcade() {
             open={!!activeGame}
             onClose={closeGame}
             onSubmitResult={handleDiceSubmit}
+            onStartSession={startGameSession}
+            onMoveSession={moveGameSession}
+            onFinishSession={finishGameSession}
             disabled={!ticketsEnabled || rules?.games?.dice?.enabled === false}
             entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={
@@ -486,6 +495,9 @@ export default function Arcade() {
             open={!!activeGame}
             onClose={closeGame}
             onSubmitResult={handleScrabbleSubmit}
+            onStartSession={startGameSession}
+            onMoveSession={moveGameSession}
+            onFinishSession={finishGameSession}
             disabled={!ticketsEnabled || rules?.games?.scrabble?.enabled === false}
             entryCost={Number(activeRules?.entryCost || 0)}
             rewardRange={

@@ -22,7 +22,7 @@ const URL_SECRET_QUERY_PARAMS = new Set([
   "clientproof"
 ]);
 
-function sanitizeReqUrl(rawUrl) {
+export function sanitizeReqUrl(rawUrl) {
   const value = String(rawUrl || "");
   if (!value) return value;
   try {

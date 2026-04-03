@@ -1,78 +1,30 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
-
-const LINES = [
-  [0, 1, 2],
-  [3, 4, 5],
-  [6, 7, 8],
-  [0, 3, 6],
-  [1, 4, 7],
-  [2, 5, 8],
-  [0, 4, 8],
-  [2, 4, 6]
-];
-const CORNERS = [0, 2, 6, 8];
-const SIDES = [1, 3, 5, 7];
-
-function getWinner(board) {
-  for (const [a, b, c] of LINES) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) return board[a];
-  }
-  return null;
-}
-
-function getWinnerLine(board) {
-  for (const [a, b, c] of LINES) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) return [a, b, c];
-  }
-  return null;
-}
-
-function findWinningMove(board, symbol) {
-  for (const [a, b, c] of LINES) {
-    const line = [board[a], board[b], board[c]];
-    const empties = [a, b, c].filter((idx) => !board[idx]);
-    if (empties.length !== 1) continue;
-    const filled = line.filter(Boolean);
-    if (filled.length === 2 && filled.every((v) => v === symbol)) {
-      return empties[0];
-    }
-  }
-  return null;
-}
-
-function pickAiMove(board) {
-  const win = findWinningMove(board, "O");
-  if (win != null) return win;
-  const block = findWinningMove(board, "X");
-  if (block != null) return block;
-  if (!board[4]) return 4;
-  for (const idx of CORNERS) {
-    if (!board[idx]) return idx;
-  }
-  for (const idx of SIDES) {
-    if (!board[idx]) return idx;
-  }
-  return null;
-}
 
 export default function TicTacToeGame({
   open,
   onClose,
   onSubmitResult,
+  onStartSession,
+  onMoveSession,
+  onFinishSession,
   disabled,
   entryCost = 0,
   rewardRange = "—",
   mode,
   readOnly
 }) {
-  const roundsToWin = Number(mode?.roundsToWin || 2);
+  const modeKey = String(mode?.key || "normal");
   const [board, setBoard] = useState(() => Array(9).fill(null));
-  const [moves, setMoves] = useState([]);
-  const [rounds, setRounds] = useState([]);
+  const [winnerLine, setWinnerLine] = useState(null);
+  const [sessionId, setSessionId] = useState("");
+  const [roundsToWin, setRoundsToWin] = useState(Number(mode?.roundsToWin || 2));
   const [playerWins, setPlayerWins] = useState(0);
   const [aiWins, setAiWins] = useState(0);
   const [status, setStatus] = useState("playing");
+  const [busy, setBusy] = useState(false);
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [sessionErr, setSessionErr] = useState("");
   const [settling, setSettling] = useState(false);
   const [result, setResult] = useState(null);
   const [apiErr, setApiErr] = useState("");
@@ -81,101 +33,100 @@ export default function TicTacToeGame({
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
   const modeLabel = mode?.label || "Обычный";
-  const modeKey = String(mode?.key || "normal");
 
-  const winnerLine = useMemo(() => getWinnerLine(board), [board]);
-  const winner = useMemo(() => (winnerLine ? board[winnerLine[0]] : getWinner(board)), [board, winnerLine]);
-  const isDraw = useMemo(() => board.every(Boolean) && !winner, [board, winner]);
+  const applySnapshot = useCallback((snapshot) => {
+    const state = snapshot?.state || {};
+    setSessionId(String(snapshot?.sessionId || ""));
+    setBoard(Array.isArray(state.board) && state.board.length === 9 ? state.board : Array(9).fill(null));
+    setWinnerLine(Array.isArray(state.winnerLine) ? state.winnerLine : null);
+    setRoundsToWin(Math.max(1, Number(state.roundsToWin || mode?.roundsToWin || 1)));
+    setPlayerWins(Math.max(0, Number(state.playerWins || 0)));
+    setAiWins(Math.max(0, Number(state.aiWins || 0)));
+    setStatus(String(state.status || "playing"));
+  }, [mode?.roundsToWin]);
 
-  const resetRound = useCallback((nextPlayerWins, nextAiWins) => {
-    setBoard(Array(9).fill(null));
-    setMoves([]);
-    setPlayerWins(nextPlayerWins);
-    setAiWins(nextAiWins);
-  }, []);
-
-  const resetMatch = useCallback(() => {
-    setBoard(Array(9).fill(null));
-    setMoves([]);
-    setRounds([]);
-    setPlayerWins(0);
-    setAiWins(0);
-    setStatus("playing");
-    setSettling(false);
-    setResult(null);
+  const startSession = useCallback(async () => {
+    setSessionBusy(true);
+    setSessionErr("");
     setApiErr("");
-  }, []);
+    try {
+      if (!onStartSession) throw new Error("session_api_unavailable");
+      const response = await onStartSession("ttt", { modeKey });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot?.sessionId) throw new Error("session_unavailable");
+      applySnapshot(snapshot);
+      setBusy(false);
+      setSettling(false);
+      setResult(null);
+    } catch {
+      setSessionId("");
+      setBoard(Array(9).fill(null));
+      setWinnerLine(null);
+      setRoundsToWin(Number(mode?.roundsToWin || 2));
+      setPlayerWins(0);
+      setAiWins(0);
+      setStatus("playing");
+      setSettling(false);
+      setResult(null);
+      setSessionErr("Не удалось загрузить матч. Попробуйте ещё раз.");
+    } finally {
+      setSessionBusy(false);
+    }
+  }, [applySnapshot, mode?.roundsToWin, modeKey, onStartSession]);
 
   useEffect(() => {
     if (!open) return;
-    resetMatch();
-  }, [open, resetMatch]);
-
-  useEffect(() => {
-    if (status !== "playing") return;
-    if (!winner && !isDraw) return;
-    const roundOutcome = winner === "X" ? "win" : winner === "O" ? "loss" : "draw";
-    const nextRounds = [...rounds, { moves, outcome: roundOutcome }];
-    if (winner === "X") {
-      const next = playerWins + 1;
-      if (next >= roundsToWin) {
-        setRounds(nextRounds);
-        setStatus("win");
-      } else {
-        setRounds(nextRounds);
-        resetRound(next, aiWins);
-      }
-    } else if (winner === "O") {
-      const next = aiWins + 1;
-      if (next >= roundsToWin) {
-        setRounds(nextRounds);
-        setStatus("loss");
-      } else {
-        setRounds(nextRounds);
-        resetRound(playerWins, next);
-      }
-    } else if (isDraw) {
-      setRounds(nextRounds);
-      resetRound(playerWins, aiWins);
-    }
-  }, [winner, isDraw, playerWins, aiWins, roundsToWin, status, resetRound, rounds, moves]);
+    startSession().catch(() => {});
+  }, [open, startSession]);
 
   useEffect(() => {
     if (status === "playing") return;
-    if (!onSubmitResult || settling || result) return;
-    const performance = status === "win" && aiWins === 0 && roundsToWin > 1 ? "sweep" : "normal";
-    const payload = {
-      modeKey,
-      rounds,
-      playerSymbol: "X",
-      aiWins,
-      playerWins,
-      outcome: status
-    };
+    if (settling || result || !sessionId) return;
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance, payload })
-      .then((r) => setResult(r))
+    const finishPromise = onFinishSession
+      ? onFinishSession(sessionId)
+      : onSubmitResult({
+          outcome: status,
+          performance: status === "win" && aiWins === 0 && roundsToWin > 1 ? "sweep" : "normal",
+          payload: {
+            modeKey,
+            rounds: [],
+            playerSymbol: "X",
+            aiWins,
+            playerWins,
+            outcome: status
+          }
+        });
+    finishPromise
+      .then((response) => {
+        if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+        setResult(response?.result || response);
+      })
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [status, onSubmitResult, settling, result, rounds, aiWins, playerWins, roundsToWin, modeKey]);
+  }, [aiWins, applySnapshot, modeKey, onFinishSession, onSubmitResult, playerWins, result, roundsToWin, sessionId, settling, status]);
 
-  function handlePick(idx) {
-    if (status !== "playing" || disabled || readOnly) return;
+  async function handlePick(idx) {
+    if (busy || sessionBusy || !sessionId || status !== "playing" || disabled || readOnly) return;
     if (board[idx]) return;
-    const next = board.slice();
-    next[idx] = "X";
-    const nextMoves = [...moves, idx];
-    const hasWinner = getWinner(next);
-    if (!hasWinner && next.some((v) => !v)) {
-      const aiMove = pickAiMove(next);
-      if (aiMove != null) {
-        next[aiMove] = "O";
-        nextMoves.push(aiMove);
-      }
+    if (!onMoveSession) {
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
     }
-    setBoard(next);
-    setMoves(nextMoves);
+
+    setBusy(true);
+    setApiErr("");
+    try {
+      const response = await onMoveSession(sessionId, { index: idx });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot) throw new Error("move_unavailable");
+      applySnapshot(snapshot);
+    } catch (e) {
+      setApiErr(e?.message || String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -211,7 +162,7 @@ export default function TicTacToeGame({
               type="button"
               className={`ttt-cell ${cell ? "filled" : ""}${winnerLine?.includes(idx) ? " win-cell" : ""}`}
               onClick={() => handlePick(idx)}
-              disabled={status !== "playing" || disabled || readOnly || !!cell}
+              disabled={busy || sessionBusy || !sessionId || status !== "playing" || disabled || readOnly || !!cell}
               aria-label={`Клетка ${idx + 1}${cell ? ` ${cell}` : ""}`}
             >
               {cell || ""}
@@ -222,6 +173,8 @@ export default function TicTacToeGame({
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
+        {sessionBusy ? <div className="badge warn">Загрузка матча...</div> : null}
+        {sessionErr ? <div className="badge off">{sessionErr}</div> : null}
 
         {status !== "playing" ? (
           <div className={`ttt-result ${status}`}>
@@ -239,7 +192,9 @@ export default function TicTacToeGame({
             ) : null}
             <div className="row" style={{ gap: 8 }}>
               {result && !settling ? (
-                <button className="btn" onClick={resetMatch}>Сыграть снова</button>
+                <button className="btn" onClick={() => startSession().catch(() => {})} disabled={sessionBusy}>
+                  Сыграть снова
+                </button>
               ) : null}
               <button className="btn secondary" onClick={onClose}>Закрыть</button>
             </div>

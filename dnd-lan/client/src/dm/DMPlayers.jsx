@@ -12,8 +12,7 @@ import { useQuickAccess } from "../lib/useQuickAccess.js";
 import { useSavedFilters } from "../lib/useSavedFilters.js";
 import { t } from "../i18n/index.js";
 import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
-
-const IMP_HANDOFF_STORAGE_PREFIX = "dnd.impersonation.handoff.";
+import { createImpersonationHandoffUrl } from "../lib/impersonationHandoff.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -89,15 +88,7 @@ export default function DMPlayers() {
     setErr("");
     try {
       const response = await api.dmImpersonate(playerId, "ro");
-      const handoffId = window.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-      window.localStorage.setItem(
-        `${IMP_HANDOFF_STORAGE_PREFIX}${handoffId}`,
-        JSON.stringify({
-          token: String(response.playerToken || ""),
-          createdAt: Date.now()
-        })
-      );
-      const url = `/app?imp=1&handoff=${encodeURIComponent(handoffId)}`;
+      const url = createImpersonationHandoffUrl(response.playerToken);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       setErr(formatError(error));

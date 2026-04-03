@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../../api.js";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
 
 const DEFAULT_MODE = {
@@ -40,22 +39,6 @@ const DIE_PIPS = {
   5: [[0, 0], [2, 0], [1, 1], [0, 2], [2, 2]],
   6: [[0, 0], [2, 0], [0, 1], [2, 1], [0, 2], [2, 2]]
 };
-
-function makeRng(seed) {
-  let h = 0;
-  for (let i = 0; i < seed.length; i += 1) {
-    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
-  }
-  return () => {
-    h = (h * 1664525 + 1013904223) >>> 0;
-    return (h & 0xfffffff) / 0xfffffff;
-  };
-}
-
-function rollDice(seed, suffix) {
-  const rng = makeRng(`${seed}:${suffix}`);
-  return Array.from({ length: 5 }, () => 1 + Math.floor(rng() * 6));
-}
 
 function classifyDiceRoll(values) {
   const dice = Array.isArray(values) ? values.map((v) => Number(v)) : [];
@@ -112,6 +95,9 @@ export default function DiceLogicGame({
   open,
   onClose,
   onSubmitResult,
+  onStartSession,
+  onMoveSession,
+  onFinishSession,
   disabled,
   entryCost = 0,
   rewardRange = "—",
@@ -119,11 +105,10 @@ export default function DiceLogicGame({
   readOnly
 }) {
   const modeConfig = useMemo(() => ({ ...DEFAULT_MODE, ...(mode || {}) }), [mode]);
-  const [seed, setSeed] = useState("");
-  const [seedProof, setSeedProof] = useState("");
-  const [seedBusy, setSeedBusy] = useState(false);
-  const [seedErr, setSeedErr] = useState("");
-  const [baseRoll, setBaseRoll] = useState([]);
+  const [sessionId, setSessionId] = useState("");
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [sessionErr, setSessionErr] = useState("");
+  const [currentRoll, setCurrentRoll] = useState([]);
   const [rerollMask, setRerollMask] = useState([0, 0, 0, 0, 0]);
   const [rerolled, setRerolled] = useState(false);
   const [timeLeft, setTimeLeft] = useState(modeConfig.timeLimit);
@@ -137,13 +122,6 @@ export default function DiceLogicGame({
   const submittedRef = useRef(false);
   const rollFxTimeoutRef = useRef(null);
   const resultFxTimeoutRef = useRef(null);
-
-  const currentRoll = useMemo(() => {
-    if (!seed || !baseRoll.length) return [];
-    if (!rerolled) return baseRoll;
-    const reroll = rollDice(seed, "reroll");
-    return baseRoll.map((value, index) => (rerollMask[index] ? reroll[index] : value));
-  }, [baseRoll, rerollMask, rerolled, seed]);
 
   const currentCategory = useMemo(() => classifyDiceRoll(currentRoll), [currentRoll]);
   const currentScore = useMemo(() => getCategoryScore(currentCategory), [currentCategory]);
@@ -164,24 +142,17 @@ export default function DiceLogicGame({
     ? `${entryCost} ${entryCost === 1 ? "билет" : entryCost < 5 ? "билета" : "билетов"}`
     : "бесплатно";
 
-  const requestSeed = useCallback(async () => {
-    setSeedBusy(true);
-    setSeedErr("");
-    try {
-      const issued = await api.ticketsSeed("dice");
-      const nextSeed = String(issued?.seed || "");
-      const nextProof = String(issued?.proof || "");
-      if (!nextSeed || !nextProof) throw new Error("seed_unavailable");
-      setSeed(nextSeed);
-      setSeedProof(nextProof);
-    } catch {
-      setSeed("");
-      setSeedProof("");
-      setBaseRoll([]);
-      setSeedErr("Не удалось загрузить бросок. Попробуйте ещё раз.");
-    } finally {
-      setSeedBusy(false);
-    }
+  const applySnapshot = useCallback((snapshot) => {
+    const state = snapshot?.state || {};
+    setSessionId(String(snapshot?.sessionId || ""));
+    setCurrentRoll(Array.isArray(state.currentRoll) ? state.currentRoll.map((value) => Number(value)) : []);
+    setRerollMask(Array.isArray(state.rerollMask)
+      ? state.rerollMask.map((value) => (value ? 1 : 0)).slice(0, 5)
+      : [0, 0, 0, 0, 0]);
+    setRerolled(state.rerolled === true);
+    setTimeLeft(Math.max(0, Number(state.timeLeftMs || 0) / 1000));
+    setStatus(String(state.status || "playing"));
+    endAtRef.current = Date.now() + Math.max(0, Number(state.timeLeftMs || 0));
   }, []);
 
   const triggerRollFx = useCallback((duration = 780) => {
@@ -193,6 +164,38 @@ export default function DiceLogicGame({
     }, duration);
   }, []);
 
+  const startSession = useCallback(async () => {
+    setSessionBusy(true);
+    setSessionErr("");
+    try {
+      if (!onStartSession) throw new Error("session_api_unavailable");
+      const response = await onStartSession("dice", { modeKey: String(modeConfig.key || DEFAULT_MODE.key) });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot?.sessionId) throw new Error("session_unavailable");
+      applySnapshot(snapshot);
+      setResult(null);
+      setSettling(false);
+      setApiErr("");
+      setResultFx(false);
+      submittedRef.current = false;
+      triggerRollFx(860);
+    } catch {
+      setSessionId("");
+      setCurrentRoll([]);
+      setRerollMask([0, 0, 0, 0, 0]);
+      setRerolled(false);
+      setStatus("playing");
+      setResult(null);
+      setSettling(false);
+      setApiErr("");
+      setResultFx(false);
+      submittedRef.current = false;
+      setSessionErr("Не удалось загрузить бросок. Попробуйте ещё раз.");
+    } finally {
+      setSessionBusy(false);
+    }
+  }, [applySnapshot, modeConfig.key, onStartSession, triggerRollFx]);
+
   useEffect(() => {
     return () => {
       if (rollFxTimeoutRef.current) clearTimeout(rollFxTimeoutRef.current);
@@ -200,31 +203,10 @@ export default function DiceLogicGame({
     };
   }, []);
 
-  const resetFromSeed = useCallback(() => {
-    if (!seed) return;
-    setBaseRoll(rollDice(seed, "roll1"));
-    setRerollMask([0, 0, 0, 0, 0]);
-    setRerolled(false);
-    setTimeLeft(Number(modeConfig.timeLimit || DEFAULT_MODE.timeLimit));
-    setStatus("playing");
-    setResult(null);
-    setSettling(false);
-    setApiErr("");
-    setResultFx(false);
-    submittedRef.current = false;
-    endAtRef.current = Date.now() + Number(modeConfig.timeLimit || DEFAULT_MODE.timeLimit) * 1000;
-    triggerRollFx(860);
-  }, [modeConfig.timeLimit, seed, triggerRollFx]);
-
   useEffect(() => {
     if (!open) return;
-    requestSeed().catch(() => {});
-  }, [open, requestSeed]);
-
-  useEffect(() => {
-    if (!open || !seed) return;
-    resetFromSeed();
-  }, [open, resetFromSeed, seed]);
+    startSession().catch(() => {});
+  }, [open, startSession]);
 
   useEffect(() => {
     if (!open || status !== "playing") return;
@@ -246,64 +228,68 @@ export default function DiceLogicGame({
       setResultFx(false);
       resultFxTimeoutRef.current = null;
     }, 1100);
-    if (!onSubmitResult || settling || result || submittedRef.current) return;
-    const performance = status === "win"
-      ? (currentScore >= 6 ? "elite" : currentScore >= 4 ? "smart" : "normal")
-      : "normal";
-    const payload = {
-      modeKey: String(modeConfig.key || DEFAULT_MODE.key),
-      targetScore: Number(modeConfig.targetScore || 0),
-      rerollMask,
-      usedReroll: rerolled,
-      finalCategory: currentCategory
-    };
+    if (settling || result || submittedRef.current || !sessionId) return;
     submittedRef.current = true;
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance, payload, seed, proof: seedProof })
-      .then((r) => setResult(r))
+    const finishPromise = onFinishSession
+      ? onFinishSession(sessionId)
+      : onSubmitResult({ outcome: status, performance: "normal", payload: {} });
+    finishPromise
+      .then((response) => {
+        if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+        setResult(response?.result || response);
+      })
       .catch((e) => {
         submittedRef.current = false;
         setApiErr(e?.message || String(e));
       })
       .finally(() => setSettling(false));
-  }, [currentCategory, currentScore, modeConfig, onSubmitResult, rerollMask, rerolled, result, seed, seedProof, settling, status]);
+  }, [applySnapshot, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
 
   function toggleDie(index) {
-    if (disabled || readOnly || status !== "playing" || seedBusy || rerolled || !modeConfig.allowReroll) return;
+    if (disabled || readOnly || status !== "playing" || sessionBusy || rerolled || !modeConfig.allowReroll) return;
     setRerollMask((prev) => prev.map((value, idx) => (idx === index ? (value ? 0 : 1) : value)));
   }
 
-  function applyReroll() {
-    if (disabled || readOnly || status !== "playing" || seedBusy || rerolled || !modeConfig.allowReroll) return;
+  async function applyReroll() {
+    if (disabled || readOnly || status !== "playing" || sessionBusy || rerolled || !modeConfig.allowReroll || !sessionId) return;
     if (!rerollMask.some(Boolean)) return;
-    setRerolled(true);
+    if (!onMoveSession) {
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
+    }
+    setSessionBusy(true);
+    setApiErr("");
     triggerRollFx();
+    try {
+      const response = await onMoveSession(sessionId, { rerollMask });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot) throw new Error("move_unavailable");
+      applySnapshot(snapshot);
+    } catch (e) {
+      setApiErr(e?.message || String(e));
+    } finally {
+      setSessionBusy(false);
+    }
   }
 
   function finalizeRoll() {
-    if (disabled || readOnly || status !== "playing" || seedBusy || !seed || !seedProof) return;
+    if (disabled || readOnly || status !== "playing" || sessionBusy || !sessionId) return;
     setStatus(meetsTarget ? "win" : "loss");
   }
 
   async function retrySettlement() {
-    if (!onSubmitResult || settling) return;
-    const performance = status === "win"
-      ? (currentScore >= 6 ? "elite" : currentScore >= 4 ? "smart" : "normal")
-      : "normal";
-    const payload = {
-      modeKey: String(modeConfig.key || DEFAULT_MODE.key),
-      targetScore: Number(modeConfig.targetScore || 0),
-      rerollMask,
-      usedReroll: rerolled,
-      finalCategory: currentCategory
-    };
+    if (settling || !sessionId) return;
     setSettling(true);
     setApiErr("");
     submittedRef.current = true;
     try {
-      const response = await onSubmitResult({ outcome: status, performance, payload, seed, proof: seedProof });
-      setResult(response);
+      const response = onFinishSession
+        ? await onFinishSession(sessionId)
+        : await onSubmitResult({ outcome: status, performance: "normal", payload: {} });
+      if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+      setResult(response?.result || response);
     } catch (e) {
       submittedRef.current = false;
       setApiErr(e?.message || String(e));
@@ -362,12 +348,12 @@ export default function DiceLogicGame({
         <div className={`dice-grid${rollFx ? " is-rolling" : ""}`} role="list" aria-label="Игровые кости">
           {currentRoll.map((value, index) => (
             <button
-              key={`${seed || "dice"}_${index}_${value}`}
+              key={`${sessionId || "dice"}_${index}_${value}`}
               type="button"
               className={`dice-die${rerollMask[index] ? " selected" : ""}${rerolled && rerollMask[index] ? " rerolled" : ""}${rollFx ? " rolling" : ""}`}
               style={{ "--dice-delay": `${index * 55}ms` }}
               onClick={() => toggleDie(index)}
-              disabled={disabled || readOnly || status !== "playing" || seedBusy || rerolled || !modeConfig.allowReroll}
+              disabled={disabled || readOnly || status !== "playing" || sessionBusy || rerolled || !modeConfig.allowReroll}
               aria-label={`Кость ${index + 1}: ${value}${rerollMask[index] ? ", выбрана для переброса" : ""}`}
             >
               {renderDiePips(value)}
@@ -396,19 +382,19 @@ export default function DiceLogicGame({
 
         <div className="dice-controls row" style={{ gap: 8, flexWrap: "wrap" }}>
           {modeConfig.allowReroll && !rerolled ? (
-            <button className="btn secondary" onClick={applyReroll} disabled={disabled || readOnly || seedBusy || !selectedCount}>
+            <button className="btn secondary" onClick={applyReroll} disabled={disabled || readOnly || sessionBusy || !selectedCount}>
               Перебросить выбранные
             </button>
           ) : null}
-          <button className="btn" onClick={finalizeRoll} disabled={disabled || readOnly || seedBusy || !seed || !seedProof}>
+          <button className="btn" onClick={finalizeRoll} disabled={disabled || readOnly || sessionBusy || !sessionId}>
             Зафиксировать
           </button>
         </div>
 
         {disabled ? <div className="badge off">Аркада закрыта DM</div> : null}
         {readOnly ? <div className="badge warn">Режим только чтения: действия отключены</div> : null}
-        {seedBusy || rollFx ? <div className="badge warn">{seedBusy ? "Подготавливаю бросок..." : "Кубики катятся..."}</div> : null}
-        {seedErr ? <div className="badge off">{seedErr}</div> : null}
+        {sessionBusy || rollFx ? <div className="badge warn">{sessionBusy ? "Подготавливаю бросок..." : "Кубики катятся..."}</div> : null}
+        {sessionErr ? <div className="badge off">{sessionErr}</div> : null}
 
         {status !== "playing" ? (
           <div className={`dice-result ${status}${resultFx ? " reveal" : ""}`}>
@@ -437,7 +423,7 @@ export default function DiceLogicGame({
             ) : null}
             <div className="row" style={{ gap: 8 }}>
               {result && !settling ? (
-                <button className="btn" onClick={() => requestSeed().catch(() => {})} disabled={seedBusy}>
+                <button className="btn" onClick={() => startSession().catch(() => {})} disabled={sessionBusy}>
                   Сыграть снова
                 </button>
               ) : null}

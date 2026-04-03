@@ -1,17 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../../api.js";
 import ArcadeOverlay from "./ArcadeOverlay.jsx";
-import {
-  createMatch3Session,
-  getMatch3Performance,
-  normalizeMatch3Config,
-  tryMatch3Move
-} from "../../../../shared/match3Domain.js";
+import { normalizeMatch3Config } from "../../../../shared/match3Domain.js";
 
 export default function Match3Game({
   open,
   onClose,
   onSubmitResult,
+  onStartSession,
+  onMoveSession,
+  onFinishSession,
   disabled,
   entryCost = 0,
   rewardRange = "—",
@@ -21,10 +18,9 @@ export default function Match3Game({
   const config = useMemo(() => normalizeMatch3Config(mode || {}), [mode]);
   const modeKey = String(config.key || mode?.key || "normal");
 
-  const [seed, setSeed] = useState("");
-  const [seedProof, setSeedProof] = useState("");
-  const [seedBusy, setSeedBusy] = useState(false);
-  const [seedErr, setSeedErr] = useState("");
+  const [sessionId, setSessionId] = useState("");
+  const [sessionBusy, setSessionBusy] = useState(false);
+  const [sessionErr, setSessionErr] = useState("");
   const [board, setBoard] = useState([]);
   const [selected, setSelected] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -37,8 +33,6 @@ export default function Match3Game({
   const [result, setResult] = useState(null);
   const [settling, setSettling] = useState(false);
 
-  const sessionRef = useRef(null);
-  const movesHistoryRef = useRef([]);
   const submittedRef = useRef(false);
   const comboTimerRef = useRef(null);
 
@@ -57,21 +51,48 @@ export default function Match3Game({
     if (comboTimerRef.current) clearTimeout(comboTimerRef.current);
   }, []);
 
-  const requestSeed = useCallback(async () => {
-    setSeedBusy(true);
-    setSeedErr("");
+  const applySnapshot = useCallback((snapshot) => {
+    const state = snapshot?.state || {};
+    setSessionId(String(snapshot?.sessionId || ""));
+    setBoard(Array.isArray(state.board) ? state.board.slice() : []);
+    setMovesLeft(Math.max(0, Number(state.movesLeft || 0)));
+    setScore(Math.max(0, Number(state.score || 0)));
+    setStatus(String(state.status || "playing"));
+  }, []);
+
+  const applyMoveFx = useCallback((snapshot) => {
+    const state = snapshot?.state || {};
+    if (Number(state.comboCount || 0) > 1) {
+      setComboFlash(`Комбо x${Number(state.comboCount || 0)}`);
+      clearComboLater();
+    } else if (Number(state.maxRunThisMove || 0) >= 4) {
+      setComboFlash(`Серия ${Number(state.maxRunThisMove || 0)}`);
+      clearComboLater();
+    } else {
+      setComboFlash("");
+    }
+  }, [clearComboLater]);
+
+  const startSession = useCallback(async () => {
+    setSessionBusy(true);
+    setSessionErr("");
     try {
-      const issued = await api.ticketsSeed("match3");
-      const nextSeed = String(issued?.seed || "");
-      const nextProof = String(issued?.proof || "");
-      if (!nextSeed || !nextProof) throw new Error("seed_unavailable");
-      const session = createMatch3Session(nextSeed, config);
-      sessionRef.current = session;
-      movesHistoryRef.current = [];
+      if (!onStartSession) throw new Error("session_api_unavailable");
+      const response = await onStartSession("match3", { modeKey });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot?.sessionId) throw new Error("session_unavailable");
+      applySnapshot(snapshot);
+      setSelected(null);
+      setBusy(false);
+      setComboFlash("");
+      setShake(false);
+      setApiErr("");
+      setResult(null);
+      setSettling(false);
       submittedRef.current = false;
-      setSeed(nextSeed);
-      setSeedProof(nextProof);
-      setBoard(session.board.slice());
+    } catch {
+      setSessionId("");
+      setBoard([]);
       setMovesLeft(config.moves);
       setScore(0);
       setSelected(null);
@@ -82,32 +103,20 @@ export default function Match3Game({
       setApiErr("");
       setResult(null);
       setSettling(false);
-    } catch {
-      sessionRef.current = null;
-      movesHistoryRef.current = [];
       submittedRef.current = false;
-      setSeed("");
-      setSeedProof("");
-      setBoard([]);
-      setMovesLeft(config.moves);
-      setScore(0);
-      setStatus("playing");
-      setResult(null);
-      setSettling(false);
-      setApiErr("");
-      setSeedErr("Не удалось загрузить раунд. Попробуйте ещё раз.");
+      setSessionErr("Не удалось загрузить раунд. Попробуйте ещё раз.");
     } finally {
-      setSeedBusy(false);
+      setSessionBusy(false);
     }
-  }, [config]);
+  }, [applySnapshot, config.moves, modeKey, onStartSession]);
 
   const resetGame = useCallback(() => {
     setSelected(null);
     setBusy(false);
     setComboFlash("");
     setShake(false);
-    requestSeed().catch(() => {});
-  }, [requestSeed]);
+    startSession().catch(() => {});
+  }, [startSession]);
 
   useEffect(() => {
     if (!open) return;
@@ -116,30 +125,28 @@ export default function Match3Game({
 
   useEffect(() => {
     if (status === "playing") return;
-    if (!onSubmitResult || settling || result || submittedRef.current || !seed || !seedProof) return;
-    const session = sessionRef.current;
-    if (!session) return;
-    const payload = {
-      modeKey,
-      moves: movesHistoryRef.current.slice()
-    };
-    const performance = getMatch3Performance(session, status);
+    if (settling || result || submittedRef.current || !sessionId) return;
     submittedRef.current = true;
     setSettling(true);
     setApiErr("");
-    onSubmitResult({ outcome: status, performance, payload, seed, proof: seedProof })
-      .then((response) => setResult(response))
+    const finishPromise = onFinishSession
+      ? onFinishSession(sessionId)
+      : onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey, moves: [] } });
+    finishPromise
+      .then((response) => {
+        if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+        setResult(response?.result || response);
+      })
       .catch((e) => {
         submittedRef.current = false;
         setApiErr(e?.message || String(e));
       })
       .finally(() => setSettling(false));
-  }, [modeKey, onSubmitResult, result, seed, seedProof, settling, status]);
+  }, [applySnapshot, modeKey, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
 
   async function handleSelect(idx) {
-    if (busy || status !== "playing" || disabled || readOnly || seedBusy) return;
-    const session = sessionRef.current;
-    if (!session || board[idx]?.blocked) return;
+    if (busy || status !== "playing" || disabled || readOnly || sessionBusy || !sessionId) return;
+    if (board[idx]?.blocked) return;
 
     if (selected == null) {
       setSelected(idx);
@@ -150,52 +157,48 @@ export default function Match3Game({
       return;
     }
 
+    if (!onMoveSession) {
+      setApiErr("Серверный игровой протокол недоступен.");
+      setSelected(null);
+      return;
+    }
+
     setBusy(true);
-    const applied = tryMatch3Move(session, selected, idx);
-    if (!applied.valid) {
+    setApiErr("");
+    try {
+      const response = await onMoveSession(sessionId, { from: selected, to: idx });
+      const snapshot = response?.arcadeSession || null;
+      if (!snapshot) throw new Error("move_unavailable");
+      applySnapshot(snapshot);
+      applyMoveFx(snapshot);
+      setSelected(null);
+
+      if (snapshot?.state?.reshuffled) {
+        setShake(true);
+        await new Promise((resolve) => setTimeout(resolve, 160));
+        setShake(false);
+      }
+    } catch {
       setShake(true);
       await new Promise((resolve) => setTimeout(resolve, 180));
       setShake(false);
       setSelected(null);
+    } finally {
       setBusy(false);
-      return;
     }
-
-    movesHistoryRef.current = [...movesHistoryRef.current, { from: selected, to: idx }];
-    setBoard(applied.board.slice());
-    setScore(applied.score);
-    setMovesLeft(Math.max(0, config.moves - applied.movesUsed));
-    setStatus(applied.status);
-    setSelected(null);
-
-    if (applied.comboCount > 1) setComboFlash(`Комбо x${applied.comboCount}`);
-    else if (applied.maxRunThisMove >= 4) setComboFlash(`Серия ${applied.maxRunThisMove}`);
-    else setComboFlash("");
-    if (applied.comboCount > 0 || applied.maxRunThisMove >= 4) clearComboLater();
-
-    if (applied.reshuffled) {
-      setShake(true);
-      await new Promise((resolve) => setTimeout(resolve, 160));
-      setShake(false);
-    }
-    setBusy(false);
   }
 
   async function retrySettlement() {
-    if (!onSubmitResult || !seed || !seedProof) return;
-    const session = sessionRef.current;
-    if (!session) return;
-    const payload = {
-      modeKey,
-      moves: movesHistoryRef.current.slice()
-    };
-    const performance = getMatch3Performance(session, status);
+    if (settling || !sessionId) return;
     submittedRef.current = true;
     setSettling(true);
     setApiErr("");
     try {
-      const response = await onSubmitResult({ outcome: status, performance, payload, seed, proof: seedProof });
-      setResult(response);
+      const response = onFinishSession
+        ? await onFinishSession(sessionId)
+        : await onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey, moves: [] } });
+      if (response?.arcadeSession) applySnapshot(response.arcadeSession);
+      setResult(response?.result || response);
     } catch (e) {
       submittedRef.current = false;
       setApiErr(e?.message || String(e));
@@ -217,7 +220,7 @@ export default function Match3Game({
             <div className="match3-title">Три в ряд</div>
             <div className="small">Режим: {modeLabel} • Вход: {entryLabel} • Награда: {rewardRange}</div>
           </div>
-          <button className="btn secondary" onClick={onClose} disabled={seedBusy}>Выйти</button>
+          <button className="btn secondary" onClick={onClose} disabled={sessionBusy}>Выйти</button>
         </div>
 
         <div className="match3-hud">
@@ -243,8 +246,8 @@ export default function Match3Game({
           <div className="match3-progress-bar" style={{ width: `${progress}%` }} />
         </div>
         <div className="small arcade-game-hint">До цели осталось: {targetLeft}</div>
-        {seedBusy ? <div className="badge warn">Подготавливаю расклад...</div> : null}
-        {seedErr ? <div className="badge off">{seedErr}</div> : null}
+        {sessionBusy ? <div className="badge warn">Подготавливаю расклад...</div> : null}
+        {sessionErr ? <div className="badge off">{sessionErr}</div> : null}
 
         <div
           className={`match3-board${shake ? " shake" : ""}`}
@@ -258,7 +261,7 @@ export default function Match3Game({
                 type="button"
                 className={`match3-tile ${tile?.color || "empty"}${tile?.blocked ? " blocked" : ""}${isSelected ? " selected" : ""}`}
                 onClick={() => handleSelect(idx)}
-                disabled={busy || status !== "playing" || disabled || readOnly || seedBusy || tile?.blocked}
+                disabled={busy || status !== "playing" || disabled || readOnly || sessionBusy || tile?.blocked}
                 aria-label={`Клетка ${idx + 1}${tile?.blocked ? " заблокирована" : ""}${tile?.color ? ` ${tile.color}` : ""}`}
               >
                 <span className="match3-gem" />
@@ -292,7 +295,7 @@ export default function Match3Game({
             ) : null}
             <div className="row" style={{ gap: 8 }}>
               {result && !settling ? (
-                <button className="btn" onClick={resetGame} disabled={seedBusy}>Сыграть снова</button>
+                <button className="btn" onClick={resetGame} disabled={sessionBusy}>Сыграть снова</button>
               ) : null}
               <button className="btn secondary" onClick={onClose}>Закрыть</button>
             </div>
