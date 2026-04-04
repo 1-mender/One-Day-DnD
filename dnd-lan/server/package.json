@@ -10,7 +10,8 @@
     "start": "node src/index.js",
     "test": "node --test --test-concurrency=1",
     "cleanup:uploads": "node src/cleanupUploads.js",
-    "chaos:presence": "node scripts/presence-chaos.mjs"
+    "chaos:presence": "node scripts/presence-chaos.mjs",
+    "soak:sockets": "node scripts/socket-soak.mjs"
   },
   "dependencies": {
     "archiver": "^6.0.2",

@@ -4,6 +4,14 @@ import { now } from "./util.js";
 import { logEvent } from "./events.js";
 import { getDegradedState } from "./degraded.js";
 import {
+  recordSocketAuthRejected,
+  recordSocketConnected,
+  recordSocketDisconnected,
+  recordSocketSessionInvalid,
+  recordSocketSwapFailed,
+  recordStaleWaitingRejected
+} from "./runtimeMetrics.js";
+import {
   getActiveSessionByToken,
   getDmAuthFromSocketRequest,
   getPlayerBySession,
@@ -167,6 +175,7 @@ export function createSocketServer(httpServer) {
           socket.data.dm = dmAuth.payload;
           return next();
         }
+        recordSocketAuthRejected();
         return next(new Error("dm_token_invalid"));
       }
       socket.data.role = "guest";
@@ -181,6 +190,7 @@ export function createSocketServer(httpServer) {
         socket.data.dm = dmAuth.payload;
         return next();
       }
+      recordSocketAuthRejected();
       return next(new Error("dm_token_invalid"));
     }
 
@@ -201,6 +211,11 @@ export function createSocketServer(httpServer) {
   });
 
   io.on("connection", (socket) => {
+    recordSocketConnected(socket.data.role);
+    socket.once("disconnect", () => {
+      recordSocketDisconnected(socket.data.role);
+    });
+
     const degradedState = getDegradedState();
     socket.emit("system:degraded", degradedState.degraded
       ? { ok: false, reason: degradedState.reason || "not_ready", since: degradedState.since }
@@ -217,6 +232,7 @@ export function createSocketServer(httpServer) {
       const db = getDb();
       const joinRequest = db.prepare("SELECT id FROM join_requests WHERE id=?").get(rid);
       if (!joinRequest) {
+        recordStaleWaitingRejected();
         socket.emit("player:rejected", { joinRequestId: rid, stale: true });
         socket.disconnect(true);
         return;
@@ -231,6 +247,7 @@ export function createSocketServer(httpServer) {
       const db = getDb();
       const sess = getActiveSessionByToken(token, { db, at: now() });
       if (!sess) {
+        recordSocketSessionInvalid();
         socket.emit("player:sessionInvalid");
         socket.disconnect(true);
         return;
@@ -238,6 +255,7 @@ export function createSocketServer(httpServer) {
 
       const player = getPlayerBySession(sess, { db });
       if (!player) {
+        recordSocketSessionInvalid();
         socket.emit("player:sessionInvalid");
         socket.disconnect(true);
         return;
@@ -316,6 +334,7 @@ export function createSocketServer(httpServer) {
           const db = getDb();
           const nextSess = getActiveSessionByToken(token, { db, at: now() });
           if (!nextSess) {
+            recordSocketSessionInvalid();
             socket.emit("player:sessionInvalid");
             socket.disconnect(true);
             if (ack) ack({ ok: false, error: "session_invalid" });
@@ -324,6 +343,7 @@ export function createSocketServer(httpServer) {
 
           const nextPlayer = getPlayerBySession(nextSess, { db });
           if (!nextPlayer) {
+            recordSocketSessionInvalid();
             socket.emit("player:sessionInvalid");
             socket.disconnect(true);
             if (ack) ack({ ok: false, error: "session_invalid" });
@@ -378,6 +398,7 @@ export function createSocketServer(httpServer) {
             ack({ ok: true, playerId: nextPlayerId, partyId: nextPartyId, impersonated: nextImpersonated });
           }
         } catch {
+          recordSocketSwapFailed();
           if (ack) ack({ ok: false, error: "swap_failed" });
         }
       });

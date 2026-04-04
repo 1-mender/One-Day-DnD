@@ -1,7 +1,9 @@
 import express from "express";
+import { dmAuthMiddleware } from "../auth.js";
 import { getLanIPv4 } from "../ip.js";
 import { dbHasDm, getPartySettings, getSingleParty } from "../db.js";
 import { LIMITS } from "../limits.js";
+import { getRuntimeMetricsSnapshot } from "../runtimeMetrics.js";
 
 export const serverInfoRouter = express.Router();
 
@@ -22,4 +24,8 @@ serverInfoRouter.get("/info", (req, res) => {
       inventoryWeightLimit: LIMITS.inventoryWeight || 0
     }
   });
+});
+
+serverInfoRouter.get("/metrics", dmAuthMiddleware, (req, res) => {
+  res.json(getRuntimeMetricsSnapshot());
 });

@@ -6,6 +6,7 @@ import helmet from "helmet";
 
 import { httpLogger } from "../logger.js";
 import { publicDir, uploadsDir } from "../paths.js";
+import { createRuntimeMetricsMiddleware } from "../runtimeMetrics.js";
 import { assertWritable } from "../writeGate.js";
 import { authRouter } from "../routes/auth.js";
 import { backupRouter } from "../routes/backup.js";
@@ -53,6 +54,7 @@ export function createApp() {
       : { directives: buildCspDirectives() }
   }));
   app.use(httpLogger);
+  app.use(createRuntimeMetricsMiddleware());
   app.use(cookieParser());
   app.use(express.json({ limit: "2mb" }));
 

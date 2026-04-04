@@ -16,7 +16,7 @@
     "audit:server": "npm --prefix server audit --omit=dev --audit-level=high",
     "audit:client": "npm --prefix client audit --audit-level=high",
     "perf:budget": "npm run perf:report -- --enforce --initial-js-total=1025000 --largest-js=450000",
-    "verify": "npm run check:utf8 && npm run lint && npm run test && npm run test:client && npm run build && npm run e2e && npm run e2e:browser-smoke && npm run e2e:dm-player-flow && npm run perf:budget && npm run audit:server && npm run audit:client",
+    "verify": "npm run check:utf8 && npm run lint && npm run test && npm run test:client && npm run build && npm run e2e && npm run e2e:browser-smoke && npm run e2e:dm-player-flow && npm run e2e:edge-flows && npm run perf:budget && npm run audit:server && npm run audit:client",
     "hooks:enable": "git config core.hooksPath .githooks",
     "preflight": "node scripts/preflight.mjs",
     "images:opt": "node scripts/optimize-images.mjs",
@@ -24,10 +24,12 @@
     "e2e": "node scripts/e2e.mjs",
     "e2e:browser-smoke": "node scripts/e2e-browser-smoke.mjs",
     "e2e:dm-player-flow": "node scripts/e2e-dm-player-flow.mjs",
+    "e2e:edge-flows": "node scripts/e2e-edge-flows.mjs",
     "e2e:visual": "node scripts/e2e-visual.mjs",
     "e2e:shop": "node scripts/e2e-shop-doubleclick.mjs",
     "e2e:transfers": "node scripts/e2e-transfers.mjs",
-    "e2e:rpg": "node scripts/e2e-inventory-rpg.mjs"
+    "e2e:rpg": "node scripts/e2e-inventory-rpg.mjs",
+    "soak:sockets": "npm --prefix server run soak:sockets"
   },
   "devDependencies": {
     "pixelmatch": "^7.1.0",
