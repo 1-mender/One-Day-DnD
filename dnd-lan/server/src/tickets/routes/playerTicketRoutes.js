@@ -16,6 +16,26 @@ import {
   getTicketRulesPayload,
   issueTicketSeedPayload
 } from "../services/ticketQueryService.js";
+import {
+  gameStartBodySchema,
+  gameStartParamsSchema,
+  matchCompleteBodySchema,
+  matchHistoryQuerySchema,
+  matchIdParamsSchema,
+  parseTicketRouteInput,
+  purchaseBodySchema,
+  queueCancelBodySchema,
+  queueJoinBodySchema,
+  sessionMoveBodySchema,
+  sessionParamsSchema
+} from "./ticketRouteSchemas.js";
+
+function requireValidRouteInput(res, schema, input) {
+  const parsed = parseTicketRouteInput(schema, input);
+  if (parsed.ok) return parsed.data;
+  res.status(400).json({ error: parsed.error });
+  return null;
+}
 
 export function registerPlayerTicketRoutes(router, {
   arcadeSessions,
@@ -62,10 +82,14 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/games/:gameKey/start", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const params = requireValidRouteInput(res, gameStartParamsSchema, req.params);
+    if (!params) return;
+    const body = requireValidRouteInput(res, gameStartBodySchema, req.body);
+    if (!body) return;
     const result = processArcadeSessionStart({
       me,
-      gameKey: req.params?.gameKey,
-      body: req.body,
+      gameKey: params.gameKey,
+      body,
       startSession: arcadeSessions.startSession
     });
     return res.status(result.status).json(result.body);
@@ -74,10 +98,14 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/games/sessions/:sessionId/move", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const params = requireValidRouteInput(res, sessionParamsSchema, req.params);
+    if (!params) return;
+    const body = requireValidRouteInput(res, sessionMoveBodySchema, req.body);
+    if (!body) return;
     const result = processArcadeSessionMove({
       me,
-      sessionId: req.params?.sessionId,
-      body: req.body,
+      sessionId: params.sessionId,
+      body,
       moveSession: arcadeSessions.moveSession
     });
     return res.status(result.status).json(result.body);
@@ -86,11 +114,13 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/games/sessions/:sessionId/finish", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const params = requireValidRouteInput(res, sessionParamsSchema, req.params);
+    if (!params) return;
     const result = processArcadeSessionFinish({
       db: getDb(),
       io: req.app.locals.io,
       me,
-      sessionId: req.params?.sessionId,
+      sessionId: params.sessionId,
       finishSession: arcadeSessions.finishSession,
       nowFn,
       buildMatchmakingPayload
@@ -101,11 +131,13 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matchmaking/queue", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const body = requireValidRouteInput(res, queueJoinBodySchema, req.body);
+    if (!body) return;
     const result = processMatchmakingQueueJoin({
       db: getDb(),
       io: req.app.locals.io,
       me,
-      body: req.body,
+      body,
       buildMatchmakingPayload
     });
     return res.status(result.status).json(result.body);
@@ -114,11 +146,13 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matchmaking/cancel", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const body = requireValidRouteInput(res, queueCancelBodySchema, req.body);
+    if (!body) return;
     const result = processMatchmakingQueueCancel({
       db: getDb(),
       io: req.app.locals.io,
       me,
-      body: req.body,
+      body,
       buildMatchmakingPayload,
       nowFn
     });
@@ -128,18 +162,22 @@ export function registerPlayerTicketRoutes(router, {
   router.get("/matches/history", (req, res) => {
     const me = auth.requirePlayer(req, res);
     if (!me) return;
-    const result = getTicketMatchHistoryPayload({ db: getDb(), playerId: me.player.id, limit: req.query?.limit });
+    const query = requireValidRouteInput(res, matchHistoryQuerySchema, req.query);
+    if (!query) return;
+    const result = getTicketMatchHistoryPayload({ db: getDb(), playerId: me.player.id, limit: query.limit });
     return res.status(result.status).json(result.body);
   });
 
   router.post("/matches/:matchId/rematch", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const params = requireValidRouteInput(res, matchIdParamsSchema, req.params);
+    if (!params) return;
     const result = processMatchRematchRequest({
       db: getDb(),
       io: req.app.locals.io,
       me,
-      matchId: req.params?.matchId,
+      matchId: params.matchId,
       buildMatchmakingPayload
     });
     return res.status(result.status).json(result.body);
@@ -148,12 +186,16 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matches/:matchId/complete", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const params = requireValidRouteInput(res, matchIdParamsSchema, req.params);
+    if (!params) return;
+    const body = requireValidRouteInput(res, matchCompleteBodySchema, req.body);
+    if (!body) return;
     const result = processMatchCompletion({
       db: getDb(),
       io: req.app.locals.io,
       me,
-      matchId: req.params?.matchId,
-      body: req.body,
+      matchId: params.matchId,
+      body,
       nowFn
     });
     return res.status(result.status).json(result.body);
@@ -172,11 +214,13 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/purchase", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    const body = requireValidRouteInput(res, purchaseBodySchema, req.body);
+    if (!body) return;
     const result = processTicketPurchase({
       db: getDb(),
       io: req.app.locals.io,
       me,
-      body: req.body,
+      body,
       nowFn,
       buildMatchmakingPayload
     });
