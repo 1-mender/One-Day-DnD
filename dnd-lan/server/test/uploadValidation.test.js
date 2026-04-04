@@ -115,6 +115,7 @@ async function waitForDirEntryCount(dirPath, expectedCount, { timeoutMs = 500 } 
   return fs.readdirSync(dirPath).length;
 }
 
+test.describe("upload validation routes", { concurrency: false }, () => {
 test("info upload rejects spoofed image payload", async () => {
   const out = await upload("/api/info-blocks/upload", {
     body: FAKE_BINARY,
@@ -273,4 +274,5 @@ test("bestiary image delete removes generated thumbnail", async () => {
   assert.equal(deleteRes.status, 200);
   assert.equal(deleteData.ok, true);
   assert.equal(fs.existsSync(thumbPath), false);
+});
 });

@@ -29,7 +29,10 @@ export const randId = (len = 16) => {
 export const wrapMulter = (middleware) => (req, res, next) => {
   middleware(req, res, (err) => {
     if (!err) return next();
-    if (err.code === "LIMIT_FILE_SIZE") return res.status(413).json({ error: "file_too_large" });
+    const message = String(err?.message || err || "");
+    if (err.code === "LIMIT_FILE_SIZE" || message.toLowerCase().includes("file too large")) {
+      return res.status(413).json({ error: "file_too_large" });
+    }
     return res.status(400).json({ error: "upload_failed", details: String(err?.message || err) });
   });
 };

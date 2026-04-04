@@ -124,7 +124,7 @@ backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")),
     const hadDstUploads = fs.existsSync(dstUploads);
     fs.mkdirSync(DATA_DIR, { recursive: true });
 
-    req.app.locals.io?.resetLiveConnections?.();
+    await req.app.locals.io?.resetLiveConnections?.();
 
     // close DB before replace
     closeDb();

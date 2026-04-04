@@ -114,7 +114,7 @@ export function createSocketServer(httpServer) {
     return originalClose(...args);
   };
 
-  io.resetLiveConnections = () => {
+  io.resetLiveConnections = async () => {
     shuttingDown = true;
     for (const timer of offlineTimersByPlayerId.values()) {
       clearTimeout(timer);
@@ -122,12 +122,16 @@ export function createSocketServer(httpServer) {
     offlineTimersByPlayerId.clear();
     activeSocketsByPlayerId.clear();
     io.emit("player:sessionInvalid");
-    setImmediate(() => {
-      io.disconnectSockets(true);
-      offlineTimersByPlayerId.clear();
-      activeSocketsByPlayerId.clear();
-      shuttingDown = false;
+    io.disconnectSockets(true);
+    offlineTimersByPlayerId.clear();
+    activeSocketsByPlayerId.clear();
+    await new Promise((resolve) => {
+      setImmediate(resolve);
     });
+    await new Promise((resolve) => {
+      setImmediate(resolve);
+    });
+    shuttingDown = false;
   };
 
   io.use((socket, next) => {

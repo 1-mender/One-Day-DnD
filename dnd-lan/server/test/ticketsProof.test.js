@@ -129,6 +129,14 @@ function shuffleWithSeed(list, seed) {
   return out;
 }
 
+function buildImpossibleScrabbleWord(rack) {
+  const letters = new Set(Array.isArray(rack) ? rack.map((ch) => String(ch || "")) : []);
+  for (const ch of Array.from("АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЭЮЯ")) {
+    if (!letters.has(ch)) return ch.repeat(3);
+  }
+  return "AA1";
+}
+
 function getGuessTarget(seed, ranks = ["A", "K", "Q", "J"]) {
   const suits = ["hearts", "diamonds", "clubs", "spades"];
   const deck = [];
@@ -475,6 +483,8 @@ test("scrabble ignores spoofed rack and validates against seeded letters", async
 
   const secondSeedOut = await api("/api/tickets/seed?gameKey=scrabble", { token });
   assert.equal(secondSeedOut.res.status, 200);
+  const secondRack = buildSeededScrabbleRack(secondSeedOut.data.seed, 7);
+  const impossibleWord = buildImpossibleScrabbleWord(secondRack);
 
   const invalid = await api("/api/tickets/play", {
     method: "POST",
@@ -485,7 +495,7 @@ test("scrabble ignores spoofed rack and validates against seeded letters", async
       performance: "normal",
       payload: {
         modeKey: "normal",
-        word: "ЯЯЯ",
+        word: impossibleWord,
         rack: ["Я", "Я", "Я", "Я", "Я", "Я", "Я"]
       },
       seed: secondSeedOut.data.seed,
@@ -496,7 +506,7 @@ test("scrabble ignores spoofed rack and validates against seeded letters", async
         performance: "normal",
         payload: {
           modeKey: "normal",
-          word: "ЯЯЯ",
+          word: impossibleWord,
           rack: ["Я", "Я", "Я", "Я", "Я", "Я", "Я"]
         }
       })

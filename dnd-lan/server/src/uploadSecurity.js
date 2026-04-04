@@ -147,6 +147,19 @@ export function safeUnlink(filePath) {
   }
 }
 
+function safeRename(srcPath, destPath) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    try {
+      fs.renameSync(srcPath, destPath);
+      return true;
+    } catch {
+      if (attempt >= 7) return false;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10 + attempt * 5);
+    }
+  }
+  return false;
+}
+
 export function isImageMime(mime) {
   return IMAGE_MIMES.has(String(mime || "").toLowerCase());
 }
@@ -208,8 +221,8 @@ export async function finalizeUploadedFile(file, {
     if (transcodeToJpeg) {
       await sharp(srcPath).jpeg({ quality: 88 }).toFile(desired);
       safeUnlink(srcPath);
-    } else if (desired !== srcPath) {
-      fs.renameSync(srcPath, desired);
+    } else if (desired !== srcPath && !safeRename(srcPath, desired)) {
+      throw new Error("rename_failed");
     }
   } catch {
     safeUnlink(srcPath);
