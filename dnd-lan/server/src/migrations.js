@@ -219,6 +219,17 @@ const MIGRATIONS = [
       addColumnIfMissing(database, "inventory_items", "slot_y", "ALTER TABLE inventory_items ADD COLUMN slot_y INTEGER;");
       database.exec("CREATE INDEX IF NOT EXISTS idx_inventory_layout ON inventory_items(player_id, inv_container, slot_y, slot_x);");
     }
+  },
+  {
+    version: 13,
+    name: "hotpath_query_indexes",
+    up(database) {
+      database.exec("CREATE INDEX IF NOT EXISTS idx_players_party_banned_id ON players(party_id, banned, id);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_item_status_to_player ON item_transfers(item_id, status, to_player_id);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_outbox_created ON item_transfers(from_player_id, status, created_at DESC, expires_at);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_inbox_created ON item_transfers(to_player_id, status, created_at DESC, expires_at);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_monster_images_monster_id_desc ON monster_images(monster_id, id DESC);");
+    }
   }
 ];
 

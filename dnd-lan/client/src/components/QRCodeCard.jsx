@@ -1,13 +1,22 @@
 import React, { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import { t } from "../i18n/index.js";
 
 export default function QRCodeCard({ url, className = "" }) {
   const [dataUrl, setDataUrl] = useState("");
   useEffect(() => {
     let alive = true;
-    QRCode.toDataURL(url, { margin: 2, scale: 6 }).then((nextUrl) => alive && setDataUrl(nextUrl));
-    return () => { alive = false; };
+    setDataUrl("");
+    import("qrcode")
+      .then((module) => module.default.toDataURL(url, { margin: 2, scale: 6 }))
+      .then((nextUrl) => {
+        if (alive) setDataUrl(nextUrl);
+      })
+      .catch(() => {
+        if (alive) setDataUrl("");
+      });
+    return () => {
+      alive = false;
+    };
   }, [url]);
 
   return (

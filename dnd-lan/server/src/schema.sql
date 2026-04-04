@@ -293,13 +293,18 @@ CREATE TABLE IF NOT EXISTS arcade_match_players (
 );
 
 CREATE INDEX IF NOT EXISTS idx_players_party ON players(party_id);
+CREATE INDEX IF NOT EXISTS idx_players_party_banned_id ON players(party_id, banned, id);
 CREATE INDEX IF NOT EXISTS idx_inventory_player ON inventory_items(player_id);
 CREATE INDEX IF NOT EXISTS idx_transfers_inbox ON item_transfers(to_player_id, status);
+CREATE INDEX IF NOT EXISTS idx_transfers_item_status_to_player ON item_transfers(item_id, status, to_player_id);
+CREATE INDEX IF NOT EXISTS idx_transfers_outbox_created ON item_transfers(from_player_id, status, created_at DESC, expires_at);
+CREATE INDEX IF NOT EXISTS idx_transfers_inbox_created ON item_transfers(to_player_id, status, created_at DESC, expires_at);
 CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);
 CREATE INDEX IF NOT EXISTS idx_monsters_name ON monsters(name);
 CREATE INDEX IF NOT EXISTS idx_monsters_name_id ON monsters(name COLLATE NOCASE, id);
 CREATE INDEX IF NOT EXISTS idx_monsters_hidden_name_id ON monsters(is_hidden, name COLLATE NOCASE, id);
 CREATE INDEX IF NOT EXISTS idx_monster_images_monster ON monster_images(monster_id);
+CREATE INDEX IF NOT EXISTS idx_monster_images_monster_id_desc ON monster_images(monster_id, id DESC);
 CREATE INDEX IF NOT EXISTS idx_info_blocks_title ON info_blocks(title);
 CREATE INDEX IF NOT EXISTS idx_events_party_created ON events(party_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DESC);

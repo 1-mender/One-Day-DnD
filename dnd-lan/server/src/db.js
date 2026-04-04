@@ -99,6 +99,27 @@ function ensureColumnAwareIndexes(database) {
       "CREATE INDEX IF NOT EXISTS idx_monsters_party_hidden_name_id ON monsters(party_id, is_hidden, name COLLATE NOCASE, id);"
     );
   }
+  if (hasColumn(database, "players", "party_id") && hasColumn(database, "players", "banned")) {
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_players_party_banned_id ON players(party_id, banned, id);"
+    );
+  }
+  if (hasColumn(database, "item_transfers", "item_id") && hasColumn(database, "item_transfers", "status")) {
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_transfers_item_status_to_player ON item_transfers(item_id, status, to_player_id);"
+    );
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_transfers_outbox_created ON item_transfers(from_player_id, status, created_at DESC, expires_at);"
+    );
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_transfers_inbox_created ON item_transfers(to_player_id, status, created_at DESC, expires_at);"
+    );
+  }
+  if (hasColumn(database, "monster_images", "monster_id")) {
+    database.exec(
+      "CREATE INDEX IF NOT EXISTS idx_monster_images_monster_id_desc ON monster_images(monster_id, id DESC);"
+    );
+  }
   if (hasColumn(database, "info_blocks", "party_id")) {
     database.exec("CREATE INDEX IF NOT EXISTS idx_info_blocks_party_updated ON info_blocks(party_id, updated_at DESC);");
   }

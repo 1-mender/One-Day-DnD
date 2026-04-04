@@ -1,4 +1,5 @@
 import React from "react";
+import VirtualizedStack from "../../../components/VirtualizedStack.jsx";
 import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import InventoryItemCard from "../../../components/vintage/InventoryItemCard.jsx";
 import InventorySlotGrid from "../../InventorySlotGrid.jsx";
@@ -36,14 +37,19 @@ function InventoryListView({
   startTransfer,
 }) {
   return (
-    <div
+    <VirtualizedStack
       className={`list inv-shelf tf-item-list ${view === "grid" ? "inv-grid tf-item-grid" : ""}`.trim()}
-      data-view={view}
-      ref={lite ? null : listRef}
-    >
-      {filtered.map((item) => (
+      containerStyle={{ minHeight: 280 }}
+      estimateSize={132}
+      items={filtered}
+      maxHeight={760}
+      minHeight={280}
+      rowGap={12}
+      staticListRef={lite ? null : listRef}
+      staticThreshold={view === "list" ? 20 : Number.MAX_SAFE_INTEGER}
+      getItemKey={(item) => item.id}
+      renderItem={(item) => (
         <InventoryItemCard
-          key={item.id}
           item={item}
           readOnly={readOnly}
           actionsVariant={actionsVariant}
@@ -54,8 +60,8 @@ function InventoryListView({
           onToggleFavorite={() => toggleFavorite(item)}
           onTransfer={() => startTransfer(item)}
         />
-      ))}
-    </div>
+      )}
+    />
   );
 }
 

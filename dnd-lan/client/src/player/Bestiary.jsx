@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
+import VirtualizedStack from "../components/VirtualizedStack.jsx";
 import MarkdownView from "../components/markdown/MarkdownView.jsx";
 import PolaroidFrame from "../components/vintage/PolaroidFrame.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -117,12 +118,19 @@ export default function Bestiary() {
 
       <div className="bestiary-list tf-bestiary-list" style={{ marginTop: 12 }}>
         {isNarrowScreen ? (
-          <div className="list">
-            {items.map((m) => {
+          <VirtualizedStack
+            className="list"
+            estimateSize={132}
+            items={items}
+            minHeight={280}
+            maxHeight={760}
+            rowGap={12}
+            staticThreshold={20}
+            getItemKey={(monster) => monster.id}
+            renderItem={(m) => {
               const thumb = (m.name || "??").slice(0, 2).toUpperCase();
               return (
                 <MonsterCard
-                  key={m.id}
                   m={m}
                   lite={lite}
                   thumb={thumb}
@@ -134,8 +142,8 @@ export default function Bestiary() {
                   attachImages={attachImages}
                 />
               );
-            })}
-          </div>
+            }}
+          />
         ) : (
           <VirtualizedList
             items={items}

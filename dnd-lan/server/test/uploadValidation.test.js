@@ -99,6 +99,22 @@ const AVIF_1X1 = await sharp({
 }).avif({ quality: 70 }).toBuffer();
 const INFO_ASSETS_DIR = path.join(uploadsDir, "assets");
 
+function sleep(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+async function waitForDirEntryCount(dirPath, expectedCount, { timeoutMs = 500 } = {}) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const count = fs.readdirSync(dirPath).length;
+    if (count === expectedCount) return count;
+    await sleep(25);
+  }
+  return fs.readdirSync(dirPath).length;
+}
+
 test("info upload rejects spoofed image payload", async () => {
   const out = await upload("/api/info-blocks/upload", {
     body: FAKE_BINARY,
@@ -141,7 +157,7 @@ test("info upload removes rejected dangerous files from disk", async () => {
     mime: "application/x-msdownload",
     filename: "payload.exe"
   });
-  const after = fs.readdirSync(INFO_ASSETS_DIR).length;
+  const after = await waitForDirEntryCount(INFO_ASSETS_DIR, before);
 
   assert.equal(out.res.status, 415);
   assert.equal(out.data.error, "unsupported_file_type");

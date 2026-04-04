@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api.js";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
+import VirtualizedStack from "../components/VirtualizedStack.jsx";
 import Modal from "../components/Modal.jsx";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
@@ -403,10 +404,15 @@ export default function DMPlayers() {
                 ))}
               </div>
             ) : null}
-            <div className="list dm-players-roster">
-              {filtered.map((player) => (
+            <VirtualizedStack
+              className="list dm-players-roster"
+              items={filtered}
+              estimateSize={164}
+              rowGap={14}
+              staticThreshold={20}
+              getItemKey={(player) => player.id}
+              renderItem={(player) => (
                 <PlayerDossierCard
-                  key={player.id}
                   player={player}
                   ticketBalance={player.ticketBalance}
                   ticketStreak={player.ticketStreak}
@@ -427,8 +433,8 @@ export default function DMPlayers() {
                     />
                   )}
                 />
-              ))}
-            </div>
+              )}
+            />
           </div>
         </div>
 

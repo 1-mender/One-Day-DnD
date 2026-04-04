@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api.js";
 import Modal from "../components/Modal.jsx";
+import VirtualizedStack from "../components/VirtualizedStack.jsx";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
@@ -345,10 +346,15 @@ export default function DMInfoBlocks() {
                 ))}
               </div>
             ) : null}
-            <div className="list u-list-mt-12 dm-info-list">
-              {filtered.map((b) => (
+            <VirtualizedStack
+              className="list u-list-mt-12 dm-info-list"
+              items={filtered}
+              estimateSize={112}
+              rowGap={12}
+              staticThreshold={30}
+              getItemKey={(block) => block.id}
+              renderItem={(b) => (
                 <div
-                  key={b.id}
                   className={`item taped note-card dm-info-card${selected?.id === b.id ? " selected" : ""}`}
                   data-cat={b.category || "note"}
                   onClick={() => selectBlock(b.id)}
@@ -380,8 +386,8 @@ export default function DMInfoBlocks() {
                     ]}
                   />
                 </div>
-              ))}
-            </div>
+              )}
+            />
           </div>
         </div>
 
@@ -479,11 +485,20 @@ export default function DMInfoBlocks() {
             <div className="card taped dm-info-editor-section">
               <div className="u-fw-700">Кто видит</div>
               <div className="small">Выберите игроков, которым откроется этот блок.</div>
-              <div className="list u-mt-8">
-                {players.map((p) => {
+              <VirtualizedStack
+                className="list u-mt-8"
+                containerStyle={{ maxHeight: 360 }}
+                items={players}
+                minHeight={220}
+                maxHeight={360}
+                estimateSize={34}
+                rowGap={8}
+                staticThreshold={30}
+                getItemKey={(player) => player.id}
+                renderItem={(p) => {
                   const checked = (form.selectedPlayerIds || []).includes(p.id);
                   return (
-                    <label key={p.id} className="small row u-row-gap-8">
+                    <label className="small row u-row-gap-8">
                       <input
                         type="checkbox"
                         checked={checked}
@@ -497,8 +512,8 @@ export default function DMInfoBlocks() {
                       {p.displayName} (id:{p.id})
                     </label>
                   );
-                })}
-              </div>
+                }}
+              />
             </div>
           )}
 

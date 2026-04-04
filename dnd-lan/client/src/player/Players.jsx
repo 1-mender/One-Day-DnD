@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../api.js";
+import VirtualizedStack from "../components/VirtualizedStack.jsx";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
@@ -242,11 +243,16 @@ export default function Players() {
             ) : filtered.length === 0 ? (
               <EmptyState title="Нет игроков онлайн" hint="Оффлайн-игроки скрыты. Подключите игроков через лобби." />
             ) : (
-              <div className="list players-list" ref={listRef}>
-                {filtered.map((p) => (
-                  <PlayerDossierCard key={p.id} player={p} />
-                ))}
-              </div>
+              <VirtualizedStack
+                className="list players-list"
+                items={filtered}
+                estimateSize={164}
+                rowGap={14}
+                staticListRef={listRef}
+                staticThreshold={20}
+                getItemKey={(player) => player.id}
+                renderItem={(player) => <PlayerDossierCard player={player} />}
+              />
             )}
           </div>
         </section>
