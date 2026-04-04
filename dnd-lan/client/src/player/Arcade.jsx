@@ -33,11 +33,6 @@ export default function Arcade() {
     activeGame,
     activeRules,
     activeMode,
-    outcome,
-    setOutcome,
-    performance,
-    setPerformance,
-    busy,
     queueBusy,
     queueGame,
     setQueueGameKey,
@@ -45,10 +40,8 @@ export default function Arcade() {
     queueModes,
     queueModeKey,
     selectedModes,
-    playErr,
     questUpdated,
     games,
-    perfOptions,
     ticketsEnabled,
     balance,
     streak,
@@ -77,12 +70,6 @@ export default function Arcade() {
     handleQueueCancel,
     handleRematch,
     handleMatchComplete,
-    handlePlay,
-    handleMatch3Submit,
-    handleGuessSubmit,
-    handleTttSubmit,
-    handleDiceSubmit,
-    handleScrabbleSubmit,
     startGameSession,
     moveGameSession,
     finishGameSession,
@@ -414,7 +401,6 @@ export default function Arcade() {
           <Match3Game
             open={!!activeGame}
             onClose={closeGame}
-            onSubmitResult={handleMatch3Submit}
             onStartSession={startGameSession}
             onMoveSession={moveGameSession}
             onFinishSession={finishGameSession}
@@ -434,7 +420,6 @@ export default function Arcade() {
           <GuessCardGame
             open={!!activeGame}
             onClose={closeGame}
-            onSubmitResult={handleGuessSubmit}
             onStartSession={startGameSession}
             onMoveSession={moveGameSession}
             onFinishSession={finishGameSession}
@@ -454,7 +439,6 @@ export default function Arcade() {
           <TicTacToeGame
             open={!!activeGame}
             onClose={closeGame}
-            onSubmitResult={handleTttSubmit}
             onStartSession={startGameSession}
             onMoveSession={moveGameSession}
             onFinishSession={finishGameSession}
@@ -474,7 +458,6 @@ export default function Arcade() {
           <DiceLogicGame
             open={!!activeGame}
             onClose={closeGame}
-            onSubmitResult={handleDiceSubmit}
             onStartSession={startGameSession}
             onMoveSession={moveGameSession}
             onFinishSession={finishGameSession}
@@ -494,7 +477,6 @@ export default function Arcade() {
           <ScrabbleBlitzGame
             open={!!activeGame}
             onClose={closeGame}
-            onSubmitResult={handleScrabbleSubmit}
             onStartSession={startGameSession}
             onMoveSession={moveGameSession}
             onFinishSession={finishGameSession}
@@ -521,34 +503,12 @@ export default function Arcade() {
                 ? t("arcade.entryReward", null, `${formatEntry(activeRules.entryCost)} | Награда: ${activeRules.rewardMin}-${activeRules.rewardMax}`)
                 : t("arcade.rulesUnavailable", null, "Правила недоступны")}
             </div>
-            <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <button className={`btn ${outcome === "win" ? "" : "secondary"}`} onClick={() => setOutcome("win")} disabled={busy || readOnly}>{t("arcade.outcomeWin", null, "Победа")}</button>
-              <button className={`btn ${outcome === "loss" ? "" : "secondary"}`} onClick={() => setOutcome("loss")} disabled={busy || readOnly}>{t("arcade.outcomeLoss", null, "Поражение")}</button>
+            <div className="badge off">
+              {t("arcade.gameUnavailable", null, "Эта игра недоступна в текущей сборке.")}
             </div>
-            {outcome === "win" ? (
-              <div className="list">
-                <div className="small">{t("arcade.performance", null, "Качество выполнения:")}</div>
-                <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-                  {perfOptions.map((opt) => (
-                    <button
-                      key={opt.key}
-                      className={`btn ${performance === opt.key ? "" : "secondary"}`}
-                      onClick={() => setPerformance(opt.key)}
-                      disabled={busy || readOnly}
-                    >
-                      {opt.label} x{opt.multiplier}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <div className="small">{t("arcade.lossPenaltyHint", null, "При поражении списывается вход и штраф.")}</div>
-            )}
-            {playErr ? <div className="badge off">Ошибка: {playErr}</div> : null}
-            <button className="btn" disabled={busy || readOnly} onClick={handlePlay}>
-              {busy ? t("arcade.submitting", null, "Отправка...") : t("arcade.submitResult", null, "Отправить результат")}
+            <button className="btn secondary" onClick={closeGame}>
+              {t("common.close", null, "Закрыть")}
             </button>
-            {readOnly ? <div className="small">Режим только чтения: действия отключены.</div> : null}
           </div>
         </Modal>
       )}

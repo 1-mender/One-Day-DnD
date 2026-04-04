@@ -94,7 +94,6 @@ function renderDiePips(value) {
 export default function DiceLogicGame({
   open,
   onClose,
-  onSubmitResult,
   onStartSession,
   onMoveSession,
   onFinishSession,
@@ -232,10 +231,13 @@ export default function DiceLogicGame({
     submittedRef.current = true;
     setSettling(true);
     setApiErr("");
-    const finishPromise = onFinishSession
-      ? onFinishSession(sessionId)
-      : onSubmitResult({ outcome: status, performance: "normal", payload: {} });
-    finishPromise
+    if (!onFinishSession) {
+      submittedRef.current = false;
+      setSettling(false);
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
+    }
+    onFinishSession(sessionId)
       .then((response) => {
         if (response?.arcadeSession) applySnapshot(response.arcadeSession);
         setResult(response?.result || response);
@@ -245,7 +247,7 @@ export default function DiceLogicGame({
         setApiErr(e?.message || String(e));
       })
       .finally(() => setSettling(false));
-  }, [applySnapshot, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
+  }, [applySnapshot, onFinishSession, result, sessionId, settling, status]);
 
   function toggleDie(index) {
     if (disabled || readOnly || status !== "playing" || sessionBusy || rerolled || !modeConfig.allowReroll) return;
@@ -285,9 +287,8 @@ export default function DiceLogicGame({
     setApiErr("");
     submittedRef.current = true;
     try {
-      const response = onFinishSession
-        ? await onFinishSession(sessionId)
-        : await onSubmitResult({ outcome: status, performance: "normal", payload: {} });
+      if (!onFinishSession) throw new Error("Серверный игровой протокол недоступен.");
+      const response = await onFinishSession(sessionId);
       if (response?.arcadeSession) applySnapshot(response.arcadeSession);
       setResult(response?.result || response);
     } catch (e) {

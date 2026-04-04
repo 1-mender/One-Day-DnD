@@ -7,14 +7,12 @@ import {
 } from "../services/arcadeSessionService.js";
 import { processMatchmakingQueueCancel, processMatchmakingQueueJoin, processMatchRematchRequest } from "../services/matchmakingActionService.js";
 import { processMatchCompletion } from "../services/matchResolutionService.js";
-import { processTicketPlay } from "../services/ticketPlayService.js";
 import { processTicketPurchase } from "../services/ticketPurchaseService.js";
 import {
   getTicketCatalogPayload,
   getTicketMatchHistoryPayload,
   getTicketMePayload,
-  getTicketRulesPayload,
-  issueTicketSeedPayload
+  getTicketRulesPayload
 } from "../services/ticketQueryService.js";
 import {
   gameStartBodySchema,
@@ -37,9 +35,7 @@ export function registerPlayerTicketRoutes(router, {
   arcadeSessions,
   auth,
   buildMatchmakingPayload,
-  issueSeed,
-  nowFn,
-  takeSeed
+  nowFn
 }) {
   router.get("/rules", (req, res) => {
     const isDm = isDmRequest(req);
@@ -70,8 +66,6 @@ export function registerPlayerTicketRoutes(router, {
   router.get("/seed", (req, res) => {
     const me = auth.requirePlayer(req, res);
     if (!me) return;
-    void issueSeed;
-    void issueTicketSeedPayload;
     return res.status(410).json({ error: "legacy_arcade_api_disabled" });
   });
 
@@ -200,10 +194,6 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/play", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
-    void processTicketPlay;
-    void takeSeed;
-    void nowFn;
-    void buildMatchmakingPayload;
     return res.status(410).json({ error: "legacy_arcade_api_disabled" });
   });
 

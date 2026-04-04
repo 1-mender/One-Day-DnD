@@ -5,7 +5,6 @@ import { normalizeMatch3Config } from "../../../../shared/match3Domain.js";
 export default function Match3Game({
   open,
   onClose,
-  onSubmitResult,
   onStartSession,
   onMoveSession,
   onFinishSession,
@@ -129,10 +128,13 @@ export default function Match3Game({
     submittedRef.current = true;
     setSettling(true);
     setApiErr("");
-    const finishPromise = onFinishSession
-      ? onFinishSession(sessionId)
-      : onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey, moves: [] } });
-    finishPromise
+    if (!onFinishSession) {
+      submittedRef.current = false;
+      setSettling(false);
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
+    }
+    onFinishSession(sessionId)
       .then((response) => {
         if (response?.arcadeSession) applySnapshot(response.arcadeSession);
         setResult(response?.result || response);
@@ -142,7 +144,7 @@ export default function Match3Game({
         setApiErr(e?.message || String(e));
       })
       .finally(() => setSettling(false));
-  }, [applySnapshot, modeKey, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
+  }, [applySnapshot, onFinishSession, result, sessionId, settling, status]);
 
   async function handleSelect(idx) {
     if (busy || status !== "playing" || disabled || readOnly || sessionBusy || !sessionId) return;
@@ -194,9 +196,8 @@ export default function Match3Game({
     setSettling(true);
     setApiErr("");
     try {
-      const response = onFinishSession
-        ? await onFinishSession(sessionId)
-        : await onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey, moves: [] } });
+      if (!onFinishSession) throw new Error("Серверный игровой протокол недоступен.");
+      const response = await onFinishSession(sessionId);
       if (response?.arcadeSession) applySnapshot(response.arcadeSession);
       setResult(response?.result || response);
     } catch (e) {

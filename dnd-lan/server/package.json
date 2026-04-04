@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "test": "node --test",
+    "test": "node --test --test-concurrency=1",
     "cleanup:uploads": "node src/cleanupUploads.js",
     "chaos:presence": "node scripts/presence-chaos.mjs"
   },

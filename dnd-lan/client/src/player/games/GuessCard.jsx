@@ -12,7 +12,6 @@ const GRID_COLS = 4;
 export default function GuessCardGame({
   open,
   onClose,
-  onSubmitResult,
   onStartSession,
   onMoveSession,
   onFinishSession,
@@ -119,17 +118,19 @@ export default function GuessCardGame({
     if (settling || result || !sessionId) return;
     setSettling(true);
     setApiErr("");
-    const finishPromise = onFinishSession
-      ? onFinishSession(sessionId)
-      : onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey } });
-    finishPromise
+    if (!onFinishSession) {
+      setSettling(false);
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
+    }
+    onFinishSession(sessionId)
       .then((response) => {
         if (response?.arcadeSession) applySnapshot(response.arcadeSession);
         setResult(response?.result || response);
       })
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [applySnapshot, modeKey, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
+  }, [applySnapshot, onFinishSession, result, sessionId, settling, status]);
 
   function isRevealed(id) {
     return deck.some((card) => card?.id === id && card?.revealed === true);
@@ -166,9 +167,8 @@ export default function GuessCardGame({
     setSettling(true);
     setApiErr("");
     try {
-      const response = onFinishSession
-        ? await onFinishSession(sessionId)
-        : await onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey } });
+      if (!onFinishSession) throw new Error("Серверный игровой протокол недоступен.");
+      const response = await onFinishSession(sessionId);
       if (response?.arcadeSession) applySnapshot(response.arcadeSession);
       setResult(response?.result || response);
     } catch (e) {

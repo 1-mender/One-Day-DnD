@@ -121,10 +121,6 @@ export function useTickets() {
     };
   }, [refresh, scheduleRefresh, socket]);
 
-  const play = useCallback(async () => {
-    throw new Error("legacy_arcade_api_disabled");
-  }, []);
-
   const startGameSession = useCallback(async (gameKey, payload = {}) => {
     return api.ticketsGameStart(gameKey, payload);
   }, []);
@@ -186,7 +182,6 @@ export function useTickets() {
     loading,
     err,
     refresh,
-    play,
     startGameSession,
     moveGameSession,
     finishGameSession,

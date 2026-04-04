@@ -14,11 +14,9 @@ import {
   localizeDailyQuest,
   localizeGameCard,
   localizeModeLabel,
-  localizeOutcome,
-  localizePerformanceLabel
+  localizeOutcome
 } from "./domain/arcadeLocalization.js";
 import { resolveArcadeModeRules } from "./domain/arcadeModeRules.js";
-import { submitArcadePlay } from "./usecases/submitArcadePlay.js";
 
 const fallbackGames = [];
 
@@ -35,7 +33,6 @@ export function useArcadeController() {
     arcadeMetrics,
     loading,
     err,
-    play,
     startGameSession,
     moveGameSession,
     finishGameSession,
@@ -48,12 +45,8 @@ export function useArcadeController() {
   const lite = useLiteMode();
   const [activeGameKey, setActiveGameKey] = useState("");
   const [activeModeKey, setActiveModeKey] = useState("");
-  const [outcome, setOutcome] = useState("win");
-  const [performance, setPerformance] = useState("");
-  const [busy, setBusy] = useState(false);
   const [queueBusy, setQueueBusy] = useState(false);
   const [queueGameKey, setQueueGameKey] = useState("");
-  const [playErr, setPlayErr] = useState("");
   const [questUpdated, setQuestUpdated] = useState(false);
   const questUpdatedTimer = useRef(null);
   const prevQuestKey = useRef(null);
@@ -126,19 +119,6 @@ export function useArcadeController() {
     setQueueGameKey(queueReadyGames[0].key);
   }, [queueReadyGames, queueGameKey, lastGameKey]);
 
-  const perfOptions = useMemo(() => {
-    const list = [];
-    const perf = activeRules?.performance || {};
-    for (const [key, info] of Object.entries(perf)) {
-      list.push({
-        key,
-        label: localizePerformanceLabel(info?.label || key, key),
-        multiplier: Number(info?.multiplier || 1)
-      });
-    }
-    return list;
-  }, [activeRules]);
-
   const ticketsEnabled = rules?.enabled !== false;
   const balance = Number(state?.balance || 0);
   const streak = Number(state?.streak || 0);
@@ -201,10 +181,6 @@ export function useArcadeController() {
   function openGame(gameKey) {
     setActiveGameKey(gameKey);
     setActiveModeKey(selectedModes[gameKey] || "");
-    setOutcome("win");
-    const firstPerf = Object.keys(rules?.games?.[gameKey]?.performance || {})[0] || "normal";
-    setPerformance(firstPerf);
-    setPlayErr("");
     if (typeof window !== "undefined") {
       localStorage.setItem("fish_last_game", gameKey);
       setLastGameKey(gameKey);
@@ -212,10 +188,8 @@ export function useArcadeController() {
   }
 
   function closeGame() {
-    if (busy) return;
     setActiveGameKey("");
     setActiveModeKey("");
-    setPlayErr("");
   }
 
   function formatEntryValue(gameKey, fallback) {
@@ -247,16 +221,6 @@ export function useArcadeController() {
   function setMode(gameKey, modeKey) {
     if (readOnly) return;
     setSelectedModes((prev) => ({ ...prev, [gameKey]: modeKey }));
-  }
-
-  function selectOutcome(value) {
-    if (readOnly) return;
-    setOutcome(value);
-  }
-
-  function selectPerformance(value) {
-    if (readOnly) return;
-    setPerformance(value);
   }
 
   function formatGameModeLabel(gameKey, modeKey) {
@@ -343,56 +307,6 @@ export function useArcadeController() {
     }
   }
 
-  async function handlePlay() {
-    if (!activeGameKey || busy) return;
-    setPlayErr("");
-    setBusy(true);
-    try {
-      const perf = outcome === "win" ? performance : "normal";
-      await submitArcadePlay({
-        play,
-        toast,
-        gameKey: activeGameKey,
-        outcome,
-        performance: perf || "normal",
-        payload: {
-          gameKey: activeGameKey,
-          outcome,
-          performance: perf,
-          submittedAt: Date.now()
-        },
-        ticketsEnabled
-      });
-      closeGame();
-    } catch (e) {
-      const msg = String(e?.message || e || "Ошибка");
-      setPlayErr(msg);
-      toast.error(msg);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleGameSubmit(gameKey, { outcome: finalOutcome, performance: perf, payload, seed, proof }) {
-    return submitArcadePlay({
-      play,
-      toast,
-      gameKey,
-      outcome: finalOutcome,
-      performance: perf || "normal",
-      payload,
-      seed,
-      proof,
-      ticketsEnabled
-    });
-  }
-
-  const handleMatch3Submit = (args) => handleGameSubmit("match3", args);
-  const handleGuessSubmit = (args) => handleGameSubmit("guess", args);
-  const handleTttSubmit = (args) => handleGameSubmit("ttt", args);
-  const handleDiceSubmit = (args) => handleGameSubmit("dice", args);
-  const handleScrabbleSubmit = (args) => handleGameSubmit("scrabble", args);
-
   return {
     lite,
     state,
@@ -404,11 +318,6 @@ export function useArcadeController() {
     activeGame,
     activeRules,
     activeMode,
-    outcome,
-    setOutcome: selectOutcome,
-    performance,
-    setPerformance: selectPerformance,
-    busy,
     queueBusy,
     queueGame,
     setQueueGameKey,
@@ -416,10 +325,8 @@ export function useArcadeController() {
     queueModes,
     queueModeKey,
     selectedModes,
-    playErr,
     questUpdated,
     games,
-    perfOptions,
     ticketsEnabled,
     balance,
     streak,
@@ -448,12 +355,6 @@ export function useArcadeController() {
     handleQueueCancel,
     handleRematch,
     handleMatchComplete,
-    handlePlay,
-    handleMatch3Submit,
-    handleGuessSubmit,
-    handleTttSubmit,
-    handleDiceSubmit,
-    handleScrabbleSubmit,
     startGameSession,
     moveGameSession,
     finishGameSession,

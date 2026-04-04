@@ -19,7 +19,6 @@ function canFormWordFromRack(normalizedWord, rack) {
 export default function ScrabbleBlitzGame({
   open,
   onClose,
-  onSubmitResult,
   onStartSession,
   onMoveSession,
   onFinishSession,
@@ -108,17 +107,19 @@ export default function ScrabbleBlitzGame({
     if (settling || result || !sessionId) return;
     setSettling(true);
     setApiErr("");
-    const finishPromise = onFinishSession
-      ? onFinishSession(sessionId)
-      : onSubmitResult({ outcome: status, performance: "normal", payload: { modeKey, word: normalizedWord } });
-    finishPromise
+    if (!onFinishSession) {
+      setSettling(false);
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
+    }
+    onFinishSession(sessionId)
       .then((response) => {
         if (response?.arcadeSession) applySnapshot(response.arcadeSession);
         setResult(response?.result || response);
       })
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [applySnapshot, modeKey, normalizedWord, onFinishSession, onSubmitResult, result, sessionId, settling, status]);
+  }, [applySnapshot, onFinishSession, result, sessionId, settling, status]);
 
   async function handleSubmit() {
     if (status !== "playing" || disabled || readOnly || sessionBusy || !sessionId || !normalizedWord) return;

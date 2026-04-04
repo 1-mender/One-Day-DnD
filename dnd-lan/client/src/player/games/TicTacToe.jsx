@@ -4,7 +4,6 @@ import ArcadeOverlay from "./ArcadeOverlay.jsx";
 export default function TicTacToeGame({
   open,
   onClose,
-  onSubmitResult,
   onStartSession,
   onMoveSession,
   onFinishSession,
@@ -84,28 +83,19 @@ export default function TicTacToeGame({
     if (settling || result || !sessionId) return;
     setSettling(true);
     setApiErr("");
-    const finishPromise = onFinishSession
-      ? onFinishSession(sessionId)
-      : onSubmitResult({
-          outcome: status,
-          performance: status === "win" && aiWins === 0 && roundsToWin > 1 ? "sweep" : "normal",
-          payload: {
-            modeKey,
-            rounds: [],
-            playerSymbol: "X",
-            aiWins,
-            playerWins,
-            outcome: status
-          }
-        });
-    finishPromise
+    if (!onFinishSession) {
+      setSettling(false);
+      setApiErr("Серверный игровой протокол недоступен.");
+      return;
+    }
+    onFinishSession(sessionId)
       .then((response) => {
         if (response?.arcadeSession) applySnapshot(response.arcadeSession);
         setResult(response?.result || response);
       })
       .catch((e) => setApiErr(e?.message || String(e)))
       .finally(() => setSettling(false));
-  }, [aiWins, applySnapshot, modeKey, onFinishSession, onSubmitResult, playerWins, result, roundsToWin, sessionId, settling, status]);
+  }, [applySnapshot, onFinishSession, result, sessionId, settling, status]);
 
   async function handlePick(idx) {
     if (busy || sessionBusy || !sessionId || status !== "playing" || disabled || readOnly) return;
