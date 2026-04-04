@@ -275,4 +275,24 @@ test("bestiary image delete removes generated thumbnail", async () => {
   assert.equal(deleteData.ok, true);
   assert.equal(fs.existsSync(thumbPath), false);
 });
+
+test("DM bestiary batch images route is not shadowed by monsterId route", async () => {
+  const monsterId = createMonster("Batch Image Monster");
+  const uploadOut = await upload(`/api/bestiary/${monsterId}/images`, {
+    body: PNG_1X1,
+    mime: "image/png",
+    filename: "monster.png"
+  });
+  assert.equal(uploadOut.res.status, 200);
+
+  const res = await fetch(`${base}/api/bestiary/dm/images?ids=${monsterId}&limitPer=1`, {
+    headers: { cookie: dmCookie() }
+  });
+  const data = await res.json().catch(() => ({}));
+
+  assert.equal(res.status, 200);
+  assert.ok(data.items && typeof data.items === "object");
+  assert.equal(Array.isArray(data.items[String(monsterId)]), true);
+  assert.ok(String(data.items[String(monsterId)][0]?.url || "").includes("/uploads/bestiary/"));
+});
 });

@@ -79,6 +79,16 @@ function createPlayerSession() {
   return { token };
 }
 
+function createJoinRequest(joinRequestId = "jr_test_1") {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = Date.now();
+  db.prepare(
+    "INSERT INTO join_requests(id, party_id, display_name, ip, user_agent, created_at) VALUES(?,?,?,?,?,?)"
+  ).run(joinRequestId, partyId, `Join-${joinRequestId}`, "127.0.0.1", "test", t);
+  return joinRequestId;
+}
+
 test.before(() => {
   initDb();
 });
@@ -89,12 +99,13 @@ test.after(() => {
 
 test("waiting role takes precedence over DM cookie", async (t) => {
   const dmToken = createDmToken();
+  const joinRequestId = createJoinRequest("jr_test_1");
   const { server, ioServer, baseUrl } = await startServer();
 
   const socket = clientIo(baseUrl, {
     autoConnect: false,
     reconnection: false,
-    auth: { role: "waiting", joinRequestId: "jr_test_1" },
+    auth: { role: "waiting", joinRequestId },
     extraHeaders: {
       Cookie: `${getDmCookieName()}=${dmToken}`
     }
@@ -115,8 +126,29 @@ test("waiting role takes precedence over DM cookie", async (t) => {
   const payload = await waitingPromise;
   await sleep(30);
 
-  assert.equal(payload?.joinRequestId, "jr_test_1");
+  assert.equal(payload?.joinRequestId, joinRequestId);
   assert.equal(dmConnected, false);
+});
+
+test("waiting socket with stale joinRequestId is rejected immediately", async (t) => {
+  const { server, ioServer, baseUrl } = await startServer();
+  const socket = clientIo(baseUrl, {
+    autoConnect: false,
+    reconnection: false,
+    auth: { role: "waiting", joinRequestId: "jr_missing" }
+  });
+
+  t.after(async () => {
+    if (socket.connected) socket.disconnect();
+    await stopServer(server, ioServer);
+  });
+
+  const rejectedPromise = waitForEvent(socket, "player:rejected");
+  socket.connect();
+  const payload = await rejectedPromise;
+
+  assert.equal(payload?.joinRequestId, "jr_missing");
+  assert.equal(payload?.stale, true);
 });
 
 test("player role takes precedence over DM cookie", async (t) => {

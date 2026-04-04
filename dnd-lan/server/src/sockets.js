@@ -214,6 +214,13 @@ export function createSocketServer(httpServer) {
 
     if (socket.data.role === "waiting") {
       const rid = socket.data.joinRequestId;
+      const db = getDb();
+      const joinRequest = db.prepare("SELECT id FROM join_requests WHERE id=?").get(rid);
+      if (!joinRequest) {
+        socket.emit("player:rejected", { joinRequestId: rid, stale: true });
+        socket.disconnect(true);
+        return;
+      }
       socket.join(`joinreq:${rid}`);
       socket.emit("join:waiting", { joinRequestId: rid });
       return;

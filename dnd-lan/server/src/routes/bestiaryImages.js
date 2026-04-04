@@ -117,32 +117,6 @@ async function handleUpload(req, res) {
   res.json({ ok: true, image });
 }
 
-bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
-  const db = getDb();
-  const partyId = getSinglePartyId();
-  const monsterId = Number(req.params.monsterId);
-  if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
-  const monster = db.prepare("SELECT id FROM monsters WHERE id=? AND party_id=?").get(monsterId, partyId);
-  if (!monster) return res.status(404).json({ error: "monster_not_found" });
-
-  const rows = db
-    .prepare("SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images WHERE monster_id=? ORDER BY id DESC")
-    .all(monsterId)
-    .map((r) => ({
-      id: r.id,
-      monsterId: r.monster_id,
-      url: `/uploads/bestiary/${r.filename}`,
-      thumbUrl: fs.existsSync(path.join(THUMB_DIR, `${r.filename}.thumb.webp`))
-        ? `/uploads/bestiary/thumbs/${r.filename}.thumb.webp`
-        : null,
-      originalName: r.original_name,
-      mime: r.mime,
-      createdAt: r.created_at
-    }));
-
-  res.json({ items: rows });
-});
-
 // DM batch images by monster ids: GET /api/bestiary/dm/images?ids=1,2,3&limitPer=1
 bestiaryImagesRouter.get("/dm/images", dmAuthMiddleware, (req, res) => {
   const db = getDb();
@@ -187,6 +161,32 @@ bestiaryImagesRouter.get("/dm/images", dmAuthMiddleware, (req, res) => {
   }
 
   res.json({ items: grouped });
+});
+
+bestiaryImagesRouter.get("/:monsterId/images", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const monsterId = Number(req.params.monsterId);
+  if (!monsterId) return res.status(400).json({ error: "invalid_monsterId" });
+  const monster = db.prepare("SELECT id FROM monsters WHERE id=? AND party_id=?").get(monsterId, partyId);
+  if (!monster) return res.status(404).json({ error: "monster_not_found" });
+
+  const rows = db
+    .prepare("SELECT id, monster_id, filename, original_name, mime, created_at FROM monster_images WHERE monster_id=? ORDER BY id DESC")
+    .all(monsterId)
+    .map((r) => ({
+      id: r.id,
+      monsterId: r.monster_id,
+      url: `/uploads/bestiary/${r.filename}`,
+      thumbUrl: fs.existsSync(path.join(THUMB_DIR, `${r.filename}.thumb.webp`))
+        ? `/uploads/bestiary/thumbs/${r.filename}.thumb.webp`
+        : null,
+      originalName: r.original_name,
+      mime: r.mime,
+      createdAt: r.created_at
+    }));
+
+  res.json({ items: rows });
 });
 
 bestiaryImagesRouter.post("/:monsterId/images", dmAuthMiddleware, wrapMulter(upload.single("file")), asyncHandler(handleUpload));
