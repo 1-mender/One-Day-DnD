@@ -373,7 +373,7 @@ export function listDmTransfers({ db, status }) {
      FROM item_transfers tr
      JOIN players pf ON pf.id = tr.from_player_id
      JOIN players pt ON pt.id = tr.to_player_id
-     JOIN inventory_items i ON i.id = tr.item_id
+     LEFT JOIN inventory_items i ON i.id = tr.item_id
      WHERE tr.status=?
      ORDER BY tr.created_at DESC`
   ).all(status);

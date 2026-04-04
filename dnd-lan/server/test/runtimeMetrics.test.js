@@ -53,6 +53,22 @@ async function stopServer(server, ioServer) {
   await new Promise((resolve) => server.close(resolve));
 }
 
+async function waitForMetrics(baseUrl, cookie, predicate, timeoutMs = 1500) {
+  const deadline = Date.now() + timeoutMs;
+  let lastMetrics = null;
+  while (Date.now() < deadline) {
+    const res = await fetch(`${baseUrl}/api/server/metrics`, {
+      headers: { cookie }
+    });
+    lastMetrics = await res.json().catch(() => ({}));
+    if (res.ok && predicate(lastMetrics)) {
+      return { res, metrics: lastMetrics };
+    }
+    await sleep(30);
+  }
+  return { res: null, metrics: lastMetrics };
+}
+
 function dmCookie() {
   const user = createDmUser(`dm_${Date.now()}_${Math.random().toString(36).slice(2)}`, "secret123");
   return `${process.env.DM_COOKIE}=${signDmToken(user)}`;
@@ -122,12 +138,12 @@ test("metrics endpoint is DM-only and exposes HTTP/socket counters", async (t) =
   playerSocket.disconnect();
   await sleep(20);
 
-  const metricsRes = await fetch(`${baseUrl}/api/server/metrics`, {
-    headers: { cookie }
-  });
-  const metrics = await metricsRes.json().catch(() => ({}));
+  const { metrics } = await waitForMetrics(
+    baseUrl,
+    cookie,
+    (snapshot) => Number(snapshot?.socket?.disconnectedTotal || 0) >= 2
+  );
 
-  assert.equal(metricsRes.status, 200);
   assert.ok(metrics?.http?.total >= 2);
   assert.ok(metrics?.http?.statusBuckets?.["4xx"] >= 1);
   assert.ok(metrics?.http?.latencyMs?.sampleCount >= 1);

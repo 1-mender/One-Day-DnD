@@ -10,6 +10,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.JWT_SECRET = "test_secret";
 
 const { getDb, initDb, getSinglePartyId } = await import("../src/db.js");
+const { listDmTransfers } = await import("../src/inventory/services/inventoryTransferService.js");
 const { inventoryRouter } = await import("../src/routes/inventory.js");
 const { now } = await import("../src/util.js");
 
@@ -298,6 +299,10 @@ test("Full-stack transfer accept keeps transfer row after source item deletion",
   const transferRow = db.prepare("SELECT item_id, status FROM item_transfers WHERE id=?").get(createRes.data.id);
   assert.equal(transferRow.status, "accepted");
   assert.equal(transferRow.item_id, null);
+
+  const dmTransfers = listDmTransfers({ db, status: "accepted" });
+  assert.equal(dmTransfers.status, 200);
+  assert.ok(dmTransfers.body.items.some((item) => Number(item.id) === Number(createRes.data.id)));
 
   const acceptAgain = await api(`/api/inventory/transfers/${createRes.data.id}/accept`, {
     method: "POST",

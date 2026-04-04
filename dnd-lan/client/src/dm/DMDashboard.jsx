@@ -3,19 +3,30 @@ import { api } from "../api.js";
 import QRCodeCard from "../components/QRCodeCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { useSocket } from "../context/SocketContext.jsx";
-import { Globe2, QrCode, RadioTower, Users } from "lucide-react";
+import { Activity, Globe2, QrCode, RadioTower, Users } from "lucide-react";
+
+function formatMetricValue(value, fallback = "—") {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return String(Math.round(n));
+}
 
 export default function DMDashboard() {
   const [info, setInfo] = useState(null);
+  const [metrics, setMetrics] = useState(null);
   const [players, setPlayers] = useState([]);
   const [copyMsg, setCopyMsg] = useState("");
   const { socket } = useSocket();
 
   const load = useCallback(async () => {
-    const i = await api.serverInfo();
-    setInfo(i);
-    const p = await api.dmPlayers();
-    setPlayers(p.items || []);
+    const [nextInfo, nextMetrics, nextPlayers] = await Promise.all([
+      api.serverInfo(),
+      api.serverMetrics().catch(() => null),
+      api.dmPlayers()
+    ]);
+    setInfo(nextInfo);
+    setMetrics(nextMetrics);
+    setPlayers(nextPlayers.items || []);
   }, []);
 
   useEffect(() => {
@@ -34,10 +45,24 @@ export default function DMDashboard() {
     };
   }, [load, socket]);
 
+  useEffect(() => {
+    const timerId = window.setInterval(() => {
+      api.serverMetrics()
+        .then(setMetrics)
+        .catch(() => {});
+    }, 5000);
+    return () => window.clearInterval(timerId);
+  }, []);
+
   const url = (info?.urls?.[0] || "http://<LAN-IP>:3000");
   const onlineCount = players.filter((player) => String(player.status || "offline") === "online").length;
   const idleCount = players.filter((player) => String(player.status || "offline") === "idle").length;
   const offlineCount = players.length - onlineCount - idleCount;
+  const socketActive = Number(metrics?.socket?.active || 0);
+  const httpP95 = formatMetricValue(metrics?.http?.latencyMs?.p95);
+  const http5xx = Number(metrics?.http?.statusBuckets?.["5xx"] || 0);
+  const staleWaitingRejected = Number(metrics?.socket?.staleWaitingRejectedTotal || 0);
+  const sessionInvalid = Number(metrics?.socket?.sessionInvalidTotal || 0);
 
   async function copyUrl() {
     try {
@@ -81,6 +106,14 @@ export default function DMDashboard() {
             <div className="tf-stat-card">
               <div className="small">Всего игроков</div>
               <strong>{players.length}</strong>
+            </div>
+            <div className="tf-stat-card">
+              <div className="small">Socket active</div>
+              <strong>{socketActive}</strong>
+            </div>
+            <div className="tf-stat-card">
+              <div className="small">HTTP p95</div>
+              <strong>{httpP95} ms</strong>
             </div>
           </div>
 
@@ -150,6 +183,38 @@ export default function DMDashboard() {
         <div className="spread-col">
         <div className="dm-dashboard-side-stack">
           <QRCodeCard url={url} className="scrap-card paper-stack tilt-1 tf-panel tf-dm-dashboard-qr" />
+          <div className="tf-panel dm-dashboard-radio-card">
+            <div className="tf-section-head">
+              <div className="tf-section-copy">
+                <div className="tf-section-kicker">Runtime metrics</div>
+                <div className="dm-dashboard-section-title">Health snapshot</div>
+              </div>
+              <Activity className="dm-dashboard-icon" aria-hidden="true" />
+            </div>
+            <div className="list dm-dashboard-brief-list">
+              <div className="item dm-dashboard-brief-item">
+                <div className="kv">
+                  <div className="dm-dashboard-player-name">HTTP 5xx</div>
+                  <div className="small">Ошибки сервера с момента запуска процесса.</div>
+                </div>
+                <span className={`badge ${http5xx > 0 ? "off" : "ok"}`}>{http5xx}</span>
+              </div>
+              <div className="item dm-dashboard-brief-item">
+                <div className="kv">
+                  <div className="dm-dashboard-player-name">Stale waiting reject</div>
+                  <div className="small">Сколько устаревших заявок было отбито сразу на сокете.</div>
+                </div>
+                <span className="badge secondary">{staleWaitingRejected}</span>
+              </div>
+              <div className="item dm-dashboard-brief-item">
+                <div className="kv">
+                  <div className="dm-dashboard-player-name">Session invalid</div>
+                  <div className="small">Сколько player-сокетов сервер принудительно сбросил по сессии.</div>
+                </div>
+                <span className={`badge ${sessionInvalid > 0 ? "warn" : "ok"}`}>{sessionInvalid}</span>
+              </div>
+            </div>
+          </div>
           <div className="tf-panel dm-dashboard-radio-card">
             <div className="tf-section-head">
               <div className="tf-section-copy">
