@@ -127,16 +127,21 @@ export function buildMatchmakingPayload(db, playerId, partyId) {
   return { activeQueue, history };
 }
 
-function findQueueOpponent(db, { partyId, playerId, gameKey, modeKey, rematchTargetPlayerId }) {
+function findQueueOpponent(db, { partyId, playerId, gameKey, modeKey, rematchTargetPlayerId, skillBand }) {
+  const safeSkillBand = String(skillBand || "").trim();
+  const skillBandClause = safeSkillBand ? "AND skill_band=?" : "";
+  const skillBandArgs = safeSkillBand ? [safeSkillBand] : [];
+
   if (rematchTargetPlayerId) {
     const exact = db.prepare(
       `SELECT *
        FROM arcade_match_queue
        WHERE party_id=? AND status='queued' AND player_id=? AND game_key=? AND mode_key=?
          AND (rematch_target_player_id IS NULL OR rematch_target_player_id=?)
+         ${skillBandClause}
        ORDER BY joined_at ASC
        LIMIT 1`
-    ).get(partyId, rematchTargetPlayerId, gameKey, modeKey, playerId);
+    ).get(partyId, rematchTargetPlayerId, gameKey, modeKey, playerId, ...skillBandArgs);
     if (exact) return exact;
   }
 
@@ -145,9 +150,10 @@ function findQueueOpponent(db, { partyId, playerId, gameKey, modeKey, rematchTar
      FROM arcade_match_queue
      WHERE party_id=? AND status='queued' AND player_id<>? AND game_key=? AND mode_key=?
        AND (rematch_target_player_id IS NULL OR rematch_target_player_id=?)
+       ${skillBandClause}
      ORDER BY CASE WHEN rematch_target_player_id=? THEN 0 ELSE 1 END, joined_at ASC
      LIMIT 1`
-  ).get(partyId, playerId, gameKey, modeKey, playerId, playerId);
+  ).get(partyId, playerId, gameKey, modeKey, playerId, ...skillBandArgs, playerId);
 }
 
 function createMatchFromQueues(db, {
@@ -299,7 +305,8 @@ export function queuePlayerForMatchmaking({
     playerId: me.player.id,
     gameKey,
     modeKey,
-    rematchTargetPlayerId
+    rematchTargetPlayerId,
+    skillBand
   });
 
   logEvent({

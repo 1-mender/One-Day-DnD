@@ -112,6 +112,7 @@ export function registerPlayerTicketRoutes(router, {
       me,
       sessionId: params.sessionId,
       finishSession: arcadeSessions.finishSession,
+      deleteSession: arcadeSessions.deleteSession,
       nowFn,
       buildMatchmakingPayload
     });

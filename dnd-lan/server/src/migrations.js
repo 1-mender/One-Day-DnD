@@ -15,6 +15,63 @@ function addColumnIfMissing(database, tableName, columnName, sql) {
   database.exec(sql);
 }
 
+function getTableColumnInfo(database, tableName, columnName) {
+  return database
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all()
+    .find((column) => String(column?.name || "") === String(columnName || "")) || null;
+}
+
+function getForeignKeyInfo(database, tableName, columnName, targetTable) {
+  return database
+    .prepare(`PRAGMA foreign_key_list(${tableName})`)
+    .all()
+    .find((fk) => (
+      String(fk?.from || "") === String(columnName || "")
+      && String(fk?.table || "") === String(targetTable || "")
+    )) || null;
+}
+
+function rebuildItemTransfersWithNullableItemFk(database) {
+  if (!hasTable(database, "item_transfers")) return;
+
+  const itemIdColumn = getTableColumnInfo(database, "item_transfers", "item_id");
+  const itemFk = getForeignKeyInfo(database, "item_transfers", "item_id", "inventory_items");
+  const needsRebuild = Number(itemIdColumn?.notnull || 0) !== 0 || String(itemFk?.on_delete || "").toUpperCase() !== "SET NULL";
+  if (!needsRebuild) return;
+
+  database.exec(
+    `CREATE TABLE IF NOT EXISTS item_transfers_v14(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_player_id INTEGER NOT NULL,
+      to_player_id INTEGER NOT NULL,
+      item_id INTEGER,
+      qty INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      note TEXT,
+      FOREIGN KEY(from_player_id) REFERENCES players(id) ON DELETE CASCADE,
+      FOREIGN KEY(to_player_id) REFERENCES players(id) ON DELETE CASCADE,
+      FOREIGN KEY(item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
+    );`
+  );
+  database.exec(
+    `INSERT INTO item_transfers_v14(
+      id, from_player_id, to_player_id, item_id, qty, status, created_at, expires_at, note
+    )
+    SELECT id, from_player_id, to_player_id, item_id, qty, status, created_at, expires_at, note
+    FROM item_transfers;`
+  );
+  database.exec("DROP TABLE item_transfers;");
+  database.exec("ALTER TABLE item_transfers_v14 RENAME TO item_transfers;");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_inbox ON item_transfers(to_player_id, status);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_expires ON item_transfers(expires_at);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_item_status_to_player ON item_transfers(item_id, status, to_player_id);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_outbox_created ON item_transfers(from_player_id, status, created_at DESC, expires_at);");
+  database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_inbox_created ON item_transfers(to_player_id, status, created_at DESC, expires_at);");
+}
+
 const MIGRATIONS = [
   {
     version: 1,
@@ -229,6 +286,13 @@ const MIGRATIONS = [
       database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_outbox_created ON item_transfers(from_player_id, status, created_at DESC, expires_at);");
       database.exec("CREATE INDEX IF NOT EXISTS idx_transfers_inbox_created ON item_transfers(to_player_id, status, created_at DESC, expires_at);");
       database.exec("CREATE INDEX IF NOT EXISTS idx_monster_images_monster_id_desc ON monster_images(monster_id, id DESC);");
+    }
+  },
+  {
+    version: 14,
+    name: "item_transfers_nullable_item_fk",
+    up(database) {
+      rebuildItemTransfersWithNullableItemFk(database);
     }
   }
 ];

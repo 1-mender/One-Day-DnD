@@ -114,6 +114,62 @@ test("queue join + auto match for same game/mode", async () => {
   assert.equal(matchedQueues, 2);
 });
 
+test("queue join respects explicit skillBand when provided", async () => {
+  const p1 = createPlayer("Skill-Bronze-1");
+  const p2 = createPlayer("Skill-Gold");
+  const p3 = createPlayer("Skill-Bronze-2");
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+  const t3 = createSession(p3);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey: "ttt", skillBand: "bronze" }
+  });
+  assert.equal(q1.res.status, 200);
+  assert.equal(q1.data?.matchmakingAction?.status, "queued");
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey: "ttt", skillBand: "gold" }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "queued");
+
+  const q3 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t3,
+    body: { gameKey: "ttt", skillBand: "bronze" }
+  });
+  assert.equal(q3.res.status, 200);
+  assert.equal(q3.data?.matchmakingAction?.status, "matched");
+
+  const db = getDb();
+  const goldQueue = db.prepare(
+    "SELECT status, skill_band FROM arcade_match_queue WHERE player_id=? ORDER BY id DESC LIMIT 1"
+  ).get(p2);
+  assert.equal(goldQueue.status, "queued");
+  assert.equal(goldQueue.skill_band, "gold");
+
+  const bronzeQueues = db.prepare(
+    "SELECT status, skill_band FROM arcade_match_queue WHERE player_id IN (?,?) ORDER BY id"
+  ).all(p1, p3);
+  assert.deepEqual(
+    bronzeQueues.map((row) => `${row.skill_band}:${row.status}`),
+    ["bronze:matched", "bronze:matched"]
+  );
+
+  const cancelGold = await api("/api/tickets/matchmaking/cancel", {
+    method: "POST",
+    token: t2,
+    body: {}
+  });
+  assert.equal(cancelGold.res.status, 200);
+  assert.equal(cancelGold.data?.matchmakingAction?.status, "canceled");
+});
+
 test("queue cancel removes active queue", async () => {
   const p = createPlayer("Queue-Cancel");
   const token = createSession(p);

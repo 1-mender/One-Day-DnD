@@ -930,12 +930,18 @@ export function createArcadeSessionStore({ ttlMs, nowFn }) {
     else built = { error: "unsupported_game" };
     if (built.error) return built;
 
+    return built;
+  }
+
+  function deleteSession(playerId, sessionId) {
+    const session = getSession(playerId, sessionId);
+    if (!session) return false;
     sessions.delete(session.id);
     if (playerSessionIndex.get(`${session.playerId}:${session.gameKey}`) === session.id) {
       playerSessionIndex.delete(`${session.playerId}:${session.gameKey}`);
     }
-    return built;
+    return true;
   }
 
-  return { startSession, moveSession, finishSession };
+  return { startSession, moveSession, finishSession, deleteSession };
 }

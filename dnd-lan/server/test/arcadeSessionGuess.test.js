@@ -48,7 +48,9 @@ function seedTickets(playerId, balance = 20) {
   const db = getDb();
   const t = now();
   db.prepare(
-    "INSERT INTO tickets(player_id, balance, daily_earned, daily_spent, updated_at) VALUES(?,?,?,?,?)"
+    `INSERT INTO tickets(player_id, balance, daily_earned, daily_spent, updated_at)
+     VALUES(?,?,?,?,?)
+     ON CONFLICT(player_id) DO UPDATE SET balance=excluded.balance, updated_at=excluded.updated_at`
   ).run(playerId, balance, 0, 0, t);
 }
 
@@ -162,4 +164,49 @@ test("guess session is scoped to owning player", async () => {
 
   assert.equal(out.res.status, 404);
   assert.equal(out.data.error, "invalid_session");
+});
+
+test("failed guess settlement keeps finished session retryable", async () => {
+  const playerId = createPlayer("Guess-Settlement-Retry");
+  const token = createSession(playerId);
+
+  const started = await api("/api/tickets/games/guess/start", {
+    method: "POST",
+    token,
+    body: { modeKey: "normal" }
+  });
+  assert.equal(started.res.status, 200);
+
+  let snapshot = started.data.arcadeSession;
+  const sessionId = snapshot.sessionId;
+
+  for (const card of snapshot.state.deck) {
+    const moved = await api(`/api/tickets/games/sessions/${sessionId}/move`, {
+      method: "POST",
+      token,
+      body: { cardId: card.id }
+    });
+    assert.equal(moved.res.status, 200);
+    snapshot = moved.data.arcadeSession;
+    if (snapshot.state.status !== "playing") break;
+  }
+
+  const failedFinish = await api(`/api/tickets/games/sessions/${sessionId}/finish`, {
+    method: "POST",
+    token,
+    body: {}
+  });
+  assert.equal(failedFinish.res.status, 400);
+  assert.equal(failedFinish.data.error, "not_enough_tickets");
+
+  seedTickets(playerId, 10);
+
+  const retriedFinish = await api(`/api/tickets/games/sessions/${sessionId}/finish`, {
+    method: "POST",
+    token,
+    body: {}
+  });
+  assert.equal(retriedFinish.res.status, 200);
+  assert.equal(retriedFinish.data?.result?.gameKey, "guess");
+  assert.equal(retriedFinish.data?.result?.outcome, snapshot.state.status);
 });

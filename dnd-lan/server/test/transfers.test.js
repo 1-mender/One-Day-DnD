@@ -268,6 +268,45 @@ test("Expired transfer reject returns status expired and releases reservation", 
   assert.equal(transferRow.status, "expired");
 });
 
+test("Full-stack transfer accept keeps transfer row after source item deletion", async () => {
+  const playerA = createPlayer("SenderAll");
+  const playerB = createPlayer("ReceiverAll");
+  const tokenA = createSession(playerA);
+  const tokenB = createSession(playerB);
+  const itemId = createItem(playerA, { qty: 2 });
+
+  const createRes = await api("/api/inventory/transfers", {
+    method: "POST",
+    headers: { "x-player-token": tokenA },
+    body: { to_player_id: playerB, item_id: itemId, qty: 2 }
+  });
+  assert.equal(createRes.res.status, 200);
+
+  const acceptRes = await api(`/api/inventory/transfers/${createRes.data.id}/accept`, {
+    method: "POST",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(acceptRes.res.status, 200);
+
+  const db = getDb();
+  const senderItem = db.prepare("SELECT id FROM inventory_items WHERE id=?").get(itemId);
+  assert.equal(senderItem, undefined);
+
+  const receiverItem = db.prepare("SELECT qty FROM inventory_items WHERE player_id=?").get(playerB);
+  assert.equal(receiverItem.qty, 2);
+
+  const transferRow = db.prepare("SELECT item_id, status FROM item_transfers WHERE id=?").get(createRes.data.id);
+  assert.equal(transferRow.status, "accepted");
+  assert.equal(transferRow.item_id, null);
+
+  const acceptAgain = await api(`/api/inventory/transfers/${createRes.data.id}/accept`, {
+    method: "POST",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(acceptAgain.res.status, 200);
+  assert.equal(acceptAgain.data.idempotent, true);
+});
+
 test("Transfer accept returns inventory_full when receiver backpack is full", async () => {
   const playerA = createPlayer("SenderFull");
   const playerB = createPlayer("ReceiverFull");

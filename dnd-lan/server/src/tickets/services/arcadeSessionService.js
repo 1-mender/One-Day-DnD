@@ -36,6 +36,7 @@ export function processArcadeSessionFinish({
   me,
   sessionId,
   finishSession,
+  deleteSession,
   nowFn,
   buildMatchmakingPayload
 }) {
@@ -65,6 +66,7 @@ export function processArcadeSessionFinish({
   });
 
   if (!settled.ok) return settled;
+  deleteSession?.(me.player.id, sessionId);
   return ok({
     ...settled.body,
     arcadeSession: result.snapshot

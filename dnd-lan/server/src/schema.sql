@@ -173,7 +173,7 @@ CREATE TABLE IF NOT EXISTS item_transfers (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   from_player_id INTEGER NOT NULL,
   to_player_id INTEGER NOT NULL,
-  item_id INTEGER NOT NULL,
+  item_id INTEGER,
   qty INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending', -- pending/accepted/rejected/canceled/expired
   created_at INTEGER NOT NULL,
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS item_transfers (
   note TEXT,
   FOREIGN KEY(from_player_id) REFERENCES players(id) ON DELETE CASCADE,
   FOREIGN KEY(to_player_id) REFERENCES players(id) ON DELETE CASCADE,
-  FOREIGN KEY(item_id) REFERENCES inventory_items(id) ON DELETE CASCADE
+  FOREIGN KEY(item_id) REFERENCES inventory_items(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS tickets (
