@@ -8,13 +8,30 @@ import {
   updateDmRules
 } from "../services/ticketAdminService.js";
 import { getDmTicketMetricsPayload, getTicketRulesPayload } from "../services/ticketQueryService.js";
+import {
+  dmAdjustBodySchema,
+  dmMetricsQuerySchema,
+  dmQuestBodySchema,
+  dmQuestResetBodySchema,
+  dmRulesBodySchema,
+  parseTicketRouteInput
+} from "./dmTicketRouteSchemas.js";
+
+function requireValidRouteInput(res, schema, input) {
+  const parsed = parseTicketRouteInput(schema, input);
+  if (parsed.ok) return parsed.data;
+  res.status(400).json({ error: parsed.error });
+  return null;
+}
 
 export function registerDmTicketRoutes(router, { buildMatchmakingPayload }) {
   router.get("/dm/metrics", dmAuthMiddleware, (req, res) => {
+    const query = requireValidRouteInput(res, dmMetricsQuerySchema, req.query);
+    if (!query) return;
     const result = getDmTicketMetricsPayload({
       db: getDb(),
       partyId: Number(getSinglePartyId()),
-      days: req.query?.days
+      days: query.days
     });
     return res.status(result.status).json(result.body);
   });
@@ -25,22 +42,30 @@ export function registerDmTicketRoutes(router, { buildMatchmakingPayload }) {
   });
 
   router.put("/dm/rules", dmAuthMiddleware, (req, res) => {
-    const result = updateDmRules({ party: getSingleParty(), body: req.body, io: req.app.locals.io });
+    const body = requireValidRouteInput(res, dmRulesBodySchema, req.body);
+    if (!body) return;
+    const result = updateDmRules({ party: getSingleParty(), body, io: req.app.locals.io });
     return res.status(result.status).json(result.body);
   });
 
   router.post("/dm/quest/active", dmAuthMiddleware, (req, res) => {
-    const result = setActiveDailyQuest({ party: getSingleParty(), body: req.body, io: req.app.locals.io });
+    const body = requireValidRouteInput(res, dmQuestBodySchema, req.body);
+    if (!body) return;
+    const result = setActiveDailyQuest({ party: getSingleParty(), body, io: req.app.locals.io });
     return res.status(result.status).json(result.body);
   });
 
   router.post("/dm/quest/assign", dmAuthMiddleware, (req, res) => {
-    const result = setActiveDailyQuest({ party: getSingleParty(), body: req.body, io: req.app.locals.io });
+    const body = requireValidRouteInput(res, dmQuestBodySchema, req.body);
+    if (!body) return;
+    const result = setActiveDailyQuest({ party: getSingleParty(), body, io: req.app.locals.io });
     return res.status(result.status).json(result.body);
   });
 
   router.post("/dm/quest/reset", dmAuthMiddleware, (req, res) => {
-    const result = resetDailyQuest({ db: getDb(), party: getSingleParty(), body: req.body, io: req.app.locals.io });
+    const body = requireValidRouteInput(res, dmQuestResetBodySchema, req.body);
+    if (!body) return;
+    const result = resetDailyQuest({ db: getDb(), party: getSingleParty(), body, io: req.app.locals.io });
     return res.status(result.status).json(result.body);
   });
 
@@ -50,10 +75,12 @@ export function registerDmTicketRoutes(router, { buildMatchmakingPayload }) {
   });
 
   router.post("/dm/adjust", dmAuthMiddleware, (req, res) => {
+    const body = requireValidRouteInput(res, dmAdjustBodySchema, req.body);
+    if (!body) return;
     const result = adjustPlayerTickets({
       db: getDb(),
       party: getSingleParty(),
-      body: req.body,
+      body,
       io: req.app.locals.io,
       buildMatchmakingPayload
     });

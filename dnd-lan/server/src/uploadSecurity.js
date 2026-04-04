@@ -136,13 +136,13 @@ function sanitizeBaseName(name) {
 
 export function safeUnlink(filePath) {
   if (!filePath) return;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     try {
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       return;
     } catch {
-      if (attempt >= 2) return;
-      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 8);
+      if (attempt >= 7) return;
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10 + attempt * 5);
     }
   }
 }

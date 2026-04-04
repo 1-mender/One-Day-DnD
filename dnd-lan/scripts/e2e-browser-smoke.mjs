@@ -70,6 +70,13 @@ async function runBrowserSmoke(baseUrl) {
     });
     await assertPageHasContent(page, `${baseUrl}/`);
     await assertPageHasContent(page, `${baseUrl}/dm/setup`);
+    await page.getByLabel("Логин").fill("admin");
+    await page.getByLabel("Пароль (минимум 6 символов)").fill("secret123");
+    await page.getByLabel("Секрет первичной настройки (необязательно)").fill("");
+    await page.getByRole("button", { name: "Создать" }).click();
+    await page.waitForURL("**/dm/app/dashboard");
+    await page.getByText("Dashboard").waitFor({ state: "visible" });
+    await page.getByText("URL для игроков", { exact: true }).waitFor({ state: "visible" });
     const readyOk = await fetchReady(`${baseUrl}/readyz`);
     if (!readyOk) {
       throw new Error("readyz returned non-OK during browser smoke");
