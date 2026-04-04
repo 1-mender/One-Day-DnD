@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../api.js";
 import { formatError } from "../lib/formatError.js";
-import { makeProof } from "../lib/gameProof.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "./useReadOnly.js";
 
@@ -122,23 +121,9 @@ export function useTickets() {
     };
   }, [refresh, scheduleRefresh, socket]);
 
-  const play = useCallback(async (payload) => {
-    const nextPayload = { ...(payload || {}) };
-    if ((!nextPayload.seed || !nextPayload.proof) && nextPayload.gameKey) {
-      const issued = await api.ticketsSeed(nextPayload.gameKey);
-      nextPayload.seed = String(issued?.seed || "");
-      nextPayload.proof = String(issued?.proof || "");
-    }
-    nextPayload.clientProof = await makeProof(nextPayload.seed || "", nextPayload.proof || "", {
-      gameKey: String(nextPayload.gameKey || ""),
-      outcome: String(nextPayload.outcome || ""),
-      performance: String(nextPayload.performance || "normal"),
-      payload: nextPayload.payload || {}
-    });
-    const res = await api.ticketsPlay(nextPayload);
-    applyPayload(res);
-    return res;
-  }, [applyPayload]);
+  const play = useCallback(async () => {
+    throw new Error("legacy_arcade_api_disabled");
+  }, []);
 
   const startGameSession = useCallback(async (gameKey, payload = {}) => {
     return api.ticketsGameStart(gameKey, payload);

@@ -11,6 +11,12 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 
 const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
+const { createSeedStore } = await import("../src/tickets/domain/playValidation.js");
+const { buildMatchmakingPayload } = await import("../src/tickets/services/matchmakingService.js");
+const { processTicketPlay } = await import("../src/tickets/services/ticketPlayService.js");
+const { issueTicketSeedPayload } = await import("../src/tickets/services/ticketQueryService.js");
+const { createTicketRouteAuth } = await import("../src/tickets/ticketRouteAuth.js");
+const { SEED_TTL_MS } = await import("../src/tickets/shared/ticketConstants.js");
 const { now } = await import("../src/util.js");
 const { buildSeededScrabbleRack } = await import("../src/tickets/domain/playValidation.js");
 const {
@@ -25,6 +31,34 @@ initDb();
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+const auth = createTicketRouteAuth({ nowFn: now });
+const { issueSeed, takeSeed } = createSeedStore({ ttlMs: SEED_TTL_MS, nowFn: now });
+
+app.get("/api/tickets/seed", (req, res) => {
+  const me = auth.requirePlayer(req, res);
+  if (!me) return;
+  const result = issueTicketSeedPayload({
+    playerId: me.player.id,
+    gameKey: req.query?.gameKey,
+    issueSeedFn: issueSeed
+  });
+  res.status(result.status).json(result.body);
+});
+
+app.post("/api/tickets/play", (req, res) => {
+  const me = auth.requireWritablePlayer(req, res);
+  if (!me) return;
+  const result = processTicketPlay({
+    db: getDb(),
+    io: req.app.locals.io,
+    me,
+    body: req.body,
+    takeSeed,
+    nowFn: now,
+    buildMatchmakingPayload
+  });
+  res.status(result.status).json(result.body);
+});
 app.use("/api/tickets", ticketsRouter);
 
 const server = app.listen(0);

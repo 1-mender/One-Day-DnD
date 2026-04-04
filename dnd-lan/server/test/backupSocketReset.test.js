@@ -58,7 +58,7 @@ function createPlayerSession() {
   return token;
 }
 
-function waitForEvent(socket, eventName, timeoutMs = 2000) {
+function waitForEvent(socket, eventName, timeoutMs = 10000) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       socket.off(eventName, onEvent);

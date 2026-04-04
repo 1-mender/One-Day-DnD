@@ -54,12 +54,9 @@ export function registerPlayerTicketRoutes(router, {
   router.get("/seed", (req, res) => {
     const me = auth.requirePlayer(req, res);
     if (!me) return;
-    const result = issueTicketSeedPayload({
-      playerId: me.player.id,
-      gameKey: req.query?.gameKey,
-      issueSeedFn: issueSeed
-    });
-    return res.status(result.status).json(result.body);
+    void issueSeed;
+    void issueTicketSeedPayload;
+    return res.status(410).json({ error: "legacy_arcade_api_disabled" });
   });
 
   router.post("/games/:gameKey/start", (req, res) => {
@@ -165,16 +162,11 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/play", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
-    const result = processTicketPlay({
-      db: getDb(),
-      io: req.app.locals.io,
-      me,
-      body: req.body,
-      takeSeed,
-      nowFn,
-      buildMatchmakingPayload
-    });
-    return res.status(result.status).json(result.body);
+    void processTicketPlay;
+    void takeSeed;
+    void nowFn;
+    void buildMatchmakingPayload;
+    return res.status(410).json({ error: "legacy_arcade_api_disabled" });
   });
 
   router.post("/purchase", (req, res) => {
