@@ -1,8 +1,9 @@
 import { z } from "zod";
+import { positiveIdSchema } from "../../routes/routeSchemaPrimitives.js";
+import { parseRouteInput } from "../../routes/routeValidation.js";
 
 const shortTextSchema = z.string().trim().max(64);
 const sessionIdSchema = z.string().trim().regex(/^[a-f0-9]{32}$/i);
-const idSchema = z.coerce.number().int().positive();
 
 export const gameStartParamsSchema = z.object({
   gameKey: shortTextSchema.min(1)
@@ -25,17 +26,17 @@ export const queueJoinBodySchema = z.object({
 }).passthrough();
 
 export const queueCancelBodySchema = z.object({
-  queueId: z.union([idSchema, z.null()]).optional()
+  queueId: z.union([positiveIdSchema, z.null()]).optional()
 }).passthrough();
 
 export const matchIdParamsSchema = z.object({
-  matchId: idSchema
+  matchId: positiveIdSchema
 });
 
 export const matchCompleteBodySchema = z.object({
   outcome: shortTextSchema.optional(),
   durationMs: z.coerce.number().int().min(0).max(24 * 60 * 60 * 1000).nullable().optional(),
-  winnerPlayerId: z.union([idSchema, z.null()]).optional()
+  winnerPlayerId: z.union([positiveIdSchema, z.null()]).optional()
 }).passthrough();
 
 export const purchaseBodySchema = z.object({
@@ -47,7 +48,5 @@ export const matchHistoryQuerySchema = z.object({
 }).passthrough();
 
 export function parseTicketRouteInput(schema, input) {
-  const parsed = schema.safeParse(input || {});
-  if (!parsed.success) return { ok: false, error: "invalid_request" };
-  return { ok: true, data: parsed.data };
+  return parseRouteInput(schema, input);
 }

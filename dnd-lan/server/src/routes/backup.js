@@ -10,8 +10,11 @@ import { assertSinglePartyDbFile, closeDb, DATA_DIR, DB_PATH, getDb, reloadDb } 
 import { emitSinglePartyEvents } from "../singlePartyEmit.js";
 import { asyncHandler, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
+import { backupImportBodySchema, parseBackupRouteInput } from "./backupRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const backupRouter = express.Router();
+const readValidBody = createRouteInputReader(parseBackupRouteInput);
 
 const MAX_BACKUP_BYTES = Number(process.env.BACKUP_IMPORT_MAX_BYTES || 200 * 1024 * 1024);
 const MAX_BACKUP_EXTRACT_BYTES = Number(process.env.BACKUP_IMPORT_MAX_EXTRACT_BYTES || 500 * 1024 * 1024);
@@ -89,6 +92,8 @@ backupRouter.get("/export", dmAuthMiddleware, (req, res) => {
 });
 
 backupRouter.post("/import", dmAuthMiddleware, wrapMulter(upload.single("zip")), asyncHandler(async (req, res) => {
+  const body = readValidBody(res, backupImportBodySchema, req.body);
+  if (!body) return;
   if (!req.file) return res.status(400).json({ error: "file_required" });
 
   const tmpDir = path.join(DATA_DIR, "import_tmp");

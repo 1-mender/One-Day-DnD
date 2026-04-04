@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
+const manifestPath = path.join(root, "client", "dist", ".vite", "manifest.json");
 const assetsDir = path.join(root, "client", "dist", "assets");
 const imageExts = new Set([".png", ".jpg", ".jpeg", ".webp", ".avif", ".gif", ".svg"]);
 
@@ -51,6 +52,46 @@ function parseBudget(name, fallback = null) {
   return Math.floor(n);
 }
 
+function loadManifest() {
+  if (!fs.existsSync(manifestPath)) return null;
+  try {
+    return JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+function collectInitialJsAssetNames(manifest) {
+  if (!manifest || typeof manifest !== "object") return null;
+
+  const names = new Set();
+  const queue = Object.entries(manifest)
+    .filter(([, entry]) => entry?.isEntry && entry?.file)
+    .map(([key]) => key);
+  const visited = new Set();
+
+  while (queue.length) {
+    const key = queue.pop();
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const entry = manifest[key];
+    if (!entry || typeof entry !== "object") continue;
+
+    const fileName = path.basename(String(entry.file || ""));
+    if (fileName.endsWith(".js")) names.add(fileName);
+
+    const imports = Array.isArray(entry.imports) ? entry.imports : [];
+    for (const childKey of imports) {
+      if (typeof childKey === "string" && manifest[childKey] && !visited.has(childKey)) {
+        queue.push(childKey);
+      }
+    }
+  }
+
+  return names;
+}
+
 function parseCliBudget(raw, fallback = null) {
   if (raw == null || String(raw).trim() === "") return fallback;
   const n = Number(raw);
@@ -62,6 +103,7 @@ function parseCliArgs(argv) {
   const out = {
     enforce: false,
     jsTotal: null,
+    initialJsTotal: null,
     largestJs: null,
     imageTotal: null,
     largestImage: null
@@ -79,6 +121,10 @@ function parseCliArgs(argv) {
       out.largestJs = parseCliBudget(arg.slice("--largest-js=".length), out.largestJs);
       continue;
     }
+    if (arg.startsWith("--initial-js-total=")) {
+      out.initialJsTotal = parseCliBudget(arg.slice("--initial-js-total=".length), out.initialJsTotal);
+      continue;
+    }
     if (arg.startsWith("--image-total=")) {
       out.imageTotal = parseCliBudget(arg.slice("--image-total=".length), out.imageTotal);
       continue;
@@ -93,9 +139,15 @@ function parseCliArgs(argv) {
 const assets = listAssets();
 const jsAssets = assets.filter((a) => a.ext === ".js");
 const imageAssets = assets.filter((a) => imageExts.has(a.ext));
+const manifest = loadManifest();
+const initialJsNames = collectInitialJsAssetNames(manifest);
+const initialJsAssets = initialJsNames
+  ? jsAssets.filter((a) => initialJsNames.has(a.name))
+  : jsAssets;
 const cli = parseCliArgs(process.argv.slice(2));
 
 const totalJsBytes = jsAssets.reduce((sum, a) => sum + a.bytes, 0);
+const initialJsBytes = initialJsAssets.reduce((sum, a) => sum + a.bytes, 0);
 const totalImageBytes = imageAssets.reduce((sum, a) => sum + a.bytes, 0);
 const largestJs = jsAssets.slice().sort((a, b) => b.bytes - a.bytes)[0] || null;
 const largestImage = imageAssets.slice().sort((a, b) => b.bytes - a.bytes)[0] || null;
@@ -105,6 +157,8 @@ console.log(`generated_at=${new Date().toISOString()}`);
 console.log(`assets_dir=${assetsDir}`);
 console.log(`js_total_bytes=${totalJsBytes}`);
 console.log(`js_total_human=${formatBytes(totalJsBytes)}`);
+console.log(`initial_js_bytes=${initialJsBytes}`);
+console.log(`initial_js_human=${formatBytes(initialJsBytes)}`);
 console.log(`image_total_bytes=${totalImageBytes}`);
 console.log(`image_total_human=${formatBytes(totalImageBytes)}`);
 console.log(`largest_js_name=${largestJs ? largestJs.name : "none"}`);
@@ -115,16 +169,20 @@ console.log("");
 
 printTop("top_js_chunks", jsAssets, 10);
 console.log("");
+printTop("top_initial_js_chunks", initialJsAssets, 10);
+console.log("");
 printTop("top_image_assets", imageAssets, 10);
 
 const enforceBudget = process.env.PERF_BUDGET_ENFORCE === "1";
 const totalJsBudget = parseBudget("PERF_BUDGET_JS_TOTAL_BYTES", cli.jsTotal);
+const initialJsBudget = parseBudget("PERF_BUDGET_INITIAL_JS_TOTAL_BYTES", cli.initialJsTotal);
 const largestJsBudget = parseBudget("PERF_BUDGET_LARGEST_JS_BYTES", cli.largestJs);
 const totalImageBudget = parseBudget("PERF_BUDGET_IMAGE_TOTAL_BYTES", cli.imageTotal);
 const largestImageBudget = parseBudget("PERF_BUDGET_LARGEST_IMAGE_BYTES", cli.largestImage);
 const shouldCheck = cli.enforce
   || enforceBudget
   || totalJsBudget != null
+  || initialJsBudget != null
   || largestJsBudget != null
   || totalImageBudget != null
   || largestImageBudget != null;
@@ -141,6 +199,12 @@ if (shouldCheck) {
     failed = true;
     console.error(
       `PERF_BUDGET_FAIL largest_js_bytes=${largestJs?.bytes || 0} exceeds ${largestJsBudget}`
+    );
+  }
+  if (initialJsBudget != null && initialJsBytes > initialJsBudget) {
+    failed = true;
+    console.error(
+      `PERF_BUDGET_FAIL initial_js_bytes=${initialJsBytes} exceeds ${initialJsBudget}`
     );
   }
   if (totalImageBudget != null && totalImageBytes > totalImageBudget) {

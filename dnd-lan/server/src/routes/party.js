@@ -6,6 +6,15 @@ import { dmAuthMiddleware } from "../auth.js";
 import { logEvent } from "../events.js";
 import { LIMITS } from "../limits.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
+import {
+  impersonateBodySchema,
+  joinCodeBodySchema,
+  joinRequestBodySchema,
+  joinRequestDecisionBodySchema,
+  parsePartyRouteInput,
+  playerActionBodySchema
+} from "./partyRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const partyRouter = express.Router();
 
@@ -16,10 +25,14 @@ const joinLimiter = rateLimit({
   legacyHeaders: false
 });
 
+const readValidBody = createRouteInputReader(parsePartyRouteInput);
+
 partyRouter.post("/join-request", joinLimiter, (req, res) => {
   const db = getDb();
   const party = getSingleParty();
-  const { displayName, joinCode } = req.body || {};
+  const body = readValidBody(res, joinRequestBodySchema, req.body);
+  if (!body) return;
+  const { displayName, joinCode } = body;
   const name = String(displayName || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
   if (name.length > LIMITS.playerName) return res.status(400).json({ error: "name_too_long" });
@@ -52,7 +65,9 @@ partyRouter.get("/requests", dmAuthMiddleware, (req, res) => {
 
 partyRouter.post("/approve", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const { joinRequestId } = req.body || {};
+  const body = readValidBody(res, joinRequestDecisionBodySchema, req.body);
+  if (!body) return;
+  const { joinRequestId } = body;
   const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
   if (!jr) return res.status(404).json({ error: "not_found" });
 
@@ -97,7 +112,9 @@ partyRouter.post("/approve", dmAuthMiddleware, (req, res) => {
 
 partyRouter.post("/reject", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const { joinRequestId } = req.body || {};
+  const body = readValidBody(res, joinRequestDecisionBodySchema, req.body);
+  if (!body) return;
+  const { joinRequestId } = body;
   const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
   if (!jr) return res.status(404).json({ error: "not_found" });
   db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
@@ -119,7 +136,9 @@ partyRouter.post("/reject", dmAuthMiddleware, (req, res) => {
 
 partyRouter.post("/ban", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const { joinRequestId } = req.body || {};
+  const body = readValidBody(res, joinRequestDecisionBodySchema, req.body);
+  if (!body) return;
+  const { joinRequestId } = body;
   const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
   if (!jr) return res.status(404).json({ error: "not_found" });
   const t = now();
@@ -146,7 +165,9 @@ partyRouter.post("/ban", dmAuthMiddleware, (req, res) => {
 
 partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const { playerId } = req.body || {};
+  const body = readValidBody(res, playerActionBodySchema, req.body);
+  if (!body) return;
+  const { playerId } = body;
   const pid = Number(playerId);
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
 
@@ -185,7 +206,9 @@ partyRouter.get("/join-code", dmAuthMiddleware, (req, res) => {
 });
 
 partyRouter.post("/join-code", dmAuthMiddleware, (req, res) => {
-  const { joinCode } = req.body || {};
+  const body = readValidBody(res, joinCodeBodySchema, req.body);
+  if (!body) return;
+  const { joinCode } = body;
   const party = getSingleParty();
   const joinCodeStr = joinCode ? String(joinCode) : "";
   if (joinCodeStr && joinCodeStr.length > LIMITS.joinCode) {
@@ -198,7 +221,9 @@ partyRouter.post("/join-code", dmAuthMiddleware, (req, res) => {
 
 partyRouter.post("/impersonate", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const { playerId, mode } = req.body || {};
+  const body = readValidBody(res, impersonateBodySchema, req.body);
+  if (!body) return;
+  const { playerId, mode } = body;
   const pid = Number(playerId);
   if (!pid) return res.status(400).json({ error: "invalid_playerId" });
 

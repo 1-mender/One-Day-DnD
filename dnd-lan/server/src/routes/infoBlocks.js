@@ -5,8 +5,15 @@ import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
+import {
+  infoBlockBodySchema,
+  infoBlockIdParamsSchema,
+  parseInfoBlocksRouteInput
+} from "./infoBlocksRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const infoBlocksRouter = express.Router();
+const readValidInput = createRouteInputReader(parseInfoBlocksRouteInput);
 
 function normalizeSelectedIds(db, partyId, selected) {
   const ids = Array.isArray(selected) ? selected.map(Number).filter((v) => Number.isFinite(v) && v > 0) : [];
@@ -65,7 +72,8 @@ infoBlocksRouter.get("/", (req, res) => {
 infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const b = req.body || {};
+  const b = readValidInput(res, infoBlockBodySchema, req.body);
+  if (!b) return;
   const title = String(b.title || "").trim();
   if (!title) return res.status(400).json({ error: "title_required" });
 
@@ -107,11 +115,14 @@ infoBlocksRouter.post("/", dmAuthMiddleware, (req, res) => {
 infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const id = Number(req.params.id);
+  const params = readValidInput(res, infoBlockIdParamsSchema, req.params, { status: 404, error: "not_found" });
+  if (!params) return;
+  const id = Number(params.id);
   const cur = db.prepare("SELECT * FROM info_blocks WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
 
-  const b = req.body || {};
+  const b = readValidInput(res, infoBlockBodySchema, req.body);
+  if (!b) return;
   const title = String(b.title ?? cur.title).trim();
   if (!title) return res.status(400).json({ error: "title_required" });
 
@@ -155,7 +166,9 @@ infoBlocksRouter.put("/:id", dmAuthMiddleware, (req, res) => {
 infoBlocksRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const id = Number(req.params.id);
+  const params = readValidInput(res, infoBlockIdParamsSchema, req.params, { status: 404, error: "not_found" });
+  if (!params) return;
+  const id = Number(params.id);
   const cur = db.prepare("SELECT title FROM info_blocks WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
   db.prepare("DELETE FROM info_blocks WHERE id=? AND party_id=?").run(id, partyId);

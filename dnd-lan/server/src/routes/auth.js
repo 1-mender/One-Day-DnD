@@ -4,6 +4,14 @@ import { getDmCookieName, loginDm, signDmToken, changeDmPassword, verifyDmToken 
 import { dbHasDm, getDb } from "../db.js";
 import { dmAuthMiddleware } from "../auth.js";
 import { getActiveSessionByToken, getPlayerBySession, getPlayerCookieName, getPlayerTokenFromRequest } from "../sessionAuth.js";
+import {
+  changePasswordBodySchema,
+  dmLoginBodySchema,
+  emptyAuthBodySchema,
+  parseAuthRouteInput,
+  playerSessionBodySchema
+} from "./authRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const authRouter = express.Router();
 
@@ -28,6 +36,8 @@ const playerCookieBaseOpts = {
   path: "/"
 };
 
+const readValidBody = createRouteInputReader(parseAuthRouteInput);
+
 authRouter.get("/me", (req, res) => {
   if (!dbHasDm()) return res.json({ needsSetup: true });
   const token = req.cookies?.[getDmCookieName()];
@@ -42,7 +52,9 @@ authRouter.get("/me", (req, res) => {
 
 authRouter.post("/login", loginLimiter, (req, res) => {
   if (!dbHasDm()) return res.status(409).json({ error: "needs_setup" });
-  const { username, password } = req.body || {};
+  const body = readValidBody(res, dmLoginBodySchema, req.body);
+  if (!body) return;
+  const { username, password } = body;
   const user = loginDm(String(username || ""), String(password || ""));
   if (!user) return res.status(401).json({ error: "bad_credentials" });
   const token = signDmToken(user);
@@ -51,12 +63,16 @@ authRouter.post("/login", loginLimiter, (req, res) => {
 });
 
 authRouter.post("/logout", (req, res) => {
+  const body = readValidBody(res, emptyAuthBodySchema, req.body);
+  if (!body) return;
   res.clearCookie(getDmCookieName(), dmCookieOpts);
   res.json({ ok: true });
 });
 
 authRouter.post("/change-password", dmAuthMiddleware, (req, res) => {
-  const { newPassword } = req.body || {};
+  const body = readValidBody(res, changePasswordBodySchema, req.body);
+  if (!body) return;
+  const { newPassword } = body;
   if (!newPassword || String(newPassword).length < 6) return res.status(400).json({ error: "invalid_input" });
   const user = changeDmPassword(req.dm.uid, String(newPassword));
   const token = signDmToken(user);
@@ -65,7 +81,9 @@ authRouter.post("/change-password", dmAuthMiddleware, (req, res) => {
 });
 
 authRouter.post("/player/session", (req, res) => {
-  const token = String(req.body?.playerToken || "");
+  const body = readValidBody(res, playerSessionBodySchema, req.body);
+  if (!body) return;
+  const token = String(body.playerToken || "");
   if (!token) return res.status(400).json({ error: "player_token_required" });
 
   const sess = getActiveSessionByToken(token, { at: Date.now() });
@@ -85,6 +103,8 @@ authRouter.post("/player/session", (req, res) => {
 });
 
 authRouter.post("/player/logout", (req, res) => {
+  const body = readValidBody(res, emptyAuthBodySchema, req.body);
+  if (!body) return;
   const db = getDb();
   const token = getPlayerTokenFromRequest(req);
   if (token) {

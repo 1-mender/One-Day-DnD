@@ -20,8 +20,22 @@ import {
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 import { jsonParse, now } from "../util.js";
 import { ensureSessionWritable, getDmPayloadFromRequest, getPlayerContextFromRequest } from "../sessionAuth.js";
+import {
+  dmProfilePresetsBodySchema,
+  parseProfileRouteInput,
+  playerIdParamsSchema,
+  playerProfileRequestCreateBodySchema,
+  profilePatchBodySchema,
+  profileRequestIdParamsSchema,
+  profileRequestResolutionBodySchema,
+  profileRequestsQuerySchema,
+  profileUpsertBodySchema
+} from "./profileRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const profileRouter = express.Router();
+
+const readValidInput = createRouteInputReader(parseProfileRouteInput);
 
 profileRouter.get("/profile-presets", (req, res) => {
   const dm = getDmPayloadFromRequest(req);
@@ -48,7 +62,8 @@ profileRouter.get("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
 });
 
 profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
-  const body = req.body || {};
+  const body = readValidInput(res, dmProfilePresetsBodySchema, req.body);
+  if (!body) return;
   const party = getSingleParty();
 
   if (body.reset) {
@@ -80,8 +95,9 @@ profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
 });
 
 profileRouter.get("/players/:id/profile", (req, res) => {
-  const playerId = Number(req.params.id);
-  if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const playerId = Number(params.id);
 
   const dm = getDmPayloadFromRequest(req);
   const me = getPlayerContextFromRequest(req, { at: now() });
@@ -94,14 +110,17 @@ profileRouter.get("/players/:id/profile", (req, res) => {
 });
 
 profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
-  const playerId = Number(req.params.id);
-  if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, profileUpsertBodySchema, req.body);
+  if (!body) return;
+  const playerId = Number(params.id);
 
   const db = getDb();
   const player = db.prepare("SELECT id FROM players WHERE id=?").get(playerId);
   if (!player) return res.status(404).json({ error: "player_not_found" });
   const existing = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
-  const payload = buildProfilePayload(req.body, existing);
+  const payload = buildProfilePayload(body, existing);
   if (payload?.error) return res.status(400).json({ error: payload.error });
   const t = now();
 
@@ -153,8 +172,11 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
 });
 
 profileRouter.patch("/players/:id/profile", (req, res) => {
-  const playerId = Number(req.params.id);
-  if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, profilePatchBodySchema, req.body);
+  if (!body) return;
+  const playerId = Number(params.id);
 
   const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
@@ -165,7 +187,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   if (!row) return res.status(404).json({ error: "profile_not_created" });
 
   const editableFields = normalizeEditableFields(jsonParse(row.editable_fields, []));
-  const bodyKeys = Object.keys(req.body || {});
+  const bodyKeys = Object.keys(body);
   if (!bodyKeys.length) return res.status(400).json({ error: "empty_patch" });
   for (const key of bodyKeys) {
     if (!EDITABLE_FIELDS.has(key)) return res.status(403).json({ error: "field_not_allowed", field: key });
@@ -175,7 +197,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
     if (!editableFields.includes(key)) return res.status(403).json({ error: "field_not_allowed", field: key });
   }
 
-  const rawPatch = sanitizePatch(req.body);
+  const rawPatch = sanitizePatch(body);
   if (!Object.keys(rawPatch).length) return res.status(400).json({ error: "empty_patch" });
   const validated = validateAndFinalizePatch(rawPatch);
   if (validated.error) return res.status(400).json({ error: validated.error });
@@ -200,8 +222,11 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
 });
 
 profileRouter.post("/players/:id/profile-requests", (req, res) => {
-  const playerId = Number(req.params.id);
-  if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, playerProfileRequestCreateBodySchema, req.body);
+  if (!body) return;
+  const playerId = Number(params.id);
 
   const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
@@ -212,7 +237,6 @@ profileRouter.post("/players/:id/profile-requests", (req, res) => {
   if (!profile) return res.status(404).json({ error: "profile_not_created" });
   if (!profile.allow_requests) return res.status(403).json({ error: "requests_disabled" });
 
-  const body = req.body || {};
   const reason = String(body.reason || "").trim();
   const reasonErr = validateTextLen(reason, LIMITS.reason, "reason_too_long");
   if (reasonErr) return res.status(400).json({ error: reasonErr });
@@ -237,8 +261,10 @@ profileRouter.post("/players/:id/profile-requests", (req, res) => {
 
 profileRouter.get("/profile-requests", dmAuthMiddleware, (req, res) => {
   const db = getDb();
-  const status = String(req.query.status || "").trim();
-  const limitRaw = Number(req.query.limit ?? 200);
+  const query = readValidInput(res, profileRequestsQuerySchema, req.query);
+  if (!query) return;
+  const status = String(query.status || "").trim();
+  const limitRaw = Number(query.limit ?? 200);
   const limit = Math.max(1, Math.min(500, Number.isFinite(limitRaw) ? limitRaw : 200));
   const where = [];
   const args = [];
@@ -277,14 +303,17 @@ profileRouter.get("/profile-requests", dmAuthMiddleware, (req, res) => {
 });
 
 profileRouter.get("/players/:id/profile-requests", (req, res) => {
-  const playerId = Number(req.params.id);
-  if (!playerId) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const query = readValidInput(res, profileRequestsQuerySchema, req.query);
+  if (!query) return;
+  const playerId = Number(params.id);
 
   const me = getPlayerContextFromRequest(req, { at: now() });
   if (!me || me.player.id !== playerId) return res.status(403).json({ error: "forbidden" });
 
-  const status = String(req.query.status || "").trim();
-  const limitRaw = Number(req.query.limit ?? 5);
+  const status = String(query.status || "").trim();
+  const limitRaw = Number(query.limit ?? 5);
   const limit = Math.max(1, Math.min(50, Number.isFinite(limitRaw) ? limitRaw : 5));
 
   const where = ["player_id = ?"];
@@ -320,15 +349,18 @@ profileRouter.get("/players/:id/profile-requests", (req, res) => {
 });
 
 profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res) => {
-  const id = Number(req.params.id);
-  if (!id) return res.status(400).json({ error: "invalid_request_id" });
+  const params = readValidInput(res, profileRequestIdParamsSchema, req.params, { error: "invalid_request_id" });
+  if (!params) return;
+  const body = readValidInput(res, profileRequestResolutionBodySchema, req.body);
+  if (!body) return;
+  const id = Number(params.id);
 
   const db = getDb();
   const reqRow = db.prepare("SELECT * FROM profile_change_requests WHERE id=?").get(id);
   if (!reqRow) return res.status(404).json({ error: "not_found" });
   if (reqRow.status !== "pending") return res.status(409).json({ error: "already_resolved" });
 
-  const note = String(req.body?.note || "").trim();
+  const note = String(body.note || "").trim();
   const noteErr = validateTextLen(note, LIMITS.dmNote, "dm_note_too_long");
   if (noteErr) return res.status(400).json({ error: noteErr });
 
@@ -399,15 +431,18 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
 });
 
 profileRouter.post("/profile-requests/:id/reject", dmAuthMiddleware, (req, res) => {
-  const id = Number(req.params.id);
-  if (!id) return res.status(400).json({ error: "invalid_request_id" });
+  const params = readValidInput(res, profileRequestIdParamsSchema, req.params, { error: "invalid_request_id" });
+  if (!params) return;
+  const body = readValidInput(res, profileRequestResolutionBodySchema, req.body);
+  if (!body) return;
+  const id = Number(params.id);
 
   const db = getDb();
   const reqRow = db.prepare("SELECT * FROM profile_change_requests WHERE id=?").get(id);
   if (!reqRow) return res.status(404).json({ error: "not_found" });
   if (reqRow.status !== "pending") return res.status(409).json({ error: "already_resolved" });
 
-  const note = String(req.body?.note || "").trim();
+  const note = String(body.note || "").trim();
   const noteErr = validateTextLen(note, LIMITS.dmNote, "dm_note_too_long");
   if (noteErr) return res.status(400).json({ error: noteErr });
 

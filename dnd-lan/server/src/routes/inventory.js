@@ -29,8 +29,26 @@ import {
   processTransferCreate,
   processTransferReject
 } from "../inventory/services/inventoryTransferService.js";
+import {
+  dmBulkDeleteBodySchema,
+  dmBulkVisibilityBodySchema,
+  dmItemParamsSchema,
+  dmTransfersQuerySchema,
+  emptyBodySchema,
+  inventoryItemBodySchema,
+  inventoryLayoutBodySchema,
+  inventorySplitBodySchema,
+  itemIdParamsSchema,
+  parseInventoryRouteInput,
+  playerIdParamsSchema,
+  transferCreateBodySchema,
+  transferIdParamsSchema
+} from "./inventoryRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const inventoryRouter = express.Router();
+
+const readValidInput = createRouteInputReader(parseInventoryRouteInput);
 
 inventoryRouter.get("/mine", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now() });
@@ -40,42 +58,60 @@ inventoryRouter.get("/mine", (req, res) => {
 });
 
 inventoryRouter.get("/player/:playerId", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.playerId);
-  const result = listInventoryForPlayer({ db: getDb(), playerId: pid, includeWeightLimit: false });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const result = listInventoryForPlayer({ db: getDb(), playerId: params.playerId, includeWeightLimit: false });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
-  const result = processPlayerInventoryCreate({ db: getDb(), io: req.app.locals.io, sess, body: req.body });
+  const body = readValidInput(res, inventoryItemBodySchema, req.body);
+  if (!body) return;
+  const result = processPlayerInventoryCreate({ db: getDb(), io: req.app.locals.io, sess, body });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.put("/mine/:id", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
-  const itemId = Number(req.params.id);
-  const result = processPlayerInventoryUpdate({ db: getDb(), io: req.app.locals.io, sess, itemId, body: req.body });
+  const params = readValidInput(res, itemIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, inventoryItemBodySchema, req.body);
+  if (!body) return;
+  const result = processPlayerInventoryUpdate({
+    db: getDb(),
+    io: req.app.locals.io,
+    sess,
+    itemId: params.id,
+    body
+  });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine/layout", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
-  const result = processInventoryLayoutUpdate({ db: getDb(), io: req.app.locals.io, sess, body: req.body });
+  const body = readValidInput(res, inventoryLayoutBodySchema, req.body);
+  if (!body) return;
+  const result = processInventoryLayoutUpdate({ db: getDb(), io: req.app.locals.io, sess, body });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/mine/:id/split", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
+  const params = readValidInput(res, itemIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, inventorySplitBodySchema, req.body);
+  if (!body) return;
   const result = processInventorySplit({
     db: getDb(),
     io: req.app.locals.io,
     sess,
-    itemId: req.params.id,
-    body: req.body
+    itemId: params.id,
+    body
   });
   return res.status(result.status).json(result.body);
 });
@@ -83,11 +119,15 @@ inventoryRouter.post("/mine/:id/split", (req, res) => {
 inventoryRouter.post("/mine/:id/quick-equip", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
+  const params = readValidInput(res, itemIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, emptyBodySchema, req.body);
+  if (!body) return;
   const result = processInventoryQuickEquip({
     db: getDb(),
     io: req.app.locals.io,
     sess,
-    itemId: req.params.id
+    itemId: params.id
   });
   return res.status(result.status).json(result.body);
 });
@@ -95,30 +135,39 @@ inventoryRouter.post("/mine/:id/quick-equip", (req, res) => {
 inventoryRouter.delete("/mine/:id", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
-  const itemId = Number(req.params.id);
-  const result = processPlayerInventoryDelete({ db: getDb(), io: req.app.locals.io, sess, itemId });
+  const params = readValidInput(res, itemIdParamsSchema, req.params, "invalid_id");
+  if (!params) return;
+  const result = processPlayerInventoryDelete({ db: getDb(), io: req.app.locals.io, sess, itemId: params.id });
   return res.status(result.status).json(result.body);
 });
 
 // DM edit any inventory
 inventoryRouter.post("/dm/player/:playerId", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.playerId);
-  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
-  const result = processDmInventoryCreate({ db: getDb(), io: req.app.locals.io, playerId: pid, body: req.body });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, inventoryItemBodySchema, req.body);
+  if (!body) return;
+  const result = processDmInventoryCreate({
+    db: getDb(),
+    io: req.app.locals.io,
+    playerId: params.playerId,
+    body
+  });
   return res.status(result.status).json(result.body);
 });
 
 // DM update any inventory item
 inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.playerId);
-  const itemId = Number(req.params.id);
-  if (!pid || !itemId) return res.status(400).json({ error: "invalid_id" });
+  const params = readValidInput(res, dmItemParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, inventoryItemBodySchema, req.body);
+  if (!body) return;
   const result = processDmInventoryUpdate({
     db: getDb(),
     io: req.app.locals.io,
-    playerId: pid,
-    itemId,
-    body: req.body,
+    playerId: params.playerId,
+    itemId: params.id,
+    body,
     fallbackPartyId: getSinglePartyId()
   });
   return res.status(result.status).json(result.body);
@@ -126,37 +175,52 @@ inventoryRouter.put("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => 
 
 // DM delete any inventory item
 inventoryRouter.delete("/dm/player/:playerId/:id", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.playerId);
-  const itemId = Number(req.params.id);
-  if (!pid || !itemId) return res.status(400).json({ error: "invalid_id" });
+  const params = readValidInput(res, dmItemParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
   const result = processDmInventoryDelete({
     db: getDb(),
     io: req.app.locals.io,
-    playerId: pid,
-    itemId,
+    playerId: params.playerId,
+    itemId: params.id,
     fallbackPartyId: getSinglePartyId()
   });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/dm/player/:playerId/bulk-visibility", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.playerId);
-  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
-  const result = processDmInventoryBulkVisibility({ db: getDb(), io: req.app.locals.io, playerId: pid, body: req.body });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, dmBulkVisibilityBodySchema, req.body);
+  if (!body) return;
+  const result = processDmInventoryBulkVisibility({
+    db: getDb(),
+    io: req.app.locals.io,
+    playerId: params.playerId,
+    body
+  });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/dm/player/:playerId/bulk-delete", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.playerId);
-  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
-  const result = processDmInventoryBulkDelete({ db: getDb(), io: req.app.locals.io, playerId: pid, body: req.body });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, dmBulkDeleteBodySchema, req.body);
+  if (!body) return;
+  const result = processDmInventoryBulkDelete({
+    db: getDb(),
+    io: req.app.locals.io,
+    playerId: params.playerId,
+    body
+  });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/transfers", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
-  const result = processTransferCreate({ db: getDb(), io: req.app.locals.io, sess, body: req.body, nowFn: now });
+  const body = readValidInput(res, transferCreateBodySchema, req.body);
+  if (!body) return;
+  const result = processTransferCreate({ db: getDb(), io: req.app.locals.io, sess, body, nowFn: now });
   return res.status(result.status).json(result.body);
 });
 
@@ -177,11 +241,15 @@ inventoryRouter.get("/transfers/outbox", (req, res) => {
 inventoryRouter.post("/transfers/:id/accept", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
+  const params = readValidInput(res, transferIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, emptyBodySchema, req.body);
+  if (!body) return;
   const result = processTransferAccept({
     db: getDb(),
     io: req.app.locals.io,
     sess,
-    transferId: req.params.id,
+    transferId: params.id,
     nowFn: now
   });
   return res.status(result.status).json(result.body);
@@ -190,11 +258,15 @@ inventoryRouter.post("/transfers/:id/accept", (req, res) => {
 inventoryRouter.post("/transfers/:id/reject", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
+  const params = readValidInput(res, transferIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, emptyBodySchema, req.body);
+  if (!body) return;
   const result = processTransferReject({
     db: getDb(),
     io: req.app.locals.io,
     sess,
-    transferId: req.params.id,
+    transferId: params.id,
     nowFn: now
   });
   return res.status(result.status).json(result.body);
@@ -203,27 +275,37 @@ inventoryRouter.post("/transfers/:id/reject", (req, res) => {
 inventoryRouter.post("/transfers/:id/cancel", (req, res) => {
   const sess = requirePlayerSession(req, res, { at: now(), writable: true });
   if (!sess) return;
+  const params = readValidInput(res, transferIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, emptyBodySchema, req.body);
+  if (!body) return;
   const result = processTransferCancel({
     db: getDb(),
     io: req.app.locals.io,
     sess,
-    transferId: req.params.id,
+    transferId: params.id,
     nowFn: now
   });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.get("/transfers/dm", dmAuthMiddleware, (req, res) => {
-  const status = String(req.query?.status || "pending");
+  const query = readValidInput(res, dmTransfersQuerySchema, req.query);
+  if (!query) return;
+  const status = String(query.status || "pending");
   const result = listDmTransfers({ db: getDb(), status });
   return res.status(result.status).json(result.body);
 });
 
 inventoryRouter.post("/transfers/:id/dm/cancel", dmAuthMiddleware, (req, res) => {
+  const params = readValidInput(res, transferIdParamsSchema, req.params, { error: "invalid_id" });
+  if (!params) return;
+  const body = readValidInput(res, emptyBodySchema, req.body);
+  if (!body) return;
   const result = processDmTransferCancel({
     db: getDb(),
     io: req.app.locals.io,
-    transferId: req.params.id,
+    transferId: params.id,
     nowFn: now
   });
   return res.status(result.status).json(result.body);

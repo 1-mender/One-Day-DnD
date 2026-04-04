@@ -29,13 +29,9 @@ import {
   sessionMoveBodySchema,
   sessionParamsSchema
 } from "./ticketRouteSchemas.js";
+import { createRouteInputReader } from "../../routes/routeValidation.js";
 
-function requireValidRouteInput(res, schema, input) {
-  const parsed = parseTicketRouteInput(schema, input);
-  if (parsed.ok) return parsed.data;
-  res.status(400).json({ error: parsed.error });
-  return null;
-}
+const requireValidRouteInput = createRouteInputReader(parseTicketRouteInput);
 
 export function registerPlayerTicketRoutes(router, {
   arcadeSessions,

@@ -8,6 +8,15 @@ import { logEvent } from "../events.js";
 import { uploadsDir } from "../paths.js";
 import { getPlayerSessionFromRequest, getRequestPartyId, isDmRequest } from "../sessionAuth.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
+import {
+  bestiaryImagesQuerySchema,
+  bestiaryListQuerySchema,
+  bestiarySettingsToggleBodySchema,
+  monsterBodySchema,
+  monsterIdParamsSchema,
+  parseBestiaryRouteInput
+} from "./bestiaryRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const bestiaryRouter = express.Router();
 
@@ -104,7 +113,11 @@ function fetchImagesByMonsterIds(db, partyId, monsterIds, limitPer = 0) {
   return out;
 }
 
+const readValidInput = createRouteInputReader(parseBestiaryRouteInput);
+
 bestiaryRouter.get("/", (req, res) => {
+  const query = readValidInput(res, bestiaryListQuerySchema, req.query);
+  if (!query) return;
   const db = getDb();
   const ctx = resolveBestiaryReadContext(req, res);
   if (!ctx) return;
@@ -113,12 +126,12 @@ bestiaryRouter.get("/", (req, res) => {
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ enabled: false, items: [], nextCursor: null });
 
-  const q = String(req.query.q ?? "").trim();
-  const cursor = decodeCursor(req.query.cursor);
-  const limitRaw = Number(req.query.limit ?? DEFAULT_PAGE_LIMIT);
+  const q = String(query.q ?? "").trim();
+  const cursor = decodeCursor(query.cursor);
+  const limitRaw = Number(query.limit ?? DEFAULT_PAGE_LIMIT);
   const limit = Math.max(1, Math.min(MAX_PAGE_LIMIT, Number.isFinite(limitRaw) ? limitRaw : DEFAULT_PAGE_LIMIT));
-  const includeImages = String(req.query.includeImages || "0") === "1";
-  const imagesLimitRaw = Number(req.query.imagesLimit ?? 0);
+  const includeImages = String(query.includeImages || "0") === "1";
+  const imagesLimitRaw = Number(query.imagesLimit ?? 0);
   const imagesLimit = Math.max(0, Math.min(20, Number.isFinite(imagesLimitRaw) ? imagesLimitRaw : 0));
 
   const where = ["party_id=?"];
@@ -172,12 +185,14 @@ bestiaryRouter.get("/", (req, res) => {
 });
 
 bestiaryRouter.get("/images", (req, res) => {
+  const query = readValidInput(res, bestiaryImagesQuerySchema, req.query);
+  if (!query) return;
   const db = getDb();
   const ctx = resolveBestiaryReadContext(req, res);
   if (!ctx) return;
   const { isDm, partyId } = ctx;
   const settings = getPartySettings(partyId);
-  const ids = parseIdList(req.query.ids, MAX_IMAGE_IDS);
+  const ids = parseIdList(query.ids, MAX_IMAGE_IDS);
 
   if (!isDm && !settings.bestiary_enabled) return res.json({ items: [] });
   if (!ids.length) return res.json({ items: [] });
@@ -192,7 +207,7 @@ bestiaryRouter.get("/images", (req, res) => {
 
   if (!allowedIds.length) return res.json({ items: [] });
 
-  const limitPerRaw = Number(req.query.limitPer ?? 0);
+  const limitPerRaw = Number(query.limitPer ?? 0);
   const limitPer = Math.max(0, Math.min(20, Number.isFinite(limitPerRaw) ? limitPerRaw : 0));
 
   const map = fetchImagesByMonsterIds(db, partyId, allowedIds, limitPer);
@@ -207,7 +222,8 @@ bestiaryRouter.get("/images", (req, res) => {
 bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const b = req.body || {};
+  const b = readValidInput(res, monsterBodySchema, req.body);
+  if (!b) return;
   const name = String(b.name || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
   const t = now();
@@ -244,11 +260,14 @@ bestiaryRouter.post("/", dmAuthMiddleware, (req, res) => {
 bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const id = Number(req.params.id);
+  const params = readValidInput(res, monsterIdParamsSchema, req.params, { status: 404, error: "not_found" });
+  if (!params) return;
+  const id = Number(params.id);
   const cur = db.prepare("SELECT * FROM monsters WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
 
-  const b = req.body || {};
+  const b = readValidInput(res, monsterBodySchema, req.body);
+  if (!b) return;
   const name = String(b.name ?? cur.name).trim();
   if (!name) return res.status(400).json({ error: "name_required" });
 
@@ -286,7 +305,9 @@ bestiaryRouter.put("/:id", dmAuthMiddleware, (req, res) => {
 bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const id = Number(req.params.id);
+  const params = readValidInput(res, monsterIdParamsSchema, req.params, { status: 404, error: "not_found" });
+  if (!params) return;
+  const id = Number(params.id);
   const cur = db.prepare("SELECT id, name FROM monsters WHERE id=? AND party_id=?").get(id, partyId);
   if (!cur) return res.status(404).json({ error: "not_found" });
   const imageRows = db.prepare("SELECT filename FROM monster_images WHERE monster_id=?").all(cur.id);
@@ -327,7 +348,9 @@ bestiaryRouter.delete("/:id", dmAuthMiddleware, (req, res) => {
 });
 
 bestiaryRouter.post("/settings/toggle", dmAuthMiddleware, (req, res) => {
-  const enabled = !!req.body?.enabled;
+  const body = readValidInput(res, bestiarySettingsToggleBodySchema, req.body);
+  if (!body) return;
+  const enabled = !!body.enabled;
   const partyId = getSinglePartyId();
   setPartySettings(partyId, { bestiary_enabled: enabled ? 1 : 0 });
   emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId });
