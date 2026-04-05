@@ -19,6 +19,25 @@ import {
 import { resolveArcadeModeRules } from "./domain/arcadeModeRules.js";
 
 const fallbackGames = [];
+const LAST_GAME_STORAGE_KEY = "fish_last_game";
+
+function readLastGameKey() {
+  if (typeof window === "undefined") return "";
+  try {
+    return window.localStorage?.getItem(LAST_GAME_STORAGE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function writeLastGameKey(gameKey) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage?.setItem(LAST_GAME_STORAGE_KEY, gameKey);
+  } catch {
+    // Ignore storage write failures in private/restricted browser modes.
+  }
+}
 
 export function useArcadeController() {
   const toast = useToast();
@@ -52,10 +71,7 @@ export function useArcadeController() {
   const prevQuestKey = useRef(null);
   const questInit = useRef(false);
   const [selectedModes, setSelectedModes] = useState({});
-  const [lastGameKey, setLastGameKey] = useState(() => {
-    if (typeof window === "undefined") return "";
-    return localStorage.getItem("fish_last_game") || "";
-  });
+  const [lastGameKey, setLastGameKey] = useState(() => readLastGameKey());
 
   const games = useMemo(
     () => (catalog?.length ? catalog : fallbackGames).map((game) => localizeGameCard(game)),
@@ -181,10 +197,8 @@ export function useArcadeController() {
   function openGame(gameKey) {
     setActiveGameKey(gameKey);
     setActiveModeKey(selectedModes[gameKey] || "");
-    if (typeof window !== "undefined") {
-      localStorage.setItem("fish_last_game", gameKey);
-      setLastGameKey(gameKey);
-    }
+    writeLastGameKey(gameKey);
+    setLastGameKey(gameKey);
   }
 
   function closeGame() {

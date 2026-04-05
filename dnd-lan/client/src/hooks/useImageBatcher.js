@@ -1,10 +1,11 @@
-import { useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { api } from "../api.js";
 
 // Simple batching hook: collect ids, debounce, call api.bestiaryImagesBatch and invoke onResult
 export default function useImageBatcher(onResult, { delay = 80 } = {}) {
   const pending = useRef(new Set());
   const timer = useRef(null);
+  const mounted = useRef(true);
 
   const flush = useCallback(async (limitPer = 1) => {
     if (timer.current) {
@@ -16,6 +17,7 @@ export default function useImageBatcher(onResult, { delay = 80 } = {}) {
     if (!ids.length) return;
     try {
       const r = await api.bestiaryImagesBatch(ids, { limitPer });
+      if (!mounted.current) return;
       // support both legacy array shape and grouped object shape
       if (!r) return;
       if (Array.isArray(r.items)) {
@@ -37,6 +39,15 @@ export default function useImageBatcher(onResult, { delay = 80 } = {}) {
     if (timer.current) return;
     timer.current = setTimeout(() => flush(limitPer), delay);
   }, [delay, flush]);
+
+  useEffect(() => () => {
+    mounted.current = false;
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    pending.current.clear();
+  }, []);
 
   return { queue, flush };
 }
