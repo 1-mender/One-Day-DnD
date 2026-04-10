@@ -28,6 +28,8 @@ export const profileUpsertBodySchema = z.object({
   stats: z.unknown().optional(),
   bio: z.unknown().optional(),
   avatarUrl: z.unknown().optional(),
+  publicFields: z.unknown().optional(),
+  publicBlurb: z.unknown().optional(),
   editableFields: z.unknown().optional(),
   allowRequests: z.unknown().optional()
 }).passthrough();

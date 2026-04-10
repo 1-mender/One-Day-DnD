@@ -14,6 +14,7 @@ process.env.DM_COOKIE = "dm_token_test";
 const { getDb, initDb, getSinglePartyId } = await import("../src/db.js");
 const { signDmToken, createDmUser } = await import("../src/auth.js");
 const { profileRouter } = await import("../src/routes/profile.js");
+const { playersRouter } = await import("../src/routes/players.js");
 const { now } = await import("../src/util.js");
 
 initDb();
@@ -33,6 +34,7 @@ app.locals.io = {
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 app.use("/api", profileRouter);
+app.use("/api/players", playersRouter);
 
 const server = app.listen(0);
 const base = `http://127.0.0.1:${server.address().port}`;
@@ -96,6 +98,8 @@ test("DM can create profile and player can patch allowed fields", async () => {
       level: 2,
       stats: { str: 10, dex: 14 },
       bio: "Backstory",
+      publicFields: ["classRole", "level", "race", "publicBlurb"],
+      publicBlurb: "Scout and lockpicker",
       editableFields: ["bio"],
       allowRequests: true
     }
@@ -103,6 +107,8 @@ test("DM can create profile and player can patch allowed fields", async () => {
 
   assert.equal(createRes.res.status, 200);
   assert.equal(createRes.data.profile.characterName, "Alice");
+  assert.deepEqual(createRes.data.profile.publicFields, ["classRole", "level", "race", "publicBlurb"]);
+  assert.equal(createRes.data.profile.publicBlurb, "Scout and lockpicker");
 
   const token = createSession(playerId);
 
@@ -315,4 +321,77 @@ test("Player cannot read another player's profile", async () => {
   });
   assert.equal(res.res.status, 403);
   assert.equal(res.data.error, "forbidden");
+});
+
+test("Other player can read only public profile projection", async () => {
+  const playerA = createPlayer("Public A");
+  const playerB = createPlayer("Public B");
+  const dmHeaders = { cookie: dmCookie() };
+
+  await api(`/api/players/${playerA}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: {
+      characterName: "Aria",
+      classRole: "Ranger",
+      level: 4,
+      stats: { race: "elf", str: 10 },
+      bio: "Private notes",
+      avatarUrl: "/uploads/aria.png",
+      publicFields: ["classRole", "level", "race", "publicBlurb"],
+      publicBlurb: "Следопыт с севера"
+    }
+  });
+
+  const tokenB = createSession(playerB);
+  const res = await api(`/api/players/${playerA}/public-profile`, {
+    method: "GET",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(res.res.status, 200);
+  assert.deepEqual(res.data.profile, {
+    characterName: "Aria",
+    avatarUrl: "/uploads/aria.png",
+    classRole: "Ranger",
+    level: 4,
+    race: "elf",
+    publicBlurb: "Следопыт с севера"
+  });
+});
+
+test("Roster returns public profile projection without private fields", async () => {
+  const playerA = createPlayer("Roster A");
+  const playerB = createPlayer("Roster B");
+  const dmHeaders = { cookie: dmCookie() };
+
+  await api(`/api/players/${playerA}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: {
+      characterName: "Aria",
+      classRole: "Ranger",
+      level: 4,
+      stats: { race: "elf", str: 18 },
+      bio: "Private backstory",
+      publicFields: ["classRole", "race"],
+      publicBlurb: "Should stay hidden"
+    }
+  });
+
+  const tokenB = createSession(playerB);
+  const res = await api("/api/players", {
+    method: "GET",
+    headers: { "x-player-token": tokenB }
+  });
+  assert.equal(res.res.status, 200);
+
+  const item = res.data.items.find((entry) => entry.id === playerA);
+  assert.deepEqual(item.publicProfile, {
+    characterName: "Aria",
+    classRole: "Ranger",
+    race: "elf"
+  });
+  assert.equal("bio" in item.publicProfile, false);
+  assert.equal("stats" in item.publicProfile, false);
+  assert.equal("publicBlurb" in item.publicProfile, false);
 });

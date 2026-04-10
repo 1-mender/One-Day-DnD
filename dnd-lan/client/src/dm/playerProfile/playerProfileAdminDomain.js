@@ -7,6 +7,13 @@ export const DM_PROFILE_EDITABLE_OPTIONS = [
   { key: "avatarUrl", label: "Аватар" }
 ];
 
+export const DM_PROFILE_PUBLIC_OPTIONS = [
+  { key: "classRole", label: "Класс / роль" },
+  { key: "level", label: "Уровень" },
+  { key: "race", label: "Раса" },
+  { key: "publicBlurb", label: "Публичное описание" }
+];
+
 export const DM_PROFILE_FIELD_LABELS = {
   characterName: "Имя",
   classRole: "Класс/роль",
@@ -23,6 +30,8 @@ export const EMPTY_DM_PROFILE_FORM = {
   stats: {},
   bio: "",
   avatarUrl: "",
+  publicFields: [],
+  publicBlurb: "",
   editableFields: [],
   allowRequests: false
 };
@@ -88,6 +97,8 @@ function snapshotFromForm(form) {
     stats: sortObjectKeys(form.stats || {}),
     bio: String(form.bio || ""),
     avatarUrl: String(form.avatarUrl || ""),
+    publicFields: [...(form.publicFields || [])].sort(),
+    publicBlurb: String(form.publicBlurb || ""),
     editableFields: [...(form.editableFields || [])].sort(),
     allowRequests: !!form.allowRequests
   };
@@ -102,6 +113,8 @@ function snapshotFromProfile(profile) {
     stats: sortObjectKeys(profile.stats || {}),
     bio: String(profile.bio || ""),
     avatarUrl: String(profile.avatarUrl || ""),
+    publicFields: [...(profile.publicFields || [])].sort(),
+    publicBlurb: String(profile.publicBlurb || ""),
     editableFields: [...(profile.editableFields || [])].sort(),
     allowRequests: !!profile.allowRequests
   };

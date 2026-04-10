@@ -294,6 +294,24 @@ const MIGRATIONS = [
     up(database) {
       rebuildItemTransfersWithNullableItemFk(database);
     }
+  },
+  {
+    version: 15,
+    name: "character_profiles_public_fields",
+    up(database) {
+      addColumnIfMissing(
+        database,
+        "character_profiles",
+        "public_fields",
+        "ALTER TABLE character_profiles ADD COLUMN public_fields TEXT NOT NULL DEFAULT '[]';"
+      );
+      addColumnIfMissing(
+        database,
+        "character_profiles",
+        "public_blurb",
+        "ALTER TABLE character_profiles ADD COLUMN public_blurb TEXT;"
+      );
+    }
   }
 ];
 

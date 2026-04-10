@@ -6,6 +6,7 @@ import {
   DEFAULT_PRESET_ACCESS,
   EDITABLE_FIELDS,
   LIMITS,
+  mapPublicProfile,
   mapProfile,
   normalizeEditableFields,
   normalizePresetAccess,
@@ -109,6 +110,24 @@ profileRouter.get("/players/:id/profile", (req, res) => {
   return res.json({ profile: mapProfile(row) });
 });
 
+profileRouter.get("/players/:id/public-profile", (req, res) => {
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const playerId = Number(params.id);
+
+  const dm = getDmPayloadFromRequest(req);
+  const me = getPlayerContextFromRequest(req, { at: now() });
+  if (!dm && !me) return res.status(403).json({ error: "forbidden" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, display_name as displayName, status, last_seen as lastSeen FROM players WHERE id=? AND banned=0").get(playerId);
+  if (!player) return res.status(404).json({ error: "not_found" });
+
+  const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
+  if (!row) return res.json({ notCreated: true, profile: null });
+  return res.json({ profile: mapPublicProfile(row) });
+});
+
 profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
   const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
   if (!params) return;
@@ -128,7 +147,7 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
     db.prepare(
       `UPDATE character_profiles
        SET character_name=?, class_role=?, level=?, stats=?, bio=?, avatar_url=?,
-           editable_fields=?, allow_requests=?, updated_at=?
+           public_fields=?, public_blurb=?, editable_fields=?, allow_requests=?, updated_at=?
        WHERE player_id=?`
     ).run(
       payload.character_name,
@@ -137,6 +156,8 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
       payload.stats,
       payload.bio,
       payload.avatar_url,
+      payload.public_fields,
+      payload.public_blurb,
       payload.editable_fields,
       payload.allow_requests,
       t,
@@ -147,8 +168,8 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
     db.prepare(
       `INSERT INTO character_profiles(
         player_id, character_name, class_role, level, stats, bio, avatar_url,
-        editable_fields, allow_requests, created_by, created_at, updated_at
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`
+        public_fields, public_blurb, editable_fields, allow_requests, created_by, created_at, updated_at
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).run(
       playerId,
       payload.character_name,
@@ -157,6 +178,8 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
       payload.stats,
       payload.bio,
       payload.avatar_url,
+      payload.public_fields,
+      payload.public_blurb,
       payload.editable_fields,
       payload.allow_requests,
       createdBy,
@@ -381,8 +404,8 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
       db.prepare(
         `INSERT INTO character_profiles(
           player_id, character_name, class_role, level, stats, bio, avatar_url,
-          editable_fields, allow_requests, created_by, created_at, updated_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`
+          public_fields, public_blurb, editable_fields, allow_requests, created_by, created_at, updated_at
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         reqRow.player_id,
         insertPayload.character_name || "",
@@ -391,6 +414,8 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
         insertPayload.stats || "{}",
         insertPayload.bio || "",
         insertPayload.avatar_url || "",
+        insertPayload.public_fields || "[]",
+        insertPayload.public_blurb || "",
         base.editable_fields,
         base.allow_requests,
         resolvedBy,

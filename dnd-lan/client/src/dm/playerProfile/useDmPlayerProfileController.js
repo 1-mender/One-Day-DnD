@@ -50,6 +50,8 @@ export function useDmPlayerProfileController() {
       stats: nextProfile?.stats || {},
       bio: nextProfile?.bio || "",
       avatarUrl: nextProfile?.avatarUrl || "",
+      publicFields: nextProfile?.publicFields || [],
+      publicBlurb: nextProfile?.publicBlurb || "",
       editableFields: nextProfile?.editableFields || [],
       allowRequests: !!nextProfile?.allowRequests
     });
@@ -148,6 +150,8 @@ export function useDmPlayerProfileController() {
         ...form,
         level: form.level === "" ? null : Number(form.level),
         stats: form.stats || {},
+        publicFields: form.publicFields || [],
+        publicBlurb: form.publicBlurb || "",
         editableFields: form.editableFields || [],
         allowRequests: !!form.allowRequests
       };
@@ -223,6 +227,16 @@ export function useDmPlayerProfileController() {
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return { ...prev, editableFields: Array.from(next) };
+    });
+  }, [readOnly]);
+
+  const togglePublicField = useCallback((key) => {
+    if (readOnly) return;
+    setForm((prev) => {
+      const next = new Set(prev.publicFields || []);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return { ...prev, publicFields: Array.from(next) };
     });
   }, [readOnly]);
 
@@ -305,6 +319,7 @@ export function useDmPlayerProfileController() {
     showRequestsTab,
     tab,
     toggleEditable,
+    togglePublicField,
     updatedLabel,
     uploading
   };

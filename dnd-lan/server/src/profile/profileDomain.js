@@ -9,11 +9,19 @@ export const EDITABLE_FIELDS = new Set([
   "avatarUrl"
 ]);
 
+export const PUBLIC_PROFILE_FIELDS = new Set([
+  "classRole",
+  "level",
+  "race",
+  "publicBlurb"
+]);
+
 export const LIMITS = {
   name: 80,
   classRole: 80,
   avatarUrl: 512,
   bio: 2000,
+  publicBlurb: 280,
   reason: 500,
   dmNote: 500,
   statKey: 24,
@@ -37,6 +45,7 @@ export const DEFAULT_PRESET_ACCESS = {
 export function mapProfile(row) {
   const stats = jsonParse(row.stats, {});
   const editableFields = jsonParse(row.editable_fields, []);
+  const publicFields = normalizePublicFields(jsonParse(row.public_fields, []));
   return {
     playerId: row.player_id,
     characterName: row.character_name || "",
@@ -45,12 +54,42 @@ export function mapProfile(row) {
     stats: (stats && typeof stats === "object" && !Array.isArray(stats)) ? stats : {},
     bio: row.bio || "",
     avatarUrl: row.avatar_url || "",
+    publicFields,
+    publicBlurb: row.public_blurb || "",
     editableFields: Array.isArray(editableFields) ? editableFields : [],
     allowRequests: !!row.allow_requests,
     createdBy: row.created_by || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+export function mapPublicProfile(row) {
+  if (!row) return null;
+  const rawStats = row.stats ?? row.profile_stats ?? {};
+  const stats = typeof rawStats === "string" ? jsonParse(rawStats, {}) : rawStats;
+  const rawPublicFields = row.public_fields ?? row.publicFields ?? [];
+  const publicFields = normalizePublicFields(
+    Array.isArray(rawPublicFields) ? rawPublicFields : jsonParse(rawPublicFields, [])
+  );
+  const characterName = String(row.character_name ?? row.characterName ?? "").trim();
+  const avatarUrl = String(row.avatar_url ?? row.avatarUrl ?? "").trim();
+  const classRole = String(row.class_role ?? row.classRole ?? "").trim();
+  const rawLevel = row.level;
+  const publicBlurb = String(row.public_blurb ?? row.publicBlurb ?? "").trim();
+  const race = String(stats?.race || "").trim();
+
+  const profile = {};
+  if (characterName) profile.characterName = characterName;
+  if (avatarUrl) profile.avatarUrl = avatarUrl;
+  if (publicFields.includes("classRole") && classRole) profile.classRole = classRole;
+  if (publicFields.includes("level") && rawLevel != null && rawLevel !== "") {
+    const level = Number(rawLevel);
+    if (Number.isFinite(level)) profile.level = level;
+  }
+  if (publicFields.includes("race") && race) profile.race = race;
+  if (publicFields.includes("publicBlurb") && publicBlurb) profile.publicBlurb = publicBlurb;
+  return profile;
 }
 
 function normalizeStats(value) {
@@ -62,6 +101,17 @@ function normalizeStats(value) {
 export function normalizeEditableFields(value) {
   if (!Array.isArray(value)) return [];
   return value.map((v) => String(v)).filter((v) => EDITABLE_FIELDS.has(v));
+}
+
+export function normalizePublicFields(value) {
+  if (!Array.isArray(value)) return [];
+  const next = [];
+  for (const field of value) {
+    const key = String(field || "").trim();
+    if (!PUBLIC_PROFILE_FIELDS.has(key) || next.includes(key)) continue;
+    next.push(key);
+  }
+  return next;
 }
 
 export function validateTextLen(value, max, errorCode) {
@@ -145,6 +195,12 @@ export function buildProfilePayload(body, existing) {
   }
   const bio = input.bio ?? existing?.bio ?? "";
   const avatarUrl = input.avatarUrl ?? existing?.avatar_url ?? "";
+  const publicFields = input.publicFields !== undefined
+    ? normalizePublicFields(input.publicFields)
+    : normalizePublicFields(jsonParse(existing?.public_fields, []));
+  const publicBlurb = input.publicBlurb !== undefined
+    ? String(input.publicBlurb || "").trim()
+    : String(existing?.public_blurb || "");
   const editableFields = input.editableFields !== undefined
     ? normalizeEditableFields(input.editableFields)
     : normalizeEditableFields(jsonParse(existing?.editable_fields, []));
@@ -154,6 +210,7 @@ export function buildProfilePayload(body, existing) {
     || validateTextLen(classRole, LIMITS.classRole, "class_role_too_long")
     || validateTextLen(avatarUrl, LIMITS.avatarUrl, "avatar_url_too_long")
     || validateTextLen(bio, LIMITS.bio, "bio_too_long")
+    || validateTextLen(publicBlurb, LIMITS.publicBlurb, "public_blurb_too_long")
     || validateStats(statsObj);
   if (error) return { error };
 
@@ -164,6 +221,8 @@ export function buildProfilePayload(body, existing) {
     stats: JSON.stringify(statsObj || {}),
     bio: String(bio || ""),
     avatar_url: String(avatarUrl || ""),
+    public_fields: JSON.stringify(publicFields || []),
+    public_blurb: publicBlurb,
     editable_fields: JSON.stringify(editableFields || []),
     allow_requests: allowRequests ? 1 : 0
   };

@@ -19,8 +19,14 @@ export default function PlayerDossierCard({
   selected = false,
   onClick
 }) {
-  const initial = (player.displayName || "?").slice(0, 1).toUpperCase();
-  const avatar = player.avatarUrl || null;
+  const publicProfile = player.publicProfile || null;
+  const characterName = publicProfile?.characterName || "";
+  const primaryName = characterName || player.displayName || "?";
+  const secondaryName = characterName && player.displayName && characterName !== player.displayName
+    ? player.displayName
+    : "";
+  const initial = primaryName.slice(0, 1).toUpperCase();
+  const avatar = publicProfile?.avatarUrl || player.avatarUrl || null;
   const weight = Number(player.inventoryWeight || 0);
   const limit = Number(player.inventoryLimit || 0);
   const weightLabel = Number.isFinite(limit) && limit > 0
@@ -50,7 +56,7 @@ export default function PlayerDossierCard({
         <div className="dossier-head">
           <div className="dossier-header-row">
             <div className="dossier-name">
-              <span>{player.displayName}</span>
+              <span>{primaryName}</span>
               {player.inventoryOverLimit ? (
                 <span
                   className="dossier-overweight"
@@ -69,6 +75,19 @@ export default function PlayerDossierCard({
           </div>
         </div>
         <div className="small dossier-last-seen" title={player.lastSeen || ""}>{lastSeenLabel}</div>
+        {secondaryName ? <div className="small dossier-last-seen">@{secondaryName}</div> : null}
+        {publicProfile?.classRole || publicProfile?.level != null || publicProfile?.race ? (
+          <div className="small">
+            {[
+              publicProfile?.classRole || "",
+              publicProfile?.level != null ? `lvl ${publicProfile.level}` : "",
+              publicProfile?.race ? `race: ${publicProfile.race}` : ""
+            ].filter(Boolean).join(" • ")}
+          </div>
+        ) : null}
+        {publicProfile?.publicBlurb ? (
+          <div className="small bio-text u-pre-wrap">{publicProfile.publicBlurb}</div>
+        ) : null}
         <div className="dossier-flags">
           {player.profileCreated ? (
             <span className="badge ok">ПРОФИЛЬ</span>

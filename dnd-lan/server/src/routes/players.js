@@ -5,6 +5,7 @@ import { now, jsonParse } from "../util.js";
 import { logEvent } from "../events.js";
 import { LIMITS } from "../limits.js";
 import { getInventoryLimitFromStats } from "../inventoryLimit.js";
+import { mapPublicProfile } from "../profile/profileDomain.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
 
@@ -23,14 +24,25 @@ playersRouter.get("/", (req, res) => {
            p.display_name as displayName,
            p.status,
            p.last_seen as lastSeen,
-           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated,
+           cp.character_name,
+           cp.class_role,
+           cp.level,
+           cp.stats,
+           cp.avatar_url,
+           cp.public_fields,
+           cp.public_blurb
     FROM players p
     LEFT JOIN character_profiles cp ON cp.player_id = p.id
     WHERE p.party_id=? AND p.banned=0
     ORDER BY p.id
   `
   ).all(partyId);
-  res.json({ items: rows });
+  const items = rows.map((row) => ({
+    ...row,
+    publicProfile: Number(row.profileCreated) ? mapPublicProfile(row) : null
+  }));
+  res.json({ items });
 });
 
 playersRouter.get("/me", (req, res) => {

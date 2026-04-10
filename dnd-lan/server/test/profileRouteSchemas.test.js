@@ -27,9 +27,14 @@ test("profile route schemas coerce params and query values", () => {
 });
 
 test("profile route schemas accept business-validation payloads without replacing domain errors", () => {
-  assert.deepEqual(parseProfileRouteInput(profileUpsertBodySchema, { stats: "nope", bio: 123 }), {
+  assert.deepEqual(parseProfileRouteInput(profileUpsertBodySchema, {
+    stats: "nope",
+    bio: 123,
+    publicFields: ["classRole", "level"],
+    publicBlurb: 123
+  }), {
     ok: true,
-    data: { stats: "nope", bio: 123 }
+    data: { stats: "nope", bio: 123, publicFields: ["classRole", "level"], publicBlurb: 123 }
   });
   assert.deepEqual(parseProfileRouteInput(playerProfileRequestCreateBodySchema, {
     proposedChanges: { bio: "Update" },

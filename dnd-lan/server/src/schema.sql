@@ -148,6 +148,8 @@ CREATE TABLE IF NOT EXISTS character_profiles (
   stats TEXT NOT NULL DEFAULT '{}',
   bio TEXT,
   avatar_url TEXT,
+  public_fields TEXT NOT NULL DEFAULT '[]',
+  public_blurb TEXT,
   editable_fields TEXT NOT NULL DEFAULT '[]',
   allow_requests INTEGER NOT NULL DEFAULT 0,
   created_by TEXT,

@@ -2,6 +2,7 @@ import { request } from "./client.js";
 
 export const profileApi = {
   playerProfile: (playerId) => request(`/api/players/${playerId}/profile`, { method: "GET" }),
+  playerPublicProfile: (playerId) => request(`/api/players/${playerId}/public-profile`, { method: "GET" }),
   dmUpdatePlayerProfile: (playerId, profile) =>
     request(`/api/players/${playerId}/profile`, { method: "PUT", body: JSON.stringify(profile) }),
   playerPatchProfile: (playerId, patch) =>

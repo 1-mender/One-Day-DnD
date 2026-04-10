@@ -4,6 +4,7 @@ import { EmptyState } from "../../../foundation/primitives/index.js";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import {
   DM_PROFILE_EDITABLE_OPTIONS,
+  DM_PROFILE_PUBLIC_OPTIONS,
   DM_STAT_PRESETS
 } from "../playerProfileAdminDomain.js";
 import {
@@ -29,6 +30,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
     save,
     setForm,
     toggleEditable,
+    togglePublicField,
     uploading
   } = controller;
 
@@ -168,6 +170,49 @@ export default function DMPlayerProfileProfileTab({ controller }) {
             </div>
             <div className="small bio-text u-mt-12 u-pre-wrap">
               {form.bio || "Биография не заполнена"}
+            </div>
+          </div>
+
+          <div className="paper-note">
+            <div className="title">Публичная карточка</div>
+            <div className="small note-hint u-mt-6">
+              Имя персонажа и аватар видны на карточке всегда. Остальные поля можно открыть отдельно.
+            </div>
+            <div className="list u-mt-10">
+              {DM_PROFILE_PUBLIC_OPTIONS.map((option) => (
+                <label key={option.key} className="row">
+                  <input
+                    type="checkbox"
+                    checked={(form.publicFields || []).includes(option.key)}
+                    onChange={() => togglePublicField(option.key)}
+                    disabled={readOnly}
+                    className="u-check-18"
+                  />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+              <textarea
+                value={form.publicBlurb}
+                onChange={(event) => setForm({ ...form, publicBlurb: event.target.value })}
+                rows={4}
+                maxLength={280}
+                placeholder="Короткое публичное описание для других игроков"
+                aria-label="Публичное описание"
+                disabled={readOnly}
+                style={INPUT_STYLE}
+              />
+              <div className="small">{String(form.publicBlurb || "").length}/280</div>
+            </div>
+            <div className="paper-note u-mt-10">
+              <div className="title">Превью карточки</div>
+              <div className="u-title-18 u-mt-8">{form.characterName || "Без имени"}</div>
+              <div className="small u-mt-6">{form.classRole || "Класс / роль"}{form.level ? ` • lvl ${form.level}` : ""}</div>
+              {(form.publicFields || []).includes("race") ? (
+                <div className="small u-mt-6">Раса: {getRaceValue(form.stats) || "human"}</div>
+              ) : null}
+              {(form.publicFields || []).includes("publicBlurb") && form.publicBlurb ? (
+                <div className="small bio-text u-mt-8 u-pre-wrap">{form.publicBlurb}</div>
+              ) : null}
             </div>
           </div>
 
