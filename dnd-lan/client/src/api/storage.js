@@ -61,11 +61,17 @@ if (playerTokenMemory) {
 
 export const storage = {
   getPlayerToken: () => playerTokenMemory,
-  setPlayerToken: (t, _scope = "memory") => {
+  setPlayerToken: (t, scope = "memory") => {
     playerTokenMemory = String(t || "");
-    if (!playerTokenMemory) {
-      removeStorageItem(sessionStore, PLAYER_TOKEN_KEY);
-      removeStorageItem(localStore, PLAYER_TOKEN_KEY);
+    removeStorageItem(sessionStore, PLAYER_TOKEN_KEY);
+    removeStorageItem(localStore, PLAYER_TOKEN_KEY);
+    if (!playerTokenMemory) return;
+    if (scope === "session") {
+      setStorageItem(sessionStore, PLAYER_TOKEN_KEY, playerTokenMemory);
+      return;
+    }
+    if (scope === "local") {
+      setStorageItem(localStore, PLAYER_TOKEN_KEY, playerTokenMemory);
     }
   },
   clearPlayerToken: () => {

@@ -15,28 +15,36 @@ export default function Join() {
   const [joinCode, setJoinCode] = useState("");
   const [info, setInfo] = useState(null);
   const [err, setErr] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const readOnly = useReadOnly();
 
   useEffect(() => {
     api.serverInfo().then(setInfo).catch((e) => setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED)));
     api.me()
       .then(() => nav("/app", { replace: true }))
-      .catch(() => {});
+      .catch(() => {
+        if (storage.getJoinRequestId()) {
+          nav("/waiting", { replace: true });
+        }
+      });
   }, [nav]);
 
   async function submit(e) {
     e.preventDefault();
+    if (submitting) return;
     setErr("");
     if (readOnly) {
       setErr(formatError(ERROR_CODES.READ_ONLY));
       return;
     }
+    setSubmitting(true);
     try {
       const r = await api.joinRequest(displayName, joinCode);
       storage.setJoinRequestId(r.joinRequestId);
       nav("/waiting", { replace: true });
     } catch (e2) {
       setErr(formatError(e2));
+      setSubmitting(false);
     }
   }
 
@@ -97,7 +105,7 @@ export default function Join() {
                 )}
                 {readOnly ? <div className="badge warn">{t("join.readOnly")}</div> : null}
                 {err && <div className="badge off">{t("common.error")}: {err}</div>}
-                <button className="btn" type="submit" disabled={readOnly}>{t("join.submit")}</button>
+                <button className="btn" type="submit" disabled={readOnly || submitting}>{t("join.submit")}</button>
               </form>
             </div>
           </div>

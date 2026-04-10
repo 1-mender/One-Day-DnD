@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, storage } from "../api.js";
 import VintageShell from "../components/vintage/VintageShell.jsx";
@@ -12,18 +12,25 @@ export default function Waiting() {
   const [checking, setChecking] = useState(false);
   const [netIssue, setNetIssue] = useState("");
   const { socket } = useSocket();
+  const openingSessionRef = useRef(false);
 
   const checkSession = useCallback(async () => {
     if (status !== "waiting") return;
     setChecking(true);
     setNetIssue("");
     try {
+      if (storage.getPlayerToken()) {
+        await api.playerSessionStart();
+      }
       await api.me();
+      storage.clearPlayerToken();
       storage.clearJoinRequestId();
       nav("/app", { replace: true });
     } catch (e) {
       const code = String(e?.message || "");
-      if (code !== "not_authenticated") {
+      if (code === "session_invalid" || code === "player_token_required") {
+        storage.clearPlayerToken();
+      } else if (code !== "not_authenticated") {
         setNetIssue(t("waiting.networkIssue"));
       }
     } finally {
@@ -34,19 +41,26 @@ export default function Waiting() {
   useEffect(() => {
     if (!socket) return () => {};
     const onApproved = async (p) => {
+      if (openingSessionRef.current) return;
+      openingSessionRef.current = true;
       try {
-        await api.playerSessionStart(p?.playerToken);
+        storage.setPlayerToken(p?.playerToken, "session");
+        await api.playerSessionStart();
+        storage.clearPlayerToken();
         storage.clearJoinRequestId();
         setNetIssue("");
         setStatus("approved");
         nav("/app", { replace: true });
       } catch {
-        setStatus("rejected");
-        setMsg(t("waiting.sessionOpenFailed"));
+        setNetIssue(t("waiting.sessionOpenFailed"));
+        checkSession().catch(() => {});
+      } finally {
+        openingSessionRef.current = false;
       }
     };
     const onRejected = (p) => {
       setStatus("rejected");
+      storage.clearPlayerToken();
       storage.clearJoinRequestId();
       setMsg(p?.banned ? t("waiting.rejectedBanned") : t("waiting.rejected"));
     };
@@ -56,7 +70,7 @@ export default function Waiting() {
       socket.off("player:approved", onApproved);
       socket.off("player:rejected", onRejected);
     };
-  }, [nav, socket]);
+  }, [checkSession, nav, socket]);
 
   useEffect(() => {
     checkSession().catch(() => {});
@@ -71,6 +85,7 @@ export default function Waiting() {
   }, [checkSession, status]);
 
   const leaveWaiting = useCallback(() => {
+    storage.clearPlayerToken();
     storage.clearJoinRequestId();
     nav("/", { replace: true });
   }, [nav]);

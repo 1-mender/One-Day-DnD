@@ -10,7 +10,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 process.env.PLAYER_NAME_MAX_LEN = "3";
 process.env.JOIN_CODE_MAX_LEN = "3";
 
-const { initDb } = await import("../src/db.js");
+const { getDb, initDb } = await import("../src/db.js");
 const { partyRouter } = await import("../src/routes/party.js");
 
 initDb();
@@ -52,4 +52,16 @@ test("join-request accepts valid input", async () => {
   const out = await api({ displayName: "ok", joinCode: "ok" });
   assert.equal(out.res.status, 200);
   assert.equal(out.data.ok, true);
+});
+
+test("join-request reuses existing pending request for same player and ip", async () => {
+  const first = await api({ displayName: "sam", joinCode: "ok" });
+  const second = await api({ displayName: "sam", joinCode: "ok" });
+
+  assert.equal(first.res.status, 200);
+  assert.equal(second.res.status, 200);
+  assert.equal(second.data.joinRequestId, first.data.joinRequestId);
+
+  const row = getDb().prepare("SELECT COUNT(*) AS c FROM join_requests WHERE display_name=?").get("sam");
+  assert.equal(Number(row?.c || 0), 1);
 });

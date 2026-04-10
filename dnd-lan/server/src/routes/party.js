@@ -50,6 +50,13 @@ partyRouter.post("/join-request", joinLimiter, (req, res) => {
 
   const id = randId(20);
   const ua = String(req.headers["user-agent"] || "").slice(0, LIMITS.userAgent);
+  const existingRequest = ip
+    ? db.prepare("SELECT id FROM join_requests WHERE party_id=? AND display_name=? AND ip=? ORDER BY created_at DESC LIMIT 1")
+      .get(party.id, name, ip)
+    : null;
+  if (existingRequest?.id) {
+    return res.json({ ok: true, joinRequestId: existingRequest.id });
+  }
   db.prepare("INSERT INTO join_requests(id, party_id, display_name, ip, user_agent, created_at) VALUES(?,?,?,?,?,?)")
     .run(id, party.id, name, ip, ua, now());
 
