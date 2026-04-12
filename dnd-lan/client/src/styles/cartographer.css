@@ -4326,6 +4326,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .players-toolbar{
   gap: 14px;
   margin-bottom: 8px;
+  padding: 14px;
 }
 
 .players-toolbar-title{
@@ -4338,6 +4339,29 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .players-toolbar-row{
   flex: 1;
   align-items: center;
+}
+
+.players-filterbar{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.players-filter-chip{
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(118, 100, 70, 0.18);
+  background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(242, 234, 219, 0.9));
+  color: var(--map-text);
+  font-weight: 800;
+  box-shadow: var(--tf-shadow-soft);
+}
+
+.players-filter-chip.active{
+  border-color: rgba(95, 125, 78, 0.36);
+  background: linear-gradient(180deg, rgba(244, 249, 238, 0.98), rgba(222, 233, 211, 0.96));
+  color: #314028;
 }
 
 .players-toolbar-row input{
@@ -4465,6 +4489,17 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: var(--tf-shadow);
 }
 
+.tf-roster-card.status-offline{
+  background:
+    linear-gradient(180deg, rgba(250, 245, 239, 0.92), rgba(231, 224, 211, 0.9));
+  opacity: 0.82;
+}
+
+.tf-roster-card.status-offline .dossier-last-seen,
+.tf-roster-card.status-offline .small{
+  color: #857661;
+}
+
 .tf-roster-card.selected{
   border-color: rgba(95, 125, 78, 0.36);
   box-shadow:
@@ -4478,7 +4513,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   gap: 10px;
 }
 
-.tf-roster-card .polaroid-frame{
+.tf-roster-card .polaroid{
   box-shadow: var(--tf-shadow-soft);
 }
 
@@ -4557,6 +4592,15 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   line-height: 1.3;
 }
 
+.dossier-preview{
+  color: var(--map-muted);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .dossier-actions{
   min-width: 140px;
   display: flex;
@@ -4573,6 +4617,123 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   font-size: 20px;
 }
 
+.player-public-profile-modal{
+  width: min(680px, calc(100vw - 32px));
+}
+
+.player-public-profile-modal-body{
+  gap: 12px;
+  padding: 18px;
+  position: relative;
+}
+
+.player-public-profile{
+  display: grid;
+  gap: 12px;
+}
+
+.player-public-profile-close{
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  min-width: 52px;
+  min-height: 52px;
+  border-radius: 18px;
+}
+
+.player-public-profile-sheet{
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  padding: 22px 18px 18px;
+  background:
+    radial-gradient(circle at top center, rgba(255,255,255,0.82), transparent 28%),
+    linear-gradient(180deg, rgba(252, 248, 240, 0.98), rgba(239, 230, 209, 0.95));
+}
+
+.player-public-profile-sheet::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(109, 138, 87, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255,255,255,0.18), transparent 32%);
+}
+
+.player-public-profile-hero{
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.player-public-profile-heading{
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  justify-items: center;
+}
+
+.player-public-profile-title{
+  font-family: var(--font-display);
+  font-size: 42px;
+  line-height: 0.92;
+  color: var(--map-ink);
+  word-break: break-word;
+}
+
+.player-public-profile-subtitle{
+  color: var(--map-muted);
+}
+
+.player-public-profile-status{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+}
+
+.player-public-profile-meta{
+  color: var(--map-ink);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.4;
+  max-width: 24ch;
+}
+
+.player-public-profile-muted{
+  color: var(--map-muted);
+  line-height: 1.5;
+  max-width: 30ch;
+}
+
+.player-public-profile-blurb{
+  color: var(--map-text);
+  line-height: 1.7;
+  max-width: 30ch;
+}
+
+.player-public-profile-compact-note{
+  color: var(--map-muted);
+  line-height: 1.55;
+  max-width: 30ch;
+}
+
+.player-public-profile-footer{
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 14px;
+  color: var(--map-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 @media (max-width: 920px){
   .players-note-grid{
     grid-template-columns: 1fr;
@@ -4581,17 +4742,20 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 @media (max-width: 720px){
   .tf-players-shell{
-    padding: 14px;
-    border-radius: 22px;
+    padding: 12px;
+    border-radius: 20px;
   }
 
   .players-toolbar{
-    gap: 10px;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 18px;
   }
 
   .players-toolbar-row{
     width: 100%;
     align-items: stretch;
+    gap: 8px;
   }
 
   .players-toolbar-row input{
@@ -4603,6 +4767,18 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .players-toolbar-row .btn{
     width: 100%;
     justify-content: center;
+    min-height: 42px;
+  }
+
+  .players-filterbar{
+    gap: 6px;
+  }
+
+  .players-filter-chip{
+    min-height: 30px;
+    padding: 0 11px;
+    font-size: 13px;
+    box-shadow: none;
   }
 
   .players-head-meta{
@@ -4635,14 +4811,14 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   .tf-roster-card{
     display: flex !important;
     align-items: flex-start;
-    gap: 10px;
-    padding: 12px;
+    gap: 8px;
+    padding: 10px;
     border-radius: 18px;
   }
 
   .dossier-side{
-    flex: 0 0 54px;
-    width: 54px;
+    flex: 0 0 44px;
+    width: 44px;
     flex-direction: column;
     align-items: flex-start;
     gap: 0;
@@ -4652,9 +4828,16 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     flex: none;
   }
 
-  .tf-roster-card .polaroid-frame{
-    width: 54px;
-    height: 54px;
+  .tf-roster-card .polaroid{
+    width: 44px;
+    height: 48px;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.16));
+  }
+
+  .tf-roster-card .polaroid .inner{
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
   }
 
   .dossier-body{
@@ -4662,11 +4845,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     width: auto;
     min-width: 0;
     display: grid;
-    gap: 6px;
+    gap: 4px;
   }
 
   .dossier-flags{
-    gap: 4px 6px;
+    gap: 4px;
     margin-top: 0;
   }
 
@@ -4679,8 +4862,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .dossier-name{
     justify-content: flex-start;
-    font-size: 20px;
-    line-height: 1.05;
+    font-size: 16px;
+    line-height: 1.1;
     text-align: left;
   }
 
@@ -4711,9 +4894,23 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .dossier-last-seen{
     margin-top: 0;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.2;
     color: #7b6d59;
+  }
+
+  .dossier-preview{
+    -webkit-line-clamp: 1;
+  }
+
+  .dossier-status-stamp{
+    min-height: 20px;
+    padding-inline: 6px;
+    font-size: 9px;
+  }
+
+  .dossier-id-badge{
+    font-size: 9px;
   }
 
   .dossier-actions{
@@ -4725,30 +4922,71 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     width: 100%;
     justify-content: center;
   }
-}
 
-@media (max-width: 420px){
-  .tf-roster-card{
+  .player-public-profile-modal-body{
     padding: 12px;
   }
 
-  .dossier-side{
-    flex: 0 0 50px;
-    width: 50px;
+  .player-public-profile-close{
+    min-width: 46px;
+    min-height: 46px;
+    border-radius: 16px;
   }
 
-  .tf-roster-card .polaroid-frame{
-    width: 50px;
-    height: 50px;
+  .player-public-profile-title{
+    font-size: 30px;
+  }
+
+  .player-public-profile-sheet{
+    padding: 18px 14px 14px;
+  }
+
+  .player-public-profile-sheet .polaroid.lg{
+    width: 112px;
+    height: 126px;
+  }
+
+  .player-public-profile-sheet .polaroid.lg .inner{
+    width: 84px;
+    height: 84px;
+  }
+}
+
+@media (max-width: 420px){
+  .tf-players-shell{
+    padding: 10px;
+  }
+
+  .players-summary-strip{
+    gap: 5px;
+  }
+
+  .tf-roster-card{
+    padding: 9px;
+  }
+
+  .dossier-side{
+    flex: 0 0 40px;
+    width: 40px;
+  }
+
+  .tf-roster-card .polaroid{
+    width: 40px;
+    height: 44px;
+  }
+
+  .tf-roster-card .polaroid .inner{
+    width: 28px;
+    height: 28px;
   }
 
   .dossier-name{
-    font-size: 18px;
+    font-size: 15px;
   }
 
   .players-summary-pill{
     min-height: 28px;
-    padding: 0 8px;
+    padding: 0 7px;
   }
 
   .players-summary-pill span{
@@ -4759,8 +4997,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     font-size: 12px;
   }
 
-  .tf-players-shell{
-    padding: 14px;
+  .players-filter-chip{
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 }
 

@@ -2,6 +2,11 @@ import React from "react";
 import { Scale } from "lucide-react";
 import PolaroidFrame from "./PolaroidFrame.jsx";
 import { t } from "../../i18n/index.js";
+import {
+  getPlayerPrimaryName,
+  getPlayerSecondaryName,
+  getPublicProfileMeta
+} from "../../player/publicProfileViewModel.js";
 
 function StatusStamp({ status }) {
   const s = String(status || "offline");
@@ -20,11 +25,9 @@ export default function PlayerDossierCard({
   onClick
 }) {
   const publicProfile = player.publicProfile || null;
-  const characterName = publicProfile?.characterName || "";
-  const primaryName = characterName || player.displayName || "?";
-  const secondaryName = characterName && player.displayName && characterName !== player.displayName
-    ? player.displayName
-    : "";
+  const primaryName = getPlayerPrimaryName(player, publicProfile);
+  const secondaryName = getPlayerSecondaryName(player, publicProfile);
+  const publicMeta = getPublicProfileMeta(publicProfile);
   const initial = primaryName.slice(0, 1).toUpperCase();
   const avatar = publicProfile?.avatarUrl || player.avatarUrl || null;
   const weight = Number(player.inventoryWeight || 0);
@@ -34,13 +37,15 @@ export default function PlayerDossierCard({
     : `${weight.toFixed(2)} / \u221e`;
   const clickable = typeof onClick === "function";
   const lastSeenLabel = player.lastSeen ? formatLastSeenCompact(player.lastSeen) : "-";
+  const statusClass = String(player.status || "offline").toLowerCase();
 
   return (
     <div
-      className={`item taped dossier-card tf-roster-card${selected ? " selected" : ""}`.trim()}
+      className={`item taped dossier-card tf-roster-card status-${statusClass}${selected ? " selected" : ""}`.trim()}
       onClick={clickable ? onClick : undefined}
       role={clickable ? "button" : undefined}
       tabIndex={clickable ? 0 : undefined}
+      aria-label={clickable ? `Открыть публичный профиль: ${primaryName}` : undefined}
       onKeyDown={clickable ? (e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -76,17 +81,9 @@ export default function PlayerDossierCard({
         </div>
         <div className="small dossier-last-seen" title={player.lastSeen || ""}>{lastSeenLabel}</div>
         {secondaryName ? <div className="small dossier-last-seen">@{secondaryName}</div> : null}
-        {publicProfile?.classRole || publicProfile?.level != null || publicProfile?.race ? (
-          <div className="small">
-            {[
-              publicProfile?.classRole || "",
-              publicProfile?.level != null ? `lvl ${publicProfile.level}` : "",
-              publicProfile?.race ? `race: ${publicProfile.race}` : ""
-            ].filter(Boolean).join(" • ")}
-          </div>
-        ) : null}
+        {publicMeta ? <div className="small">{publicMeta}</div> : null}
         {publicProfile?.publicBlurb ? (
-          <div className="small bio-text u-pre-wrap">{publicProfile.publicBlurb}</div>
+          <div className="small bio-text dossier-preview">{publicProfile.publicBlurb}</div>
         ) : null}
         <div className="dossier-flags">
           {player.profileCreated ? (

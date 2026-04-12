@@ -3,18 +3,22 @@ import { api } from "../api.js";
 import VirtualizedStack from "../components/VirtualizedStack.jsx";
 import PlayerDossierCard from "../components/vintage/PlayerDossierCard.jsx";
 import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
+import PublicPlayerProfileDialog from "./PublicPlayerProfileDialog.jsx";
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { Activity, RefreshCcw, Users } from "lucide-react";
 import { useQueryState } from "../hooks/useQueryState.js";
 import { EmptyState, ErrorBanner, Skeleton } from "../foundation/primitives/index.js";
 import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { matchesPlayerQuery, matchesStatusFilter } from "./publicProfileViewModel.js";
 
 export default function Players() {
   const [q, setQ] = useQueryState("q", "");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
+  const [selectedPlayerId, setSelectedPlayerId] = useState(null);
   const { socket } = useSocket();
   const [listRef] = useAutoAnimate({ duration: 200 });
   const isNarrowScreen = useIsNarrowScreen();
@@ -46,14 +50,15 @@ export default function Players() {
   }, [load, socket]);
 
   const filtered = useMemo(() => {
-    const qq = String(q || "").toLowerCase().trim();
     return (players || [])
-      .filter((p) => ["online", "idle"].includes(String(p.status || "offline")))
-      .filter((p) => {
-        if (!qq) return true;
-        return String(p.displayName || "").toLowerCase().includes(qq);
-      });
-  }, [players, q]);
+      .filter((player) => matchesStatusFilter(player, statusFilter))
+      .filter((player) => matchesPlayerQuery(player, q));
+  }, [players, q, statusFilter]);
+
+  const selectedPlayer = useMemo(
+    () => (players || []).find((player) => player.id === selectedPlayerId) || null,
+    [players, selectedPlayerId]
+  );
 
   const statusCounts = useMemo(() => {
     return (players || []).reduce(
@@ -95,7 +100,7 @@ export default function Players() {
         <div className="item">
           <div className="kv">
             <div className="u-fw-700">Оффлайн</div>
-            <div className="small">Игрок отключён и скрыт из списка слева.</div>
+            <div className="small">Игрок отключён, но остаётся в составе партии.</div>
           </div>
           <PlayerStatusPill status="offline" />
         </div>
@@ -124,7 +129,7 @@ export default function Players() {
       </div>
       <div className="paper-note players-note-callout">
         <div className="title">Совет</div>
-        <div className="small">Если статус завис, обнови страницу или подожди следующий push по WebSocket.</div>
+        <div className="small">Нажми на карточку игрока, чтобы открыть его публичное досье для партии.</div>
       </div>
     </>
   );
@@ -145,13 +150,13 @@ export default function Players() {
         </div>
         <PlayerStatusPill status="idle" />
       </div>
-      <div className="item">
-        <div className="kv">
-          <div className="u-fw-700">Оффлайн</div>
-          <div className="small">Игрок отключён и скрыт из списка слева.</div>
+        <div className="item">
+          <div className="kv">
+            <div className="u-fw-700">Оффлайн</div>
+            <div className="small">Игрок отключён, но остаётся в составе партии.</div>
+          </div>
+          <PlayerStatusPill status="offline" />
         </div>
-        <PlayerStatusPill status="offline" />
-      </div>
     </div>
   );
 
@@ -169,7 +174,7 @@ export default function Players() {
       </div>
       <div className="paper-note players-note-callout">
         <div className="title">Совет</div>
-        <div className="small">Если статус завис, обнови страницу или подожди следующий push по WebSocket.</div>
+        <div className="small">Нажми на карточку игрока, чтобы открыть его публичное досье для партии.</div>
       </div>
     </>
   );
@@ -182,7 +187,7 @@ export default function Players() {
             <div className="tf-page-head-main">
               <div className="tf-overline">Party roster</div>
               <div className="u-title-xl tf-page-title">Игроки</div>
-              <div className="small">Показаны только статусы «Онлайн» и «Нет активности». Оффлайн остаётся в сводке справа.</div>
+              <div className="small">Весь состав партии в одном реестре. Нажми на карточку, чтобы открыть публичный профиль игрока.</div>
             </div>
             {!isNarrowScreen ? (
               <div className="players-head-meta">
@@ -196,7 +201,7 @@ export default function Players() {
             <div className="players-summary-strip">
               <div className="players-summary-pill"><span>Видимых</span><strong>{filtered.length}</strong></div>
               <div className="players-summary-pill"><span>Онлайн</span><strong>{statusCounts.online}</strong></div>
-              <div className="players-summary-pill"><span>Пассивных</span><strong>{statusCounts.idle + statusCounts.offline}</strong></div>
+              <div className="players-summary-pill"><span>Не онлайн</span><strong>{statusCounts.idle + statusCounts.offline}</strong></div>
             </div>
           ) : (
             <div className="players-summary tf-stat-grid">
@@ -218,7 +223,7 @@ export default function Players() {
           <div className="players-toolbar tf-panel tf-command-bar">
             <div className="tf-section-copy">
               <div className="tf-section-kicker">Search roster</div>
-              <div className="players-toolbar-title">Поиск и обновление</div>
+              <div className="players-toolbar-title">Поиск, фильтрация и обзор</div>
             </div>
             <div className="row u-row-wrap players-toolbar-row">
               <input
@@ -229,6 +234,32 @@ export default function Players() {
                 className="u-w-min-520"
               />
               <button className="btn secondary" onClick={load}><RefreshCcw className="icon" aria-hidden="true" />Обновить</button>
+            </div>
+            <div className="players-filterbar" aria-label="Фильтр игроков по статусу">
+              <button
+                type="button"
+                className={`players-filter-chip${statusFilter === "all" ? " active" : ""}`.trim()}
+                onClick={() => setStatusFilter("all")}
+                aria-pressed={statusFilter === "all"}
+              >
+                Все
+              </button>
+              <button
+                type="button"
+                className={`players-filter-chip${statusFilter === "online" ? " active" : ""}`.trim()}
+                onClick={() => setStatusFilter("online")}
+                aria-pressed={statusFilter === "online"}
+              >
+                Онлайн
+              </button>
+              <button
+                type="button"
+                className={`players-filter-chip${statusFilter === "offline" ? " active" : ""}`.trim()}
+                onClick={() => setStatusFilter("offline")}
+                aria-pressed={statusFilter === "offline"}
+              >
+                Оффлайн
+              </button>
             </div>
           </div>
 
@@ -241,7 +272,7 @@ export default function Players() {
                 <div className="item"><Skeleton h={120} w="100%" /></div>
               </div>
             ) : filtered.length === 0 ? (
-              <EmptyState title="Нет игроков онлайн" hint="Оффлайн-игроки скрыты. Подключите игроков через лобби." />
+              <EmptyState title="Никого не найдено" hint="Измени поисковый запрос или фильтр статуса." />
             ) : (
               <VirtualizedStack
                 className="list players-list"
@@ -251,7 +282,13 @@ export default function Players() {
                 staticListRef={listRef}
                 staticThreshold={20}
                 getItemKey={(player) => player.id}
-                renderItem={(player) => <PlayerDossierCard player={player} />}
+                renderItem={(player) => (
+                  <PlayerDossierCard
+                    player={player}
+                    selected={player.id === selectedPlayerId}
+                    onClick={() => setSelectedPlayerId(player.id)}
+                  />
+                )}
               />
             )}
           </div>
@@ -283,6 +320,12 @@ export default function Players() {
           )}
         </div>
       </div>
+
+      <PublicPlayerProfileDialog
+        open={Boolean(selectedPlayer)}
+        player={selectedPlayer}
+        onClose={() => setSelectedPlayerId(null)}
+      />
     </div>
   );
 }
