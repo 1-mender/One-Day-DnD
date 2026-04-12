@@ -1,4 +1,5 @@
 import React from "react";
+import { Coins, Sparkles } from "lucide-react";
 import { useTickets } from "../hooks/useTickets.js";
 import { useToast } from "../foundation/providers/index.js";
 import { formatError } from "../lib/formatError.js";
@@ -204,34 +205,43 @@ export default function ShopJoe() {
 
   return (
     <div className="card taped shop-shell tavern-shop tf-shell tf-shop-shell">
-      <div className="row shop-hero tf-page-head">
-        <div className="shop-hero-copy tf-page-head-main">
-          <div className="shop-kicker tf-overline">{"Merchant counter"}</div>
-          <div className="shop-title tf-page-title">{"Лавка Джо"}</div>
-          <div className="small">
-            {"Билеты имеют цену: чем сильнее эффект, тем строже лимиты."}
+      <div className="shop-hero tf-panel tf-command-bar shop-counter-panel">
+        <div className="shop-counter-top">
+          <div className="shop-hero-copy tf-page-head-main">
+            <div className="shop-kicker tf-overline">{"Merchant counter"}</div>
+            <div className="shop-title tf-page-title">{"Лавка Джо"}</div>
+            <div className="small">
+              {"Билеты тратятся на усиления, сюжетные эффекты и редкие покупки."}
+            </div>
+          </div>
+          <div className="shop-counter-display">
+            <div className="shop-counter-token" aria-hidden="true">
+              <div className="shop-counter-token-core">
+                <Coins className="icon" />
+              </div>
+              <div className="shop-counter-token-mark">
+                <Sparkles className="icon" />
+              </div>
+            </div>
+            <div className="shop-counter-balance">
+              <div className="shop-counter-balance-kicker">Баланс</div>
+              <div className="shop-counter-balance-value">{loading ? "..." : balance}</div>
+              <div className="shop-counter-balance-unit">{ticketWord(balance)}</div>
+            </div>
           </div>
         </div>
-        <div className="ticket-bank tf-command-actions">
-          <div className="ticket-card">
-            <div className="ticket-label">{"Баланс"}</div>
-            <div className="ticket-value">{loading ? "..." : balance}</div>
-          </div>
-          <div className="ticket-meta small">{"Крупные покупки лучше делать после серии побед."}</div>
-        </div>
-      </div>
-
-      <div className="shop-overview">
+        <div className="shop-overview shop-counter-overview">
         <span className="badge ok">Доступно сейчас: {availableNowCount}</span>
-        <span className="badge secondary">Баланс: {balance}</span>
         {dailyShopCap > 0 ? (
           <span className={`badge ${shopDailyCapReached ? "warn" : "secondary"}`}>
-            Лимит лавки: {remainingShopPurchases}/{dailyShopCap}
+            Покупок до лимита: {remainingShopPurchases}/{dailyShopCap}
           </span>
         ) : null}
         {Number.isFinite(cheapestEnabledPrice) ? (
-          <span className="badge">От {priceLabel(cheapestEnabledPrice)}</span>
+          <span className="badge">Мин. цена: {priceLabel(cheapestEnabledPrice)}</span>
         ) : null}
+        </div>
+        <div className="small shop-counter-note">Крупные покупки лучше делать после серии побед.</div>
       </div>
       {ticketsEnabled && (dailyShopCap > 0 || (availableNowCount === 0 && Number.isFinite(cheapestEnabledPrice))) ? (
         <div className="small shop-overview-hint">

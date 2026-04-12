@@ -2763,6 +2763,129 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   z-index: 1;
 }
 
+.tf-shop-shell .shop-counter-panel{
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at top right, rgba(109, 138, 87, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(247, 240, 228, 0.94), rgba(234, 224, 201, 0.92));
+  border-color: rgba(177, 154, 106, 0.26);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.78),
+    0 14px 24px rgba(80, 67, 45, 0.1);
+}
+
+.tf-shop-shell .shop-counter-top{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+}
+
+.tf-shop-shell .shop-counter-display{
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 14px;
+  align-items: center;
+}
+
+.tf-shop-shell .shop-counter-token{
+  position: relative;
+  width: 92px;
+  height: 92px;
+  border-radius: 28px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 30% 28%, rgba(255,255,255,0.94), transparent 26%),
+    linear-gradient(180deg, rgba(243, 233, 207, 0.98), rgba(214, 192, 144, 0.94));
+  border: 1px solid rgba(167, 138, 84, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.82),
+    0 16px 24px rgba(115, 91, 49, 0.18);
+}
+
+.tf-shop-shell .shop-counter-token-core{
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at top, rgba(255,255,255,0.86), rgba(255,255,255,0) 68%),
+    linear-gradient(180deg, rgba(255,255,255,0.82), rgba(239, 230, 209, 0.92));
+  border: 1px solid rgba(167, 138, 84, 0.22);
+  color: #6f5731;
+  text-align: center;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.78);
+}
+
+.tf-shop-shell .shop-counter-token-core .icon{
+  width: 20px;
+  height: 20px;
+}
+
+.tf-shop-shell .shop-counter-token-mark{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.78);
+  color: #7f6840;
+  border: 1px solid rgba(167, 138, 84, 0.24);
+  box-shadow: 0 6px 12px rgba(115, 91, 49, 0.1);
+}
+
+.tf-shop-shell .shop-counter-token-mark .icon{
+  width: 12px;
+  height: 12px;
+}
+
+.tf-shop-shell .shop-counter-balance{
+  display: grid;
+  gap: 2px;
+  min-width: 112px;
+}
+
+.tf-shop-shell .shop-counter-balance-kicker{
+  color: #87715a;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.tf-shop-shell .shop-counter-balance-value{
+  color: #2e261c;
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 0.92;
+}
+
+.tf-shop-shell .shop-counter-balance-unit{
+  color: #6f604a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tf-shop-shell .shop-counter-overview{
+  margin: 0;
+  gap: 8px;
+}
+
+.tf-shop-shell .shop-counter-note{
+  margin-top: -4px;
+  color: #8b7961;
+  line-height: 1.45;
+}
+
 .tf-shop-shell .shop-summary{
   margin: 14px 0 12px;
 }
@@ -2770,7 +2893,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 .tf-shop-shell .shop-overview{
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   margin: 12px 0 0;
 }
 
@@ -2800,16 +2923,23 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   margin-top: 14px;
   align-items: start;
   gap: 6px;
-  border-color: rgba(143, 155, 167, 0.28);
-  box-shadow: 0 14px 24px rgba(0,0,0,0.28);
+  border-color: rgba(177, 154, 106, 0.2);
+  background:
+    linear-gradient(180deg, rgba(248, 242, 231, 0.9), rgba(237, 228, 208, 0.88));
+  box-shadow: 0 10px 18px rgba(80, 67, 45, 0.08);
 }
 
 .tf-shop-shell .shop-limit-banner{
-  gap: 10px;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(246, 239, 226, 0.88), rgba(236, 227, 205, 0.84));
+  box-shadow: 0 8px 16px rgba(80, 67, 45, 0.08);
 }
 
 .tf-shop-shell .shop-limit-toggle{
-  min-height: 32px;
+  min-height: 28px;
   padding: 0 12px;
   border-radius: 999px;
   font-size: 12px;
@@ -3241,15 +3371,54 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
     gap: 10px;
   }
 
-  .tf-shop-shell .ticket-bank{
-    align-items: flex-start;
-    width: 100%;
+  .tf-shop-shell .shop-counter-panel{
+    gap: 10px;
+    padding: 14px;
   }
 
-  .tf-shop-shell .ticket-card{
+  .tf-shop-shell .shop-counter-top{
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .tf-shop-shell .shop-counter-display{
+    grid-template-columns: auto minmax(0, 1fr);
+    justify-content: start;
+    gap: 12px;
+  }
+
+  .tf-shop-shell .shop-counter-token{
+    width: 72px;
+    height: 72px;
+    border-radius: 22px;
+  }
+
+  .tf-shop-shell .shop-counter-token-core{
+    width: 44px;
+    height: 44px;
+  }
+
+  .tf-shop-shell .shop-counter-token-mark{
+    width: 20px;
+    height: 20px;
+    top: 6px;
+    right: 6px;
+  }
+
+  .tf-shop-shell .shop-counter-balance{
     min-width: 0;
-    min-height: 82px;
-    padding: 12px 14px;
+  }
+
+  .tf-shop-shell .shop-counter-balance-value{
+    font-size: 30px;
+  }
+
+  .tf-shop-shell .shop-counter-balance-unit{
+    font-size: 12px;
+  }
+
+  .tf-shop-shell .shop-counter-overview{
+    gap: 6px;
   }
 
   .tf-shop-shell .shop-mascot-stall{
@@ -3258,7 +3427,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
   .tf-shop-shell .shop-banner{
     margin-top: 10px;
-    padding: 10px 12px;
+    padding: 8px 10px;
     border-radius: 18px;
   }
 
@@ -3267,8 +3436,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   }
 
   .tf-shop-shell .shop-limit-toggle{
-    min-height: 28px;
-    padding: 0 10px;
+    min-height: 26px;
+    padding: 0 9px;
     font-size: 11px;
   }
 
