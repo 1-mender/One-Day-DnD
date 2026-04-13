@@ -640,6 +640,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   box-shadow: 0 10px 22px rgba(35, 33, 24, 0.18);
 }
 
+.inv-card[data-inspectable="true"]{
+  cursor: pointer;
+}
+
 .inv-card[data-swipe-hint="true"] .inv-icon-wrap{
   animation: inv-swipe-hint 1.2s ease-in-out 2;
 }

@@ -61,6 +61,16 @@ function InventoryItemCard({
   const showDesc = !!item.description && descPlain.length > (isMobile ? 6 : 0);
   const showActions = hasActions && (!isMobile && (!(compact || lite) || quickOpen));
   const actionsLabel = item.name ? `Действия: ${item.name}` : "Действия предмета";
+  const inspectable = typeof onInspect === "function";
+
+  const handleInspect = (event) => {
+    if (!inspectable) return;
+    const target = event?.target;
+    if (target && typeof target.closest === "function" && target.closest("button, a, input, select, textarea, details, summary, label")) {
+      return;
+    }
+    onInspect();
+  };
 
   return (
     <div
@@ -73,13 +83,22 @@ function InventoryItemCard({
       data-swipe-hint={showHint ? "true" : "false"}
       data-variant={actionsVariant}
       data-lite={lite ? "true" : "false"}
+      data-inspectable={inspectable ? "true" : "false"}
       style={{ contentVisibility: "auto", containIntrinsicSize: "180px" }}
       {...interactionHandlers}
+      onClick={handleInspect}
+      onKeyDown={(event) => {
+        if (!inspectable) return;
+        if (event.key !== "Enter" && event.key !== " ") return;
+        handleInspect(event);
+      }}
       onContextMenu={(event) => {
         if (!hasActions) return;
         event.preventDefault();
         setQuickOpen((prev) => !prev);
       }}
+      role={inspectable ? "button" : undefined}
+      tabIndex={inspectable ? 0 : undefined}
     >
       {selectable ? (
         <label className="inv-select">
