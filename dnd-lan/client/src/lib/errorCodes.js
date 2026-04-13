@@ -62,6 +62,7 @@ export const ERROR_MESSAGES_RU = {
   invalid_proof: "Результат игры не прошёл проверку.",
   invalid_game: "Игра недоступна.",
   invalid_mode: "Выбранный режим недоступен.",
+  minigame_inactive: "Мини-игра сейчас не активна.",
   invalid_outcome: "Некорректный результат матча.",
   already_in_queue: "Вы уже в очереди.",
   already_submitted: "Результат уже отправлен.",

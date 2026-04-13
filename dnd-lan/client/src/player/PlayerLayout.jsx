@@ -59,6 +59,9 @@ export default function PlayerLayout() {
   const [err, setErr] = useState("");
   const [netErr, setNetErr] = useState("");
   const [transferBadge, setTransferBadge] = useState(0);
+  const [activeLiveActivity, setActiveLiveActivity] = useState(null);
+  const [liveActivityLoaded, setLiveActivityLoaded] = useState(false);
+  const [liveInviteVisible, setLiveInviteVisible] = useState(false);
 
   const { socket, refreshAuth, netState } = useSocket();
   const OFFLINE_BANNER_DELAY_MS = 2000;
@@ -71,6 +74,20 @@ export default function PlayerLayout() {
   const degradedDetails = netState?.degraded
     ? formatError(degradedReason || ERROR_CODES.READ_ONLY)
     : "";
+  const arcadeAvailable = activeLiveActivity?.kind === "arcade" && activeLiveActivity?.status === "active";
+
+  const syncLiveActivity = useCallback(async () => {
+    try {
+      const response = await api.playerLiveActivityMe();
+      const activity = response?.activity || null;
+      setActiveLiveActivity(activity);
+      setLiveInviteVisible(!!activity);
+    } catch {
+      setActiveLiveActivity(null);
+    } finally {
+      setLiveActivityLoaded(true);
+    }
+  }, []);
 
   const loadTransferBadge = useCallback(async () => {
     try {
@@ -144,6 +161,7 @@ export default function PlayerLayout() {
       hasConnectedRef.current = true;
       clearOfflineTimer();
       setShowOffline(false);
+      syncLiveActivity().catch(() => {});
     };
     const onDisconnect = () => {
       if (closingRef.current) return;
@@ -176,6 +194,18 @@ export default function PlayerLayout() {
       });
       if (inf) setBestiaryEnabled(!!inf.settings?.bestiaryEnabled);
     };
+    const onMinigameOpened = (payload) => {
+      const activity = payload?.activity || null;
+      setActiveLiveActivity(activity);
+      setLiveInviteVisible(!!activity);
+    };
+    const onMinigameClosed = () => {
+      setActiveLiveActivity(null);
+      setLiveInviteVisible(false);
+      if (location.pathname === "/app/arcade") {
+        nav("/app/players", { replace: true });
+      }
+    };
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("connect_error", onConnectError);
@@ -183,6 +213,8 @@ export default function PlayerLayout() {
     socket.on("player:sessionInvalid", onSessionInvalid);
     socket.on("settings:updated", onSettingsUpdated);
     socket.on("transfers:updated", loadTransferBadge);
+    socket.on("player:minigame:opened", onMinigameOpened);
+    socket.on("player:minigame:closed", onMinigameClosed);
 
     api.serverInfo()
       .then((inf) => setBestiaryEnabled(!!inf.settings?.bestiaryEnabled))
@@ -199,6 +231,7 @@ export default function PlayerLayout() {
         }
         setNetErr(formatError(e, ERROR_CODES.ME_FAILED));
       });
+    syncLiveActivity().catch(() => {});
     loadTransferBadge().catch(() => {});
 
     const shouldSend = () => !storage.isImpersonating();
@@ -238,11 +271,20 @@ export default function PlayerLayout() {
       socket.off("player:sessionInvalid", onSessionInvalid);
       socket.off("settings:updated", onSettingsUpdated);
       socket.off("transfers:updated", loadTransferBadge);
+      socket.off("player:minigame:opened", onMinigameOpened);
+      socket.off("player:minigame:closed", onMinigameClosed);
       window.removeEventListener("pointerdown", emitActivity);
       window.removeEventListener("keydown", emitActivity);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [loadTransferBadge, nav, socket]);
+  }, [loadTransferBadge, location.pathname, nav, socket, syncLiveActivity]);
+
+  useEffect(() => {
+    if (!liveActivityLoaded) return;
+    if (arcadeAvailable) return;
+    if (location.pathname !== "/app/arcade") return;
+    nav("/app/players", { replace: true });
+  }, [arcadeAvailable, liveActivityLoaded, location.pathname, nav]);
 
   async function setWriteMode(nextMode) {
     if (!impersonating || !me?.player?.id) return;
@@ -265,7 +307,10 @@ export default function PlayerLayout() {
     const optionalOrder = bestiaryEnabled
       ? OPTIONAL_NAV_BASE_ORDER
       : OPTIONAL_NAV_BASE_ORDER.filter((route) => route !== "/app/bestiary");
-    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalOrder];
+    const liveOptionalOrder = arcadeAvailable
+      ? optionalOrder
+      : optionalOrder.filter((route) => route !== "/app/arcade");
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...liveOptionalOrder];
     return selectedRoutes.map((to) => ({
       to,
       label: t(ROUTE_TO_LABEL[to]),
@@ -273,7 +318,7 @@ export default function PlayerLayout() {
       badge: to === "/app/transfers" ? transferBadge : 0,
       primary: PRIMARY_NAV_ROUTES.has(to)
     }));
-  }, [bestiaryEnabled, transferBadge]);
+  }, [arcadeAvailable, bestiaryEnabled, transferBadge]);
 
   return (
     <div>
@@ -314,6 +359,27 @@ export default function PlayerLayout() {
       <VintageShell layout="spread" pageKey={location.pathname}>
         <div className="container padBottom">
           {netErr && <div className="badge off">{t("playerLayout.networkError", { message: netErr })}</div>}
+          {arcadeAvailable && liveInviteVisible && location.pathname !== "/app/arcade" ? (
+            <div className="paper-note player-live-activity-banner">
+              <div className="title">Мини-игра доступна</div>
+              <div className="small">Мастер открыл для тебя временную мини-игру. Доступ пропадёт, когда он её закроет.</div>
+              <div className="row player-live-activity-actions">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setLiveInviteVisible(false);
+                    nav("/app/arcade");
+                  }}
+                >
+                  Открыть
+                </button>
+                <button type="button" className="btn secondary" onClick={() => setLiveInviteVisible(false)}>
+                  Скрыть
+                </button>
+              </div>
+            </div>
+          ) : null}
           <Outlet context={{ socket }} />
         </div>
       </VintageShell>

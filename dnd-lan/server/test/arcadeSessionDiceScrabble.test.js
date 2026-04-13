@@ -11,6 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
+const { seedActiveArcadeActivity } = await import("./liveActivityTestHelper.js");
 
 initDb();
 
@@ -67,6 +68,7 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
 
 test("dice session start hides seed/proof and finish settles from server state", async () => {
   const playerId = createPlayer("Dice-Session");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
   seedTickets(playerId, 20);
 
@@ -100,6 +102,7 @@ test("dice session start hides seed/proof and finish settles from server state",
 
 test("dice session reroll is applied server-side once", async () => {
   const playerId = createPlayer("Dice-Reroll");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
   seedTickets(playerId, 20);
 
@@ -133,6 +136,7 @@ test("dice session reroll is applied server-side once", async () => {
 
 test("scrabble session returns rack without seed/proof and settles submitted word", async () => {
   const playerId = createPlayer("Scrabble-Session");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
   seedTickets(playerId, 20);
 
@@ -176,6 +180,8 @@ test("scrabble session returns rack without seed/proof and settles submitted wor
 test("scrabble session rejects invalid session on cross-player finish", async () => {
   const ownerId = createPlayer("Scrabble-Owner");
   const strangerId = createPlayer("Scrabble-Stranger");
+  seedActiveArcadeActivity(ownerId);
+  seedActiveArcadeActivity(strangerId);
   const ownerToken = createSession(ownerId);
   const strangerToken = createSession(strangerId);
 

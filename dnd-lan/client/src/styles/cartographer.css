@@ -7421,6 +7421,17 @@ body.arcade-modal-open{
   padding: 8px 12px;
 }
 
+.player-live-activity-banner{
+  display: grid;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.player-live-activity-actions{
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
   .dm-quick-access-chip.is-pinned {
     border-color: rgba(88, 125, 78, 0.45);
     box-shadow: 0 8px 18px rgba(113, 138, 96, 0.14);

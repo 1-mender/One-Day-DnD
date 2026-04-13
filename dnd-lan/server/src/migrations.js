@@ -312,6 +312,31 @@ const MIGRATIONS = [
         "ALTER TABLE character_profiles ADD COLUMN public_blurb TEXT;"
       );
     }
+  },
+  {
+    version: 16,
+    name: "player_live_activities",
+    up(database) {
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS player_live_activities(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          party_id INTEGER NOT NULL,
+          player_id INTEGER NOT NULL,
+          kind TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          payload TEXT NOT NULL DEFAULT '{}',
+          opened_by TEXT,
+          opened_at INTEGER NOT NULL,
+          closed_at INTEGER,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE,
+          FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+        );`
+      );
+      database.exec("CREATE INDEX IF NOT EXISTS idx_player_live_activities_player_kind_status ON player_live_activities(player_id, kind, status, updated_at DESC);");
+      database.exec("CREATE INDEX IF NOT EXISTS idx_player_live_activities_party_status ON player_live_activities(party_id, status, kind, updated_at DESC);");
+      database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_player_live_activities_active_unique ON player_live_activities(player_id, kind) WHERE status='active';");
+    }
   }
 ];
 

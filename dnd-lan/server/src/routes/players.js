@@ -65,10 +65,15 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
            p.created_at as createdAt,
            MAX(CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END) as profileCreated,
            MAX(cp.stats) as profileStats,
-           COALESCE(SUM(i.weight * i.qty), 0) as inventoryWeight
+           COALESCE(SUM(i.weight * i.qty), 0) as inventoryWeight,
+           MAX(CASE WHEN pla.id IS NULL THEN 0 ELSE 1 END) as arcadeActive
     FROM players p
     LEFT JOIN character_profiles cp ON cp.player_id = p.id
     LEFT JOIN inventory_items i ON i.player_id = p.id
+    LEFT JOIN player_live_activities pla
+      ON pla.player_id = p.id
+     AND pla.kind='arcade'
+     AND pla.status='active'
     WHERE p.party_id=?
     GROUP BY p.id, p.display_name, p.status, p.last_seen, p.created_at
     ORDER BY p.id
@@ -82,7 +87,8 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
       ...row,
       inventoryWeight: Number.isFinite(total) ? total : 0,
       inventoryLimit: limitInfo.limit,
-      inventoryOverLimit: limitInfo.limit > 0 && Number.isFinite(total) && total > limitInfo.limit
+      inventoryOverLimit: limitInfo.limit > 0 && Number.isFinite(total) && total > limitInfo.limit,
+      arcadeActive: !!Number(row.arcadeActive || 0)
     };
   });
   res.json({ items });

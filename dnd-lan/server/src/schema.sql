@@ -158,6 +158,21 @@ CREATE TABLE IF NOT EXISTS character_profiles (
   FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS player_live_activities (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party_id INTEGER NOT NULL,
+  player_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'active', -- active/closed
+  payload TEXT NOT NULL DEFAULT '{}',
+  opened_by TEXT,
+  opened_at INTEGER NOT NULL,
+  closed_at INTEGER,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS profile_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id INTEGER NOT NULL,
@@ -313,6 +328,9 @@ CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DE
 CREATE INDEX IF NOT EXISTS idx_profiles_player ON character_profiles(player_id);
 CREATE INDEX IF NOT EXISTS idx_profile_requests_status ON profile_change_requests(status);
 CREATE INDEX IF NOT EXISTS idx_profile_requests_player ON profile_change_requests(player_id);
+CREATE INDEX IF NOT EXISTS idx_player_live_activities_player_kind_status ON player_live_activities(player_id, kind, status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_player_live_activities_party_status ON player_live_activities(party_id, status, kind, updated_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_player_live_activities_active_unique ON player_live_activities(player_id, kind) WHERE status='active';
 CREATE INDEX IF NOT EXISTS idx_tickets_player ON tickets(player_id);
 CREATE INDEX IF NOT EXISTS idx_ticket_plays_player_day ON ticket_plays(player_id, day_key);
 CREATE INDEX IF NOT EXISTS idx_ticket_purchases_player_day ON ticket_purchases(player_id, day_key);

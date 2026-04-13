@@ -1,4 +1,5 @@
 import { getDb, getSinglePartyId } from "../../db.js";
+import { LIVE_ACTIVITY_KINDS, requireActivePlayerLiveActivity } from "../../playerActivities/service.js";
 import { isDmRequest } from "../../sessionAuth.js";
 import {
   processArcadeSessionFinish,
@@ -30,6 +31,18 @@ import {
 import { createRouteInputReader } from "../../routes/routeValidation.js";
 
 const requireValidRouteInput = createRouteInputReader(parseTicketRouteInput);
+
+function requireArcadeAccess(me, res) {
+  const activity = requireActivePlayerLiveActivity(me?.player?.id, {
+    db: getDb(),
+    kind: LIVE_ACTIVITY_KINDS.ARCADE
+  });
+  if (!activity) {
+    res.status(403).json({ error: "minigame_inactive" });
+    return null;
+  }
+  return activity;
+}
 
 export function registerPlayerTicketRoutes(router, {
   arcadeSessions,
@@ -72,6 +85,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/games/:gameKey/start", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const params = requireValidRouteInput(res, gameStartParamsSchema, req.params);
     if (!params) return;
     const body = requireValidRouteInput(res, gameStartBodySchema, req.body);
@@ -88,6 +102,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/games/sessions/:sessionId/move", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const params = requireValidRouteInput(res, sessionParamsSchema, req.params);
     if (!params) return;
     const body = requireValidRouteInput(res, sessionMoveBodySchema, req.body);
@@ -104,6 +119,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/games/sessions/:sessionId/finish", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const params = requireValidRouteInput(res, sessionParamsSchema, req.params);
     if (!params) return;
     const result = processArcadeSessionFinish({
@@ -122,6 +138,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matchmaking/queue", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const body = requireValidRouteInput(res, queueJoinBodySchema, req.body);
     if (!body) return;
     const result = processMatchmakingQueueJoin({
@@ -137,6 +154,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matchmaking/cancel", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const body = requireValidRouteInput(res, queueCancelBodySchema, req.body);
     if (!body) return;
     const result = processMatchmakingQueueCancel({
@@ -153,6 +171,7 @@ export function registerPlayerTicketRoutes(router, {
   router.get("/matches/history", (req, res) => {
     const me = auth.requirePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const query = requireValidRouteInput(res, matchHistoryQuerySchema, req.query);
     if (!query) return;
     const result = getTicketMatchHistoryPayload({ db: getDb(), playerId: me.player.id, limit: query.limit });
@@ -162,6 +181,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matches/:matchId/rematch", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const params = requireValidRouteInput(res, matchIdParamsSchema, req.params);
     if (!params) return;
     const result = processMatchRematchRequest({
@@ -177,6 +197,7 @@ export function registerPlayerTicketRoutes(router, {
   router.post("/matches/:matchId/complete", (req, res) => {
     const me = auth.requireWritablePlayer(req, res);
     if (!me) return;
+    if (!requireArcadeAccess(me, res)) return;
     const params = requireValidRouteInput(res, matchIdParamsSchema, req.params);
     if (!params) return;
     const body = requireValidRouteInput(res, matchCompleteBodySchema, req.body);

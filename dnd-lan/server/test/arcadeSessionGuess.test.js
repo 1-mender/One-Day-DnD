@@ -11,6 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
+const { seedActiveArcadeActivity } = await import("./liveActivityTestHelper.js");
 
 initDb();
 
@@ -69,6 +70,7 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
 
 test("guess session start hides seed/proof and unrevealed card identities", async () => {
   const playerId = createPlayer("Guess-Session-Start");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
 
   const out = await api("/api/tickets/games/guess/start", {
@@ -91,6 +93,7 @@ test("guess session start hides seed/proof and unrevealed card identities", asyn
 
 test("guess session move/finish settles from server state without client seed/proof", async () => {
   const playerId = createPlayer("Guess-Session-Finish");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
   seedTickets(playerId, 20);
 
@@ -145,6 +148,8 @@ test("guess session move/finish settles from server state without client seed/pr
 test("guess session is scoped to owning player", async () => {
   const ownerId = createPlayer("Guess-Owner");
   const strangerId = createPlayer("Guess-Stranger");
+  seedActiveArcadeActivity(ownerId);
+  seedActiveArcadeActivity(strangerId);
   const ownerToken = createSession(ownerId);
   const strangerToken = createSession(strangerId);
 
@@ -168,6 +173,7 @@ test("guess session is scoped to owning player", async () => {
 
 test("failed guess settlement keeps finished session retryable", async () => {
   const playerId = createPlayer("Guess-Settlement-Retry");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
 
   const started = await api("/api/tickets/games/guess/start", {

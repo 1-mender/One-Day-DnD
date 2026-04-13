@@ -11,6 +11,7 @@ process.env.DND_LAN_DATA_DIR = tmpDir;
 const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
+const { seedActiveArcadeActivity } = await import("./liveActivityTestHelper.js");
 
 initDb();
 
@@ -67,6 +68,7 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
 
 test("ttt session move/finish runs server-side rounds and hides seed/proof", async () => {
   const playerId = createPlayer("Ttt-Session-Finish");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
   seedTickets(playerId, 20);
 
@@ -125,6 +127,7 @@ test("ttt session move/finish runs server-side rounds and hides seed/proof", asy
 
 test("ttt session rejects occupied cells", async () => {
   const playerId = createPlayer("Ttt-Invalid-Move");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
 
   const started = await api("/api/tickets/games/ttt/start", {

@@ -12,6 +12,7 @@ const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
 const { findFirstMatch3ValidMove } = await import("../../shared/match3Domain.js");
+const { seedActiveArcadeActivity } = await import("./liveActivityTestHelper.js");
 
 initDb();
 
@@ -68,6 +69,7 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
 
 test("match3 session start hides seed/proof and finish settles from server replay", async () => {
   const playerId = createPlayer("Match3-Session");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
   seedTickets(playerId, 20);
 
@@ -131,6 +133,7 @@ test("match3 session start hides seed/proof and finish settles from server repla
 
 test("match3 session rejects invalid move coordinates", async () => {
   const playerId = createPlayer("Match3-Invalid-Move");
+  seedActiveArcadeActivity(playerId);
   const token = createSession(playerId);
 
   const started = await api("/api/tickets/games/match3/start", {

@@ -4,6 +4,7 @@ import { bestiaryApi } from "./bestiary.js";
 import { eventsApi } from "./events.js";
 import { infoBlocksApi } from "./infoBlocks.js";
 import { inventoryApi } from "./inventory.js";
+import { liveActivityApi } from "./liveActivity.js";
 import { partyApi } from "./party.js";
 import { playersApi } from "./players.js";
 import { profileApi } from "./profile.js";
@@ -18,6 +19,7 @@ export const api = {
   ...playersApi,
   ...profileApi,
   ...inventoryApi,
+  ...liveActivityApi,
   ...bestiaryApi,
   ...eventsApi,
   ...infoBlocksApi,

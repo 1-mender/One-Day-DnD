@@ -12,6 +12,7 @@ process.env.ARCADE_QUEUE_TTL_MS = "120000";
 const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
 const { ticketsRouter } = await import("../src/routes/tickets.js");
 const { now } = await import("../src/util.js");
+const { seedActiveArcadeActivity } = await import("./liveActivityTestHelper.js");
 
 initDb();
 
@@ -61,6 +62,8 @@ async function api(pathname, { method = "GET", token = "", body } = {}) {
 async function createActiveMatch(gameKey = "ttt") {
   const p1 = createPlayer(`M-${gameKey}-A-${Date.now()}`);
   const p2 = createPlayer(`M-${gameKey}-B-${Date.now()}`);
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
   const t1 = createSession(p1);
   const t2 = createSession(p2);
 
@@ -87,6 +90,8 @@ async function createActiveMatch(gameKey = "ttt") {
 test("queue join + auto match for same game/mode", async () => {
   const p1 = createPlayer("Queue-A");
   const p2 = createPlayer("Queue-B");
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
   const t1 = createSession(p1);
   const t2 = createSession(p2);
 
@@ -118,6 +123,9 @@ test("queue join respects explicit skillBand when provided", async () => {
   const p1 = createPlayer("Skill-Bronze-1");
   const p2 = createPlayer("Skill-Gold");
   const p3 = createPlayer("Skill-Bronze-2");
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
+  seedActiveArcadeActivity(p3);
   const t1 = createSession(p1);
   const t2 = createSession(p2);
   const t3 = createSession(p3);
@@ -172,6 +180,7 @@ test("queue join respects explicit skillBand when provided", async () => {
 
 test("queue cancel removes active queue", async () => {
   const p = createPlayer("Queue-Cancel");
+  seedActiveArcadeActivity(p);
   const token = createSession(p);
 
   const q = await api("/api/tickets/matchmaking/queue", {
@@ -195,6 +204,8 @@ test("queue cancel removes active queue", async () => {
 test("rematch creates second match with rematch_of", async () => {
   const p1 = createPlayer("Rematch-A");
   const p2 = createPlayer("Rematch-B");
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
   const t1 = createSession(p1);
   const t2 = createSession(p2);
 
