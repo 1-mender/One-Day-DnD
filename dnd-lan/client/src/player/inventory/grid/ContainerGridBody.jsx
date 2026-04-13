@@ -8,6 +8,7 @@ export default function ContainerGridBody({
   itemBySlot,
   readOnly,
   onItemOpen,
+  onItemEdit,
   onTransferItem,
   onToggleFavoriteItem,
   onDeleteItem,
@@ -46,6 +47,7 @@ export default function ContainerGridBody({
             item={item}
             readOnly={readOnly}
             onItemOpen={onItemOpen}
+            onItemEdit={onItemEdit}
             onTransferItem={onTransferItem}
             onToggleFavoriteItem={onToggleFavoriteItem}
             onDeleteItem={onDeleteItem}

@@ -13,6 +13,7 @@ export default function InventoryItemsSection({
   layoutSaving,
   isNarrowScreen,
   moveLayoutItems,
+  startInspect,
   startEdit,
   startTransfer,
   toggleFavorite,
@@ -46,6 +47,7 @@ export default function InventoryItemsSection({
         layoutSaving={layoutSaving}
         isNarrowScreen={isNarrowScreen}
         moveLayoutItems={moveLayoutItems}
+        startInspect={startInspect}
         startEdit={startEdit}
         startTransfer={startTransfer}
         toggleFavorite={toggleFavorite}

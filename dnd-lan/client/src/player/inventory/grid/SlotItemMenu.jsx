@@ -7,6 +7,7 @@ function SlotItemMenuActions({
   availableQty,
   canSplit,
   onOpen,
+  onEdit,
   onQuickEquipItem,
   onTransferItem,
   onSplitItem,
@@ -19,8 +20,13 @@ function SlotItemMenuActions({
   return (
     <>
       <button type="button" className={itemClass} onClick={() => { onOpen?.(item); closeMenu(); }}>
-        <span>Редактировать</span>
+        <span>Осмотреть</span>
       </button>
+      {onEdit ? (
+        <button type="button" className={itemClass} onClick={() => { if (readOnly) return; onEdit?.(item); closeMenu(); }} disabled={readOnly}>
+          <span>Редактировать</span>
+        </button>
+      ) : null}
       <button type="button" className={itemClass} onClick={() => { onQuickEquipItem?.(item); closeMenu(); }} disabled={readOnly}>
         <span>Быстро экипировать</span>
       </button>
@@ -50,6 +56,7 @@ export default function SlotItemMenu({
   availableQty,
   canSplit,
   onOpen,
+  onEdit,
   onQuickEquipItem,
   onTransferItem,
   onSplitItem,
@@ -68,6 +75,7 @@ export default function SlotItemMenu({
             availableQty={availableQty}
             canSplit={canSplit}
             onOpen={onOpen}
+            onEdit={onEdit}
             onQuickEquipItem={onQuickEquipItem}
             onTransferItem={onTransferItem}
             onSplitItem={onSplitItem}
@@ -110,6 +118,7 @@ export default function SlotItemMenu({
         availableQty={availableQty}
         canSplit={canSplit}
         onOpen={onOpen}
+        onEdit={onEdit}
         onQuickEquipItem={onQuickEquipItem}
         onTransferItem={onTransferItem}
         onSplitItem={onSplitItem}

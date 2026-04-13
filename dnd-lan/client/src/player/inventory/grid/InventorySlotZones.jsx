@@ -8,6 +8,7 @@ export default function InventorySlotZones({
   readOnly,
   busy,
   onItemOpen,
+  onItemEdit,
   onTransferItem,
   onToggleFavoriteItem,
   onDeleteItem,
@@ -35,6 +36,7 @@ export default function InventorySlotZones({
           itemBySlot={itemBySlot}
           readOnly={readOnly || busy}
           onItemOpen={onItemOpen}
+          onItemEdit={onItemEdit}
           onTransferItem={onTransferItem}
           onToggleFavoriteItem={onToggleFavoriteItem}
           onDeleteItem={onDeleteItem}

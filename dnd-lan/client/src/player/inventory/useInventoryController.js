@@ -34,6 +34,8 @@ export function useInventoryController() {
   const [splitItem, setSplitItem] = useState(null);
   const [splitQty, setSplitQty] = useState(1);
   const [splitTarget, setSplitTarget] = useState(null);
+  const [inspectOpen, setInspectOpen] = useState(false);
+  const [inspectItem, setInspectItem] = useState(null);
   const [layoutSaving, setLayoutSaving] = useState(false);
   const readOnly = useReadOnly();
   const {
@@ -147,6 +149,17 @@ export function useInventoryController() {
     startEditorEdit(item);
   }
 
+  function startInspect(item) {
+    if (!item) return;
+    setInspectItem(item);
+    setInspectOpen(true);
+  }
+
+  function closeInspect() {
+    setInspectOpen(false);
+    setInspectItem(null);
+  }
+
   const hasWeightLimit = Number.isFinite(maxWeight) && maxWeight > 0;
   const weightRatio = hasWeightLimit ? totalWeightAll / maxWeight : 0;
   const weightStatus = hasWeightLimit ? (weightRatio >= 1 ? "off" : weightRatio >= 0.75 ? "warn" : "ok") : "secondary";
@@ -180,6 +193,10 @@ export function useInventoryController() {
     setTransferQty,
     transferNote,
     setTransferNote,
+    inspectOpen,
+    setInspectOpen,
+    inspectItem,
+    setInspectItem,
     splitOpen,
     setSplitOpen,
     splitItem,
@@ -216,6 +233,7 @@ export function useInventoryController() {
     SelectedIcon,
     startAdd,
     startEdit,
+    startInspect,
     startTransfer,
     startSplit,
     handleGridSplitRequest,
@@ -234,6 +252,7 @@ export function useInventoryController() {
     transferInputMax,
     splitAvailable,
     getSplitInputMax,
+    closeInspect,
     closeEditor,
     closeTransfer,
     closeSplit

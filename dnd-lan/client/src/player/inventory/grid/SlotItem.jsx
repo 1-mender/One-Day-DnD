@@ -11,6 +11,7 @@ export default function SlotItem({
   readOnly,
   dragging = false,
   onOpen,
+  onEdit,
   onTransferItem,
   onToggleFavoriteItem,
   onDeleteItem,
@@ -182,6 +183,7 @@ export default function SlotItem({
         availableQty={availableQty}
         canSplit={canSplit}
         onOpen={onOpen}
+        onEdit={onEdit}
         onQuickEquipItem={onQuickEquipItem}
         onTransferItem={onTransferItem}
         onSplitItem={onSplitItem}

@@ -6,8 +6,7 @@ export default function InventoryFavoritesSection({
   mobileFavoritesOpen,
   setMobileFavoritesOpen,
   favorites,
-  startEdit,
-  readOnly
+  startInspect
 }) {
   const summaryMeta = (
     <div className="inv-mobile-summary-meta" aria-hidden="true">
@@ -28,8 +27,7 @@ export default function InventoryFavoritesSection({
             key={`fav_${item.id}`}
             type="button"
             className="inv-quick-item"
-            onClick={() => startEdit(item)}
-            disabled={readOnly}
+            onClick={() => startInspect(item)}
             title={`${item.name || ""} x${qty}`}
             aria-label={`${item.name || "Item"} x${qty}`}
           >

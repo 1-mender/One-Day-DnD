@@ -1,5 +1,5 @@
 import React from "react";
-import { Eye, EyeOff, PencilLine, Send, Star, StarOff, Trash2 } from "lucide-react";
+import { Eye, EyeOff, FileText, PencilLine, Send, Star, StarOff, Trash2 } from "lucide-react";
 import { ActionSheet } from "../../../foundation/primitives/index.js";
 
 export default function InventoryItemMobileActions({
@@ -11,6 +11,7 @@ export default function InventoryItemMobileActions({
   isHidden,
   transferDisabled,
   onToggleFavorite,
+  onInspect,
   onEdit,
   onTransfer,
   onToggleVisibility,
@@ -37,6 +38,19 @@ export default function InventoryItemMobileActions({
           >
             {isFavorite ? <StarOff className="icon" aria-hidden="true" /> : <Star className="icon" aria-hidden="true" />}
             <span>{isFavorite ? "Убрать из избранного" : "В избранное"}</span>
+          </button>
+        ) : null}
+        {onInspect ? (
+          <button
+            type="button"
+            className="action-sheet-item"
+            onClick={() => {
+              onInspect?.();
+              setQuickOpen(false);
+            }}
+          >
+            <FileText className="icon" aria-hidden="true" />
+            <span>Осмотреть</span>
           </button>
         ) : null}
         {onEdit ? (

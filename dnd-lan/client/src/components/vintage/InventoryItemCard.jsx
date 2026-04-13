@@ -21,6 +21,7 @@ function InventoryItemCard({
   selectable = false,
   selected = false,
   onSelectChange,
+  onInspect,
   onTransfer
 }) {
   const actionsId = useId();
@@ -137,6 +138,7 @@ function InventoryItemCard({
           isHidden={isHidden}
           transferDisabled={transferDisabled}
           onToggleFavorite={onToggleFavorite}
+          onInspect={onInspect}
           onEdit={onEdit}
           onTransfer={onTransfer}
           onToggleVisibility={onToggleVisibility}
@@ -153,6 +155,7 @@ function InventoryItemCard({
           isHidden={isHidden}
           transferDisabled={transferDisabled}
           onToggleFavorite={onToggleFavorite}
+          onInspect={onInspect}
           onEdit={onEdit}
           onTransfer={onTransfer}
           onToggleVisibility={onToggleVisibility}

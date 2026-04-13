@@ -30,6 +30,7 @@ function InventoryListView({
   listRef,
   readOnly,
   actionsVariant,
+  startInspect,
   startEdit,
   del,
   toggleVisibility,
@@ -54,6 +55,7 @@ function InventoryListView({
           readOnly={readOnly}
           actionsVariant={actionsVariant}
           lite={lite}
+          onInspect={() => startInspect(item)}
           onEdit={() => startEdit(item)}
           onDelete={() => del(item.id)}
           onToggleVisibility={() => toggleVisibility(item)}
@@ -71,6 +73,7 @@ function InventorySlotsView({
   layoutSaving,
   isNarrowScreen,
   moveLayoutItems,
+  startInspect,
   startEdit,
   startTransfer,
   toggleFavorite,
@@ -85,7 +88,8 @@ function InventorySlotsView({
       busy={layoutSaving}
       touchOptimized={isNarrowScreen}
       onMove={moveLayoutItems}
-      onItemOpen={(item) => startEdit(item)}
+      onItemOpen={(item) => startInspect(item)}
+      onItemEdit={(item) => startEdit(item)}
       onTransferItem={(item) => startTransfer(item)}
       onToggleFavoriteItem={(item) => toggleFavorite(item)}
       onDeleteItem={(item) => del(item.id)}

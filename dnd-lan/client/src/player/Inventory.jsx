@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { RARITY_OPTIONS } from "../lib/inventoryRarity.js";
 import { useInventoryController } from "./inventory/useInventoryController.js";
 import InventoryFavoritesSection from "./inventory/sections/InventoryFavoritesSection.jsx";
+import InventoryInspectModal from "./inventory/sections/InventoryInspectModal.jsx";
 import InventoryItemModal from "./inventory/sections/InventoryItemModal.jsx";
 import InventoryItemsSection from "./inventory/sections/InventoryItemsSection.jsx";
 import InventorySplitModal from "./inventory/sections/InventorySplitModal.jsx";
@@ -49,6 +50,8 @@ export default function Inventory() {
     setIconQuery,
     iconPickerOpen,
     setIconPickerOpen,
+    inspectOpen,
+    inspectItem,
     layoutSaving,
     mobileStatsOpen,
     setMobileStatsOpen,
@@ -68,6 +71,7 @@ export default function Inventory() {
     SelectedIcon,
     startAdd,
     startEdit,
+    startInspect,
     startTransfer,
     handleGridSplitRequest,
     save,
@@ -83,6 +87,7 @@ export default function Inventory() {
     transferAvailable,
     transferInputMax,
     splitAvailable,
+    closeInspect,
     closeEditor,
     closeTransfer,
     closeSplit
@@ -128,7 +133,7 @@ export default function Inventory() {
         mobileFavoritesOpen={mobileFavoritesOpen}
         setMobileFavoritesOpen={setMobileFavoritesOpen}
         favorites={favorites}
-        startEdit={startEdit}
+        startInspect={startInspect}
         readOnly={readOnly}
       />
 
@@ -143,6 +148,7 @@ export default function Inventory() {
         layoutSaving={layoutSaving}
         isNarrowScreen={isNarrowScreen}
         moveLayoutItems={moveLayoutItems}
+        startInspect={startInspect}
         startEdit={startEdit}
         startTransfer={startTransfer}
         toggleFavorite={toggleFavorite}
@@ -168,6 +174,17 @@ export default function Inventory() {
         setIconQuery={setIconQuery}
         filteredIconSections={filteredIconSections}
         save={save}
+      />
+
+      <InventoryInspectModal
+        open={inspectOpen}
+        item={inspectItem}
+        readOnly={readOnly}
+        onClose={closeInspect}
+        onEdit={inspectItem && !readOnly ? () => {
+          closeInspect();
+          startEdit(inspectItem);
+        } : null}
       />
 
       <InventoryTransferModal

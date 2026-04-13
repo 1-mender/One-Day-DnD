@@ -14,6 +14,7 @@ export default function InventorySlotGrid({
   touchOptimized = false,
   onMove,
   onItemOpen,
+  onItemEdit,
   onTransferItem,
   onToggleFavoriteItem,
   onDeleteItem,
@@ -77,6 +78,7 @@ export default function InventorySlotGrid({
           readOnly={readOnly}
           busy={busy}
           onItemOpen={onItemOpen}
+          onItemEdit={onItemEdit}
           onTransferItem={onTransferItem}
           onToggleFavoriteItem={onToggleFavoriteItem}
           onDeleteItem={onDeleteItem}

@@ -10,6 +10,7 @@ export default function SlotCell({
   item,
   readOnly,
   onItemOpen,
+  onItemEdit,
   onTransferItem,
   onToggleFavoriteItem,
   onDeleteItem,
@@ -46,6 +47,7 @@ export default function SlotCell({
           item={item}
           readOnly={readOnly}
           onOpen={onItemOpen}
+          onEdit={onItemEdit}
           onTransferItem={onTransferItem}
           onToggleFavoriteItem={onToggleFavoriteItem}
           onDeleteItem={onDeleteItem}
