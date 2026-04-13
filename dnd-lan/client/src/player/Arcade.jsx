@@ -12,7 +12,6 @@ import {
   localizeTagValue
 } from "./arcade/domain/arcadeLocalization.js";
 import {
-  formatArcadeModeMeta,
   resolveArcadeModeRules
 } from "./arcade/domain/arcadeModeRules.js";
 import { useArcadeController } from "./arcade/useArcadeController.js";
@@ -289,21 +288,17 @@ export default function Arcade() {
         {rankedGames.map((g) => {
           const modes = Array.isArray(g.modes) ? g.modes : [];
           const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
-          const selectedMode = modes.find((mode) => mode.key === selectedModeKey) || modes[0] || null;
           const modeRules = resolveArcadeModeRules(rules?.games?.[g.key], selectedModeKey);
           const remaining = getGameRemaining(g.key, selectedModeKey);
           const disabledReason = getDisabledReason(g.key, selectedModeKey);
           const canPlay = !disabledReason;
-          const rulesToShow = canPlay ? g.rules.slice(0, 2) : g.rules.slice(0, 1);
-          const hasMoreRules = g.rules.length > rulesToShow.length;
           const difficultyLabel = localizeTagValue(getUiText(g.key, "difficulty", g.difficulty, selectedModeKey), "difficulty");
-          const riskLabel = localizeTagValue(getUiText(g.key, "risk", g.risk, selectedModeKey), "risk");
           const timeLabel = localizeTagValue(getUiText(g.key, "time", g.time, selectedModeKey), "time");
           const entryCost = Number(modeRules?.entryCost || 0);
           const rewardLabel = formatRewardValue(g.key, "—", selectedModeKey);
-          const usageLabel = remaining ? `Лимит: ${remaining.used}/${remaining.lim}` : null;
+          const usageLabel = remaining ? `${remaining.used}/${remaining.lim}` : null;
           const gameDisabledByDm = modeRules?.enabled === false;
-          const modeMeta = formatArcadeModeMeta(g, selectedMode, modeRules);
+          const entryLabel = formatEntryValue(g.key, 0).replace(/^Вход:\s*/i, "");
           return (
             <div key={g.key} className={`item taped arcade-card${canPlay ? " is-playable" : " is-locked compact-locked"}${entryCost === 0 ? " is-free" : ""}`}>
               <div className="arcade-head">
@@ -322,9 +317,8 @@ export default function Arcade() {
               <div className="small arcade-blurb">{g.blurb}</div>
               <div className="arcade-meta">
                 <span className="meta-chip" title={`Время: ${timeLabel}`}>Время: {timeLabel}</span>
-                <span className="meta-chip" title={`Риск: ${riskLabel}`}>Риск: {riskLabel}</span>
-                <span className="meta-chip">{formatEntryValue(g.key, 0)}</span>
-                {usageLabel ? <span className="meta-chip">{usageLabel}</span> : null}
+                <span className="meta-chip">Вход: {entryLabel}</span>
+                {usageLabel ? <span className="meta-chip">Лимит: {usageLabel}</span> : null}
               </div>
               {modes.length > 1 ? (
                 <div className="arcade-modes">
@@ -341,17 +335,6 @@ export default function Arcade() {
                   ))}
                 </div>
               ) : null}
-              {modeMeta ? (
-                <div className="small arcade-mode-summary">{modeMeta}</div>
-              ) : null}
-              <div className="rule-list">
-                {rulesToShow.map((rule, idx) => (
-                  <div key={`${g.key}_${idx}`} className="rule-line">{rule}</div>
-                ))}
-                {hasMoreRules ? (
-                  <div className="rule-more small">+ ещё {g.rules.length - rulesToShow.length}</div>
-                ) : null}
-              </div>
               {canPlay ? (
                 <div className="row arcade-actions arcade-actions-live" style={{ justifyContent: "space-between" }}>
                   <span className="ticket-pill">{rewardLabel}</span>
