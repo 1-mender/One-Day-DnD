@@ -24,6 +24,19 @@ export default function InventoryItemMobileActions({
       onClose={() => setQuickOpen(false)}
     >
       <div className="action-sheet-actions">
+        {onInspect ? (
+          <button
+            type="button"
+            className="action-sheet-item"
+            onClick={() => {
+              onInspect?.();
+              setQuickOpen(false);
+            }}
+          >
+            <FileText className="icon" aria-hidden="true" />
+            <span>Осмотреть</span>
+          </button>
+        ) : null}
         {onToggleFavorite ? (
           <button
             type="button"
@@ -38,19 +51,6 @@ export default function InventoryItemMobileActions({
           >
             {isFavorite ? <StarOff className="icon" aria-hidden="true" /> : <Star className="icon" aria-hidden="true" />}
             <span>{isFavorite ? "Убрать из избранного" : "В избранное"}</span>
-          </button>
-        ) : null}
-        {onInspect ? (
-          <button
-            type="button"
-            className="action-sheet-item"
-            onClick={() => {
-              onInspect?.();
-              setQuickOpen(false);
-            }}
-          >
-            <FileText className="icon" aria-hidden="true" />
-            <span>Осмотреть</span>
           </button>
         ) : null}
         {onEdit ? (

@@ -852,6 +852,12 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   color: var(--map-text);
 }
 
+.inv-inspect-hint{
+  margin-top: 2px;
+  color: var(--map-muted);
+  font-weight: 700;
+}
+
 .inv-desc-lite{
   color: var(--map-muted);
 }
@@ -874,6 +880,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   display: flex;
   align-items: flex-start;
   gap: 14px;
+}
+
+.inv-inspect-sheet{
+  gap: 10px;
 }
 
 .inv-inspect-icon{
@@ -920,6 +930,23 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 
 .inv-inspect-markdown{
   color: var(--map-text);
+  line-height: 1.6;
+}
+
+.inv-inspect-markdown > *:first-child{
+  margin-top: 0;
+}
+
+.inv-inspect-markdown > *:last-child{
+  margin-bottom: 0;
+}
+
+.inv-inspect-empty{
+  color: var(--map-muted);
+}
+
+.inv-inspect-actions{
+  margin-top: 2px;
 }
 
 .rarity-medallion{
@@ -6994,6 +7021,10 @@ body.arcade-modal-open{
   .tf-inventory-shell .inv-desc-text{
     font-size: 12px;
     line-height: 1.35;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .tf-inventory-shell .inv-actions{
@@ -7005,6 +7036,11 @@ body.arcade-modal-open{
     min-height: 34px;
     padding-inline: 10px;
     font-size: 12px;
+  }
+
+  .tf-inventory-shell .inv-inspect-hint{
+    font-size: 11px;
+    line-height: 1.2;
   }
 
   .tf-inventory-shell .empty-state{

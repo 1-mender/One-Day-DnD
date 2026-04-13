@@ -147,6 +147,12 @@ function InventoryItemCard({
         />
       ) : null}
 
+      {inspectable && !lite ? (
+        <div className="inv-inspect-hint small">
+          Нажми, чтобы осмотреть
+        </div>
+      ) : null}
+
       {showActions ? (
         <InventoryItemActions
           actionsId={actionsId}

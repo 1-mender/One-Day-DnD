@@ -23,6 +23,18 @@ export default function InventoryItemActions({
       role="group"
       aria-label={actionsLabel}
     >
+      {onInspect ? (
+        <button
+          type="button"
+          className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
+          onClick={onInspect}
+          title="Осмотреть"
+          aria-label="Осмотреть"
+        >
+          <FileText className="icon" aria-hidden="true" />
+          {compact ? null : "Осмотреть"}
+        </button>
+      ) : null}
       {onToggleFavorite ? (
         <button
           type="button"
@@ -35,18 +47,6 @@ export default function InventoryItemActions({
         >
           {isFavorite ? <StarOff className="icon" aria-hidden="true" /> : <Star className="icon" aria-hidden="true" />}
           {compact ? null : (isFavorite ? "Убрать из избранного" : "В избранное")}
-        </button>
-      ) : null}
-      {onInspect ? (
-        <button
-          type="button"
-          className={`btn secondary ${compact ? "icon-btn" : ""}`.trim()}
-          onClick={onInspect}
-          title="Осмотреть"
-          aria-label="Осмотреть"
-        >
-          <FileText className="icon" aria-hidden="true" />
-          {compact ? null : "Осмотреть"}
         </button>
       ) : null}
       {onEdit ? (

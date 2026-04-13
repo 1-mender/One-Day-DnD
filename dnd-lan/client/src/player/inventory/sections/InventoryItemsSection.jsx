@@ -35,7 +35,9 @@ export default function InventoryItemsSection({
           <div className="tf-section-kicker">Loadout archive</div>
           <div className="inv-panel-title">Предметы</div>
         </div>
-        <div className={`small${compactItemsHead ? " inv-items-head-meta" : ""}`.trim()}>Режим: {viewLabel}</div>
+        <div className={`small${compactItemsHead ? " inv-items-head-meta" : ""}`.trim()}>
+          Режим: {viewLabel} • Нажми на предмет, чтобы осмотреть
+        </div>
       </div>
       <ErrorBanner message={err} onRetry={load} />
       <InventoryItemsBody

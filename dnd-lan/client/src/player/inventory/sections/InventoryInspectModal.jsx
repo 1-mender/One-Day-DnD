@@ -20,16 +20,18 @@ export default function InventoryInspectModal({
   const weight = Number(item?.weight || 0);
   const qty = Number(item?.qty || 0);
   const visibilityLabel = item?.visibility === "hidden" ? "Скрытый" : "Публичный";
+  const hasDescription = !!String(item?.description || "").trim();
 
   return (
     <Modal open={open} title={item?.name || "Осмотр предмета"} onClose={onClose}>
       {item ? (
-        <div className="list">
+        <div className="list inv-inspect-sheet">
           <div className="item tf-panel inv-inspect-hero">
             <div className="inv-inspect-icon" aria-hidden="true">
               {icon?.Icon ? <icon.Icon className="icon" /> : <span>{icon?.text || "?"}</span>}
             </div>
             <div className="inv-inspect-copy">
+              <div className="tf-section-kicker">Item Dossier</div>
               <div className="inv-inspect-title">{item.name || "Без названия"}</div>
               <div className="inv-inspect-meta">
                 <span className="badge secondary">Редкость: {rarityLabel}</span>
@@ -43,10 +45,12 @@ export default function InventoryInspectModal({
           <div className="item tf-panel inv-inspect-description">
             <div className="title">Описание</div>
             <div className="inv-inspect-markdown">
-              {item.description ? (
+              {hasDescription ? (
                 <MarkdownView source={item.description} />
               ) : (
-                <div className="small">Описание пока не добавлено.</div>
+                <div className="small inv-inspect-empty">
+                  Описание пока не добавлено. Базовые свойства предмета видны в шапке карточки.
+                </div>
               )}
             </div>
           </div>
@@ -62,7 +66,7 @@ export default function InventoryInspectModal({
             </div>
           ) : null}
 
-          <div className="row" style={{ gap: 10, justifyContent: "flex-end" }}>
+          <div className="row inv-inspect-actions" style={{ gap: 10, justifyContent: "flex-end" }}>
             {onEdit ? (
               <button type="button" className="btn secondary" onClick={onEdit} disabled={readOnly}>
                 <FileText className="icon" aria-hidden="true" />
