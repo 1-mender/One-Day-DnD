@@ -2,12 +2,16 @@ import { getDb } from "../db.js";
 import { jsonParse, now } from "../util.js";
 
 export const LIVE_ACTIVITY_KINDS = {
-  ARCADE: "arcade"
+  ARCADE: "arcade",
+  SHIELD: "shield"
 };
 
+const LIVE_ACTIVITY_KIND_SET = new Set(Object.values(LIVE_ACTIVITY_KINDS));
+
 function normalizeKind(kind) {
-  const value = String(kind || LIVE_ACTIVITY_KINDS.ARCADE).trim().toLowerCase();
-  return value || LIVE_ACTIVITY_KINDS.ARCADE;
+  const value = String(kind || "").trim().toLowerCase();
+  if (!value) return "";
+  return LIVE_ACTIVITY_KIND_SET.has(value) ? value : "";
 }
 
 function normalizePayload(payload) {
@@ -33,17 +37,26 @@ export function mapLiveActivity(row) {
 
 export function getActivePlayerLiveActivity(playerId, {
   db = getDb(),
-  kind = LIVE_ACTIVITY_KINDS.ARCADE
+  kind = null
 } = {}) {
   const safePlayerId = Number(playerId || 0);
   if (!safePlayerId) return null;
-  const row = db.prepare(
-    `SELECT *
-     FROM player_live_activities
-     WHERE player_id=? AND kind=? AND status='active'
-     ORDER BY updated_at DESC, id DESC
-     LIMIT 1`
-  ).get(safePlayerId, normalizeKind(kind));
+  const safeKind = normalizeKind(kind);
+  const row = safeKind
+    ? db.prepare(
+      `SELECT *
+       FROM player_live_activities
+       WHERE player_id=? AND kind=? AND status='active'
+       ORDER BY updated_at DESC, id DESC
+       LIMIT 1`
+    ).get(safePlayerId, safeKind)
+    : db.prepare(
+      `SELECT *
+       FROM player_live_activities
+       WHERE player_id=? AND status='active'
+       ORDER BY updated_at DESC, id DESC
+       LIMIT 1`
+    ).get(safePlayerId);
   return mapLiveActivity(row);
 }
 
@@ -60,14 +73,15 @@ export function openPlayerLiveActivity({
   const safePartyId = Number(partyId || 0);
   if (!safePlayerId || !safePartyId) return null;
   const safeKind = normalizeKind(kind);
+  if (!safeKind) return null;
   const stamp = Number(nowFn()) || Date.now();
   const data = JSON.stringify(normalizePayload(payload));
   const tx = db.transaction(() => {
     db.prepare(
       `UPDATE player_live_activities
        SET status='closed', closed_at=?, updated_at=?
-       WHERE player_id=? AND kind=? AND status='active'`
-    ).run(stamp, stamp, safePlayerId, safeKind);
+       WHERE player_id=? AND status='active'`
+    ).run(stamp, stamp, safePlayerId);
     const result = db.prepare(
       `INSERT INTO player_live_activities(
         party_id, player_id, kind, status, payload, opened_by, opened_at, updated_at
@@ -80,20 +94,28 @@ export function openPlayerLiveActivity({
 
 export function closePlayerLiveActivity({
   playerId,
-  kind = LIVE_ACTIVITY_KINDS.ARCADE,
+  kind = null,
   db = getDb(),
   nowFn = now
 }) {
   const safePlayerId = Number(playerId || 0);
   if (!safePlayerId) return null;
   const safeKind = normalizeKind(kind);
-  const current = db.prepare(
-    `SELECT *
-     FROM player_live_activities
-     WHERE player_id=? AND kind=? AND status='active'
-     ORDER BY updated_at DESC, id DESC
-     LIMIT 1`
-  ).get(safePlayerId, safeKind);
+  const current = safeKind
+    ? db.prepare(
+      `SELECT *
+       FROM player_live_activities
+       WHERE player_id=? AND kind=? AND status='active'
+       ORDER BY updated_at DESC, id DESC
+       LIMIT 1`
+    ).get(safePlayerId, safeKind)
+    : db.prepare(
+      `SELECT *
+       FROM player_live_activities
+       WHERE player_id=? AND status='active'
+       ORDER BY updated_at DESC, id DESC
+       LIMIT 1`
+    ).get(safePlayerId);
   if (!current) return null;
   const stamp = Number(nowFn()) || Date.now();
   db.prepare(

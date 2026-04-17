@@ -49,6 +49,7 @@ function buildCspDirectives() {
 
 export function createApp() {
   const app = express();
+  const shieldStaticDir = path.resolve(publicDir, "..", "..", "..", "Mini-game", "Щиток");
   app.use(helmet({
     contentSecurityPolicy: CSP_DISABLED
       ? false
@@ -102,6 +103,24 @@ export function createApp() {
       }
     }
   }));
+  if (fs.existsSync(shieldStaticDir)) {
+    const allowShieldIframe = (_req, res, next) => {
+      res.removeHeader("Content-Security-Policy");
+      res.removeHeader("X-Frame-Options");
+      res.removeHeader("Cross-Origin-Opener-Policy");
+      res.removeHeader("Cross-Origin-Embedder-Policy");
+      res.removeHeader("Cross-Origin-Resource-Policy");
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      return next();
+    };
+
+    app.get(/^\/mini-game\/shield$/, (_req, res) => {
+      res.redirect(302, "/mini-game/shield/");
+    });
+    app.use("/mini-game/shield", allowShieldIframe, express.static(shieldStaticDir));
+  }
 
   app.use(assertWritable);
   app.use("/api/server", serverInfoRouter);

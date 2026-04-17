@@ -222,15 +222,15 @@ export default function DMPlayers() {
     }
   }
 
-  async function toggleArcadeActivity(player) {
+  async function toggleShieldActivity(player) {
     if (readOnly || !player?.id) return;
     setErr("");
     setActivityBusyId(player.id);
     try {
-      if (player.arcadeActive) {
-        await api.dmClosePlayerLiveActivity(player.id, { kind: "arcade" });
+      if (player.shieldActive) {
+        await api.dmClosePlayerLiveActivity(player.id, { kind: "shield" });
       } else {
-        await api.dmOpenPlayerLiveActivity(player.id, { kind: "arcade" });
+        await api.dmOpenPlayerLiveActivity(player.id, { kind: "shield" });
       }
       await loadPlayers();
     } catch (error) {
@@ -443,7 +443,7 @@ export default function DMPlayers() {
                       items={[
                         { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
                         { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
-                        { label: player.arcadeActive ? "Закрыть мини-игру" : "Открыть мини-игру", onClick: () => toggleArcadeActivity(player), disabled: readOnly || activityBusyId === player.id },
+                        { label: player.shieldActive ? "Закрыть Щиток" : "Открыть Щиток", onClick: () => toggleShieldActivity(player), disabled: readOnly || activityBusyId === player.id },
                         { label: t("dmPlayers.menuTickets"), onClick: () => openTickets(player), disabled: readOnly },
                         { label: t("dmPlayers.menuEditName"), onClick: () => startEdit(player), disabled: readOnly },
                         { label: t("dmPlayers.menuAsPlayer"), onClick: () => viewAs(player.id), disabled: readOnly },
@@ -486,8 +486,8 @@ export default function DMPlayers() {
                   <span className={`badge ${selectedSummary?.hasProfile ? "ok" : "warn"}`}>
                     {selectedSummary?.hasProfile ? "Профиль есть" : "Профиль не создан"}
                   </span>
-                  <span className={`badge ${selectedPlayer.arcadeActive ? "ok" : "secondary"}`}>
-                    {selectedPlayer.arcadeActive ? "Мини-игра активна" : "Мини-игра закрыта"}
+                  <span className={`badge ${selectedPlayer.shieldActive ? "ok" : "secondary"}`}>
+                    {selectedPlayer.shieldActive ? "Щиток активен" : "Щиток закрыт"}
                   </span>
                   <span className="badge secondary">Последний вход: {selectedSummary?.lastSeenLabel}</span>
                 </div>
@@ -512,13 +512,13 @@ export default function DMPlayers() {
                 </div>
                 <div className="paper-note dm-player-quick-links">
                   <div className="title">Быстрые переходы</div>
-                  <div className="small">Открой профиль для детального редактирования, запусти мини-игру или зайди как игрок только для просмотра.</div>
+                  <div className="small">Открой профиль для детального редактирования, запусти Щиток или зайди как игрок только для просмотра.</div>
                 </div>
                 <div className="list u-list-mt-12 dm-player-action-list">
-                  <button className="btn secondary" onClick={() => toggleArcadeActivity(selectedPlayer)} disabled={readOnly || activityBusyId === selectedPlayer.id}>
+                  <button className="btn secondary" onClick={() => toggleShieldActivity(selectedPlayer)} disabled={readOnly || activityBusyId === selectedPlayer.id}>
                     {activityBusyId === selectedPlayer.id
-                      ? (selectedPlayer.arcadeActive ? "Закрываю..." : "Открываю...")
-                      : (selectedPlayer.arcadeActive ? "Закрыть мини-игру" : "Открыть мини-игру")}
+                      ? (selectedPlayer.shieldActive ? "Закрываю..." : "Открываю...")
+                      : (selectedPlayer.shieldActive ? "Закрыть Щиток" : "Открыть Щиток")}
                   </button>
                   <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuTickets")}</button>
                   <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuEditName")}</button>

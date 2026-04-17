@@ -8,11 +8,11 @@ import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { takeImpersonationHandoff } from "../lib/impersonationHandoff.js";
 import { useSocket } from "../context/SocketContext.jsx";
-import { BookOpen, Gamepad2, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
+import { BookOpen, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
 import { t } from "../i18n/index.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
-const OPTIONAL_NAV_BASE_ORDER = ["/app/shop", "/app/bestiary", "/app/notes", "/app/transfers", "/app/arcade"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/shop", "/app/bestiary", "/app/notes", "/app/transfers"];
 const PRIMARY_NAV_ROUTES = new Set([
   "/app/players",
   "/app/profile",
@@ -26,7 +26,6 @@ const ROUTE_TO_ICON = {
   "/app/players": Users,
   "/app/profile": User,
   "/app/inventory": Package,
-  "/app/arcade": Gamepad2,
   "/app/transfers": Send,
   "/app/notes": StickyNote,
   "/app/shop": Store,
@@ -36,12 +35,29 @@ const ROUTE_TO_LABEL = {
   "/app/players": "playerLayout.navPlayers",
   "/app/profile": "playerLayout.navProfile",
   "/app/inventory": "playerLayout.navInventory",
-  "/app/arcade": "playerLayout.navArcade",
   "/app/transfers": "playerLayout.navTransfers",
   "/app/notes": "playerLayout.navNotes",
   "/app/shop": "playerLayout.navShop",
   "/app/bestiary": "playerLayout.navBestiary"
 };
+
+function getLiveActivityRoute(activity) {
+  const kind = String(activity?.kind || "");
+  if (kind === "shield") return "/app/shield";
+  return "";
+}
+
+function getLiveActivityTitle(activity) {
+  const kind = String(activity?.kind || "");
+  if (kind === "shield") return "Щиток доступен";
+  return "Активность доступна";
+}
+
+function getLiveActivityCopy(activity) {
+  const kind = String(activity?.kind || "");
+  if (kind === "shield") return "Мастер открыл для тебя временный доступ к Щитку. Доступ пропадёт, когда он его закроет.";
+  return "Мастер открыл для тебя временную активность.";
+}
 export default function PlayerLayout() {
   const nav = useNavigate();
   const location = useLocation();
@@ -74,7 +90,7 @@ export default function PlayerLayout() {
   const degradedDetails = netState?.degraded
     ? formatError(degradedReason || ERROR_CODES.READ_ONLY)
     : "";
-  const arcadeAvailable = activeLiveActivity?.kind === "arcade" && activeLiveActivity?.status === "active";
+  const activeActivityRoute = getLiveActivityRoute(activeLiveActivity);
 
   const syncLiveActivity = useCallback(async () => {
     try {
@@ -202,9 +218,12 @@ export default function PlayerLayout() {
     const onMinigameClosed = () => {
       setActiveLiveActivity(null);
       setLiveInviteVisible(false);
-      if (location.pathname === "/app/arcade") {
+      if (location.pathname === "/app/shield" || location.pathname === "/app/arcade") {
         nav("/app/players", { replace: true });
       }
+    };
+    const syncLiveActivitySoft = () => {
+      syncLiveActivity().catch(() => {});
     };
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
@@ -254,11 +273,19 @@ export default function PlayerLayout() {
     }
 
     const onVis = () => {
-      if (document.visibilityState === "visible") emitActivity();
+      if (document.visibilityState === "visible") {
+        emitActivity();
+        syncLiveActivitySoft();
+      }
+    };
+    const onFocus = () => {
+      emitActivity();
+      syncLiveActivitySoft();
     };
 
     window.addEventListener("pointerdown", emitActivity, { passive: true });
     window.addEventListener("keydown", emitActivity);
+    window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVis);
 
     return () => {
@@ -275,16 +302,21 @@ export default function PlayerLayout() {
       socket.off("player:minigame:closed", onMinigameClosed);
       window.removeEventListener("pointerdown", emitActivity);
       window.removeEventListener("keydown", emitActivity);
+      window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVis);
     };
   }, [loadTransferBadge, location.pathname, nav, socket, syncLiveActivity]);
 
   useEffect(() => {
     if (!liveActivityLoaded) return;
-    if (arcadeAvailable) return;
-    if (location.pathname !== "/app/arcade") return;
+    if (activeActivityRoute && location.pathname === activeActivityRoute) return;
+    if (location.pathname === "/app/arcade") {
+      nav("/app/players", { replace: true });
+      return;
+    }
+    if (location.pathname !== "/app/shield") return;
     nav("/app/players", { replace: true });
-  }, [arcadeAvailable, liveActivityLoaded, location.pathname, nav]);
+  }, [activeActivityRoute, liveActivityLoaded, location.pathname, nav]);
 
   async function setWriteMode(nextMode) {
     if (!impersonating || !me?.player?.id) return;
@@ -307,10 +339,7 @@ export default function PlayerLayout() {
     const optionalOrder = bestiaryEnabled
       ? OPTIONAL_NAV_BASE_ORDER
       : OPTIONAL_NAV_BASE_ORDER.filter((route) => route !== "/app/bestiary");
-    const liveOptionalOrder = arcadeAvailable
-      ? optionalOrder
-      : optionalOrder.filter((route) => route !== "/app/arcade");
-    const selectedRoutes = [...CORE_NAV_ROUTES, ...liveOptionalOrder];
+    const selectedRoutes = [...CORE_NAV_ROUTES, ...optionalOrder];
     return selectedRoutes.map((to) => ({
       to,
       label: t(ROUTE_TO_LABEL[to]),
@@ -318,7 +347,7 @@ export default function PlayerLayout() {
       badge: to === "/app/transfers" ? transferBadge : 0,
       primary: PRIMARY_NAV_ROUTES.has(to)
     }));
-  }, [arcadeAvailable, bestiaryEnabled, transferBadge]);
+  }, [bestiaryEnabled, transferBadge]);
 
   return (
     <div>
@@ -359,17 +388,17 @@ export default function PlayerLayout() {
       <VintageShell layout="spread" pageKey={location.pathname}>
         <div className="container padBottom">
           {netErr && <div className="badge off">{t("playerLayout.networkError", { message: netErr })}</div>}
-          {arcadeAvailable && liveInviteVisible && location.pathname !== "/app/arcade" ? (
+          {activeActivityRoute && liveInviteVisible && location.pathname !== activeActivityRoute ? (
             <div className="paper-note player-live-activity-banner">
-              <div className="title">Мини-игра доступна</div>
-              <div className="small">Мастер открыл для тебя временную мини-игру. Доступ пропадёт, когда он её закроет.</div>
+              <div className="title">{getLiveActivityTitle(activeLiveActivity)}</div>
+              <div className="small">{getLiveActivityCopy(activeLiveActivity)}</div>
               <div className="row player-live-activity-actions">
                 <button
                   type="button"
                   className="btn"
                   onClick={() => {
                     setLiveInviteVisible(false);
-                    nav("/app/arcade");
+                    nav(activeActivityRoute);
                   }}
                 >
                   Открыть

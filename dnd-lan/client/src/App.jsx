@@ -17,7 +17,7 @@ const Transfers = lazy(() => import("./player/Transfers.jsx"));
 const Notes = lazy(() => import("./player/Notes.jsx"));
 const Bestiary = lazy(() => import("./player/Bestiary.jsx"));
 const Profile = lazy(() => import("./player/Profile.jsx"));
-const Arcade = lazy(() => import("./player/Arcade.jsx"));
+const ShieldMinigame = lazy(() => import("./player/ShieldMinigame.jsx"));
 const ShopJoe = lazy(() => import("./player/ShopJoe.jsx"));
 
 const DMDashboard = lazy(() => import("./dm/DMDashboard.jsx"));
@@ -58,7 +58,7 @@ export default function App() {
           <Route path="transfers" element={withSuspense(<Transfers />)} />
           <Route path="notes" element={withSuspense(<Notes />)} />
           <Route path="profile" element={withSuspense(<Profile />)} />
-          <Route path="arcade" element={withSuspense(<Arcade />)} />
+          <Route path="shield" element={withSuspense(<ShieldMinigame />)} />
           <Route path="shop" element={withSuspense(<ShopJoe />)} />
           <Route path="bestiary" element={withSuspense(<Bestiary />)} />
         </Route>
