@@ -91,6 +91,7 @@ export const ru = {
     "navProfile": "Профиль",
     "navInventory": "Инвентарь",
     "navArcade": "Аркада",
+    "navMap": "Карта",
     "navTransfers": "Передачи",
     "navNotes": "Заметки",
     "navShop": "Магазин",

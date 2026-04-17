@@ -8,15 +8,16 @@ import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { takeImpersonationHandoff } from "../lib/impersonationHandoff.js";
 import { useSocket } from "../context/SocketContext.jsx";
-import { BookOpen, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
+import { BookOpen, Map, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
 import { t } from "../i18n/index.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
-const OPTIONAL_NAV_BASE_ORDER = ["/app/shop", "/app/bestiary", "/app/notes", "/app/transfers"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/map", "/app/shop", "/app/bestiary", "/app/notes", "/app/transfers"];
 const PRIMARY_NAV_ROUTES = new Set([
   "/app/players",
   "/app/profile",
   "/app/inventory",
+  "/app/map",
   "/app/shop",
   "/app/bestiary",
   "/app/notes",
@@ -26,6 +27,7 @@ const ROUTE_TO_ICON = {
   "/app/players": Users,
   "/app/profile": User,
   "/app/inventory": Package,
+  "/app/map": Map,
   "/app/transfers": Send,
   "/app/notes": StickyNote,
   "/app/shop": Store,
@@ -35,6 +37,7 @@ const ROUTE_TO_LABEL = {
   "/app/players": "playerLayout.navPlayers",
   "/app/profile": "playerLayout.navProfile",
   "/app/inventory": "playerLayout.navInventory",
+  "/app/map": "playerLayout.navMap",
   "/app/transfers": "playerLayout.navTransfers",
   "/app/notes": "playerLayout.navNotes",
   "/app/shop": "playerLayout.navShop",
