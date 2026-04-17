@@ -18,6 +18,7 @@ import { infoBlocksRouter } from "../routes/infoBlocks.js";
 import { infoUploadsRouter } from "../routes/infoUploads.js";
 import { inventoryRouter } from "../routes/inventory.js";
 import { liveActivityRouter } from "../routes/liveActivity.js";
+import { mapRouter } from "../routes/map.js";
 import { partyRouter } from "../routes/party.js";
 import { playersRouter } from "../routes/players.js";
 import { profileRouter } from "../routes/profile.js";
@@ -129,6 +130,7 @@ export function createApp() {
   app.use("/api/party", partyRouter);
   app.use("/api/players", playersRouter);
   app.use("/api/live-activity", liveActivityRouter);
+  app.use("/api/map", mapRouter);
   app.use("/api/inventory", inventoryRouter);
   app.use("/api/bestiary", bestiaryImagesRouter);
   app.use("/api/bestiary", bestiaryPortabilityRouter);

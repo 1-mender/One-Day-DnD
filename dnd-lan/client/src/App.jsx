@@ -74,6 +74,7 @@ export default function App() {
           <Route path="lobby" element={withSuspense(<DMLobby />)} />
           <Route path="players" element={withSuspense(<DMPlayers />)} />
           <Route path="players/:id/profile" element={withSuspense(<DMPlayerProfile />)} />
+          <Route path="map" element={withSuspense(<WorldMap mode="dm" />)} />
           <Route path="inventory" element={withSuspense(<DMInventory />)} />
           <Route path="bestiary" element={withSuspense(<DMBestiary />)} />
           <Route path="events" element={withSuspense(<DMEvents />)} />

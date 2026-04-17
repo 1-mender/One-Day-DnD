@@ -337,6 +337,43 @@ const MIGRATIONS = [
       database.exec("CREATE INDEX IF NOT EXISTS idx_player_live_activities_party_status ON player_live_activities(party_id, status, kind, updated_at DESC);");
       database.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_player_live_activities_active_unique ON player_live_activities(player_id, kind) WHERE status='active';");
     }
+  },
+  {
+    version: 17,
+    name: "player_map_positions",
+    up(database) {
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS player_map_positions(
+          player_id INTEGER PRIMARY KEY,
+          party_id INTEGER NOT NULL,
+          x REAL NOT NULL DEFAULT 50,
+          y REAL NOT NULL DEFAULT 43,
+          updated_by TEXT,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE,
+          FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+        );`
+      );
+      database.exec("CREATE INDEX IF NOT EXISTS idx_player_map_positions_party ON player_map_positions(party_id, updated_at DESC);");
+    }
+  },
+  {
+    version: 18,
+    name: "map_location_states",
+    up(database) {
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS map_location_states(
+          party_id INTEGER NOT NULL,
+          location_id TEXT NOT NULL,
+          visibility TEXT NOT NULL DEFAULT 'known',
+          updated_by TEXT,
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY(party_id, location_id),
+          FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
+        );`
+      );
+      database.exec("CREATE INDEX IF NOT EXISTS idx_map_location_states_party_visibility ON map_location_states(party_id, visibility, updated_at DESC);");
+    }
   }
 ];
 

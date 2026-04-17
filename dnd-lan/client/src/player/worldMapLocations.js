@@ -6,6 +6,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Королевство Эльдория",
     category: "power",
     categoryLabel: "Великая держава",
+    defaultVisibility: "known",
     x: 50,
     y: 39,
     description: "Столица и культурный центр. Держава, диктующая моду и законы благодаря огромным богатствам."
@@ -15,6 +16,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Северная держава Остельм",
     category: "power",
     categoryLabel: "Великая держава",
+    defaultVisibility: "known",
     x: 52,
     y: 14,
     description: "Военный противовес югу. Суровое государство с мощной пехотой."
@@ -24,6 +26,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Княжество Валлерия",
     category: "power",
     categoryLabel: "Великая держава",
+    defaultVisibility: "known",
     x: 73,
     y: 35,
     description: "Степной и долинный край. Поставщик лучшей кавалерии и коней для всех союзов."
@@ -33,6 +36,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Миртенгард",
     category: "power",
     categoryLabel: "Крепость-государство",
+    defaultVisibility: "known",
     x: 40,
     y: 30,
     description: "Независимый город-бастион, контролирующий ключевой горный проход."
@@ -42,6 +46,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Город-суд Вердикт",
     category: "city",
     categoryLabel: "Независимый город",
+    defaultVisibility: "known",
     x: 64,
     y: 62,
     description: "Нейтральная территория. Место дипломатии, высшего правосудия и заключения мировых трактатов."
@@ -51,6 +56,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Вольный порт Бригпорт",
     category: "city",
     categoryLabel: "Торговый хаб",
+    defaultVisibility: "known",
     x: 72,
     y: 77,
     description: "Крупнейший торговый хаб. Здесь сходятся морские пути и оседает золото всех купцов."
@@ -60,6 +66,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Торговый узел Каллиста",
     category: "city",
     categoryLabel: "Пустынный узел",
+    defaultVisibility: "known",
     x: 70,
     y: 27,
     description: "Единственный путь через пустыню. Контролирует поставки драгоценного шелка."
@@ -69,6 +76,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Цитадель Аркхейм",
     category: "city",
     categoryLabel: "Архивный центр",
+    defaultVisibility: "known",
     x: 88,
     y: 13,
     description: "Неприступный научный или архивный центр на скалах, защищённый своей труднодоступностью."
@@ -78,6 +86,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Яблоневый брод",
     category: "resource",
     categoryLabel: "Провинция",
+    defaultVisibility: "known",
     x: 49,
     y: 55,
     description: "Сельскохозяйственный центр, поставляющий провизию в центральные регионы."
@@ -87,6 +96,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Хмельные вешки",
     category: "resource",
     categoryLabel: "Провинция",
+    defaultVisibility: "known",
     x: 25,
     y: 39,
     description: "Деревня-монополист в производстве напитков, обеспечивающая трактиры всей страны."
@@ -96,6 +106,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Каменная чаша",
     category: "resource",
     categoryLabel: "Горное поселение",
+    defaultVisibility: "known",
     x: 38,
     y: 83,
     description: "Горное поселение. Добыча редких минералов или геотермальное фермерство в кратере."
@@ -105,6 +116,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Криволесье",
     category: "resource",
     categoryLabel: "Пограничный пост",
+    defaultVisibility: "known",
     x: 22,
     y: 24,
     description: "Лесозаготовки и пограничный пост на границе с неосвоенными землями."
@@ -114,6 +126,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Облачные острова Эфирия",
     category: "anomaly",
     categoryLabel: "Аномальная зона",
+    defaultVisibility: "hidden",
     x: 88,
     y: 15,
     description: "Высокогорная или парящая обитель, живущая в изоляции от земных проблем."
@@ -123,6 +136,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Мёртвое королевство Тенебрис",
     category: "anomaly",
     categoryLabel: "Опасная пустошь",
+    defaultVisibility: "hidden",
     x: 21,
     y: 57,
     description: "Бывшее государство, ставшее опасной пустошью и буферной зоной."
@@ -132,6 +146,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Разлом",
     category: "anomaly",
     categoryLabel: "Каньон",
+    defaultVisibility: "hidden",
     x: 15,
     y: 77,
     description: "Город-шахта или город-тюрьма в каньоне, живущий по своим суровым правилам."
@@ -141,6 +156,7 @@ export const WORLD_MAP_LOCATIONS = [
     name: "Шёпот камышей",
     category: "anomaly",
     categoryLabel: "Глухая окраина",
+    defaultVisibility: "hidden",
     x: 86,
     y: 52,
     description: "Деревня, о существовании которой короли в Эльдории даже не подозревают."

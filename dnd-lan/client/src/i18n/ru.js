@@ -27,6 +27,7 @@ export const ru = {
     "players": "Игроки",
     "events": "События",
     "settings": "Настройки",
+    "map": "Карта",
     "inventory": "Инвентарь",
     "bestiary": "Бестиарий",
     "infoBlocks": "Инфоблоки"
