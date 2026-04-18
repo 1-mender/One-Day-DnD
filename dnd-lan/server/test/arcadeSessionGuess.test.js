@@ -91,6 +91,20 @@ test("guess session start hides seed/proof and unrevealed card identities", asyn
   assert.equal(out.data.arcadeSession.state.deck[0].rank, undefined);
 });
 
+test("arcade sessions can start from the regular arcade page without DM live activity", async () => {
+  const playerId = createPlayer("Guess-Regular-Arcade");
+  const token = createSession(playerId);
+
+  const out = await api("/api/tickets/games/guess/start", {
+    method: "POST",
+    token,
+    body: { modeKey: "normal" }
+  });
+
+  assert.equal(out.res.status, 200);
+  assert.ok(out.data?.arcadeSession?.sessionId);
+});
+
 test("guess session move/finish settles from server state without client seed/proof", async () => {
   const playerId = createPlayer("Guess-Session-Finish");
   seedActiveArcadeActivity(playerId);

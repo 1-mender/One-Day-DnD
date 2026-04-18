@@ -7,7 +7,7 @@ import {
   getPlayerSecondaryName,
   getPublicProfileMeta
 } from "../../player/publicProfileViewModel.js";
-import { getClassPathLabel } from "../../player/classCatalog.js";
+import { getClassPathLabel, getSpecializationRole } from "../../player/classCatalog.js";
 import { formatReputationLabel, getReputationTier } from "../../player/profileDomain.js";
 
 function StatusStamp({ status }) {
@@ -127,8 +127,10 @@ export default function PlayerDossierCard({
 function getPublicProfileChips(profile) {
   if (!profile) return [];
   const classPath = profile.classKey ? getClassPathLabel(profile) : "";
+  const specializationRole = getSpecializationRole(profile);
   return [
     classPath ? { key: "classPath", label: classPath } : null,
+    classPath && specializationRole ? { key: "specializationRole", label: specializationRole.label, tone: "ok" } : null,
     !classPath && profile.classRole ? { key: "classRole", label: profile.classRole } : null,
     profile.level != null ? { key: "level", label: `ур. ${profile.level}` } : null,
     profile.reputation != null ? {

@@ -2574,6 +2574,63 @@ a:hover{ color: #000; }
   margin-top: 6px;
   opacity: .84;
 }
+.arcade-health{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .8fr);
+  gap: 12px;
+  align-items: stretch;
+  border-color: rgba(102,135,84,.28);
+}
+.arcade-health-warn{
+  border-color: rgba(161,95,55,.34);
+  background:
+    linear-gradient(180deg, rgba(255,247,229,.88), rgba(242,226,198,.7)),
+    var(--paper);
+}
+.arcade-health-kicker{
+  font-size: 10px;
+  font-weight: 1000;
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  opacity: .62;
+}
+.arcade-health-title{
+  margin-top: 2px;
+}
+.arcade-health-copy{
+  margin-top: 5px;
+  line-height: 1.45;
+}
+.arcade-health-grid{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+}
+.arcade-health-cell{
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(90,70,40,.16);
+  background: rgba(255,255,255,.42);
+}
+.arcade-health-cell span{
+  font-size: 11px;
+  opacity: .74;
+}
+.arcade-health-cell strong{
+  font-size: 13px;
+  text-align: right;
+}
+.arcade-health-cell em{
+  grid-column: 1 / -1;
+  color: #8b4a35;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
 .arcade-queue-head{
   display: flex;
   align-items: flex-start;
@@ -3489,8 +3546,16 @@ a:hover{ color: #000; }
   }
   .arcade-banner,
   .arcade-queue-note,
-  .arcade-note{
+  .arcade-note,
+  .arcade-health{
     padding: 10px 12px;
+  }
+  .arcade-health{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .arcade-health-cell{
+    padding: 7px 9px;
   }
   .arcade-queue-note-compact{
     gap: 6px;

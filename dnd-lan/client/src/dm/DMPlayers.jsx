@@ -14,6 +14,7 @@ import { useSavedFilters } from "../lib/useSavedFilters.js";
 import { t } from "../i18n/index.js";
 import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 import { createImpersonationHandoffUrl } from "../lib/impersonationHandoff.js";
+import { SPECIALIZATION_ROLE_LABELS, getSpecializationRole } from "../player/classCatalog.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -35,6 +36,7 @@ export default function DMPlayers() {
   const [removeTarget, setRemoveTarget] = useState(null);
   const [q, setQ] = useQueryState("q", "");
   const [statusFilter, setStatusFilter] = useQueryState("status", "all");
+  const [roleFilter, setRoleFilter] = useQueryState("role", "all");
   const [selectedIdParam, setSelectedIdParam] = useQueryState("id", "");
   const nav = useNavigate();
   const { socket } = useSocket();
@@ -97,8 +99,8 @@ export default function DMPlayers() {
     }
   }
 
-  function openProfile(playerId) {
-    nav(`/dm/app/players/${playerId}/profile`);
+  function openProfile(playerId, focus = "") {
+    nav(`/dm/app/players/${playerId}/profile${focus ? `#${focus}` : ""}`);
   }
 
   function selectPlayer(playerId) {
@@ -246,6 +248,7 @@ export default function DMPlayers() {
       return {
         ...player,
         profileExists: Boolean(player.profileExists ?? player.profileCreated),
+        specializationRole: getSpecializationRole(player),
         ticketBalance: Number(ticketData.balance || 0),
         ticketStreak: Number(ticketData.streak || 0)
       };
@@ -271,10 +274,11 @@ export default function DMPlayers() {
     return playersWithTickets.filter((player) => {
       const status = String(player.status || "offline");
       if (statusFilter !== "all" && status !== statusFilter) return false;
+      if (roleFilter !== "all" && player.specializationRole?.key !== roleFilter) return false;
       if (!query) return true;
       return String(player.displayName || "").toLowerCase().includes(query);
     });
-  }, [playersWithTickets, q, statusFilter]);
+  }, [playersWithTickets, q, roleFilter, statusFilter]);
 
   const statusCounts = useMemo(() => {
     return playersWithTickets.reduce(
@@ -292,9 +296,10 @@ export default function DMPlayers() {
   const currentFilterLabel = useMemo(() => {
     const parts = [];
     if (statusFilter !== "all") parts.push(`Статус: ${statusFilter}`);
+    if (roleFilter !== "all") parts.push(`Роль: ${SPECIALIZATION_ROLE_LABELS[roleFilter] || roleFilter}`);
     if (q.trim()) parts.push(`Поиск: ${q.trim()}`);
     return parts.length ? parts.join(" • ") : "Все игроки";
-  }, [q, statusFilter]);
+  }, [q, roleFilter, statusFilter]);
 
   const selectedSummary = useMemo(() => {
     if (!selectedPlayer) return null;
@@ -381,10 +386,16 @@ export default function DMPlayers() {
                   <option value="idle">{t("dmPlayers.statusIdle")}</option>
                   <option value="offline">{t("dmPlayers.statusOffline")}</option>
                 </select>
+                <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Фильтр по роли специализации" className="u-w-180">
+                  <option value="all">Все роли</option>
+                  {Object.entries(SPECIALIZATION_ROLE_LABELS).map(([key, label]) => (
+                    <option key={key} value={key}>{label}</option>
+                  ))}
+                </select>
                 <button
                   type="button"
                   className="btn secondary"
-                  onClick={() => savedFilters.savePreset(currentFilterLabel, { q, statusFilter })}
+                  onClick={() => savedFilters.savePreset(currentFilterLabel, { q, statusFilter, roleFilter })}
                 >
                   Сохранить фильтр
                 </button>
@@ -408,6 +419,7 @@ export default function DMPlayers() {
                       onClick={() => {
                         setQ(String(preset.values?.q || ""));
                         setStatusFilter(String(preset.values?.statusFilter || "all"));
+                        setRoleFilter(String(preset.values?.roleFilter || "all"));
                       }}
                     >
                       {preset.label}
@@ -445,6 +457,9 @@ export default function DMPlayers() {
                     <ActionMenu
                       label={t("dmPlayers.menuLabel")}
                       items={[
+                        ...(player.specializationAvailable ? [
+                          { label: "Выбрать специализацию", onClick: () => openProfile(player.id, "dm-specialization-panel") }
+                        ] : []),
                         { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
                         { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
                         { label: player.shieldActive ? "Закрыть Щиток" : "Открыть Щиток", onClick: () => toggleShieldActivity(player), disabled: readOnly || activityBusyId === player.id },
@@ -479,7 +494,13 @@ export default function DMPlayers() {
                   </div>
                   <div className="tf-command-actions">
                     <button className="btn secondary" onClick={() => selectPlayer(0)}>{t("dmPlayers.backToList")}</button>
-                    <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>{t("dmPlayers.openProfile")}</button>
+                    {selectedPlayer.specializationAvailable ? (
+                      <button className="btn" onClick={() => openProfile(selectedPlayer.id, "dm-specialization-panel")}>
+                        Выбрать специализацию
+                      </button>
+                    ) : (
+                      <button className="btn" onClick={() => openProfile(selectedPlayer.id)}>{t("dmPlayers.openProfile")}</button>
+                    )}
                   </div>
                 </div>
                 <hr />
@@ -495,6 +516,9 @@ export default function DMPlayers() {
                   </span>
                   {selectedPlayer.specializationAvailable ? (
                     <span className="badge warn">Специализация доступна</span>
+                  ) : null}
+                  {selectedPlayer.specializationRole ? (
+                    <span className="badge ok">Роль: {selectedPlayer.specializationRole.label}</span>
                   ) : null}
                   <span className="badge secondary">Последний вход: {selectedSummary?.lastSeenLabel}</span>
                 </div>

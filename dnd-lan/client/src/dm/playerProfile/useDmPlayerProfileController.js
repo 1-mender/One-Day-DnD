@@ -1,6 +1,6 @@
 import { useAutoAnimate } from "@formkit/auto-animate/react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../api.js";
 import { useToast } from "../../foundation/providers/index.js";
 import { useSocket } from "../../context/SocketContext.jsx";
@@ -16,10 +16,27 @@ import {
   normalizeRequestChanges
 } from "./playerProfileAdminDomain.js";
 
+function buildDmProfilePayload(form) {
+  return {
+    ...form,
+    level: form.level === "" ? null : Number(form.level),
+    reputation: normalizeReputation(form.reputation),
+    classKey: form.classKey || "",
+    specializationKey: form.specializationKey || "",
+    xp: normalizeXp(form.xp),
+    stats: form.stats || {},
+    publicFields: form.publicFields || [],
+    publicBlurb: form.publicBlurb || "",
+    editableFields: form.editableFields || [],
+    allowRequests: !!form.allowRequests
+  };
+}
+
 export function useDmPlayerProfileController() {
   const { id } = useParams();
   const playerId = Number(id);
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
   const { socket } = useSocket();
   const readOnly = useReadOnly();
@@ -37,6 +54,7 @@ export function useDmPlayerProfileController() {
   const [requestNotes, setRequestNotes] = useState({});
   const [uploading, setUploading] = useState(false);
   const [xpAwarding, setXpAwarding] = useState(false);
+  const [specializationSavingKey, setSpecializationSavingKey] = useState("");
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
   const [profilePresets, setProfilePresets] = useState([]);
@@ -150,23 +168,19 @@ export function useDmPlayerProfileController() {
     if (playerId) trackRecent(playerId);
   }, [playerId, trackRecent]);
 
+  useEffect(() => {
+    if (loading || location.hash !== "#dm-specialization-panel") return;
+    setTab("profile");
+    window.setTimeout(() => {
+      document.getElementById("dm-specialization-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }, [loading, location.hash]);
+
   const save = useCallback(async () => {
     if (readOnly || !playerId) return;
     setErr("");
     try {
-      const payload = {
-        ...form,
-        level: form.level === "" ? null : Number(form.level),
-        reputation: normalizeReputation(form.reputation),
-        classKey: form.classKey || "",
-        specializationKey: form.specializationKey || "",
-        xp: normalizeXp(form.xp),
-        stats: form.stats || {},
-        publicFields: form.publicFields || [],
-        publicBlurb: form.publicBlurb || "",
-        editableFields: form.editableFields || [],
-        allowRequests: !!form.allowRequests
-      };
+      const payload = buildDmProfilePayload(form);
       const response = await api.dmUpdatePlayerProfile(playerId, payload);
       applyProfile(response.profile);
       setNotCreated(false);
@@ -175,6 +189,25 @@ export function useDmPlayerProfileController() {
       const message = formatError(e);
       setErr(message);
       toast.error(message);
+    }
+  }, [applyProfile, form, playerId, readOnly, toast]);
+
+  const assignSpecialization = useCallback(async (specializationKey) => {
+    if (readOnly || !playerId || !form.classKey || !specializationKey) return;
+    setErr("");
+    setSpecializationSavingKey(specializationKey);
+    try {
+      const nextForm = { ...form, specializationKey };
+      const response = await api.dmUpdatePlayerProfile(playerId, buildDmProfilePayload(nextForm));
+      applyProfile(response.profile);
+      setNotCreated(false);
+      toast.success("Специализация назначена");
+    } catch (e) {
+      const message = formatError(e);
+      setErr(message);
+      toast.error(message);
+    } finally {
+      setSpecializationSavingKey("");
     }
   }, [applyProfile, form, playerId, readOnly, toast]);
 
@@ -313,6 +346,7 @@ export function useDmPlayerProfileController() {
     applyFromRequest,
     applyPreset,
     applyProfilePreset,
+    assignSpecialization,
     awardXp,
     approve,
     canSave,
@@ -351,6 +385,7 @@ export function useDmPlayerProfileController() {
     setRequestNotes,
     setTab,
     showRequestsTab,
+    specializationSavingKey,
     tab,
     toggleEditable,
     togglePublicField,

@@ -5,6 +5,8 @@ import {
   formatDayKey,
   formatDurationMs,
   formatEntry,
+  formatTicketAmount,
+  formatTicketError,
   impactClass
 } from "./arcade/domain/arcadeFormatters.js";
 import {
@@ -111,6 +113,30 @@ export default function Arcade() {
   );
 
   const lockedCount = Math.max(0, rankedGames.length - availableNowCount);
+  const dailySpendCap = Number(rules?.dailySpendCap || 0);
+  const dailyEarnLeft = dailyCap > 0 ? Math.max(0, dailyCap - dailyEarned) : null;
+  const dailySpendLeft = dailySpendCap > 0 ? Math.max(0, dailySpendCap - dailySpent) : null;
+  const firstPlayableGame = rankedGames.find((game) => !getDisabledReason(game.key));
+  const firstLockedGame = rankedGames.find((game) => getDisabledReason(game.key));
+  const healthTone = err || !ticketsEnabled || (!loading && !availableNowCount) ? "warn" : "ok";
+  const healthTitle = loading
+    ? "Проверяю аркаду"
+    : err
+      ? "Аркада не загрузилась"
+      : !ticketsEnabled
+        ? "Аркада закрыта"
+        : availableNowCount
+          ? "Можно играть"
+          : "Игры пока заблокированы";
+  const healthCopy = loading
+    ? "Загружаю билеты, правила и дневные лимиты."
+    : err
+      ? `Не удалось получить правила: ${formatTicketError(err)}`
+      : !ticketsEnabled
+        ? "DM выключил систему билетов и мини-игр."
+        : availableNowCount
+          ? `Лучший быстрый старт: ${firstPlayableGame?.title || "любая доступная игра"}.`
+          : (firstLockedGame ? getDisabledReason(firstLockedGame.key) : "В каталоге нет доступных игр.");
 
   return (
     <div className={`card taped arcade-shell${lite ? " page-lite arcade-lite" : ""}`.trim()}>
@@ -141,6 +167,29 @@ export default function Arcade() {
         <span className="badge ok">Доступно сейчас: {availableNowCount}</span>
         <span className="badge secondary">Бесплатно: {freePlayableCount}</span>
         {lockedCount ? <span className="badge">Закрыто сейчас: {lockedCount}</span> : null}
+      </div>
+      <div className={`paper-note arcade-health arcade-health-${healthTone}`} style={{ marginTop: 10 }}>
+        <div>
+          <div className="arcade-health-kicker">Проверка запуска</div>
+          <div className="title arcade-health-title">{healthTitle}</div>
+          <div className="small arcade-health-copy">{healthCopy}</div>
+        </div>
+        <div className="arcade-health-grid">
+          <div className="arcade-health-cell">
+            <span>Баланс</span>
+            <strong>{loading ? "…" : formatTicketAmount(balance)}</strong>
+          </div>
+          <div className="arcade-health-cell">
+            <span>Награды сегодня</span>
+            <strong>{dailyCap ? `${dailyEarned}/${dailyCap}` : `+${dailyEarned}`}</strong>
+            {dailyEarnLeft === 0 ? <em>лимит наград</em> : null}
+          </div>
+          <div className="arcade-health-cell">
+            <span>Траты сегодня</span>
+            <strong>{dailySpendCap ? `${dailySpent}/${dailySpendCap}` : dailySpent}</strong>
+            {dailySpendLeft === 0 ? <em>лимит трат</em> : null}
+          </div>
+        </div>
       </div>
       {balance <= 0 ? (
         <div className="small arcade-overview-hint">

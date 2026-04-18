@@ -2485,6 +2485,22 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   flex-direction: column;
 }
 
+.profile-role-strip{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.profile-role-strip.compact{
+  gap: 4px;
+}
+
+.profile-role-chip{
+  width: fit-content;
+  font-size: 11px;
+}
+
 .profile-xp-track{
   height: 12px;
   overflow: hidden;

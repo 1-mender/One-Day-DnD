@@ -12,12 +12,16 @@ import {
 } from "../../profileDomain.js";
 import {
   CLASS_CATALOG,
+  SPECIALIZATION_ROLE_LABELS,
   SPECIALIZATION_XP_THRESHOLD,
   canChooseSpecialization,
   getClassByKey,
   getClassPathDescription,
   getClassPathLabel,
-  getSpecializationByKey
+  getClassPathLabelWithRole,
+  getSpecializationByKey,
+  getSpecializationRole,
+  getSpecializationTags
 } from "../../classCatalog.js";
 
 const PROFILE_TABS = [
@@ -281,6 +285,8 @@ function MyCharacterPanel({
 function ClassPathPanel({ profile, readOnly, saving, onSave }) {
   const baseClass = getClassByKey(profile?.classKey);
   const specialization = getSpecializationByKey(profile?.classKey, profile?.specializationKey);
+  const specializationRole = getSpecializationRole(profile);
+  const specializationTags = getSpecializationTags(profile);
   const xp = Math.max(0, Number(profile?.xp || 0));
   const progress = Math.min(100, Math.round((xp / SPECIALIZATION_XP_THRESHOLD) * 100));
   const specializationReady = canChooseSpecialization(profile);
@@ -348,6 +354,7 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
             <div className="profile-specialization-picked">
               <span className="small note-hint">Специализация</span>
               <b>{specialization.label}</b>
+              <RoleTagStrip role={specializationRole} tags={specializationTags} />
               <span className="small">{getClassPathDescription(profile)}</span>
             </div>
           ) : specializationReady ? (
@@ -365,6 +372,7 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
                     onClick={() => onSave?.({ specializationKey: item.key })}
                   >
                     <span>{item.label}</span>
+                    <RoleTagStrip role={item.role ? { label: SPECIALIZATION_ROLE_LABELS[item.role] || item.role } : null} tags={item.tags} compact />
                     <small>{item.description}</small>
                   </button>
                 ))}
@@ -395,6 +403,18 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
           ) : null}
         </>
       )}
+    </div>
+  );
+}
+
+function RoleTagStrip({ role, tags = [], compact = false }) {
+  if (!role && !tags?.length) return null;
+  return (
+    <div className={`profile-role-strip${compact ? " compact" : ""}`}>
+      {role ? <span className="badge ok profile-role-chip">{role.label}</span> : null}
+      {(tags || []).slice(0, compact ? 2 : 3).map((tag) => (
+        <span key={tag} className="badge secondary profile-role-chip">{tag}</span>
+      ))}
     </div>
   );
 }
@@ -759,7 +779,7 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
     publicFieldSet,
     characterName: profile?.characterName || "",
     avatarUrl: profile?.avatarUrl || "",
-    classPath: publicFieldSet.has("classPath") && profile?.classKey ? getClassPathLabel(profile) || "" : "",
+    classPath: publicFieldSet.has("classPath") && profile?.classKey ? getClassPathLabelWithRole(profile) || "" : "",
     classRole: publicFieldSet.has("classRole") ? profile?.classRole || "" : "",
     level: publicFieldSet.has("level") ? profile?.level ?? null : null,
     reputation: publicFieldSet.has("reputation") ? Number(profile?.reputation ?? 0) : null,

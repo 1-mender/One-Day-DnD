@@ -8,16 +8,17 @@ import { formatError } from "../lib/formatError.js";
 import { ERROR_CODES } from "../lib/errorCodes.js";
 import { takeImpersonationHandoff } from "../lib/impersonationHandoff.js";
 import { useSocket } from "../context/SocketContext.jsx";
-import { BookOpen, Map, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
+import { BookOpen, Gamepad2, Map, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
 import { t } from "../i18n/index.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
-const OPTIONAL_NAV_BASE_ORDER = ["/app/map", "/app/shop", "/app/bestiary", "/app/notes", "/app/transfers"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/map", "/app/arcade", "/app/shop", "/app/bestiary", "/app/notes", "/app/transfers"];
 const PRIMARY_NAV_ROUTES = new Set([
   "/app/players",
   "/app/profile",
   "/app/inventory",
   "/app/map",
+  "/app/arcade",
   "/app/shop",
   "/app/bestiary",
   "/app/notes",
@@ -28,6 +29,7 @@ const ROUTE_TO_ICON = {
   "/app/profile": User,
   "/app/inventory": Package,
   "/app/map": Map,
+  "/app/arcade": Gamepad2,
   "/app/transfers": Send,
   "/app/notes": StickyNote,
   "/app/shop": Store,
@@ -38,6 +40,7 @@ const ROUTE_TO_LABEL = {
   "/app/profile": "playerLayout.navProfile",
   "/app/inventory": "playerLayout.navInventory",
   "/app/map": "playerLayout.navMap",
+  "/app/arcade": "playerLayout.navArcade",
   "/app/transfers": "playerLayout.navTransfers",
   "/app/notes": "playerLayout.navNotes",
   "/app/shop": "playerLayout.navShop",
@@ -221,7 +224,7 @@ export default function PlayerLayout() {
     const onMinigameClosed = () => {
       setActiveLiveActivity(null);
       setLiveInviteVisible(false);
-      if (location.pathname === "/app/shield" || location.pathname === "/app/arcade") {
+      if (location.pathname === "/app/shield") {
         nav("/app/players", { replace: true });
       }
     };
@@ -313,10 +316,6 @@ export default function PlayerLayout() {
   useEffect(() => {
     if (!liveActivityLoaded) return;
     if (activeActivityRoute && location.pathname === activeActivityRoute) return;
-    if (location.pathname === "/app/arcade") {
-      nav("/app/players", { replace: true });
-      return;
-    }
     if (location.pathname !== "/app/shield") return;
     nav("/app/players", { replace: true });
   }, [activeActivityRoute, liveActivityLoaded, location.pathname, nav]);

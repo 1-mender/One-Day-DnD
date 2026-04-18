@@ -9,7 +9,21 @@ export function impactClass(label) {
 export function formatEntry(entry) {
   const qty = Number(entry || 0);
   if (!qty) return "Вход: бесплатно";
-  return `Вход: ${qty} ${qty === 1 ? "билет" : qty < 5 ? "билета" : "билетов"}`;
+  return `Вход: ${formatTicketAmount(qty)}`;
+}
+
+export function formatTicketAmount(value) {
+  const qty = Math.max(0, Number(value || 0));
+  return `${qty} ${formatTicketWord(qty)}`;
+}
+
+export function formatTicketWord(value) {
+  const qty = Math.abs(Number(value || 0));
+  const mod10 = qty % 10;
+  const mod100 = qty % 100;
+  if (mod10 === 1 && mod100 !== 11) return "билет";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "билета";
+  return "билетов";
 }
 
 export function formatDayKey(dayKey) {
@@ -37,6 +51,7 @@ export function formatTicketError(code) {
   if (c === "not_enough_tickets") return "Недостаточно билетов для входа.";
   if (c === "daily_game_limit") return "Достигнут дневной лимит попыток.";
   if (c === "daily_spend_cap") return "Достигнут дневной лимит трат.";
+  if (c === "minigame_inactive") return "Аркада не открыта для запуска. Обновите страницу или попросите DM открыть доступ.";
   if (c === "invalid_performance") return "Неверный бонус выполнения.";
   if (c === "invalid_seed") return "Сессия игры устарела. Откройте игру снова.";
   if (c === "invalid_proof") return "Результат игры не прошёл проверку.";

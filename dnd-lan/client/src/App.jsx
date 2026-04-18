@@ -18,6 +18,7 @@ const Notes = lazy(() => import("./player/Notes.jsx"));
 const Bestiary = lazy(() => import("./player/Bestiary.jsx"));
 const Profile = lazy(() => import("./player/Profile.jsx"));
 const ShieldMinigame = lazy(() => import("./player/ShieldMinigame.jsx"));
+const Arcade = lazy(() => import("./player/Arcade.jsx"));
 const ShopJoe = lazy(() => import("./player/ShopJoe.jsx"));
 const WorldMap = lazy(() => import("./player/WorldMap.jsx"));
 
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="notes" element={withSuspense(<Notes />)} />
           <Route path="profile" element={withSuspense(<Profile />)} />
           <Route path="map" element={withSuspense(<WorldMap />)} />
+          <Route path="arcade" element={withSuspense(<Arcade />)} />
           <Route path="shield" element={withSuspense(<ShieldMinigame />)} />
           <Route path="shop" element={withSuspense(<ShopJoe />)} />
           <Route path="bestiary" element={withSuspense(<Bestiary />)} />

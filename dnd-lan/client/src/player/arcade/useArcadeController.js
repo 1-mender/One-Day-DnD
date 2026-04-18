@@ -7,6 +7,7 @@ import { formatError } from "../../lib/formatError.js";
 import {
   formatDurationMs,
   formatEntry,
+  formatTicketAmount,
   formatTicketError,
   isGameLimitReached
 } from "./domain/arcadeFormatters.js";
@@ -181,13 +182,19 @@ export function useArcadeController() {
 
   function getDisabledReason(gameKey, modeKey = "") {
     if (readOnly) return "Режим только чтения: действия отключены";
-    if (err) return "Ошибка загрузки правил";
-    if (!rules || !ticketsEnabled) return "Аркада закрыта DM";
+    if (err) return `Ошибка загрузки аркады: ${formatTicketError(err)}`;
+    if (!rules) return "Правила аркады ещё загружаются";
+    if (!ticketsEnabled) return "Аркада закрыта DM";
     const gameRules = getGameRulesForMode(gameKey, modeKey);
+    if (!gameRules) return "Правила этой игры недоступны";
     if (gameRules?.enabled === false) return "Игра отключена DM";
     const entry = Number(gameRules?.entryCost || 0);
-    if (balance < entry) return "Недостаточно билетов для входа";
-    if (isGameLimitReached(gameKey, { games: { [gameKey]: gameRules } }, usage)) return "Достигнут дневной лимит попыток";
+    if (balance < entry) return `Не хватает ${formatTicketAmount(entry - balance)} для входа`;
+    if (isGameLimitReached(gameKey, { games: { [gameKey]: gameRules } }, usage)) {
+      const used = Number(usage?.playsToday?.[gameKey] || 0);
+      const lim = Number(gameRules.dailyLimit || 0);
+      return `Дневной лимит попыток исчерпан (${used}/${lim})`;
+    }
     return "";
   }
 

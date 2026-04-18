@@ -19,16 +19,21 @@ import {
 } from "../../../player/profileDomain.js";
 import {
   CLASS_CATALOG,
+  SPECIALIZATION_ROLE_LABELS,
   SPECIALIZATION_XP_THRESHOLD,
   getClassByKey,
   getClassPathLabel,
-  getSpecializationByKey
+  getClassPathLabelWithRole,
+  getSpecializationByKey,
+  getSpecializationRole,
+  getSpecializationTags
 } from "../../../player/classCatalog.js";
 
 const INPUT_STYLE = { width: "100%" };
 
 export default function DMPlayerProfileProfileTab({ controller }) {
   const {
+    assignSpecialization,
     applyPreset,
     applyProfilePreset,
     awardXp,
@@ -45,16 +50,22 @@ export default function DMPlayerProfileProfileTab({ controller }) {
     toggleEditable,
     togglePublicField,
     uploading,
-    xpAwarding
+    xpAwarding,
+    specializationSavingKey
   } = controller;
   const [xpAwardAmount, setXpAwardAmount] = useState(10);
   const [xpAwardReason, setXpAwardReason] = useState("Рольплей");
   const reputationTier = getReputationTier(form.reputation);
   const selectedClass = getClassByKey(form.classKey);
   const selectedSpecialization = getSpecializationByKey(form.classKey, form.specializationKey);
+  const selectedSpecializationRole = getSpecializationRole(form);
+  const selectedSpecializationTags = getSpecializationTags(form);
   const classPathLabel = getClassPathLabel(form);
+  const classXp = normalizeXp(form.xp);
+  const specializationReady = !!selectedClass && !selectedSpecialization && classXp >= SPECIALIZATION_XP_THRESHOLD;
+  const specializationProgress = Math.min(100, Math.round((classXp / SPECIALIZATION_XP_THRESHOLD) * 100));
   const publicMetaPreview = [
-    (form.publicFields || []).includes("classPath") && form.classKey ? classPathLabel : "",
+    (form.publicFields || []).includes("classPath") && form.classKey ? getClassPathLabelWithRole(form) : "",
     (form.publicFields || []).includes("classRole") ? form.classRole : "",
     (form.publicFields || []).includes("level") && form.level ? `lvl ${form.level}` : "",
     (form.publicFields || []).includes("reputation") ? `реп. ${formatReputationLabel(form.reputation)}` : ""
@@ -185,30 +196,63 @@ export default function DMPlayerProfileProfileTab({ controller }) {
                   <option key={item.key} value={item.key}>{item.label}</option>
                 ))}
               </select>
-              <select
-                value={form.specializationKey || ""}
-                onChange={(event) => setSpecializationKey(event.target.value)}
-                aria-label="Специализация"
-                disabled={readOnly || !selectedClass}
-                style={INPUT_STYLE}
-              >
-                <option value="">Специализация не выбрана</option>
-                {(selectedClass?.specializations || []).map((item) => (
-                  <option key={item.key} value={item.key}>{item.label}</option>
-                ))}
-              </select>
-              <div className="row u-row-gap-8 u-row-wrap">
-                <span className={`badge ${Number(form.xp || 0) >= SPECIALIZATION_XP_THRESHOLD ? "ok" : "secondary"}`}>
-                  {normalizeXp(form.xp)} / {SPECIALIZATION_XP_THRESHOLD} XP
-                </span>
-                <span className="small note-hint">Основной способ изменения опыта: “Выдать XP” ниже.</span>
-              </div>
-              <div className="paper-note u-mt-8">
-                <div className="small note-hint">Текущий путь</div>
-                <div className="u-title-18">{classPathLabel || "Не выбран"}</div>
-                <div className="small u-mt-6">
+              <div id="dm-specialization-panel" className="paper-note profile-class-path-card u-mt-8">
+                <div className="row u-row-between-baseline u-row-gap-8 u-row-wrap">
+                  <div>
+                    <div className="small note-hint">Текущий путь</div>
+                    <div className="u-title-18">{classPathLabel || "Не выбран"}</div>
+                  </div>
+                  <span className={`badge ${selectedSpecialization ? "ok" : specializationReady ? "warn" : "secondary"}`}>
+                    {selectedSpecialization ? "ветка выбрана" : specializationReady ? "готов к выбору" : `${classXp}/${SPECIALIZATION_XP_THRESHOLD} XP`}
+                  </span>
+                </div>
+                <div className="small">
                   {selectedSpecialization?.description || selectedClass?.description || "Сначала выбери базовый класс."}
                 </div>
+                <div className="profile-xp-track" aria-label={`Опыт специализации: ${classXp} из ${SPECIALIZATION_XP_THRESHOLD}`}>
+                  <span style={{ width: `${specializationProgress}%` }} />
+                </div>
+                {selectedSpecialization ? (
+                  <div className="profile-specialization-picked">
+                    <span className="badge ok">Назначено</span>
+                    <b>{selectedSpecialization.label}</b>
+                    <RoleTagStrip role={selectedSpecializationRole} tags={selectedSpecializationTags} />
+                    <small>{selectedSpecialization.description}</small>
+                  </div>
+                ) : selectedClass && specializationReady ? (
+                  <div className="list">
+                    <div className="row u-row-between-baseline u-row-gap-8 u-row-wrap">
+                      <div className="title">Выбери специализацию</div>
+                      <span className="small note-hint">Нажатие сразу сохранит выбор.</span>
+                    </div>
+                    <div className="profile-specialization-grid">
+                      {selectedClass.specializations.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className="profile-class-option profile-specialization-option"
+                          onClick={() => assignSpecialization?.(item.key)}
+                          disabled={readOnly || !!specializationSavingKey}
+                        >
+                          <span>{item.label}</span>
+                          <RoleTagStrip role={item.role ? { label: SPECIALIZATION_ROLE_LABELS[item.role] || item.role } : null} tags={item.tags} compact />
+                          <small>{item.description}</small>
+                          <small className="badge warn">
+                            {specializationSavingKey === item.key ? "Сохраняю..." : "Назначить"}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : selectedClass ? (
+                  <div className="profile-specialization-locked">
+                    <span className="badge secondary">Специализация закрыта</span>
+                    <small>
+                      Нужно {SPECIALIZATION_XP_THRESHOLD} XP. Не хватает {Math.max(0, SPECIALIZATION_XP_THRESHOLD - classXp)} XP.
+                    </small>
+                  </div>
+                ) : null}
+                <div className="small note-hint">Основной способ изменения опыта: “Выдать XP” ниже.</div>
               </div>
               <div className="paper-note u-mt-8">
                 <div className="title">Выдать XP</div>
@@ -287,6 +331,29 @@ export default function DMPlayerProfileProfileTab({ controller }) {
                     <button type="button" className="btn secondary" onClick={() => adjustXp(10)} disabled={readOnly}>+10</button>
                     <button type="button" className="btn secondary" onClick={() => adjustXp(25)} disabled={readOnly}>+25</button>
                   </div>
+                </div>
+              </details>
+              <details className="profile-collapse u-mt-8">
+                <summary>
+                  <span>Расширенно: ручной выбор специализации</span>
+                  <span className="badge secondary">override</span>
+                </summary>
+                <div className="profile-collapse-body">
+                  <div className="small note-hint">
+                    Используй для исправлений или отката. Обычный сценарий: накопить XP и нажать карточку специализации выше.
+                  </div>
+                  <select
+                    value={form.specializationKey || ""}
+                    onChange={(event) => setSpecializationKey(event.target.value)}
+                    aria-label="Специализация"
+                    disabled={readOnly || !selectedClass}
+                    style={INPUT_STYLE}
+                  >
+                    <option value="">Специализация не выбрана</option>
+                    {(selectedClass?.specializations || []).map((item) => (
+                      <option key={item.key} value={item.key}>{item.label}</option>
+                    ))}
+                  </select>
                 </div>
               </details>
               {form.xpLog?.length ? (
@@ -469,4 +536,16 @@ function formatXpDate(value) {
   } catch {
     return "";
   }
+}
+
+function RoleTagStrip({ role, tags = [], compact = false }) {
+  if (!role && !tags?.length) return null;
+  return (
+    <div className={`profile-role-strip${compact ? " compact" : ""}`}>
+      {role ? <span className="badge ok profile-role-chip">{role.label}</span> : null}
+      {(tags || []).slice(0, compact ? 2 : 3).map((tag) => (
+        <span key={tag} className="badge secondary profile-role-chip">{tag}</span>
+      ))}
+    </div>
+  );
 }

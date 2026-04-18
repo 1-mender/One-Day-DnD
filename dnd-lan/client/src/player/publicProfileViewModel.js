@@ -1,5 +1,5 @@
 import { formatReputationLabel } from "./profileDomain.js";
-import { getClassPathLabel } from "./classCatalog.js";
+import { getClassPathLabelWithRole } from "./classCatalog.js";
 
 export function getPlayerPrimaryName(player, profile = player?.publicProfile || null) {
   const characterName = String(profile?.characterName || "").trim();
@@ -16,7 +16,7 @@ export function getPlayerSecondaryName(player, profile = player?.publicProfile |
 
 export function getPublicProfileMeta(profile) {
   if (!profile) return "";
-  const classPath = profile.classKey ? getClassPathLabel(profile) : "";
+  const classPath = profile.classKey ? getClassPathLabelWithRole(profile) : "";
   return [
     classPath || String(profile.classRole || "").trim(),
     profile.level != null ? `lvl ${profile.level}` : "",
