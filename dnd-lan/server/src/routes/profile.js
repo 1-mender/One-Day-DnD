@@ -15,6 +15,7 @@ import {
   sanitizePreset,
   sanitizeRequestChanges,
   validateAndFinalizePatch,
+  validatePlayerClassPathPatch,
   validateRequestChanges,
   validateTextLen
 } from "../profile/profileDomain.js";
@@ -30,7 +31,8 @@ import {
   profileRequestIdParamsSchema,
   profileRequestResolutionBodySchema,
   profileRequestsQuerySchema,
-  profileUpsertBodySchema
+  profileUpsertBodySchema,
+  profileXpAwardBodySchema
 } from "./profileRouteSchemas.js";
 import { createRouteInputReader } from "./routeValidation.js";
 
@@ -38,6 +40,48 @@ export const profileRouter = express.Router();
 
 const readValidInput = createRouteInputReader(parseProfileRouteInput);
 const PLAYER_PUBLIC_PROFILE_FIELDS = new Set(["publicFields", "publicBlurb"]);
+const PLAYER_CLASS_PATH_FIELDS = new Set(["classKey", "specializationKey"]);
+const XP_LOG_LIMIT = 10;
+const XP_AWARD_LIMIT = 1000;
+
+function getDmActor(req) {
+  return req.dm?.u ? `dm:${req.dm.u}` : req.dm?.uid ? `dm:${req.dm.uid}` : "dm";
+}
+
+function normalizeXpAwardAmount(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return null;
+  const amount = Math.round(numeric);
+  if (amount === 0 || Math.abs(amount) > XP_AWARD_LIMIT) return null;
+  return amount;
+}
+
+function readXpLog(db, playerId, limit = XP_LOG_LIMIT) {
+  return db
+    .prepare(
+      `SELECT id, amount, reason, actor, created_at
+       FROM character_profile_xp_log
+       WHERE player_id=?
+       ORDER BY created_at DESC, id DESC
+       LIMIT ?`
+    )
+    .all(playerId, limit)
+    .map((row) => ({
+      id: row.id,
+      amount: Number(row.amount || 0),
+      reason: row.reason || "",
+      actor: row.actor || "",
+      createdAt: row.created_at
+    }));
+}
+
+function mapProfileWithXpLog(db, row) {
+  if (!row) return null;
+  return {
+    ...mapProfile(row),
+    xpLog: readXpLog(db, row.player_id)
+  };
+}
 
 profileRouter.get("/profile-presets", (req, res) => {
   const dm = getDmPayloadFromRequest(req);
@@ -108,7 +152,7 @@ profileRouter.get("/players/:id/profile", (req, res) => {
   const db = getDb();
   const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   if (!row) return res.json({ notCreated: true });
-  return res.json({ profile: mapProfile(row) });
+  return res.json({ profile: mapProfileWithXpLog(db, row) });
 });
 
 profileRouter.get("/players/:id/public-profile", (req, res) => {
@@ -147,7 +191,7 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
   if (existing) {
     db.prepare(
       `UPDATE character_profiles
-       SET character_name=?, class_role=?, level=?, reputation=?, stats=?, bio=?, avatar_url=?,
+       SET character_name=?, class_role=?, level=?, reputation=?, class_key=?, specialization_key=?, xp=?, stats=?, bio=?, avatar_url=?,
            public_fields=?, public_blurb=?, editable_fields=?, allow_requests=?, updated_at=?
        WHERE player_id=?`
     ).run(
@@ -155,6 +199,9 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
       payload.class_role,
       payload.level,
       payload.reputation,
+      payload.class_key,
+      payload.specialization_key,
+      payload.xp,
       payload.stats,
       payload.bio,
       payload.avatar_url,
@@ -169,15 +216,18 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
     const createdBy = req.dm?.u ? `dm:${req.dm.u}` : req.dm?.uid ? `dm:${req.dm.uid}` : "dm";
     db.prepare(
       `INSERT INTO character_profiles(
-        player_id, character_name, class_role, level, reputation, stats, bio, avatar_url,
+        player_id, character_name, class_role, level, reputation, class_key, specialization_key, xp, stats, bio, avatar_url,
         public_fields, public_blurb, editable_fields, allow_requests, created_by, created_at, updated_at
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).run(
       playerId,
       payload.character_name,
       payload.class_role,
       payload.level,
       payload.reputation,
+      payload.class_key,
+      payload.specialization_key,
+      payload.xp,
       payload.stats,
       payload.bio,
       payload.avatar_url,
@@ -194,7 +244,46 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
   const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
   emitSinglePartyEvent(req.app.locals.io, "players:updated");
-  res.json({ ok: true, profile: mapProfile(row) });
+  res.json({ ok: true, profile: mapProfileWithXpLog(db, row) });
+});
+
+profileRouter.post("/players/:id/profile/xp", dmAuthMiddleware, (req, res) => {
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, profileXpAwardBodySchema, req.body);
+  if (!body) return;
+  const playerId = Number(params.id);
+  const amount = normalizeXpAwardAmount(body.amount);
+  if (amount == null) return res.status(400).json({ error: "invalid_xp_amount" });
+  const reason = String(body.reason || "").trim();
+  const reasonErr = validateTextLen(reason, LIMITS.xpReason, "xp_reason_too_long");
+  if (reasonErr) return res.status(400).json({ error: reasonErr });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id FROM players WHERE id=?").get(playerId);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
+  const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
+  if (!row) return res.status(404).json({ error: "profile_not_created" });
+
+  const currentXp = Math.max(0, Math.round(Number(row.xp || 0)));
+  const nextXp = Math.max(0, currentXp + amount);
+  const appliedAmount = nextXp - currentXp;
+  if (appliedAmount === 0) return res.status(400).json({ error: "xp_no_change" });
+
+  const t = now();
+  const actor = getDmActor(req);
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE character_profiles SET xp=?, updated_at=? WHERE player_id=?").run(nextXp, t, playerId);
+    db.prepare(
+      "INSERT INTO character_profile_xp_log(player_id, amount, reason, actor, created_at) VALUES(?,?,?,?,?)"
+    ).run(playerId, appliedAmount, reason || null, actor, t);
+  });
+  tx();
+
+  req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated");
+  const updated = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
+  res.json({ ok: true, profile: mapProfileWithXpLog(db, updated) });
 });
 
 profileRouter.patch("/players/:id/profile", (req, res) => {
@@ -217,15 +306,20 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   if (!bodyKeys.length) return res.status(400).json({ error: "empty_patch" });
   for (const key of bodyKeys) {
     if (PLAYER_PUBLIC_PROFILE_FIELDS.has(key)) continue;
+    if (PLAYER_CLASS_PATH_FIELDS.has(key)) continue;
     if (!EDITABLE_FIELDS.has(key)) return res.status(403).json({ error: "field_not_allowed", field: key });
   }
 
   for (const key of bodyKeys) {
     if (PLAYER_PUBLIC_PROFILE_FIELDS.has(key)) continue;
+    if (PLAYER_CLASS_PATH_FIELDS.has(key)) continue;
     if (!editableFields.includes(key)) return res.status(403).json({ error: "field_not_allowed", field: key });
   }
 
-  const rawPatch = sanitizePatch(body);
+  const classPathError = validatePlayerClassPathPatch(body, row);
+  if (classPathError) return res.status(400).json({ error: classPathError });
+
+  const rawPatch = sanitizePatch(body, row);
   if (!Object.keys(rawPatch).length) return res.status(400).json({ error: "empty_patch" });
   const validated = validateAndFinalizePatch(rawPatch);
   if (validated.error) return res.status(400).json({ error: validated.error });
@@ -246,7 +340,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
   emitSinglePartyEvent(req.app.locals.io, "players:updated");
   const updated = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
-  res.json({ ok: true, profile: mapProfile(updated) });
+  res.json({ ok: true, profile: mapProfileWithXpLog(db, updated) });
 });
 
 profileRouter.post("/players/:id/profile-requests", (req, res) => {
@@ -393,7 +487,8 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
   if (noteErr) return res.status(400).json({ error: noteErr });
 
   const changes = jsonParse(reqRow.proposed_changes, {});
-  const rawPatch = sanitizePatch(changes);
+  const existingForPatch = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(reqRow.player_id);
+  const rawPatch = sanitizePatch(changes, existingForPatch);
   const validated = validateAndFinalizePatch(rawPatch);
   if (validated.error) return res.status(400).json({ error: validated.error });
   const patch = validated.patch;
@@ -408,15 +503,18 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
       const insertPayload = { ...base, ...patch, updated_at: t };
       db.prepare(
         `INSERT INTO character_profiles(
-          player_id, character_name, class_role, level, reputation, stats, bio, avatar_url,
+          player_id, character_name, class_role, level, reputation, class_key, specialization_key, xp, stats, bio, avatar_url,
           public_fields, public_blurb, editable_fields, allow_requests, created_by, created_at, updated_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         reqRow.player_id,
         insertPayload.character_name || "",
         insertPayload.class_role || "",
         insertPayload.level ?? null,
         insertPayload.reputation ?? 0,
+        insertPayload.class_key || "",
+        insertPayload.specialization_key || "",
+        insertPayload.xp ?? 0,
         insertPayload.stats || "{}",
         insertPayload.bio || "",
         insertPayload.avatar_url || "",

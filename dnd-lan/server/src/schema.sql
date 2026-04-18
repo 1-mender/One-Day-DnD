@@ -146,6 +146,9 @@ CREATE TABLE IF NOT EXISTS character_profiles (
   class_role TEXT,
   level INTEGER,
   reputation INTEGER NOT NULL DEFAULT 0,
+  class_key TEXT,
+  specialization_key TEXT,
+  xp INTEGER NOT NULL DEFAULT 0,
   stats TEXT NOT NULL DEFAULT '{}',
   bio TEXT,
   avatar_url TEXT,
@@ -156,6 +159,16 @@ CREATE TABLE IF NOT EXISTS character_profiles (
   created_by TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
+  FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS character_profile_xp_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  player_id INTEGER NOT NULL,
+  amount INTEGER NOT NULL,
+  reason TEXT,
+  actor TEXT,
+  created_at INTEGER NOT NULL,
   FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
 );
 
@@ -350,6 +363,7 @@ CREATE INDEX IF NOT EXISTS idx_info_blocks_title ON info_blocks(title);
 CREATE INDEX IF NOT EXISTS idx_events_party_created ON events(party_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_type_created ON events(type, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_profiles_player ON character_profiles(player_id);
+CREATE INDEX IF NOT EXISTS idx_profile_xp_log_player_created ON character_profile_xp_log(player_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_profile_requests_status ON profile_change_requests(status);
 CREATE INDEX IF NOT EXISTS idx_profile_requests_player ON profile_change_requests(player_id);
 CREATE INDEX IF NOT EXISTS idx_player_live_activities_player_kind_status ON player_live_activities(player_id, kind, status, updated_at DESC);

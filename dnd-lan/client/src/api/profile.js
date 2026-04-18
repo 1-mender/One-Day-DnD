@@ -5,6 +5,8 @@ export const profileApi = {
   playerPublicProfile: (playerId) => request(`/api/players/${playerId}/public-profile`, { method: "GET" }),
   dmUpdatePlayerProfile: (playerId, profile) =>
     request(`/api/players/${playerId}/profile`, { method: "PUT", body: JSON.stringify(profile) }),
+  dmAwardProfileXp: (playerId, payload) =>
+    request(`/api/players/${playerId}/profile/xp`, { method: "POST", body: JSON.stringify(payload) }),
   playerPatchProfile: (playerId, patch) =>
     request(`/api/players/${playerId}/profile`, { method: "PATCH", body: JSON.stringify(patch) }),
   playerProfileRequest: (playerId, proposedChanges, reason = "") =>

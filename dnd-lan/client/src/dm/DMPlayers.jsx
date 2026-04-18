@@ -245,6 +245,7 @@ export default function DMPlayers() {
       const ticketData = tickets[player.id] || {};
       return {
         ...player,
+        profileExists: Boolean(player.profileExists ?? player.profileCreated),
         ticketBalance: Number(ticketData.balance || 0),
         ticketStreak: Number(ticketData.streak || 0)
       };
@@ -435,6 +436,9 @@ export default function DMPlayers() {
                   player={player}
                   ticketBalance={player.ticketBalance}
                   ticketStreak={player.ticketStreak}
+                  attentionBadges={player.specializationAvailable ? [
+                    { key: "specializationAvailable", label: "СПЕЦ. ДОСТУПНА", tone: "warn" }
+                  ] : []}
                   selected={player.id === selectedId}
                   onClick={() => selectPlayer(player.id)}
                   menu={(
@@ -489,6 +493,9 @@ export default function DMPlayers() {
                   <span className={`badge ${selectedPlayer.shieldActive ? "ok" : "secondary"}`}>
                     {selectedPlayer.shieldActive ? "Щиток активен" : "Щиток закрыт"}
                   </span>
+                  {selectedPlayer.specializationAvailable ? (
+                    <span className="badge warn">Специализация доступна</span>
+                  ) : null}
                   <span className="badge secondary">Последний вход: {selectedSummary?.lastSeenLabel}</span>
                 </div>
                 <div className="row u-row-wrap dm-player-detail-badges">

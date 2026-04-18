@@ -29,6 +29,8 @@ playersRouter.get("/", (req, res) => {
            cp.class_role,
            cp.level,
            cp.reputation,
+           cp.class_key,
+           cp.specialization_key,
            cp.stats,
            cp.avatar_url,
            cp.public_fields,
@@ -66,6 +68,9 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
            p.created_at as createdAt,
            MAX(CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END) as profileCreated,
            MAX(cp.stats) as profileStats,
+           MAX(cp.class_key) as classKey,
+           MAX(cp.specialization_key) as specializationKey,
+           MAX(cp.xp) as xp,
            COALESCE(SUM(i.weight * i.qty), 0) as inventoryWeight,
            MAX(CASE WHEN pla.kind='shield' THEN 1 ELSE 0 END) as shieldActive
     FROM players p
@@ -88,6 +93,8 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
       inventoryWeight: Number.isFinite(total) ? total : 0,
       inventoryLimit: limitInfo.limit,
       inventoryOverLimit: limitInfo.limit > 0 && Number.isFinite(total) && total > limitInfo.limit,
+      profileExists: !!Number(row.profileCreated || 0),
+      specializationAvailable: !!row.classKey && !row.specializationKey && Number(row.xp || 0) >= 100,
       shieldActive: !!Number(row.shieldActive || 0)
     };
   });

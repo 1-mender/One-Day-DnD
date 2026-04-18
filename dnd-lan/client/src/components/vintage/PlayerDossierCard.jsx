@@ -7,6 +7,7 @@ import {
   getPlayerSecondaryName,
   getPublicProfileMeta
 } from "../../player/publicProfileViewModel.js";
+import { getClassPathLabel } from "../../player/classCatalog.js";
 import { formatReputationLabel, getReputationTier } from "../../player/profileDomain.js";
 
 function StatusStamp({ status }) {
@@ -21,6 +22,7 @@ export default function PlayerDossierCard({
   rightActions = null,
   ticketBalance = null,
   ticketStreak = null,
+  attentionBadges = [],
   menu = null,
   selected = false,
   onClick
@@ -109,6 +111,11 @@ export default function PlayerDossierCard({
           {ticketStreak != null ? (
             <span className="badge secondary">Серия: {ticketStreak}</span>
           ) : null}
+          {(attentionBadges || []).map((badge) => (
+            <span key={badge.key || badge.label} className={`badge ${badge.tone || "warn"}`}>
+              {badge.label}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -119,8 +126,10 @@ export default function PlayerDossierCard({
 
 function getPublicProfileChips(profile) {
   if (!profile) return [];
+  const classPath = profile.classKey ? getClassPathLabel(profile) : "";
   return [
-    profile.classRole ? { key: "classRole", label: profile.classRole } : null,
+    classPath ? { key: "classPath", label: classPath } : null,
+    !classPath && profile.classRole ? { key: "classRole", label: profile.classRole } : null,
     profile.level != null ? { key: "level", label: `ур. ${profile.level}` } : null,
     profile.reputation != null ? {
       key: "reputation",

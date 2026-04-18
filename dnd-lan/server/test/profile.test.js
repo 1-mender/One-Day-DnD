@@ -128,6 +128,54 @@ test("DM can create profile and player can patch allowed fields", async () => {
   assert.equal(badPatch.res.status, 403);
 });
 
+test("DM can award class XP with visible log", async () => {
+  const playerId = createPlayer("XP Player");
+  const dmHeaders = { cookie: dmCookie() };
+  const token = createSession(playerId);
+
+  await api(`/api/players/${playerId}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: { characterName: "Learner", classKey: "warrior", xp: 90 }
+  });
+
+  const awardRes = await api(`/api/players/${playerId}/profile/xp`, {
+    method: "POST",
+    headers: dmHeaders,
+    body: { amount: 15, reason: "Квест" }
+  });
+  assert.equal(awardRes.res.status, 200);
+  assert.equal(awardRes.data.profile.xp, 105);
+  assert.equal(awardRes.data.profile.xpLog[0].amount, 15);
+  assert.equal(awardRes.data.profile.xpLog[0].reason, "Квест");
+
+  const playerRes = await api(`/api/players/${playerId}/profile`, {
+    headers: { "x-player-token": token }
+  });
+  assert.equal(playerRes.res.status, 200);
+  assert.equal(playerRes.data.profile.xp, 105);
+  assert.equal(playerRes.data.profile.xpLog[0].reason, "Квест");
+  assert.ok(ioEvents.find((entry) => entry.room === `player:${playerId}` && entry.event === "profile:updated"));
+});
+
+test("DM players list marks profiles ready for specialization", async () => {
+  const playerId = createPlayer("Ready Player");
+  const dmHeaders = { cookie: dmCookie() };
+
+  await api(`/api/players/${playerId}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: { characterName: "Ready", classKey: "warrior", xp: 100 }
+  });
+
+  const listRes = await api("/api/players/dm/list", { headers: dmHeaders });
+  assert.equal(listRes.res.status, 200);
+
+  const player = listRes.data.items.find((item) => item.id === playerId);
+  assert.equal(player.profileExists, true);
+  assert.equal(player.specializationAvailable, true);
+});
+
 test("Player can create request with reason and DM can approve", async () => {
   const playerId = createPlayer("Player Two");
   const token = createSession(playerId);

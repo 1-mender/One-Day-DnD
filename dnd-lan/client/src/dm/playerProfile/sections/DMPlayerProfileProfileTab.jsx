@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { ImageUp, Save } from "lucide-react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
 import { EmptyState } from "../../../foundation/primitives/index.js";
@@ -8,6 +9,7 @@ import {
   DM_STAT_PRESETS,
   formatReputationLabel,
   getReputationTier,
+  normalizeXp,
   normalizeReputation
 } from "../playerProfileAdminDomain.js";
 import {
@@ -15,6 +17,13 @@ import {
   getRaceValue,
   setRaceInStats
 } from "../../../player/profileDomain.js";
+import {
+  CLASS_CATALOG,
+  SPECIALIZATION_XP_THRESHOLD,
+  getClassByKey,
+  getClassPathLabel,
+  getSpecializationByKey
+} from "../../../player/classCatalog.js";
 
 const INPUT_STYLE = { width: "100%" };
 
@@ -22,6 +31,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
   const {
     applyPreset,
     applyProfilePreset,
+    awardXp,
     canSave,
     fileInputRef,
     form,
@@ -34,11 +44,30 @@ export default function DMPlayerProfileProfileTab({ controller }) {
     setForm,
     toggleEditable,
     togglePublicField,
-    uploading
+    uploading,
+    xpAwarding
   } = controller;
+  const [xpAwardAmount, setXpAwardAmount] = useState(10);
+  const [xpAwardReason, setXpAwardReason] = useState("Рольплей");
   const reputationTier = getReputationTier(form.reputation);
+  const selectedClass = getClassByKey(form.classKey);
+  const selectedSpecialization = getSpecializationByKey(form.classKey, form.specializationKey);
+  const classPathLabel = getClassPathLabel(form);
+  const publicMetaPreview = [
+    (form.publicFields || []).includes("classPath") && form.classKey ? classPathLabel : "",
+    (form.publicFields || []).includes("classRole") ? form.classRole : "",
+    (form.publicFields || []).includes("level") && form.level ? `lvl ${form.level}` : "",
+    (form.publicFields || []).includes("reputation") ? `реп. ${formatReputationLabel(form.reputation)}` : ""
+  ].filter(Boolean).join(" • ");
   const setReputation = (value) => setForm({ ...form, reputation: normalizeReputation(value) });
   const adjustReputation = (delta) => setReputation(Number(form.reputation || 0) + delta);
+  const setClassKey = (classKey) => setForm({ ...form, classKey, specializationKey: "" });
+  const setSpecializationKey = (specializationKey) => setForm({ ...form, specializationKey });
+  const setXp = (value) => setForm({ ...form, xp: normalizeXp(value) });
+  const adjustXp = (delta) => setXp(Number(form.xp || 0) + delta);
+  const submitXpAward = () => {
+    awardXp?.({ amount: xpAwardAmount, reason: xpAwardReason });
+  };
 
   return (
     <>
@@ -140,6 +169,142 @@ export default function DMPlayerProfileProfileTab({ controller }) {
             </button>
             <div className="small note-hint">Можно вставить URL или загрузить файл (до 10MB).</div>
             <div className="kv">
+              <div className="title">Путь класса</div>
+              <div className="small note-hint">
+                Игрок выбирает класс сам, но DM управляет опытом и может вручную поправить путь.
+              </div>
+              <select
+                value={form.classKey || ""}
+                onChange={(event) => setClassKey(event.target.value)}
+                aria-label="Базовый класс"
+                disabled={readOnly}
+                style={INPUT_STYLE}
+              >
+                <option value="">Класс не выбран</option>
+                {CLASS_CATALOG.map((item) => (
+                  <option key={item.key} value={item.key}>{item.label}</option>
+                ))}
+              </select>
+              <select
+                value={form.specializationKey || ""}
+                onChange={(event) => setSpecializationKey(event.target.value)}
+                aria-label="Специализация"
+                disabled={readOnly || !selectedClass}
+                style={INPUT_STYLE}
+              >
+                <option value="">Специализация не выбрана</option>
+                {(selectedClass?.specializations || []).map((item) => (
+                  <option key={item.key} value={item.key}>{item.label}</option>
+                ))}
+              </select>
+              <div className="row u-row-gap-8 u-row-wrap">
+                <span className={`badge ${Number(form.xp || 0) >= SPECIALIZATION_XP_THRESHOLD ? "ok" : "secondary"}`}>
+                  {normalizeXp(form.xp)} / {SPECIALIZATION_XP_THRESHOLD} XP
+                </span>
+                <span className="small note-hint">Основной способ изменения опыта: “Выдать XP” ниже.</span>
+              </div>
+              <div className="paper-note u-mt-8">
+                <div className="small note-hint">Текущий путь</div>
+                <div className="u-title-18">{classPathLabel || "Не выбран"}</div>
+                <div className="small u-mt-6">
+                  {selectedSpecialization?.description || selectedClass?.description || "Сначала выбери базовый класс."}
+                </div>
+              </div>
+              <div className="paper-note u-mt-8">
+                <div className="title">Выдать XP</div>
+                <div className="small note-hint u-mt-6">
+                  Это сразу сохранит опыт и добавит запись в историю игрока.
+                </div>
+                <div className="row u-row-gap-8 u-row-wrap u-mt-8">
+                  {[5, 10, 15, 25].map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      className={`btn secondary ${Number(xpAwardAmount) === amount ? "active" : ""}`}
+                      onClick={() => setXpAwardAmount(amount)}
+                      disabled={readOnly || xpAwarding}
+                    >
+                      +{amount}
+                    </button>
+                  ))}
+                </div>
+                <div className="list u-mt-8">
+                  <input
+                    type="number"
+                    min="-1000"
+                    max="1000"
+                    value={xpAwardAmount}
+                    onChange={(event) => setXpAwardAmount(event.target.value)}
+                    aria-label="Сколько XP выдать"
+                    disabled={readOnly || xpAwarding}
+                    style={INPUT_STYLE}
+                  />
+                  <select
+                    value={xpAwardReason}
+                    onChange={(event) => setXpAwardReason(event.target.value)}
+                    aria-label="Причина XP"
+                    disabled={readOnly || xpAwarding}
+                    style={INPUT_STYLE}
+                  >
+                    <option value="Рольплей">Рольплей</option>
+                    <option value="Бой">Бой</option>
+                    <option value="Квест">Квест</option>
+                    <option value="Важная сцена">Важная сцена</option>
+                    <option value="Коррекция DM">Коррекция DM</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={submitXpAward}
+                    disabled={readOnly || xpAwarding}
+                  >
+                    {xpAwarding ? "Записываю..." : "Записать XP"}
+                  </button>
+                </div>
+              </div>
+              <details className="profile-collapse u-mt-8">
+                <summary>
+                  <span>Расширенно: ручная коррекция XP</span>
+                  <span className="badge secondary">осторожно</span>
+                </summary>
+                <div className="profile-collapse-body">
+                  <div className="small note-hint">
+                    Используй только для исправления ошибок. Обычные начисления лучше делать через “Выдать XP”, чтобы сохранялась история.
+                  </div>
+                  <input
+                    type="number"
+                    min="0"
+                    value={form.xp}
+                    onChange={(event) => setForm({ ...form, xp: event.target.value })}
+                    placeholder="Опыт"
+                    aria-label="Опыт класса"
+                    disabled={readOnly}
+                    style={INPUT_STYLE}
+                  />
+                  <div className="row u-row-gap-8 u-row-wrap">
+                    <button type="button" className="btn secondary" onClick={() => adjustXp(-10)} disabled={readOnly}>-10</button>
+                    <button type="button" className="btn secondary" onClick={() => setXp(0)} disabled={readOnly}>0</button>
+                    <button type="button" className="btn secondary" onClick={() => adjustXp(10)} disabled={readOnly}>+10</button>
+                    <button type="button" className="btn secondary" onClick={() => adjustXp(25)} disabled={readOnly}>+25</button>
+                  </div>
+                </div>
+              </details>
+              {form.xpLog?.length ? (
+                <div className="paper-note u-mt-8">
+                  <div className="title">История XP</div>
+                  <div className="list u-mt-8">
+                    {form.xpLog.slice(0, 5).map((entry) => (
+                      <div key={entry.id} className="row u-row-between-baseline u-row-gap-8">
+                        <span className={`badge ${entry.amount > 0 ? "ok" : "off"}`}>{formatXpAmount(entry.amount)}</span>
+                        <span className="small">{entry.reason || "Без причины"}</span>
+                        <span className="small">{formatXpDate(entry.createdAt)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+            <div className="kv">
               <div className="title"><span className="section-icon stat" aria-hidden="true" />Статы</div>
               <div className="row u-row-wrap">
                 {DM_STAT_PRESETS.map((preset) => (
@@ -187,8 +352,9 @@ export default function DMPlayerProfileProfileTab({ controller }) {
               <div>
                 <div className="u-title-18">{form.characterName || "Без имени"}</div>
                 <div className="small u-mt-6">
-                  {form.classRole || "Класс/роль"} • lvl {form.level || "?"} • реп. {formatReputationLabel(form.reputation)}
+                  {classPathLabel || form.classRole || "Класс/роль"} • lvl {form.level || "?"} • реп. {formatReputationLabel(form.reputation)}
                 </div>
+                {form.classRole ? <div className="small u-mt-6">Роль: {form.classRole}</div> : null}
               </div>
             </div>
             <div className="u-mt-12">
@@ -233,9 +399,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
               <div className="title">Превью карточки</div>
               <div className="u-title-18 u-mt-8">{form.characterName || "Без имени"}</div>
               <div className="small u-mt-6">
-                {form.classRole || "Класс / роль"}
-                {form.level ? ` • lvl ${form.level}` : ""}
-                {(form.publicFields || []).includes("reputation") ? ` • реп. ${formatReputationLabel(form.reputation)}` : ""}
+                {publicMetaPreview || "Только имя и аватар"}
               </div>
               {(form.publicFields || []).includes("race") ? (
                 <div className="small u-mt-6">Раса: {getRaceValue(form.stats) || "human"}</div>
@@ -286,4 +450,23 @@ export default function DMPlayerProfileProfileTab({ controller }) {
       </div>
     </>
   );
+}
+
+function formatXpAmount(value) {
+  const amount = Number(value || 0);
+  return amount > 0 ? `+${amount}` : String(amount);
+}
+
+function formatXpDate(value) {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString([], {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return "";
+  }
 }

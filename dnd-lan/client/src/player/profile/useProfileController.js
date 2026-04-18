@@ -62,6 +62,7 @@ export function useProfileController() {
     publicBlurb: ""
   });
   const [publicSettingsSaving, setPublicSettingsSaving] = useState(false);
+  const [classPathSaving, setClassPathSaving] = useState(false);
 
   useEffect(() => {
     reqStatusRef.current = reqStatus;
@@ -246,6 +247,28 @@ export function useProfileController() {
     }
   }, [playerId, profile, publicSettingsDraft, readOnly, toast]);
 
+  const saveClassPath = useCallback(async (patch) => {
+    if (!playerId || !profile || readOnly) return;
+    const payload = {};
+    if (Object.hasOwn(patch || {}, "classKey")) payload.classKey = patch.classKey || "";
+    if (Object.hasOwn(patch || {}, "specializationKey")) payload.specializationKey = patch.specializationKey || "";
+    if (!Object.keys(payload).length) return;
+
+    setErr("");
+    setClassPathSaving(true);
+    try {
+      const response = await api.playerPatchProfile(playerId, payload);
+      setProfile(response.profile);
+      toast.success(payload.specializationKey ? "Специализация выбрана" : "Класс выбран");
+    } catch (e) {
+      const message = formatError(e);
+      setErr(message);
+      toast.error(message);
+    } finally {
+      setClassPathSaving(false);
+    }
+  }, [playerId, profile, readOnly, toast]);
+
   const handleAvatarFileChange = useCallback(
     async (event) => {
       const file = event.target.files?.[0];
@@ -329,6 +352,7 @@ export function useProfileController() {
     canEditAny,
     canEditBasic,
     canRequestAny,
+    classPathSaving,
     draft,
     editMode,
     editPresets,
@@ -364,6 +388,7 @@ export function useProfileController() {
     requests,
     requestsRef,
     saveEdit,
+    saveClassPath,
     savePublicSettings,
     applyEditPreset,
     applyRequestPreset,
@@ -387,6 +412,9 @@ function createDraftFromProfile(profile) {
     classRole: profile?.classRole || "",
     level: profile?.level ?? "",
     reputation: normalizeReputation(profile?.reputation),
+    classKey: profile?.classKey || "",
+    specializationKey: profile?.specializationKey || "",
+    xp: Number(profile?.xp || 0),
     stats: profile?.stats || {},
     bio: profile?.bio || "",
     avatarUrl: profile?.avatarUrl || ""

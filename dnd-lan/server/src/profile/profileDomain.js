@@ -1,4 +1,9 @@
 import { jsonParse, randId } from "../util.js";
+import {
+  canSelectSpecialization,
+  normalizeClassKey,
+  normalizeSpecializationKey
+} from "./classCatalog.js";
 
 export const EDITABLE_FIELDS = new Set([
   "characterName",
@@ -12,6 +17,7 @@ export const EDITABLE_FIELDS = new Set([
 
 export const PUBLIC_PROFILE_FIELDS = new Set([
   "classRole",
+  "classPath",
   "level",
   "reputation",
   "race",
@@ -24,6 +30,7 @@ export const LIMITS = {
   avatarUrl: 512,
   bio: 2000,
   publicBlurb: 280,
+  xpReason: 160,
   reason: 500,
   dmNote: 500,
   reputationMin: -100,
@@ -56,6 +63,9 @@ export function mapProfile(row) {
     classRole: row.class_role || "",
     level: row.level == null ? null : Number(row.level),
     reputation: normalizeReputation(row.reputation),
+    classKey: normalizeClassKey(row.class_key),
+    specializationKey: normalizeSpecializationKey(row.class_key, row.specialization_key),
+    xp: normalizeXp(row.xp),
     stats: (stats && typeof stats === "object" && !Array.isArray(stats)) ? stats : {},
     bio: row.bio || "",
     avatarUrl: row.avatar_url || "",
@@ -80,6 +90,8 @@ export function mapPublicProfile(row) {
   const characterName = String(row.character_name ?? row.characterName ?? "").trim();
   const avatarUrl = String(row.avatar_url ?? row.avatarUrl ?? "").trim();
   const classRole = String(row.class_role ?? row.classRole ?? "").trim();
+  const classKey = normalizeClassKey(row.class_key ?? row.classKey);
+  const specializationKey = normalizeSpecializationKey(classKey, row.specialization_key ?? row.specializationKey);
   const rawLevel = row.level;
   const reputation = normalizeReputation(row.reputation);
   const publicBlurb = String(row.public_blurb ?? row.publicBlurb ?? "").trim();
@@ -89,6 +101,10 @@ export function mapPublicProfile(row) {
   if (characterName) profile.characterName = characterName;
   if (avatarUrl) profile.avatarUrl = avatarUrl;
   if (publicFields.includes("classRole") && classRole) profile.classRole = classRole;
+  if (publicFields.includes("classPath") && classKey) {
+    profile.classKey = classKey;
+    if (specializationKey) profile.specializationKey = specializationKey;
+  }
   if (publicFields.includes("level") && rawLevel != null && rawLevel !== "") {
     const level = Number(rawLevel);
     if (Number.isFinite(level)) profile.level = level;
@@ -109,6 +125,12 @@ function normalizeReputation(value) {
   const numeric = Number(value ?? 0);
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(LIMITS.reputationMin, Math.min(LIMITS.reputationMax, Math.round(numeric)));
+}
+
+function normalizeXp(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.round(numeric));
 }
 
 export function normalizeEditableFields(value) {
@@ -165,7 +187,8 @@ function normalizePresetData(raw) {
   const changes = sanitizeRequestChanges(raw || {});
   const error = validateRequestChanges(changes);
   if (error) return { error };
-  return {
+  const classKey = normalizeClassKey(changes.classKey);
+  const data = {
     characterName: String(changes.characterName || ""),
     classRole: String(changes.classRole || ""),
     level: changes.level === "" || changes.level == null ? "" : Number(changes.level),
@@ -174,6 +197,11 @@ function normalizePresetData(raw) {
     bio: String(changes.bio || ""),
     avatarUrl: String(changes.avatarUrl || "")
   };
+  if (Object.prototype.hasOwnProperty.call(raw || {}, "classKey")) data.classKey = classKey;
+  if (Object.prototype.hasOwnProperty.call(raw || {}, "specializationKey")) {
+    data.specializationKey = normalizeSpecializationKey(classKey, changes.specializationKey);
+  }
+  return data;
 }
 
 export function sanitizePreset(preset, index) {
@@ -201,6 +229,12 @@ export function buildProfilePayload(body, existing) {
   const reputation = input.reputation !== undefined
     ? normalizeReputation(input.reputation)
     : normalizeReputation(existing?.reputation);
+  const xp = input.xp !== undefined ? normalizeXp(input.xp) : normalizeXp(existing?.xp);
+  const classKey = normalizeClassKey(input.classKey ?? existing?.class_key ?? "");
+  const specializationKey = normalizeSpecializationKey(
+    classKey,
+    input.specializationKey ?? existing?.specialization_key ?? ""
+  );
   let statsObj;
   if (input.stats !== undefined) {
     const normalized = normalizeStats(input.stats);
@@ -236,6 +270,9 @@ export function buildProfilePayload(body, existing) {
     class_role: String(classRole || ""),
     level,
     reputation,
+    class_key: classKey,
+    specialization_key: specializationKey,
+    xp,
     stats: JSON.stringify(statsObj || {}),
     bio: String(bio || ""),
     avatar_url: String(avatarUrl || ""),
@@ -246,7 +283,7 @@ export function buildProfilePayload(body, existing) {
   };
 }
 
-export function sanitizePatch(body) {
+export function sanitizePatch(body, existing = null) {
   const input = body || {};
   const output = {};
   const has = (key) => Object.prototype.hasOwnProperty.call(input, key);
@@ -258,6 +295,14 @@ export function sanitizePatch(body) {
     output.level = Number.isFinite(level) ? Math.max(0, level) : null;
   }
   if (has("reputation")) output.reputation = normalizeReputation(input.reputation);
+  if (has("classKey")) {
+    output.class_key = normalizeClassKey(input.classKey);
+    if (!output.class_key) output.specialization_key = "";
+  }
+  if (has("specializationKey")) {
+    const classKey = output.class_key ?? normalizeClassKey(input.classKey ?? existing?.class_key);
+    output.specialization_key = normalizeSpecializationKey(classKey, input.specializationKey);
+  }
   if (has("stats")) output.stats = normalizeStats(input.stats);
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatar_url = String(input.avatarUrl || "");
@@ -279,11 +324,42 @@ export function sanitizeRequestChanges(body) {
     output.level = Number.isFinite(level) ? Math.max(0, level) : null;
   }
   if (has("reputation")) output.reputation = normalizeReputation(input.reputation);
+  if (has("classKey")) output.classKey = normalizeClassKey(input.classKey);
+  if (has("specializationKey")) {
+    output.specializationKey = normalizeSpecializationKey(output.classKey ?? input.classKey, input.specializationKey);
+  }
   if (has("stats")) output.stats = normalizeStats(input.stats);
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatarUrl = String(input.avatarUrl || "");
 
   return output;
+}
+
+export function validatePlayerClassPathPatch(body, row) {
+  const input = body || {};
+  const currentClassKey = normalizeClassKey(row?.class_key);
+  const currentSpecializationKey = normalizeSpecializationKey(currentClassKey, row?.specialization_key);
+  const xp = normalizeXp(row?.xp);
+  const wantsClass = Object.prototype.hasOwnProperty.call(input, "classKey");
+  const wantsSpecialization = Object.prototype.hasOwnProperty.call(input, "specializationKey");
+  if (!wantsClass && !wantsSpecialization) return null;
+
+  if (currentSpecializationKey && wantsClass && normalizeClassKey(input.classKey) !== currentClassKey) {
+    return "class_locked_after_specialization";
+  }
+  const rawClassKey = String(input.classKey ?? "").trim();
+  const nextClassKey = wantsClass ? normalizeClassKey(input.classKey) : currentClassKey;
+  if (wantsClass && rawClassKey && !nextClassKey) return "invalid_class";
+  if (wantsClass && !nextClassKey && wantsSpecialization) return "class_required";
+
+  if (wantsSpecialization) {
+    if (!nextClassKey) return "class_required";
+    if (currentSpecializationKey) return "specialization_locked";
+    if (!canSelectSpecialization(xp)) return "specialization_xp_required";
+    if (!normalizeSpecializationKey(nextClassKey, input.specializationKey)) return "invalid_specialization";
+  }
+
+  return null;
 }
 
 export function validateRequestChanges(changes) {

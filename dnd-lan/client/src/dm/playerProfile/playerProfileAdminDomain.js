@@ -9,6 +9,7 @@ export const DM_PROFILE_EDITABLE_OPTIONS = [
 ];
 
 export const DM_PROFILE_PUBLIC_OPTIONS = [
+  { key: "classPath", label: "Класс и специализация" },
   { key: "classRole", label: "Класс / роль" },
   { key: "level", label: "Уровень" },
   { key: "reputation", label: "Репутация" },
@@ -19,8 +20,12 @@ export const DM_PROFILE_PUBLIC_OPTIONS = [
 export const DM_PROFILE_FIELD_LABELS = {
   characterName: "Имя",
   classRole: "Класс/роль",
+  classPath: "Класс и специализация",
   level: "Уровень",
   reputation: "Репутация",
+  classKey: "Класс",
+  specializationKey: "Специализация",
+  xp: "Опыт",
   stats: "Статы",
   bio: "Биография",
   avatarUrl: "Аватар"
@@ -31,6 +36,10 @@ export const EMPTY_DM_PROFILE_FORM = {
   classRole: "",
   level: "",
   reputation: 0,
+  classKey: "",
+  specializationKey: "",
+  xp: 0,
+  xpLog: [],
   stats: {},
   bio: "",
   avatarUrl: "",
@@ -51,6 +60,8 @@ export function normalizeRequestChanges(changes) {
   if (!changes || typeof changes !== "object") return out;
   if ("characterName" in changes) out.characterName = String(changes.characterName || "");
   if ("classRole" in changes) out.classRole = String(changes.classRole || "");
+  if ("classKey" in changes) out.classKey = String(changes.classKey || "");
+  if ("specializationKey" in changes) out.specializationKey = String(changes.specializationKey || "");
   if ("level" in changes) {
     const level = changes.level === "" || changes.level == null ? "" : Number(changes.level);
     out.level = Number.isFinite(level) ? level : "";
@@ -82,12 +93,13 @@ export function formatProfileRequestValue(value) {
 
 export function hasAnyData(form) {
   const snapshot = snapshotFromForm(form);
-  const hasText = snapshot.characterName || snapshot.classRole || snapshot.bio || snapshot.avatarUrl;
+  const hasText = snapshot.characterName || snapshot.classRole || snapshot.classKey || snapshot.bio || snapshot.avatarUrl;
   const hasLevel = snapshot.level !== null && snapshot.level !== undefined;
   const hasReputation = snapshot.reputation !== 0;
+  const hasProgress = snapshot.xp !== 0 || snapshot.specializationKey;
   const hasStats = Object.keys(snapshot.stats || {}).length > 0;
   const hasRights = snapshot.editableFields.length > 0 || snapshot.allowRequests;
-  return !!(hasText || hasLevel || hasReputation || hasStats || hasRights);
+  return !!(hasText || hasLevel || hasReputation || hasProgress || hasStats || hasRights);
 }
 
 export function hasUnsavedChanges(form, profile) {
@@ -101,6 +113,9 @@ function snapshotFromForm(form) {
     classRole: String(form.classRole || ""),
     level: form.level === "" || form.level == null ? null : Number(form.level),
     reputation: normalizeReputation(form.reputation),
+    classKey: String(form.classKey || ""),
+    specializationKey: String(form.specializationKey || ""),
+    xp: normalizeXp(form.xp),
     stats: sortObjectKeys(form.stats || {}),
     bio: String(form.bio || ""),
     avatarUrl: String(form.avatarUrl || ""),
@@ -118,6 +133,9 @@ function snapshotFromProfile(profile) {
     classRole: String(profile.classRole || ""),
     level: profile.level == null ? null : Number(profile.level),
     reputation: normalizeReputation(profile.reputation),
+    classKey: String(profile.classKey || ""),
+    specializationKey: String(profile.specializationKey || ""),
+    xp: normalizeXp(profile.xp),
     stats: sortObjectKeys(profile.stats || {}),
     bio: String(profile.bio || ""),
     avatarUrl: String(profile.avatarUrl || ""),
@@ -132,6 +150,12 @@ export function normalizeReputation(value) {
   const numeric = Number(value ?? 0);
   if (!Number.isFinite(numeric)) return 0;
   return Math.max(-100, Math.min(100, Math.round(numeric)));
+}
+
+export function normalizeXp(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.round(numeric));
 }
 
 export function formatReputation(value) {

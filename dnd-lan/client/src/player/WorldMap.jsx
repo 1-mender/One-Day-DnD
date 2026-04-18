@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { Crosshair, RefreshCcw } from "lucide-react";
 import { api } from "../api.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { getClassPathLabel } from "./classCatalog.js";
 import { formatReputationLabel } from "./profileDomain.js";
 import {
   WORLD_MAP_CATEGORY_LABELS,
@@ -120,8 +121,9 @@ function LocationDetail({ location, dmMode, savingLocationId, onVisibilityChange
 function PlayerDetail({ player }) {
   const profile = player?.publicProfile || {};
   const name = getPlayerName(player);
+  const classPath = profile.classKey ? getClassPathLabel(profile) : "";
   const meta = [
-    profile.classRole,
+    classPath || profile.classRole,
     profile.level ? `ур. ${profile.level}` : "",
     profile.reputation != null ? `реп. ${formatReputationLabel(profile.reputation)}` : "",
     profile.race

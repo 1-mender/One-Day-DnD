@@ -11,6 +11,7 @@ import {
   EMPTY_DM_PROFILE_FORM,
   hasAnyData,
   hasUnsavedChanges,
+  normalizeXp,
   normalizeReputation,
   normalizeRequestChanges
 } from "./playerProfileAdminDomain.js";
@@ -35,6 +36,7 @@ export function useDmPlayerProfileController() {
   const [reqStatus, setReqStatus] = useState("pending");
   const [requestNotes, setRequestNotes] = useState({});
   const [uploading, setUploading] = useState(false);
+  const [xpAwarding, setXpAwarding] = useState(false);
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
   const [profilePresets, setProfilePresets] = useState([]);
@@ -49,6 +51,10 @@ export function useDmPlayerProfileController() {
       classRole: nextProfile?.classRole || "",
       level: nextProfile?.level ?? "",
       reputation: normalizeReputation(nextProfile?.reputation),
+      classKey: nextProfile?.classKey || "",
+      specializationKey: nextProfile?.specializationKey || "",
+      xp: normalizeXp(nextProfile?.xp),
+      xpLog: Array.isArray(nextProfile?.xpLog) ? nextProfile.xpLog : [],
       stats: nextProfile?.stats || {},
       bio: nextProfile?.bio || "",
       avatarUrl: nextProfile?.avatarUrl || "",
@@ -152,6 +158,9 @@ export function useDmPlayerProfileController() {
         ...form,
         level: form.level === "" ? null : Number(form.level),
         reputation: normalizeReputation(form.reputation),
+        classKey: form.classKey || "",
+        specializationKey: form.specializationKey || "",
+        xp: normalizeXp(form.xp),
         stats: form.stats || {},
         publicFields: form.publicFields || [],
         publicBlurb: form.publicBlurb || "",
@@ -169,6 +178,24 @@ export function useDmPlayerProfileController() {
     }
   }, [applyProfile, form, playerId, readOnly, toast]);
 
+  const awardXp = useCallback(async ({ amount, reason }) => {
+    if (readOnly || !playerId) return;
+    setErr("");
+    setXpAwarding(true);
+    try {
+      const response = await api.dmAwardProfileXp(playerId, { amount, reason });
+      applyProfile(response.profile);
+      setNotCreated(false);
+      toast.success("XP записан в журнал");
+    } catch (e) {
+      const message = formatError(e);
+      setErr(message);
+      toast.error(message);
+    } finally {
+      setXpAwarding(false);
+    }
+  }, [applyProfile, playerId, readOnly, toast]);
+
   const applyPreset = useCallback((preset) => {
     setForm((prev) => ({
       ...prev,
@@ -179,10 +206,13 @@ export function useDmPlayerProfileController() {
   const applyProfilePreset = useCallback((preset) => {
     const data = preset?.data || {};
     const nextLevel = data.level === "" || data.level == null ? "" : Number(data.level);
+    const hasClassKey = Object.hasOwn(data, "classKey");
+    const hasSpecializationKey = Object.hasOwn(data, "specializationKey");
     setForm((prev) => ({
       ...prev,
       ...data,
       level: Number.isFinite(nextLevel) ? nextLevel : prev.level,
+      specializationKey: hasClassKey && !hasSpecializationKey ? "" : (data.specializationKey ?? prev.specializationKey),
       stats: data.stats
         ? { ...(data.stats || {}), race: prev?.stats?.race ?? data?.stats?.race }
         : prev.stats
@@ -283,6 +313,7 @@ export function useDmPlayerProfileController() {
     applyFromRequest,
     applyPreset,
     applyProfilePreset,
+    awardXp,
     approve,
     canSave,
     dirty,
@@ -324,6 +355,7 @@ export function useDmPlayerProfileController() {
     toggleEditable,
     togglePublicField,
     updatedLabel,
-    uploading
+    uploading,
+    xpAwarding
   };
 }

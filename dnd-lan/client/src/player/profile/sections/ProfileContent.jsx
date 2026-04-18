@@ -10,6 +10,15 @@ import {
   formatReputationLabel,
   getReputationTier
 } from "../../profileDomain.js";
+import {
+  CLASS_CATALOG,
+  SPECIALIZATION_XP_THRESHOLD,
+  canChooseSpecialization,
+  getClassByKey,
+  getClassPathDescription,
+  getClassPathLabel,
+  getSpecializationByKey
+} from "../../classCatalog.js";
 
 const PROFILE_TABS = [
   { key: "self", label: "Персонаж" },
@@ -23,6 +32,7 @@ export default function ProfileContent({ controller }) {
     canEdit,
     canEditAny,
     canEditBasic,
+    classPathSaving,
     editableFields,
     loadRequests,
     openEdit,
@@ -42,6 +52,7 @@ export default function ProfileContent({ controller }) {
     requests,
     requestsRef,
     savePublicSettings,
+    saveClassPath,
     setPublicBlurbDraft,
     setPublicFieldOpen,
     setReqStatus
@@ -71,6 +82,9 @@ export default function ProfileContent({ controller }) {
           raceBonusLabel={raceBonusLabel}
           raceHint={raceHint}
           raceLabel={raceLabel}
+          readOnly={readOnly}
+          savingClassPath={classPathSaving}
+          saveClassPath={saveClassPath}
         />
       ) : null}
 
@@ -143,11 +157,15 @@ function MyCharacterPanel({
   raceBonus,
   raceBonusLabel,
   raceHint,
-  raceLabel
+  raceLabel,
+  readOnly,
+  savingClassPath,
+  saveClassPath
 }) {
   const heroMonogram = getHeroMonogram(profile);
   const showRaceBonus = raceBonus !== 0;
   const reputationTier = getReputationTier(profile.reputation);
+  const classPathLabel = getClassPathLabel(profile);
 
   return (
     <section className="profile-visibility-block profile-codex-panel tf-panel tf-profile-panel">
@@ -182,7 +200,7 @@ function MyCharacterPanel({
                 fallback={(profile.characterName || "?").slice(0, 1)}
               />
               <div className="character-tags">
-                <span className="badge secondary profile-tag">{profile.classRole || "Класс/роль"}</span>
+                <span className="badge secondary profile-tag">{classPathLabel || "Класс не выбран"}</span>
                 <span className="badge profile-tag">ур. {profile.level ?? "?"}</span>
               </div>
             </div>
@@ -230,25 +248,174 @@ function MyCharacterPanel({
           </div>
         </div>
 
-        <div className="paper-note profile-section profile-codex-inset tf-panel profile-bio-card">
-          <div className="profile-section-head tf-section-head">
-            <div className="title profile-card-title">
-              <BookOpenText className="profile-section-icon" aria-hidden="true" />Биография
+        <div className="list profile-side-stack">
+          <ClassPathPanel
+            profile={profile}
+            readOnly={readOnly}
+            saving={savingClassPath}
+            onSave={saveClassPath}
+          />
+
+          <div className="paper-note profile-section profile-codex-inset tf-panel profile-bio-card">
+            <div className="profile-section-head tf-section-head">
+              <div className="title profile-card-title">
+                <BookOpenText className="profile-section-icon" aria-hidden="true" />Биография
+              </div>
+              {canEdit("bio") ? (
+                <button className="btn secondary profile-inline-btn" onClick={() => openEdit("bio")}>
+                  <PencilLine className="icon" aria-hidden="true" />Редактировать
+                </button>
+              ) : null}
             </div>
-            {canEdit("bio") ? (
-              <button className="btn secondary profile-inline-btn" onClick={() => openEdit("bio")}>
-                <PencilLine className="icon" aria-hidden="true" />Редактировать
-              </button>
-            ) : null}
+            <div className="small note-hint profile-hint">
+              Это личная биография. Для партии используется отдельное публичное описание.
+            </div>
+            <div className="small bio-text profile-bio">{profile.bio || "Пока пусто"}</div>
           </div>
-          <div className="small note-hint profile-hint">
-            Это личная биография. Для партии используется отдельное публичное описание.
-          </div>
-          <div className="small bio-text profile-bio">{profile.bio || "Пока пусто"}</div>
         </div>
       </div>
     </section>
   );
+}
+
+function ClassPathPanel({ profile, readOnly, saving, onSave }) {
+  const baseClass = getClassByKey(profile?.classKey);
+  const specialization = getSpecializationByKey(profile?.classKey, profile?.specializationKey);
+  const xp = Math.max(0, Number(profile?.xp || 0));
+  const progress = Math.min(100, Math.round((xp / SPECIALIZATION_XP_THRESHOLD) * 100));
+  const specializationReady = canChooseSpecialization(profile);
+  const disabled = readOnly || saving;
+
+  return (
+    <div className="paper-note profile-section profile-codex-inset tf-panel profile-class-path-card">
+      <div className="profile-section-head tf-section-head">
+        <div>
+          <div className="profile-section-kicker tf-section-kicker">Путь класса</div>
+          <div className="title profile-card-title">
+            {specialization ? `${baseClass?.label} · ${specialization.label}` : baseClass?.label || "Выбери базовый класс"}
+          </div>
+        </div>
+        <span className={`badge ${specialization ? "ok" : specializationReady ? "warn" : "secondary"}`}>
+          {specialization ? "ветка выбрана" : `${xp}/${SPECIALIZATION_XP_THRESHOLD} XP`}
+        </span>
+      </div>
+
+      {!baseClass ? (
+        <>
+          <div className="small note-hint profile-hint">
+            Класс выбирает игрок. До специализации его можно поменять.
+          </div>
+          <div className="profile-class-grid">
+            {CLASS_CATALOG.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="profile-class-option"
+                disabled={disabled}
+                onClick={() => onSave?.({ classKey: item.key })}
+              >
+                <span>{item.label}</span>
+                <small>{item.description}</small>
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="profile-class-current">
+            <div>
+              <span className="small note-hint">Базовый класс</span>
+              <b>{baseClass.label}</b>
+              <span className="small">{baseClass.description}</span>
+            </div>
+            {!specialization ? (
+              <button
+                type="button"
+                className="btn secondary profile-inline-btn"
+                disabled={disabled}
+                onClick={() => onSave?.({ classKey: "" })}
+              >
+                Сменить
+              </button>
+            ) : null}
+          </div>
+
+          <div className="profile-xp-track" aria-label={`Опыт специализации: ${xp} из ${SPECIALIZATION_XP_THRESHOLD}`}>
+            <span style={{ width: `${progress}%` }} />
+          </div>
+
+          {specialization ? (
+            <div className="profile-specialization-picked">
+              <span className="small note-hint">Специализация</span>
+              <b>{specialization.label}</b>
+              <span className="small">{getClassPathDescription(profile)}</span>
+            </div>
+          ) : specializationReady ? (
+            <>
+              <div className="small note-hint profile-hint">
+                Порог достигнут. Выбери специализацию один раз, после этого класс фиксируется.
+              </div>
+              <div className="profile-specialization-grid">
+                {baseClass.specializations.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className="profile-class-option profile-specialization-option"
+                    disabled={disabled}
+                    onClick={() => onSave?.({ specializationKey: item.key })}
+                  >
+                    <span>{item.label}</span>
+                    <small>{item.description}</small>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="profile-specialization-locked">
+              <b>Специализация закрыта</b>
+              <span className="small">
+                DM добавляет опыт. Выбор откроется на {SPECIALIZATION_XP_THRESHOLD} XP.
+              </span>
+            </div>
+          )}
+
+          {profile?.xpLog?.length ? (
+            <div className="profile-xp-log">
+              <div className="profile-section-kicker tf-section-kicker">XP log</div>
+              <div className="profile-xp-log-list">
+                {profile.xpLog.slice(0, 5).map((entry) => (
+                  <div key={entry.id} className="profile-xp-log-row">
+                    <span className={`badge ${entry.amount > 0 ? "ok" : "off"}`}>{formatXpAmount(entry.amount)}</span>
+                    <span>{entry.reason || "Без причины"}</span>
+                    <small>{formatCompactDate(entry.createdAt)}</small>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function formatXpAmount(value) {
+  const amount = Number(value || 0);
+  return amount > 0 ? `+${amount}` : String(amount);
+}
+
+function formatCompactDate(value) {
+  if (!value) return "";
+  try {
+    return new Date(value).toLocaleString([], {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch {
+    return "";
+  }
 }
 
 function PublicProfilePreview({
@@ -267,7 +434,9 @@ function PublicProfilePreview({
     characterName: preview.characterName,
     classRole: preview.classRole
   });
+  const classPathLabel = profile?.classKey ? getClassPathLabel(profile) : "";
   const optionalFields = [
+    { key: "classPath", label: "Класс и специализация", value: classPathLabel || "не выбрано" },
     { key: "classRole", label: "Класс / роль", value: profile?.classRole || "не заполнено" },
     { key: "level", label: "Уровень", value: profile?.level != null ? `ур. ${profile.level}` : "не заполнено" },
     { key: "reputation", label: "Репутация", value: formatReputationLabel(profile?.reputation) },
@@ -276,7 +445,7 @@ function PublicProfilePreview({
   ];
   const openOptional = optionalFields.filter((field) => preview.publicFieldSet.has(field.key));
   const hiddenOptional = optionalFields.filter((field) => !preview.publicFieldSet.has(field.key));
-  const hasMeta = Boolean(preview.classRole || preview.level != null || preview.reputation != null || preview.race);
+  const hasMeta = Boolean(preview.classPath || preview.classRole || preview.level != null || preview.reputation != null || preview.race);
   const hasBlurb = Boolean(preview.publicBlurb);
   const summary = getPublicSummary(preview);
 
@@ -312,6 +481,7 @@ function PublicProfilePreview({
 
             {hasMeta ? (
               <div className="profile-public-meta">
+                {preview.classPath ? <span className="badge secondary">{preview.classPath}</span> : null}
                 {preview.classRole ? <span className="badge secondary">{preview.classRole}</span> : null}
                 {preview.level != null ? <span className="badge">ур. {preview.level}</span> : null}
                 {preview.reputation != null ? (
@@ -589,6 +759,7 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
     publicFieldSet,
     characterName: profile?.characterName || "",
     avatarUrl: profile?.avatarUrl || "",
+    classPath: publicFieldSet.has("classPath") && profile?.classKey ? getClassPathLabel(profile) || "" : "",
     classRole: publicFieldSet.has("classRole") ? profile?.classRole || "" : "",
     level: publicFieldSet.has("level") ? profile?.level ?? null : null,
     reputation: publicFieldSet.has("reputation") ? Number(profile?.reputation ?? 0) : null,
@@ -599,6 +770,7 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
 
 function getPublicSummary(preview) {
   const summary = ["имя", "аватар"];
+  if (preview.classPath) summary.push("путь класса");
   if (preview.classRole) summary.push("класс");
   if (preview.level != null) summary.push("уровень");
   if (preview.reputation != null) summary.push("репутацию");
@@ -641,6 +813,7 @@ function formatEditableFieldLabel(value) {
     reputation: "Репутация",
     level: "Уровень",
     classRole: "Класс / роль",
+    classPath: "Класс и специализация",
     characterName: "Имя персонажа"
   };
   if (labels[key]) return labels[key];
@@ -708,8 +881,4 @@ const ALL_EDITABLE_FIELDS = [
 
 function getReputationTone(value) {
   return getReputationTier(value).tone;
-}
-
-function getReputationClassName(value) {
-  return `profile-stat-value profile-reputation-value profile-reputation-${getReputationTone(value)}`;
 }

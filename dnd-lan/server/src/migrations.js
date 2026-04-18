@@ -396,6 +396,33 @@ const MIGRATIONS = [
         "ALTER TABLE character_profiles ADD COLUMN reputation INTEGER NOT NULL DEFAULT 0;"
       );
     }
+  },
+  {
+    version: 21,
+    name: "character_profiles_class_path",
+    up(database) {
+      addColumnIfMissing(database, "character_profiles", "class_key", "ALTER TABLE character_profiles ADD COLUMN class_key TEXT;");
+      addColumnIfMissing(database, "character_profiles", "specialization_key", "ALTER TABLE character_profiles ADD COLUMN specialization_key TEXT;");
+      addColumnIfMissing(database, "character_profiles", "xp", "ALTER TABLE character_profiles ADD COLUMN xp INTEGER NOT NULL DEFAULT 0;");
+    }
+  },
+  {
+    version: 22,
+    name: "character_profile_xp_log",
+    up(database) {
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS character_profile_xp_log (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          player_id INTEGER NOT NULL,
+          amount INTEGER NOT NULL,
+          reason TEXT,
+          actor TEXT,
+          created_at INTEGER NOT NULL,
+          FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE CASCADE
+        );`
+      );
+      database.exec("CREATE INDEX IF NOT EXISTS idx_profile_xp_log_player_created ON character_profile_xp_log(player_id, created_at DESC);");
+    }
   }
 ];
 

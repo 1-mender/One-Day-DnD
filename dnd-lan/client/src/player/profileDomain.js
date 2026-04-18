@@ -3,12 +3,17 @@ export const EMPTY_PROFILE_DRAFT = {
   classRole: "",
   level: "",
   reputation: 0,
+  classKey: "",
+  specializationKey: "",
+  xp: 0,
+  xpLog: [],
   stats: {},
   bio: "",
   avatarUrl: ""
 };
 
 export const PUBLIC_PROFILE_FIELD_OPTIONS = [
+  { key: "classPath", label: "Класс и специализация" },
   { key: "classRole", label: "Класс / роль" },
   { key: "level", label: "Уровень" },
   { key: "reputation", label: "Репутация" },
@@ -188,6 +193,10 @@ export function diffProfile(current, next) {
   const out = {};
   if (String(current.characterName || "") !== String(next.characterName || "")) out.characterName = next.characterName || "";
   if (String(current.classRole || "") !== String(next.classRole || "")) out.classRole = next.classRole || "";
+  if (String(current.classKey || "") !== String(next.classKey || "")) out.classKey = next.classKey || "";
+  if (String(current.specializationKey || "") !== String(next.specializationKey || "")) {
+    out.specializationKey = next.specializationKey || "";
+  }
   const curLevel = current.level == null ? "" : String(current.level);
   const nextLevel = next.level == null ? "" : String(next.level);
   if (curLevel !== nextLevel) out.level = next.level === "" ? null : Number(next.level);
@@ -246,6 +255,8 @@ const changeLabels = {
   classRole: "Класс/роль",
   level: "Уровень",
   reputation: "Репутация",
+  classKey: "Класс",
+  specializationKey: "Специализация",
   stats: "Статы",
   bio: "Биография",
   avatarUrl: "Аватар"

@@ -26,6 +26,9 @@ export const profileUpsertBodySchema = z.object({
   classRole: z.unknown().optional(),
   level: z.unknown().optional(),
   reputation: z.unknown().optional(),
+  classKey: z.unknown().optional(),
+  specializationKey: z.unknown().optional(),
+  xp: z.unknown().optional(),
   stats: z.unknown().optional(),
   bio: z.unknown().optional(),
   avatarUrl: z.unknown().optional(),
@@ -36,6 +39,11 @@ export const profileUpsertBodySchema = z.object({
 }).passthrough();
 
 export const profilePatchBodySchema = emptyPassthroughObjectSchema;
+
+export const profileXpAwardBodySchema = z.object({
+  amount: z.unknown().optional(),
+  reason: z.unknown().optional()
+}).passthrough();
 
 export const playerProfileRequestCreateBodySchema = z.object({
   reason: z.unknown().optional(),
