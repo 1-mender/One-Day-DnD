@@ -1,8 +1,9 @@
-import { BookOpenText, Clock3, ImageUp, PencilLine, RefreshCcw, ScrollText, Send, Shield } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BookOpenText, Clock3, Eye, ImageUp, PencilLine, RefreshCcw, ScrollText, Send, Shield } from "lucide-react";
 import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import { StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
-import { formatChangeFields } from "../../profileDomain.js";
+import { PUBLIC_PROFILE_FIELD_OPTIONS, formatChangeFields } from "../../profileDomain.js";
 
 export default function ProfileContent({ controller }) {
   const {
@@ -16,6 +17,9 @@ export default function ProfileContent({ controller }) {
     openRequest,
     playerId,
     profile,
+    publicSettingsDirty,
+    publicSettingsDraft,
+    publicSettingsSaving,
     raceBonus,
     raceBonusLabel,
     raceHint,
@@ -25,25 +29,69 @@ export default function ProfileContent({ controller }) {
     reqStatus,
     requests,
     requestsRef,
+    savePublicSettings,
+    setPublicBlurbDraft,
+    setPublicFieldOpen,
     setReqStatus
   } = controller;
   const heroMonogram = getHeroMonogram(profile);
   const showRaceBonus = raceBonus !== 0;
   const accessState = getProfileAccessState({ editableFields, allowRequests, readOnly });
   const requestCallout = getRequestCallout({ allowRequests, canEditAny, readOnly });
+  const [viewMode, setViewMode] = useState("self");
+  const publicPreview = useMemo(
+    () => createPublicProfilePreview(profile, raceLabel, publicSettingsDraft),
+    [profile, publicSettingsDraft, raceLabel]
+  );
 
   return (
     <div className="list profile-visibility-flow">
+      <div className="profile-view-switch tf-panel" role="tablist" aria-label="Режим просмотра профиля">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === "self"}
+          className={`profile-view-tab ${viewMode === "self" ? "profile-view-tab-active" : ""}`}
+          onClick={() => setViewMode("self")}
+        >
+          Мой профиль
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={viewMode === "public"}
+          className={`profile-view-tab ${viewMode === "public" ? "profile-view-tab-active" : ""}`}
+          onClick={() => setViewMode("public")}
+        >
+          <Eye className="icon" aria-hidden="true" />Как видят другие
+        </button>
+      </div>
+
+      {viewMode === "public" ? (
+        <PublicProfilePreview
+          playerId={playerId}
+          preview={publicPreview}
+          profile={profile}
+          publicSettingsDirty={publicSettingsDirty}
+          publicSettingsDraft={publicSettingsDraft}
+          publicSettingsSaving={publicSettingsSaving}
+          readOnly={readOnly}
+          onSave={savePublicSettings}
+          onSetBlurb={setPublicBlurbDraft}
+          onSetFieldOpen={setPublicFieldOpen}
+        />
+      ) : (
+        <>
       <section className="profile-visibility-block profile-visibility-public profile-codex-panel tf-panel tf-profile-panel">
         <div className="profile-visibility-head">
           <div className="tf-section-copy">
-            <div className="profile-section-kicker tf-section-kicker">Открытая глава</div>
-            <div className="title profile-block-title">Публичный блок</div>
+            <div className="profile-section-kicker tf-section-kicker">Полный вид</div>
+            <div className="title profile-block-title">Твой профиль</div>
           </div>
-          <span className="badge ok profile-visibility-badge">видят все</span>
+          <span className="badge secondary profile-visibility-badge">только для тебя</span>
         </div>
         <div className="small note-hint profile-visibility-hint">
-          Визитка персонажа и биография доступны всей группе.
+          Здесь показаны все данные персонажа. Что реально открыто группе, смотри во вкладке “Как видят другие”.
         </div>
 
         <div className="spread-grid profile-grid profile-codex-grid">
@@ -59,7 +107,7 @@ export default function ProfileContent({ controller }) {
                 </button>
               ) : null}
             </div>
-            <div className="small note-hint profile-hint">Публичная карточка персонажа.</div>
+            <div className="small note-hint profile-hint">Полная карточка персонажа в твоём интерфейсе.</div>
             <div className="character-hero profile-hero">
               <div className="character-portrait">
                 <PolaroidFrame
@@ -119,6 +167,9 @@ export default function ProfileContent({ controller }) {
                   <PencilLine className="icon" aria-hidden="true" />Редактировать
                 </button>
               ) : null}
+            </div>
+            <div className="small note-hint profile-hint">
+              Полная биография не публикуется автоматически. Для других игроков используется отдельное публичное описание, если DM его открыл.
             </div>
             <div className="small bio-text profile-bio">{profile.bio || "Пока пусто"}</div>
           </div>
@@ -261,8 +312,195 @@ export default function ProfileContent({ controller }) {
           </div>
         </div>
       </section>
+        </>
+      )}
     </div>
   );
+}
+
+function PublicProfilePreview({
+  playerId,
+  preview,
+  profile,
+  publicSettingsDirty,
+  publicSettingsDraft,
+  publicSettingsSaving,
+  readOnly,
+  onSave,
+  onSetBlurb,
+  onSetFieldOpen
+}) {
+  const heroMonogram = getHeroMonogram({
+    characterName: preview.characterName,
+    classRole: preview.classRole
+  });
+  const fixedFields = [
+    { key: "characterName", label: "Имя", value: preview.characterName || "Без имени" },
+    { key: "avatarUrl", label: "Аватар", value: preview.avatarUrl ? "открыт" : "нет аватара" }
+  ];
+  const optionalFields = [
+    { key: "classRole", label: "Класс / роль", value: profile?.classRole || "не заполнено" },
+    { key: "level", label: "Уровень", value: profile?.level != null ? `ур. ${profile.level}` : "не заполнено" },
+    { key: "race", label: "Раса", value: preview.race || "не заполнено" },
+    { key: "publicBlurb", label: "Публичное описание", value: publicSettingsDraft?.publicBlurb || "не заполнено" }
+  ];
+  const openOptional = optionalFields.filter((field) => preview.publicFieldSet.has(field.key));
+  const hiddenOptional = optionalFields.filter((field) => !preview.publicFieldSet.has(field.key));
+  const hasMeta = Boolean(preview.classRole || preview.level != null || preview.race);
+  const hasBlurb = Boolean(preview.publicBlurb);
+
+  return (
+    <section className="profile-visibility-block profile-public-preview-block profile-codex-panel tf-panel tf-profile-panel">
+      <div className="profile-visibility-head">
+        <div className="tf-section-copy">
+          <div className="profile-section-kicker tf-section-kicker">Публичное превью</div>
+          <div className="title profile-block-title">Так тебя видит партия</div>
+        </div>
+        <span className="badge ok profile-visibility-badge">видят другие</span>
+      </div>
+      <div className="small note-hint profile-visibility-hint">
+        Это превью использует текущие правила публичности: имя и аватар видны всегда, остальные поля только если DM открыл их для группы.
+      </div>
+
+      <div className="profile-public-preview-grid">
+        <div className="paper-note profile-public-card tf-panel">
+          <div className="profile-public-card-portrait">
+            <PolaroidFrame
+              className="lg profile-polaroid"
+              src={preview.avatarUrl}
+              alt={preview.characterName}
+              fallback={(preview.characterName || "?").slice(0, 1)}
+            />
+            <div className="profile-public-sigil" aria-hidden="true">{heroMonogram}</div>
+          </div>
+
+          <div className="profile-public-card-copy">
+            <div className="profile-public-name">{preview.characterName || "Без имени"}</div>
+            <div className="small profile-name-subtitle">Игрок #{playerId ?? "?"}</div>
+
+            {hasMeta ? (
+              <div className="profile-public-meta">
+                {preview.classRole ? <span className="badge secondary">{preview.classRole}</span> : null}
+                {preview.level != null ? <span className="badge">ур. {preview.level}</span> : null}
+                {preview.race ? <span className="badge secondary">{preview.race}</span> : null}
+              </div>
+            ) : (
+              <div className="profile-public-empty-note">
+                Остальные данные персонажа скрыты. Другие игроки видят только базовую карточку.
+              </div>
+            )}
+
+            {hasBlurb ? (
+              <div className="profile-public-blurb u-pre-wrap">{preview.publicBlurb}</div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="paper-note profile-public-fields tf-panel">
+          <div className="profile-public-settings-head">
+            <div>
+              <div className="title profile-card-title">Настройки публичности</div>
+              <div className="small note-hint">Выбери, что увидят другие игроки.</div>
+            </div>
+            <button
+              type="button"
+              className="btn profile-public-save-btn"
+              disabled={readOnly || publicSettingsSaving || !publicSettingsDirty}
+              onClick={onSave}
+            >
+              {publicSettingsSaving ? "Сохраняю..." : "Сохранить"}
+            </button>
+          </div>
+
+          <div className="profile-public-toggle-list">
+            {PUBLIC_PROFILE_FIELD_OPTIONS.map((option) => (
+              <label key={option.key} className="profile-public-toggle-row">
+                <input
+                  type="checkbox"
+                  checked={(publicSettingsDraft?.publicFields || []).includes(option.key)}
+                  disabled={readOnly}
+                  onChange={(event) => onSetFieldOpen(option.key, event.target.checked)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+
+          <label className="profile-public-blurb-editor">
+            <span className="small note-hint">Публичное описание</span>
+            <textarea
+              value={publicSettingsDraft?.publicBlurb || ""}
+              disabled={readOnly}
+              rows={4}
+              maxLength={280}
+              placeholder="Краткое описание, которое увидит партия..."
+              onChange={(event) => onSetBlurb(event.target.value)}
+            />
+            <span className="small note-hint">{String(publicSettingsDraft?.publicBlurb || "").length}/280</span>
+          </label>
+
+          <div className="profile-public-fields-divider" />
+
+          <div className="title profile-card-title">Сейчас открыто группе</div>
+          <div className="profile-public-field-list">
+            {fixedFields.map((field) => (
+              <PublicFieldRow key={field.key} label={field.label} value={field.value} state="open" />
+            ))}
+            {openOptional.map((field) => (
+              <PublicFieldRow key={field.key} label={field.label} value={field.value} state="open" />
+            ))}
+          </div>
+
+          <div className="profile-public-fields-divider" />
+
+          <div className="title profile-card-title">Скрыто от игроков</div>
+          <div className="profile-public-field-list">
+            {hiddenOptional.length ? hiddenOptional.map((field) => (
+              <PublicFieldRow key={field.key} label={field.label} value="не показывается" state="hidden" />
+            )) : (
+              <div className="small note-hint">Все дополнительные публичные поля открыты.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PublicFieldRow({ label, value, state }) {
+  return (
+    <div className={`profile-public-field-row profile-public-field-${state}`}>
+      <span>{label}</span>
+      <b>{value}</b>
+    </div>
+  );
+}
+
+function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
+  const publicFields = normalizePublicFields(publicSettingsDraft?.publicFields ?? profile?.publicFields);
+  const publicFieldSet = new Set(publicFields);
+  const publicBlurbDraft = publicSettingsDraft?.publicBlurb ?? profile?.publicBlurb ?? "";
+  return {
+    publicFields,
+    publicFieldSet,
+    characterName: profile?.characterName || "",
+    avatarUrl: profile?.avatarUrl || "",
+    classRole: publicFieldSet.has("classRole") ? profile?.classRole || "" : "",
+    level: publicFieldSet.has("level") ? profile?.level ?? null : null,
+    race: publicFieldSet.has("race") ? raceLabel || "" : "",
+    publicBlurb: publicFieldSet.has("publicBlurb") ? publicBlurbDraft || "" : ""
+  };
+}
+
+function normalizePublicFields(value) {
+  if (Array.isArray(value)) return value.map(String);
+  if (!value) return [];
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return Array.isArray(parsed) ? parsed.map(String) : [];
+  } catch {
+    return [];
+  }
 }
 
 function renderStatusBadge(status) {

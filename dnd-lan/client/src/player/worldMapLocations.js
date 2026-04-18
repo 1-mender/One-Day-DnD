@@ -8,7 +8,7 @@ export const WORLD_MAP_LOCATIONS = [
     categoryLabel: "Великая держава",
     defaultVisibility: "known",
     x: 50,
-    y: 39,
+    y: 40,
     description: "Столица и культурный центр. Держава, диктующая моду и законы благодаря огромным богатствам."
   },
   {
@@ -17,8 +17,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "power",
     categoryLabel: "Великая держава",
     defaultVisibility: "known",
-    x: 52,
-    y: 14,
+    x: 50,
+    y: 13,
     description: "Военный противовес югу. Суровое государство с мощной пехотой."
   },
   {
@@ -27,8 +27,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "power",
     categoryLabel: "Великая держава",
     defaultVisibility: "known",
-    x: 73,
-    y: 35,
+    x: 72,
+    y: 37,
     description: "Степной и долинный край. Поставщик лучшей кавалерии и коней для всех союзов."
   },
   {
@@ -37,8 +37,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "power",
     categoryLabel: "Крепость-государство",
     defaultVisibility: "known",
-    x: 40,
-    y: 30,
+    x: 42,
+    y: 29,
     description: "Независимый город-бастион, контролирующий ключевой горный проход."
   },
   {
@@ -47,8 +47,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "city",
     categoryLabel: "Независимый город",
     defaultVisibility: "known",
-    x: 64,
-    y: 62,
+    x: 61,
+    y: 64,
     description: "Нейтральная территория. Место дипломатии, высшего правосудия и заключения мировых трактатов."
   },
   {
@@ -57,8 +57,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "city",
     categoryLabel: "Торговый хаб",
     defaultVisibility: "known",
-    x: 72,
-    y: 77,
+    x: 71,
+    y: 75,
     description: "Крупнейший торговый хаб. Здесь сходятся морские пути и оседает золото всех купцов."
   },
   {
@@ -67,8 +67,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "city",
     categoryLabel: "Пустынный узел",
     defaultVisibility: "known",
-    x: 70,
-    y: 27,
+    x: 62,
+    y: 30,
     description: "Единственный путь через пустыню. Контролирует поставки драгоценного шелка."
   },
   {
@@ -77,8 +77,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "city",
     categoryLabel: "Архивный центр",
     defaultVisibility: "known",
-    x: 88,
-    y: 13,
+    x: 86,
+    y: 12,
     description: "Неприступный научный или архивный центр на скалах, защищённый своей труднодоступностью."
   },
   {
@@ -87,8 +87,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "resource",
     categoryLabel: "Провинция",
     defaultVisibility: "known",
-    x: 49,
-    y: 55,
+    x: 45,
+    y: 57,
     description: "Сельскохозяйственный центр, поставляющий провизию в центральные регионы."
   },
   {
@@ -97,7 +97,7 @@ export const WORLD_MAP_LOCATIONS = [
     category: "resource",
     categoryLabel: "Провинция",
     defaultVisibility: "known",
-    x: 25,
+    x: 24,
     y: 39,
     description: "Деревня-монополист в производстве напитков, обеспечивающая трактиры всей страны."
   },
@@ -117,7 +117,7 @@ export const WORLD_MAP_LOCATIONS = [
     category: "resource",
     categoryLabel: "Пограничный пост",
     defaultVisibility: "known",
-    x: 22,
+    x: 23,
     y: 24,
     description: "Лесозаготовки и пограничный пост на границе с неосвоенными землями."
   },
@@ -127,8 +127,8 @@ export const WORLD_MAP_LOCATIONS = [
     category: "anomaly",
     categoryLabel: "Аномальная зона",
     defaultVisibility: "hidden",
-    x: 88,
-    y: 15,
+    x: 91,
+    y: 20,
     description: "Высокогорная или парящая обитель, живущая в изоляции от земных проблем."
   },
   {
@@ -137,7 +137,7 @@ export const WORLD_MAP_LOCATIONS = [
     category: "anomaly",
     categoryLabel: "Опасная пустошь",
     defaultVisibility: "hidden",
-    x: 21,
+    x: 22,
     y: 57,
     description: "Бывшее государство, ставшее опасной пустошью и буферной зоной."
   },

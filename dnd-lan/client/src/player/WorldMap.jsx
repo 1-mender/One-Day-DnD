@@ -21,6 +21,11 @@ const LOCATION_VISIBILITY_LABELS = {
   completed: "Пройдена"
 };
 
+function coerceMapCoordinate(value, fallback) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
 function toMapLatLng(x, y) {
   return [WORLD_MAP_SIZE - (y / 100) * WORLD_MAP_SIZE, (x / 100) * WORLD_MAP_SIZE];
 }
@@ -192,7 +197,9 @@ export default function WorldMap({ mode = "player" }) {
 
   const locations = useMemo(() => WORLD_MAP_LOCATIONS.map((location) => ({
     ...location,
-    visibility: locationStates[location.id]?.visibility || location.defaultVisibility || "known"
+    visibility: locationStates[location.id]?.visibility || location.defaultVisibility || "known",
+    x: coerceMapCoordinate(locationStates[location.id]?.x, location.x),
+    y: coerceMapCoordinate(locationStates[location.id]?.y, location.y)
   })), [locationStates]);
 
   const visibleLocations = useMemo(() => {
@@ -312,6 +319,32 @@ export default function WorldMap({ mode = "player" }) {
     }
   }, [dmMode, loadPlayers]);
 
+  const saveLocationPosition = useCallback(async (location, position) => {
+    if (!dmMode) return;
+    setSavingLocationId(location.id);
+    setError("");
+    setLocationStates((current) => ({
+      ...current,
+      [location.id]: {
+        ...current[location.id],
+        locationId: location.id,
+        visibility: location.visibility,
+        ...position
+      }
+    }));
+    try {
+      await api.dmUpdateLocationPosition(location.id, {
+        ...position,
+        visibility: location.visibility
+      });
+    } catch (err) {
+      setError(String(err?.message || "Не удалось сохранить метку"));
+      loadPlayers().catch(() => {});
+    } finally {
+      setSavingLocationId(null);
+    }
+  }, [dmMode, loadPlayers]);
+
   const focusParty = useCallback(() => {
     const map = mapRef.current;
     if (!map || players.length === 0) return;
@@ -405,9 +438,18 @@ export default function WorldMap({ mode = "player" }) {
       const marker = L.marker(toMapLatLng(location.x, location.y), {
         icon: makeLocationIcon(location, selected.kind === "location" && selected.id === location.id),
         keyboard: true,
-        title: location.name
+        title: location.name,
+        draggable: dmMode
       });
       marker.on("click", () => setSelected({ kind: "location", id: location.id }));
+      if (dmMode) {
+        marker.on("dragend", () => {
+          const latLng = marker.getLatLng();
+          const x = Math.min(100, Math.max(0, (latLng.lng / WORLD_MAP_SIZE) * 100));
+          const y = Math.min(100, Math.max(0, ((WORLD_MAP_SIZE - latLng.lat) / WORLD_MAP_SIZE) * 100));
+          saveLocationPosition(location, { x, y });
+        });
+      }
       marker.addTo(layer);
     });
 
@@ -431,7 +473,7 @@ export default function WorldMap({ mode = "player" }) {
       }
       marker.addTo(layer);
     });
-  }, [dmMode, players, savePlayerPosition, selected, visibleLocations]);
+  }, [dmMode, players, saveLocationPosition, savePlayerPosition, selected, visibleLocations]);
 
   return (
     <div className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>
@@ -471,7 +513,7 @@ export default function WorldMap({ mode = "player" }) {
             <div className="world-map-counter">
               <span>{visibleLocations.length} мест</span>
               <span>{players.length} игроков</span>
-              {dmMode ? <span>{savingPlayerId ? `Сохраняю #${savingPlayerId}` : "DM-режим"}</span> : null}
+              {dmMode ? <span>{savingLocationId ? "Сохраняю метку" : savingPlayerId ? `Сохраняю #${savingPlayerId}` : "DM-режим"}</span> : null}
             </div>
           </div>
           <div className="world-map-stage">

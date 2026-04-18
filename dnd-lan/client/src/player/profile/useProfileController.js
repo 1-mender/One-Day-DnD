@@ -7,6 +7,7 @@ import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { formatError } from "../../lib/formatError.js";
 import {
   EMPTY_PROFILE_DRAFT,
+  PUBLIC_PROFILE_FIELD_KEYS,
   diffProfile,
   getRaceBonus,
   getRaceLabel,
@@ -54,6 +55,11 @@ export function useProfileController() {
   const reqStatusRef = useRef(reqStatus);
   const [globalPresets, setGlobalPresets] = useState([]);
   const [presetAccess, setPresetAccess] = useState(DEFAULT_PRESET_ACCESS);
+  const [publicSettingsDraft, setPublicSettingsDraft] = useState({
+    publicFields: [],
+    publicBlurb: ""
+  });
+  const [publicSettingsSaving, setPublicSettingsSaving] = useState(false);
 
   useEffect(() => {
     reqStatusRef.current = reqStatus;
@@ -146,6 +152,10 @@ export function useProfileController() {
     if (playerId) loadRequests(playerId, reqStatus).catch(() => {});
   }, [playerId, reqStatus, loadRequests]);
 
+  useEffect(() => {
+    setPublicSettingsDraft(createPublicSettingsDraft(profile));
+  }, [profile]);
+
   const editableFields = useMemo(() => profile?.editableFields || [], [profile?.editableFields]);
   const allowRequests = !!profile?.allowRequests;
   const requestableFields = useMemo(
@@ -194,6 +204,44 @@ export function useProfileController() {
       toast.error(message);
     }
   }, [canEdit, draft, editMode, playerId, profile, toast]);
+
+  const setPublicFieldOpen = useCallback((field, open) => {
+    const key = String(field || "");
+    if (!PUBLIC_PROFILE_FIELD_KEYS.includes(key)) return;
+    setPublicSettingsDraft((current) => {
+      const next = new Set(current.publicFields || []);
+      if (open) next.add(key);
+      else next.delete(key);
+      return { ...current, publicFields: PUBLIC_PROFILE_FIELD_KEYS.filter((item) => next.has(item)) };
+    });
+  }, []);
+
+  const setPublicBlurbDraft = useCallback((publicBlurb) => {
+    setPublicSettingsDraft((current) => ({
+      ...current,
+      publicBlurb: String(publicBlurb || "").slice(0, 280)
+    }));
+  }, []);
+
+  const savePublicSettings = useCallback(async () => {
+    if (!playerId || !profile || readOnly) return;
+    setErr("");
+    setPublicSettingsSaving(true);
+    try {
+      const response = await api.playerPatchProfile(playerId, {
+        publicFields: publicSettingsDraft.publicFields || [],
+        publicBlurb: publicSettingsDraft.publicBlurb || ""
+      });
+      setProfile(response.profile);
+      toast.success("Публичность профиля сохранена");
+    } catch (e) {
+      const message = formatError(e);
+      setErr(message);
+      toast.error(message);
+    } finally {
+      setPublicSettingsSaving(false);
+    }
+  }, [playerId, profile, publicSettingsDraft, readOnly, toast]);
 
   const handleAvatarFileChange = useCallback(
     async (event) => {
@@ -259,6 +307,10 @@ export function useProfileController() {
   const raceHint = `Бонус лимита веса: ${raceBonusLabel}`;
   const allowGlobalEdit = !!presetAccess?.enabled && !!presetAccess?.playerEdit;
   const allowGlobalRequest = !!presetAccess?.enabled && !!presetAccess?.playerRequest;
+  const publicSettingsDirty = useMemo(
+    () => !samePublicSettings(profile, publicSettingsDraft),
+    [profile, publicSettingsDraft]
+  );
   const editPresets = useMemo(
     () => mergePresets(globalPresets, allowGlobalEdit, presetAccess?.hideLocal),
     [globalPresets, allowGlobalEdit, presetAccess?.hideLocal]
@@ -290,6 +342,9 @@ export function useProfileController() {
     playerId,
     presetAccess,
     profile,
+    publicSettingsDirty,
+    publicSettingsDraft,
+    publicSettingsSaving,
     requestableFields,
     raceBonus,
     raceBonusLabel,
@@ -306,10 +361,13 @@ export function useProfileController() {
     requests,
     requestsRef,
     saveEdit,
+    savePublicSettings,
     applyEditPreset,
     applyRequestPreset,
     setDraft,
     setEditMode,
+    setPublicBlurbDraft,
+    setPublicFieldOpen,
     setRequestDraft,
     setRequestOpen,
     setRequestReason,
@@ -329,6 +387,29 @@ function createDraftFromProfile(profile) {
     bio: profile?.bio || "",
     avatarUrl: profile?.avatarUrl || ""
   };
+}
+
+function createPublicSettingsDraft(profile) {
+  return {
+    publicFields: normalizePublicFields(profile?.publicFields),
+    publicBlurb: String(profile?.publicBlurb || "")
+  };
+}
+
+function normalizePublicFields(value) {
+  if (!Array.isArray(value)) return [];
+  const selected = new Set(value.map(String));
+  return PUBLIC_PROFILE_FIELD_KEYS.filter((field) => selected.has(field));
+}
+
+function samePublicSettings(profile, draft) {
+  const current = createPublicSettingsDraft(profile);
+  const next = {
+    publicFields: normalizePublicFields(draft?.publicFields),
+    publicBlurb: String(draft?.publicBlurb || "")
+  };
+  return JSON.stringify(current.publicFields) === JSON.stringify(next.publicFields)
+    && current.publicBlurb === next.publicBlurb;
 }
 
 function mergeAllowedPreset(current, preset, allowedFields) {

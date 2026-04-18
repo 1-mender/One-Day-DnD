@@ -242,6 +242,8 @@ export function sanitizePatch(body) {
   if (has("stats")) output.stats = normalizeStats(input.stats);
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatar_url = String(input.avatarUrl || "");
+  if (has("publicFields")) output.public_fields = JSON.stringify(normalizePublicFields(input.publicFields));
+  if (has("publicBlurb")) output.public_blurb = String(input.publicBlurb || "").trim();
 
   return output;
 }
@@ -280,6 +282,7 @@ export function validateAndFinalizePatch(patch, { stringifyStats = true } = {}) 
   if ("class_role" in patch) error = error || validateTextLen(patch.class_role, LIMITS.classRole, "class_role_too_long");
   if ("avatar_url" in patch) error = error || validateTextLen(patch.avatar_url, LIMITS.avatarUrl, "avatar_url_too_long");
   if ("bio" in patch) error = error || validateTextLen(patch.bio, LIMITS.bio, "bio_too_long");
+  if ("public_blurb" in patch) error = error || validateTextLen(patch.public_blurb, LIMITS.publicBlurb, "public_blurb_too_long");
   if ("stats" in patch) error = error || validateStats(patch.stats);
   if (error) return { error };
 

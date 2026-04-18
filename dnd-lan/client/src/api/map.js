@@ -11,5 +11,10 @@ export const mapApi = {
     request(`/api/map/locations/${encodeURIComponent(locationId)}/state`, {
       method: "PUT",
       body: JSON.stringify(state)
+    }),
+  dmUpdateLocationPosition: (locationId, position) =>
+    request(`/api/map/locations/${encodeURIComponent(locationId)}/position`, {
+      method: "PUT",
+      body: JSON.stringify(position)
     })
 };

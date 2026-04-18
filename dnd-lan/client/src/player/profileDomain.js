@@ -7,6 +7,15 @@ export const EMPTY_PROFILE_DRAFT = {
   avatarUrl: ""
 };
 
+export const PUBLIC_PROFILE_FIELD_OPTIONS = [
+  { key: "classRole", label: "Класс / роль" },
+  { key: "level", label: "Уровень" },
+  { key: "race", label: "Раса" },
+  { key: "publicBlurb", label: "Публичное описание" }
+];
+
+export const PUBLIC_PROFILE_FIELD_KEYS = PUBLIC_PROFILE_FIELD_OPTIONS.map((option) => option.key);
+
 export const PROFILE_PRESETS = [
   {
     key: "ranger",

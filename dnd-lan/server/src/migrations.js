@@ -366,6 +366,8 @@ const MIGRATIONS = [
           party_id INTEGER NOT NULL,
           location_id TEXT NOT NULL,
           visibility TEXT NOT NULL DEFAULT 'known',
+          x REAL,
+          y REAL,
           updated_by TEXT,
           updated_at INTEGER NOT NULL,
           PRIMARY KEY(party_id, location_id),
@@ -373,6 +375,14 @@ const MIGRATIONS = [
         );`
       );
       database.exec("CREATE INDEX IF NOT EXISTS idx_map_location_states_party_visibility ON map_location_states(party_id, visibility, updated_at DESC);");
+    }
+  },
+  {
+    version: 19,
+    name: "map_location_coordinates",
+    up(database) {
+      addColumnIfMissing(database, "map_location_states", "x", "ALTER TABLE map_location_states ADD COLUMN x REAL;");
+      addColumnIfMissing(database, "map_location_states", "y", "ALTER TABLE map_location_states ADD COLUMN y REAL;");
     }
   }
 ];

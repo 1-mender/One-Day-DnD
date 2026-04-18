@@ -37,6 +37,7 @@ import { createRouteInputReader } from "./routeValidation.js";
 export const profileRouter = express.Router();
 
 const readValidInput = createRouteInputReader(parseProfileRouteInput);
+const PLAYER_PUBLIC_PROFILE_FIELDS = new Set(["publicFields", "publicBlurb"]);
 
 profileRouter.get("/profile-presets", (req, res) => {
   const dm = getDmPayloadFromRequest(req);
@@ -190,7 +191,7 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
 
   const row = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
-  req.app.locals.io?.to("dm").emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated");
   res.json({ ok: true, profile: mapProfile(row) });
 });
 
@@ -213,10 +214,12 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   const bodyKeys = Object.keys(body);
   if (!bodyKeys.length) return res.status(400).json({ error: "empty_patch" });
   for (const key of bodyKeys) {
+    if (PLAYER_PUBLIC_PROFILE_FIELDS.has(key)) continue;
     if (!EDITABLE_FIELDS.has(key)) return res.status(403).json({ error: "field_not_allowed", field: key });
   }
 
   for (const key of bodyKeys) {
+    if (PLAYER_PUBLIC_PROFILE_FIELDS.has(key)) continue;
     if (!editableFields.includes(key)) return res.status(403).json({ error: "field_not_allowed", field: key });
   }
 
@@ -239,7 +242,7 @@ profileRouter.patch("/players/:id/profile", (req, res) => {
   db.prepare(`UPDATE character_profiles SET ${sets.join(", ")} WHERE player_id=?`).run(...args);
 
   req.app.locals.io?.to(`player:${playerId}`).emit("profile:updated");
-  req.app.locals.io?.to("dm").emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated");
   const updated = db.prepare("SELECT * FROM character_profiles WHERE player_id=?").get(playerId);
   res.json({ ok: true, profile: mapProfile(updated) });
 });
@@ -450,7 +453,7 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
     playerId: Number(reqRow.player_id),
     status: "approved"
   });
-  req.app.locals.io?.to("dm").emit("players:updated");
+  emitSinglePartyEvent(req.app.locals.io, "players:updated");
   req.app.locals.io?.to("dm").emit("profile:requestsUpdated");
   res.json({ ok: true });
 });

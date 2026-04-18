@@ -96,7 +96,7 @@ export default function PublicPlayerProfileDialog({ open, player, onClose }) {
                   <div className="player-public-profile-meta">{meta}</div>
                 ) : (
                   <div className="small player-public-profile-muted">
-                    DM пока не открыл подробности персонажа для всей партии.
+                    Открыта базовая карточка: имя, аватар и статус игрока.
                   </div>
                 )}
                 {hasPublicBlurb ? (
@@ -104,7 +104,7 @@ export default function PublicPlayerProfileDialog({ open, player, onClose }) {
                 ) : null}
                 {!hasExpandedCard && !hasPublicBlurb ? (
                   <div className="player-public-profile-compact-note">
-                    Краткое досье пока открыто только на базовом уровне.
+                    Дополнительные поля персонажа пока скрыты от партии.
                   </div>
                 ) : null}
                 <div className="player-public-profile-footer">

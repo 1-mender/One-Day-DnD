@@ -188,6 +188,8 @@ CREATE TABLE IF NOT EXISTS map_location_states (
   party_id INTEGER NOT NULL,
   location_id TEXT NOT NULL,
   visibility TEXT NOT NULL DEFAULT 'known',
+  x REAL,
+  y REAL,
   updated_by TEXT,
   updated_at INTEGER NOT NULL,
   PRIMARY KEY(party_id, location_id),

@@ -61,6 +61,8 @@ function readLocationStates(db, partyId) {
     `
     SELECT location_id as locationId,
            visibility,
+           x,
+           y,
            updated_at as updatedAt
     FROM map_location_states
     WHERE party_id=?
@@ -68,6 +70,8 @@ function readLocationStates(db, partyId) {
   ).all(partyId).map((row) => ({
     locationId: row.locationId,
     visibility: LOCATION_VISIBILITIES.has(row.visibility) ? row.visibility : "known",
+    x: row.x == null ? null : Number(row.x),
+    y: row.y == null ? null : Number(row.y),
     updatedAt: row.updatedAt || null
   }));
 }
@@ -120,6 +124,45 @@ mapRouter.put("/players/:id/position", dmAuthMiddleware, (req, res) => {
   const payload = { playerId, position: { x, y, saved: true, updatedAt: t } };
   req.app.locals.io?.to(`party:${partyId}`).emit("map:positionUpdated", payload);
   req.app.locals.io?.to("dm").emit("map:positionUpdated", payload);
+
+  res.json({ ok: true, ...payload });
+});
+
+mapRouter.put("/locations/:id/position", dmAuthMiddleware, (req, res) => {
+  const locationId = String(req.params.id || "").trim();
+  if (!locationId || locationId.length > 80) return res.status(400).json({ error: "invalid_locationId" });
+
+  const x = clampCoordinate(req.body?.x);
+  const y = clampCoordinate(req.body?.y);
+  if (x == null || y == null) return res.status(400).json({ error: "invalid_position" });
+
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const current = db
+    .prepare("SELECT visibility FROM map_location_states WHERE party_id=? AND location_id=?")
+    .get(partyId, locationId);
+  const requestedVisibility = String(req.body?.visibility || "").trim();
+  const visibility = LOCATION_VISIBILITIES.has(requestedVisibility)
+    ? requestedVisibility
+    : (LOCATION_VISIBILITIES.has(current?.visibility) ? current.visibility : "known");
+  const t = now();
+
+  db.prepare(
+    `
+    INSERT INTO map_location_states(party_id, location_id, visibility, x, y, updated_by, updated_at)
+    VALUES(?, ?, ?, ?, ?, 'dm', ?)
+    ON CONFLICT(party_id, location_id) DO UPDATE SET
+      visibility=excluded.visibility,
+      x=excluded.x,
+      y=excluded.y,
+      updated_by=excluded.updated_by,
+      updated_at=excluded.updated_at
+  `
+  ).run(partyId, locationId, visibility, x, y, t);
+
+  const payload = { locationId, state: { locationId, visibility, x, y, updatedAt: t } };
+  req.app.locals.io?.to(`party:${partyId}`).emit("map:locationUpdated", payload);
+  req.app.locals.io?.to("dm").emit("map:locationUpdated", payload);
 
   res.json({ ok: true, ...payload });
 });
