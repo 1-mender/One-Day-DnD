@@ -28,6 +28,7 @@ export default function PlayerDossierCard({
   const primaryName = getPlayerPrimaryName(player, publicProfile);
   const secondaryName = getPlayerSecondaryName(player, publicProfile);
   const publicMeta = getPublicProfileMeta(publicProfile);
+  const publicChips = getPublicProfileChips(publicProfile);
   const initial = primaryName.slice(0, 1).toUpperCase();
   const avatar = publicProfile?.avatarUrl || player.avatarUrl || null;
   const weight = Number(player.inventoryWeight || 0);
@@ -81,7 +82,15 @@ export default function PlayerDossierCard({
         </div>
         <div className="small dossier-last-seen" title={player.lastSeen || ""}>{lastSeenLabel}</div>
         {secondaryName ? <div className="small dossier-last-seen">@{secondaryName}</div> : null}
-        {publicMeta ? <div className="small">{publicMeta}</div> : null}
+        {publicChips.length ? (
+          <div className="dossier-public-chips" aria-label={publicMeta || "Открытые поля профиля"}>
+            {publicChips.map((chip) => (
+              <span key={chip.key} className="badge secondary dossier-public-chip">{chip.label}</span>
+            ))}
+          </div>
+        ) : (
+          <div className="small dossier-public-compact">Базовая карточка: имя и аватар</div>
+        )}
         {publicProfile?.publicBlurb ? (
           <div className="small bio-text dossier-preview">{publicProfile.publicBlurb}</div>
         ) : null}
@@ -105,6 +114,15 @@ export default function PlayerDossierCard({
       {rightActions ? <div className="dossier-actions">{rightActions}</div> : null}
     </div>
   );
+}
+
+function getPublicProfileChips(profile) {
+  if (!profile) return [];
+  return [
+    profile.classRole ? { key: "classRole", label: profile.classRole } : null,
+    profile.level != null ? { key: "level", label: `ур. ${profile.level}` } : null,
+    profile.race ? { key: "race", label: profile.race } : null
+  ].filter(Boolean);
 }
 
 function formatLastSeenCompact(value) {
