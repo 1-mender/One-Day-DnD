@@ -4,6 +4,7 @@ export const EDITABLE_FIELDS = new Set([
   "characterName",
   "classRole",
   "level",
+  "reputation",
   "stats",
   "bio",
   "avatarUrl"
@@ -12,6 +13,7 @@ export const EDITABLE_FIELDS = new Set([
 export const PUBLIC_PROFILE_FIELDS = new Set([
   "classRole",
   "level",
+  "reputation",
   "race",
   "publicBlurb"
 ]);
@@ -24,6 +26,8 @@ export const LIMITS = {
   publicBlurb: 280,
   reason: 500,
   dmNote: 500,
+  reputationMin: -100,
+  reputationMax: 100,
   statKey: 24,
   statValue: 64,
   maxStats: 20
@@ -51,6 +55,7 @@ export function mapProfile(row) {
     characterName: row.character_name || "",
     classRole: row.class_role || "",
     level: row.level == null ? null : Number(row.level),
+    reputation: normalizeReputation(row.reputation),
     stats: (stats && typeof stats === "object" && !Array.isArray(stats)) ? stats : {},
     bio: row.bio || "",
     avatarUrl: row.avatar_url || "",
@@ -76,6 +81,7 @@ export function mapPublicProfile(row) {
   const avatarUrl = String(row.avatar_url ?? row.avatarUrl ?? "").trim();
   const classRole = String(row.class_role ?? row.classRole ?? "").trim();
   const rawLevel = row.level;
+  const reputation = normalizeReputation(row.reputation);
   const publicBlurb = String(row.public_blurb ?? row.publicBlurb ?? "").trim();
   const race = String(stats?.race || "").trim();
 
@@ -87,6 +93,7 @@ export function mapPublicProfile(row) {
     const level = Number(rawLevel);
     if (Number.isFinite(level)) profile.level = level;
   }
+  if (publicFields.includes("reputation")) profile.reputation = reputation;
   if (publicFields.includes("race") && race) profile.race = race;
   if (publicFields.includes("publicBlurb") && publicBlurb) profile.publicBlurb = publicBlurb;
   return profile;
@@ -96,6 +103,12 @@ function normalizeStats(value) {
   if (value == null) return {};
   if (value && typeof value === "object" && !Array.isArray(value)) return value;
   return null;
+}
+
+function normalizeReputation(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(LIMITS.reputationMin, Math.min(LIMITS.reputationMax, Math.round(numeric)));
 }
 
 export function normalizeEditableFields(value) {
@@ -156,6 +169,7 @@ function normalizePresetData(raw) {
     characterName: String(changes.characterName || ""),
     classRole: String(changes.classRole || ""),
     level: changes.level === "" || changes.level == null ? "" : Number(changes.level),
+    reputation: normalizeReputation(changes.reputation),
     stats: changes.stats || {},
     bio: String(changes.bio || ""),
     avatarUrl: String(changes.avatarUrl || "")
@@ -184,6 +198,9 @@ export function buildProfilePayload(body, existing) {
   const level = levelRaw === null || levelRaw === "" || Number.isNaN(Number(levelRaw))
     ? null
     : Math.max(0, Number(levelRaw));
+  const reputation = input.reputation !== undefined
+    ? normalizeReputation(input.reputation)
+    : normalizeReputation(existing?.reputation);
   let statsObj;
   if (input.stats !== undefined) {
     const normalized = normalizeStats(input.stats);
@@ -218,6 +235,7 @@ export function buildProfilePayload(body, existing) {
     character_name: String(characterName || ""),
     class_role: String(classRole || ""),
     level,
+    reputation,
     stats: JSON.stringify(statsObj || {}),
     bio: String(bio || ""),
     avatar_url: String(avatarUrl || ""),
@@ -239,6 +257,7 @@ export function sanitizePatch(body) {
     const level = input.level === "" || input.level == null ? null : Number(input.level);
     output.level = Number.isFinite(level) ? Math.max(0, level) : null;
   }
+  if (has("reputation")) output.reputation = normalizeReputation(input.reputation);
   if (has("stats")) output.stats = normalizeStats(input.stats);
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatar_url = String(input.avatarUrl || "");
@@ -259,6 +278,7 @@ export function sanitizeRequestChanges(body) {
     const level = input.level === "" || input.level == null ? null : Number(input.level);
     output.level = Number.isFinite(level) ? Math.max(0, level) : null;
   }
+  if (has("reputation")) output.reputation = normalizeReputation(input.reputation);
   if (has("stats")) output.stats = normalizeStats(input.stats);
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatarUrl = String(input.avatarUrl || "");

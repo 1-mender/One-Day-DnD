@@ -12,7 +12,8 @@ import {
   getRaceBonus,
   getRaceLabel,
   getRaceValue,
-  mergePresets
+  mergePresets,
+  normalizeReputation
 } from "../profileDomain.js";
 
 const DEFAULT_PRESET_ACCESS = {
@@ -26,6 +27,7 @@ const PROFILE_FIELDS = [
   "characterName",
   "classRole",
   "level",
+  "reputation",
   "stats",
   "bio",
   "avatarUrl"
@@ -166,7 +168,7 @@ export function useProfileController() {
     (field) => editableFields.includes(field) && !readOnly,
     [editableFields, readOnly]
   );
-  const canEditBasic = ["characterName", "classRole", "level"].some((field) => canEdit(field));
+  const canEditBasic = ["characterName", "classRole", "level", "reputation"].some((field) => canEdit(field));
   const canEditAny = editableFields.length > 0 && !readOnly;
   const canRequestAny = requestableFields.length > 0 && allowRequests && !readOnly;
 
@@ -186,6 +188,7 @@ export function useProfileController() {
       if (canEdit("characterName")) patch.characterName = draft.characterName;
       if (canEdit("classRole")) patch.classRole = draft.classRole;
       if (canEdit("level")) patch.level = draft.level === "" ? null : Number(draft.level);
+      if (canEdit("reputation")) patch.reputation = normalizeReputation(draft.reputation);
     }
     if (editMode === "stats" && canEdit("stats")) patch.stats = draft.stats || {};
     if (editMode === "bio" && canEdit("bio")) patch.bio = draft.bio || "";
@@ -383,6 +386,7 @@ function createDraftFromProfile(profile) {
     characterName: profile?.characterName || "",
     classRole: profile?.classRole || "",
     level: profile?.level ?? "",
+    reputation: normalizeReputation(profile?.reputation),
     stats: profile?.stats || {},
     bio: profile?.bio || "",
     avatarUrl: profile?.avatarUrl || ""

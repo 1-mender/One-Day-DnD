@@ -1,3 +1,5 @@
+import { formatReputationLabel } from "./profileDomain.js";
+
 export function getPlayerPrimaryName(player, profile = player?.publicProfile || null) {
   const characterName = String(profile?.characterName || "").trim();
   const displayName = String(player?.displayName || "").trim();
@@ -16,6 +18,7 @@ export function getPublicProfileMeta(profile) {
   return [
     String(profile.classRole || "").trim(),
     profile.level != null ? `lvl ${profile.level}` : "",
+    profile.reputation != null ? `rep ${formatReputationLabel(profile.reputation)}` : "",
     String(profile.race || "").trim() ? `race: ${String(profile.race).trim()}` : ""
   ].filter(Boolean).join(" • ");
 }

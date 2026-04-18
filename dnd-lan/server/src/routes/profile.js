@@ -147,13 +147,14 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
   if (existing) {
     db.prepare(
       `UPDATE character_profiles
-       SET character_name=?, class_role=?, level=?, stats=?, bio=?, avatar_url=?,
+       SET character_name=?, class_role=?, level=?, reputation=?, stats=?, bio=?, avatar_url=?,
            public_fields=?, public_blurb=?, editable_fields=?, allow_requests=?, updated_at=?
        WHERE player_id=?`
     ).run(
       payload.character_name,
       payload.class_role,
       payload.level,
+      payload.reputation,
       payload.stats,
       payload.bio,
       payload.avatar_url,
@@ -168,14 +169,15 @@ profileRouter.put("/players/:id/profile", dmAuthMiddleware, (req, res) => {
     const createdBy = req.dm?.u ? `dm:${req.dm.u}` : req.dm?.uid ? `dm:${req.dm.uid}` : "dm";
     db.prepare(
       `INSERT INTO character_profiles(
-        player_id, character_name, class_role, level, stats, bio, avatar_url,
+        player_id, character_name, class_role, level, reputation, stats, bio, avatar_url,
         public_fields, public_blurb, editable_fields, allow_requests, created_by, created_at, updated_at
-      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).run(
       playerId,
       payload.character_name,
       payload.class_role,
       payload.level,
+      payload.reputation,
       payload.stats,
       payload.bio,
       payload.avatar_url,
@@ -406,14 +408,15 @@ profileRouter.post("/profile-requests/:id/approve", dmAuthMiddleware, (req, res)
       const insertPayload = { ...base, ...patch, updated_at: t };
       db.prepare(
         `INSERT INTO character_profiles(
-          player_id, character_name, class_role, level, stats, bio, avatar_url,
+          player_id, character_name, class_role, level, reputation, stats, bio, avatar_url,
           public_fields, public_blurb, editable_fields, allow_requests, created_by, created_at, updated_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).run(
         reqRow.player_id,
         insertPayload.character_name || "",
         insertPayload.class_role || "",
         insertPayload.level ?? null,
+        insertPayload.reputation ?? 0,
         insertPayload.stats || "{}",
         insertPayload.bio || "",
         insertPayload.avatar_url || "",

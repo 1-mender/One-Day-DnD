@@ -11,6 +11,7 @@ import {
   EMPTY_DM_PROFILE_FORM,
   hasAnyData,
   hasUnsavedChanges,
+  normalizeReputation,
   normalizeRequestChanges
 } from "./playerProfileAdminDomain.js";
 
@@ -47,6 +48,7 @@ export function useDmPlayerProfileController() {
       characterName: nextProfile?.characterName || "",
       classRole: nextProfile?.classRole || "",
       level: nextProfile?.level ?? "",
+      reputation: normalizeReputation(nextProfile?.reputation),
       stats: nextProfile?.stats || {},
       bio: nextProfile?.bio || "",
       avatarUrl: nextProfile?.avatarUrl || "",
@@ -149,6 +151,7 @@ export function useDmPlayerProfileController() {
       const payload = {
         ...form,
         level: form.level === "" ? null : Number(form.level),
+        reputation: normalizeReputation(form.reputation),
         stats: form.stats || {},
         publicFields: form.publicFields || [],
         publicBlurb: form.publicBlurb || "",

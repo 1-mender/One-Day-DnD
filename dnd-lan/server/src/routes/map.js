@@ -25,6 +25,7 @@ function readMapPlayers(db, partyId) {
            cp.character_name,
            cp.class_role,
            cp.level,
+           cp.reputation,
            cp.stats,
            cp.avatar_url,
            cp.public_fields,

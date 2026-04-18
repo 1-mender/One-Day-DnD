@@ -2,6 +2,7 @@ export const DM_PROFILE_EDITABLE_OPTIONS = [
   { key: "characterName", label: "Имя персонажа" },
   { key: "classRole", label: "Класс / роль" },
   { key: "level", label: "Уровень" },
+  { key: "reputation", label: "Репутация" },
   { key: "stats", label: "Статы" },
   { key: "bio", label: "Биография" },
   { key: "avatarUrl", label: "Аватар" }
@@ -10,6 +11,7 @@ export const DM_PROFILE_EDITABLE_OPTIONS = [
 export const DM_PROFILE_PUBLIC_OPTIONS = [
   { key: "classRole", label: "Класс / роль" },
   { key: "level", label: "Уровень" },
+  { key: "reputation", label: "Репутация" },
   { key: "race", label: "Раса" },
   { key: "publicBlurb", label: "Публичное описание" }
 ];
@@ -18,6 +20,7 @@ export const DM_PROFILE_FIELD_LABELS = {
   characterName: "Имя",
   classRole: "Класс/роль",
   level: "Уровень",
+  reputation: "Репутация",
   stats: "Статы",
   bio: "Биография",
   avatarUrl: "Аватар"
@@ -27,6 +30,7 @@ export const EMPTY_DM_PROFILE_FORM = {
   characterName: "",
   classRole: "",
   level: "",
+  reputation: 0,
   stats: {},
   bio: "",
   avatarUrl: "",
@@ -51,6 +55,7 @@ export function normalizeRequestChanges(changes) {
     const level = changes.level === "" || changes.level == null ? "" : Number(changes.level);
     out.level = Number.isFinite(level) ? level : "";
   }
+  if ("reputation" in changes) out.reputation = normalizeReputation(changes.reputation);
   if ("stats" in changes) {
     const raw = changes.stats;
     if (raw && typeof raw === "object") out.stats = raw;
@@ -79,9 +84,10 @@ export function hasAnyData(form) {
   const snapshot = snapshotFromForm(form);
   const hasText = snapshot.characterName || snapshot.classRole || snapshot.bio || snapshot.avatarUrl;
   const hasLevel = snapshot.level !== null && snapshot.level !== undefined;
+  const hasReputation = snapshot.reputation !== 0;
   const hasStats = Object.keys(snapshot.stats || {}).length > 0;
   const hasRights = snapshot.editableFields.length > 0 || snapshot.allowRequests;
-  return !!(hasText || hasLevel || hasStats || hasRights);
+  return !!(hasText || hasLevel || hasReputation || hasStats || hasRights);
 }
 
 export function hasUnsavedChanges(form, profile) {
@@ -94,6 +100,7 @@ function snapshotFromForm(form) {
     characterName: String(form.characterName || ""),
     classRole: String(form.classRole || ""),
     level: form.level === "" || form.level == null ? null : Number(form.level),
+    reputation: normalizeReputation(form.reputation),
     stats: sortObjectKeys(form.stats || {}),
     bio: String(form.bio || ""),
     avatarUrl: String(form.avatarUrl || ""),
@@ -110,6 +117,7 @@ function snapshotFromProfile(profile) {
     characterName: String(profile.characterName || ""),
     classRole: String(profile.classRole || ""),
     level: profile.level == null ? null : Number(profile.level),
+    reputation: normalizeReputation(profile.reputation),
     stats: sortObjectKeys(profile.stats || {}),
     bio: String(profile.bio || ""),
     avatarUrl: String(profile.avatarUrl || ""),
@@ -118,6 +126,31 @@ function snapshotFromProfile(profile) {
     editableFields: [...(profile.editableFields || [])].sort(),
     allowRequests: !!profile.allowRequests
   };
+}
+
+export function normalizeReputation(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(-100, Math.min(100, Math.round(numeric)));
+}
+
+export function formatReputation(value) {
+  const reputation = normalizeReputation(value);
+  return reputation > 0 ? `+${reputation}` : String(reputation);
+}
+
+export function getReputationTier(value) {
+  const reputation = normalizeReputation(value);
+  if (reputation <= -75) return { key: "outcast", label: "Изгой", tone: "off" };
+  if (reputation <= -25) return { key: "bad", label: "Плохая", tone: "off" };
+  if (reputation < 25) return { key: "neutral", label: "Нейтральная", tone: "secondary" };
+  if (reputation < 75) return { key: "good", label: "Хорошая", tone: "ok" };
+  return { key: "legendary", label: "Легендарная", tone: "ok" };
+}
+
+export function formatReputationLabel(value) {
+  const tier = getReputationTier(value);
+  return `${formatReputation(value)} · ${tier.label}`;
 }
 
 function sortObjectKeys(obj) {

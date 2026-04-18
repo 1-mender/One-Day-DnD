@@ -28,6 +28,7 @@ playersRouter.get("/", (req, res) => {
            cp.character_name,
            cp.class_role,
            cp.level,
+           cp.reputation,
            cp.stats,
            cp.avatar_url,
            cp.public_fields,

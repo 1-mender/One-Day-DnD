@@ -1,6 +1,7 @@
 import React from "react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
+import { formatReputationLabel } from "../../../player/profileDomain.js";
 import { inp } from "../domain/settingsConstants.js";
 
 export default function ProfilePresetsSection({
@@ -126,6 +127,18 @@ export default function ProfilePresetsSection({
                       className="u-minw-140"
                       disabled={readOnly}
                     />
+                    <input
+                      type="number"
+                      min="-100"
+                      max="100"
+                      value={preset.data?.reputation ?? 0}
+                      onChange={(e) => updatePresetData(idx, { reputation: e.target.value })}
+                      placeholder={"Репутация"}
+                      aria-label="Репутация в пресете"
+                      style={inp}
+                      className="u-minw-140"
+                      disabled={readOnly}
+                    />
                   </div>
                   <div className="kv">
                     <div className="title">{"Статы"}</div>
@@ -143,7 +156,7 @@ export default function ProfilePresetsSection({
                       <div className="u-minw-0">
                         <div className="u-fw-900">{preset.data?.characterName || "Без имени"}</div>
                         <div className="small u-mt-4">
-                          {preset.data?.classRole || "Класс/роль"} • lvl {preset.data?.level || "?"}
+                          {preset.data?.classRole || "Класс/роль"} • lvl {preset.data?.level || "?"} • реп. {formatReputationLabel(preset.data?.reputation)}
                         </div>
                       </div>
                     </div>

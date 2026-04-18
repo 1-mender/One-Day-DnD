@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS character_profiles (
   character_name TEXT,
   class_role TEXT,
   level INTEGER,
+  reputation INTEGER NOT NULL DEFAULT 0,
   stats TEXT NOT NULL DEFAULT '{}',
   bio TEXT,
   avatar_url TEXT,

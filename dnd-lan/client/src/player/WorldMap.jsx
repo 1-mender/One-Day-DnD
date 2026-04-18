@@ -4,6 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { Crosshair, RefreshCcw } from "lucide-react";
 import { api } from "../api.js";
 import { useSocket } from "../context/SocketContext.jsx";
+import { formatReputationLabel } from "./profileDomain.js";
 import {
   WORLD_MAP_CATEGORY_LABELS,
   WORLD_MAP_LOCATIONS,
@@ -122,6 +123,7 @@ function PlayerDetail({ player }) {
   const meta = [
     profile.classRole,
     profile.level ? `ур. ${profile.level}` : "",
+    profile.reputation != null ? `реп. ${formatReputationLabel(profile.reputation)}` : "",
     profile.race
   ].filter(Boolean).join(" • ");
 

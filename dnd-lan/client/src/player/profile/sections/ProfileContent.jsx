@@ -3,7 +3,13 @@ import { BookOpenText, Clock3, Eye, ImageUp, PencilLine, RefreshCcw, ScrollText,
 import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import { StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
-import { PUBLIC_PROFILE_FIELD_OPTIONS, formatChangeFields } from "../../profileDomain.js";
+import {
+  PUBLIC_PROFILE_FIELD_OPTIONS,
+  formatChangeFields,
+  formatReputation,
+  formatReputationLabel,
+  getReputationTier
+} from "../../profileDomain.js";
 
 const PROFILE_TABS = [
   { key: "self", label: "Персонаж" },
@@ -141,6 +147,7 @@ function MyCharacterPanel({
 }) {
   const heroMonogram = getHeroMonogram(profile);
   const showRaceBonus = raceBonus !== 0;
+  const reputationTier = getReputationTier(profile.reputation);
 
   return (
     <section className="profile-visibility-block profile-codex-panel tf-panel tf-profile-panel">
@@ -206,6 +213,13 @@ function MyCharacterPanel({
                   <span className="profile-stat-label">Доступ</span>
                   <span className="profile-stat-value">{accessState.label}</span>
                 </div>
+                <div className="profile-stat-plaque profile-reputation-plaque">
+                  <span className="profile-stat-label">Репутация</span>
+                  <span className={`profile-reputation-stack profile-reputation-${reputationTier.tone}`}>
+                    <span className="profile-reputation-score">{formatReputation(profile.reputation)}</span>
+                    <span className="profile-reputation-tier">{reputationTier.label}</span>
+                  </span>
+                </div>
               </div>
               {canEditBasic ? (
                 <button className="btn secondary profile-action profile-inline-btn" onClick={() => openEdit("basic")}>
@@ -256,12 +270,13 @@ function PublicProfilePreview({
   const optionalFields = [
     { key: "classRole", label: "Класс / роль", value: profile?.classRole || "не заполнено" },
     { key: "level", label: "Уровень", value: profile?.level != null ? `ур. ${profile.level}` : "не заполнено" },
+    { key: "reputation", label: "Репутация", value: formatReputationLabel(profile?.reputation) },
     { key: "race", label: "Раса", value: preview.race || "не заполнено" },
     { key: "publicBlurb", label: "Публичное описание", value: publicSettingsDraft?.publicBlurb || "не заполнено" }
   ];
   const openOptional = optionalFields.filter((field) => preview.publicFieldSet.has(field.key));
   const hiddenOptional = optionalFields.filter((field) => !preview.publicFieldSet.has(field.key));
-  const hasMeta = Boolean(preview.classRole || preview.level != null || preview.race);
+  const hasMeta = Boolean(preview.classRole || preview.level != null || preview.reputation != null || preview.race);
   const hasBlurb = Boolean(preview.publicBlurb);
   const summary = getPublicSummary(preview);
 
@@ -288,7 +303,7 @@ function PublicProfilePreview({
               alt={preview.characterName}
               fallback={(preview.characterName || "?").slice(0, 1)}
             />
-            <div className="profile-public-sigil" aria-hidden="true">{heroMonogram}</div>
+            {preview.avatarUrl ? <div className="profile-public-sigil" aria-hidden="true">{heroMonogram}</div> : null}
           </div>
 
           <div className="profile-public-card-copy">
@@ -299,6 +314,11 @@ function PublicProfilePreview({
               <div className="profile-public-meta">
                 {preview.classRole ? <span className="badge secondary">{preview.classRole}</span> : null}
                 {preview.level != null ? <span className="badge">ур. {preview.level}</span> : null}
+                {preview.reputation != null ? (
+                  <span className={`badge ${getReputationTone(preview.reputation)}`}>
+                    реп. {formatReputationLabel(preview.reputation)}
+                  </span>
+                ) : null}
                 {preview.race ? <span className="badge secondary">{preview.race}</span> : null}
               </div>
             ) : null}
@@ -571,6 +591,7 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
     avatarUrl: profile?.avatarUrl || "",
     classRole: publicFieldSet.has("classRole") ? profile?.classRole || "" : "",
     level: publicFieldSet.has("level") ? profile?.level ?? null : null,
+    reputation: publicFieldSet.has("reputation") ? Number(profile?.reputation ?? 0) : null,
     race: publicFieldSet.has("race") ? raceLabel || "" : "",
     publicBlurb: publicFieldSet.has("publicBlurb") ? publicBlurbDraft || "" : ""
   };
@@ -580,6 +601,7 @@ function getPublicSummary(preview) {
   const summary = ["имя", "аватар"];
   if (preview.classRole) summary.push("класс");
   if (preview.level != null) summary.push("уровень");
+  if (preview.reputation != null) summary.push("репутацию");
   if (preview.race) summary.push("расу");
   if (preview.publicBlurb) summary.push("описание");
   return summary;
@@ -616,6 +638,7 @@ function formatEditableFieldLabel(value) {
     avatarUrl: "Аватар",
     bio: "Биография",
     stats: "Статы",
+    reputation: "Репутация",
     level: "Уровень",
     classRole: "Класс / роль",
     characterName: "Имя персонажа"
@@ -677,7 +700,16 @@ const ALL_EDITABLE_FIELDS = [
   "avatarUrl",
   "bio",
   "stats",
+  "reputation",
   "level",
   "classRole",
   "characterName"
 ];
+
+function getReputationTone(value) {
+  return getReputationTier(value).tone;
+}
+
+function getReputationClassName(value) {
+  return `profile-stat-value profile-reputation-value profile-reputation-${getReputationTone(value)}`;
+}

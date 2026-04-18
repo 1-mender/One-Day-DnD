@@ -5,7 +5,10 @@ import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import {
   DM_PROFILE_EDITABLE_OPTIONS,
   DM_PROFILE_PUBLIC_OPTIONS,
-  DM_STAT_PRESETS
+  DM_STAT_PRESETS,
+  formatReputationLabel,
+  getReputationTier,
+  normalizeReputation
 } from "../playerProfileAdminDomain.js";
 import {
   RACE_OPTIONS,
@@ -33,6 +36,9 @@ export default function DMPlayerProfileProfileTab({ controller }) {
     togglePublicField,
     uploading
   } = controller;
+  const reputationTier = getReputationTier(form.reputation);
+  const setReputation = (value) => setForm({ ...form, reputation: normalizeReputation(value) });
+  const adjustReputation = (delta) => setReputation(Number(form.reputation || 0) + delta);
 
   return (
     <>
@@ -91,6 +97,26 @@ export default function DMPlayerProfileProfileTab({ controller }) {
               disabled={readOnly}
               style={INPUT_STYLE}
             />
+            <label className="list">
+              <span className="small note-hint">Репутация: от -100 до 100</span>
+              <input
+                type="number"
+                min="-100"
+                max="100"
+                value={form.reputation}
+                onChange={(event) => setForm({ ...form, reputation: event.target.value })}
+                placeholder="Репутация"
+                aria-label="Репутация"
+                disabled={readOnly}
+                style={INPUT_STYLE}
+              />
+              <div className="row u-row-gap-8 u-row-wrap">
+                <span className={`badge ${reputationTier.tone}`}>{formatReputationLabel(form.reputation)}</span>
+                <button type="button" className="btn secondary" onClick={() => adjustReputation(-10)} disabled={readOnly}>-10</button>
+                <button type="button" className="btn secondary" onClick={() => setReputation(0)} disabled={readOnly}>Сброс</button>
+                <button type="button" className="btn secondary" onClick={() => adjustReputation(10)} disabled={readOnly}>+10</button>
+              </div>
+            </label>
             <input
               value={form.avatarUrl}
               onChange={(event) => setForm({ ...form, avatarUrl: event.target.value })}
@@ -161,7 +187,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
               <div>
                 <div className="u-title-18">{form.characterName || "Без имени"}</div>
                 <div className="small u-mt-6">
-                  {form.classRole || "Класс/роль"} • lvl {form.level || "?"}
+                  {form.classRole || "Класс/роль"} • lvl {form.level || "?"} • реп. {formatReputationLabel(form.reputation)}
                 </div>
               </div>
             </div>
@@ -206,7 +232,11 @@ export default function DMPlayerProfileProfileTab({ controller }) {
             <div className="paper-note u-mt-10">
               <div className="title">Превью карточки</div>
               <div className="u-title-18 u-mt-8">{form.characterName || "Без имени"}</div>
-              <div className="small u-mt-6">{form.classRole || "Класс / роль"}{form.level ? ` • lvl ${form.level}` : ""}</div>
+              <div className="small u-mt-6">
+                {form.classRole || "Класс / роль"}
+                {form.level ? ` • lvl ${form.level}` : ""}
+                {(form.publicFields || []).includes("reputation") ? ` • реп. ${formatReputationLabel(form.reputation)}` : ""}
+              </div>
               {(form.publicFields || []).includes("race") ? (
                 <div className="small u-mt-6">Раса: {getRaceValue(form.stats) || "human"}</div>
               ) : null}

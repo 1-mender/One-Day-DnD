@@ -4,6 +4,8 @@ import { StatsEditor } from "../../../components/profile/StatsEditor.jsx";
 import {
   PRESET_HINT,
   RACE_OPTIONS,
+  formatReputationLabel,
+  getReputationTier,
   getPresetStatsLabel,
   getRaceValue,
   setRaceInStats
@@ -85,6 +87,24 @@ export default function ProfileEditModal({ controller }) {
                 aria-label="Уровень"
                 style={INPUT_STYLE}
               />
+            ) : null}
+            {canEdit("reputation") ? (
+              <label className="list">
+                <span className="small note-hint">Репутация: от -100 до 100</span>
+                <input
+                  type="number"
+                  min="-100"
+                  max="100"
+                  value={draft.reputation}
+                  onChange={(event) => setDraft({ ...draft, reputation: event.target.value })}
+                  placeholder="Репутация"
+                  aria-label="Репутация"
+                  style={INPUT_STYLE}
+                />
+                <span className={`badge ${getReputationTier(draft.reputation).tone}`}>
+                  {formatReputationLabel(draft.reputation)}
+                </span>
+              </label>
             ) : null}
           </>
         ) : null}

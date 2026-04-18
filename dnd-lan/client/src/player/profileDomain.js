@@ -2,6 +2,7 @@ export const EMPTY_PROFILE_DRAFT = {
   characterName: "",
   classRole: "",
   level: "",
+  reputation: 0,
   stats: {},
   bio: "",
   avatarUrl: ""
@@ -10,6 +11,7 @@ export const EMPTY_PROFILE_DRAFT = {
 export const PUBLIC_PROFILE_FIELD_OPTIONS = [
   { key: "classRole", label: "Класс / роль" },
   { key: "level", label: "Уровень" },
+  { key: "reputation", label: "Репутация" },
   { key: "race", label: "Раса" },
   { key: "publicBlurb", label: "Публичное описание" }
 ];
@@ -189,6 +191,9 @@ export function diffProfile(current, next) {
   const curLevel = current.level == null ? "" : String(current.level);
   const nextLevel = next.level == null ? "" : String(next.level);
   if (curLevel !== nextLevel) out.level = next.level === "" ? null : Number(next.level);
+  if (normalizeReputation(current.reputation) !== normalizeReputation(next.reputation)) {
+    out.reputation = normalizeReputation(next.reputation);
+  }
   if (JSON.stringify(current.stats || {}) !== JSON.stringify(next.stats || {})) out.stats = next.stats || {};
   if (String(current.bio || "") !== String(next.bio || "")) out.bio = next.bio || "";
   if (String(current.avatarUrl || "") !== String(next.avatarUrl || "")) out.avatarUrl = next.avatarUrl || "";
@@ -240,6 +245,7 @@ const changeLabels = {
   characterName: "Имя",
   classRole: "Класс/роль",
   level: "Уровень",
+  reputation: "Репутация",
   stats: "Статы",
   bio: "Биография",
   avatarUrl: "Аватар"
@@ -249,4 +255,30 @@ export function formatChangeFields(changes) {
   const keys = Object.keys(changes || {});
   if (!keys.length) return "—";
   return keys.map((k) => changeLabels[k] || k).join(", ");
+}
+
+export function normalizeReputation(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(-100, Math.min(100, Math.round(numeric)));
+}
+
+export function formatReputation(value) {
+  const reputation = normalizeReputation(value);
+  if (reputation > 0) return `+${reputation}`;
+  return String(reputation);
+}
+
+export function getReputationTier(value) {
+  const reputation = normalizeReputation(value);
+  if (reputation <= -75) return { key: "outcast", label: "Изгой", tone: "off" };
+  if (reputation <= -25) return { key: "bad", label: "Плохая", tone: "off" };
+  if (reputation < 25) return { key: "neutral", label: "Нейтральная", tone: "secondary" };
+  if (reputation < 75) return { key: "good", label: "Хорошая", tone: "ok" };
+  return { key: "legendary", label: "Легендарная", tone: "ok" };
+}
+
+export function formatReputationLabel(value) {
+  const tier = getReputationTier(value);
+  return `${formatReputation(value)} · ${tier.label}`;
 }

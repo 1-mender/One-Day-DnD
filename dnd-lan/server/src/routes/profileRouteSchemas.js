@@ -25,6 +25,7 @@ export const profileUpsertBodySchema = z.object({
   characterName: z.unknown().optional(),
   classRole: z.unknown().optional(),
   level: z.unknown().optional(),
+  reputation: z.unknown().optional(),
   stats: z.unknown().optional(),
   bio: z.unknown().optional(),
   avatarUrl: z.unknown().optional(),

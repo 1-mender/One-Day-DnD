@@ -7,6 +7,7 @@ import {
   getPlayerSecondaryName,
   getPublicProfileMeta
 } from "../../player/publicProfileViewModel.js";
+import { formatReputationLabel, getReputationTier } from "../../player/profileDomain.js";
 
 function StatusStamp({ status }) {
   const s = String(status || "offline");
@@ -85,7 +86,7 @@ export default function PlayerDossierCard({
         {publicChips.length ? (
           <div className="dossier-public-chips" aria-label={publicMeta || "Открытые поля профиля"}>
             {publicChips.map((chip) => (
-              <span key={chip.key} className="badge secondary dossier-public-chip">{chip.label}</span>
+              <span key={chip.key} className={`badge ${chip.tone || "secondary"} dossier-public-chip`}>{chip.label}</span>
             ))}
           </div>
         ) : (
@@ -121,6 +122,11 @@ function getPublicProfileChips(profile) {
   return [
     profile.classRole ? { key: "classRole", label: profile.classRole } : null,
     profile.level != null ? { key: "level", label: `ур. ${profile.level}` } : null,
+    profile.reputation != null ? {
+      key: "reputation",
+      label: `реп. ${formatReputationLabel(profile.reputation)}`,
+      tone: getReputationTier(profile.reputation).tone
+    } : null,
     profile.race ? { key: "race", label: profile.race } : null
   ].filter(Boolean);
 }

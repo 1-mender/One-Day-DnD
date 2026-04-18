@@ -22,6 +22,7 @@ function createProfilePresetDraft() {
       characterName: "",
       classRole: "",
       level: "",
+      reputation: 0,
       stats: {},
       bio: "",
       avatarUrl: ""

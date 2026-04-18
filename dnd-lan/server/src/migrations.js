@@ -384,6 +384,18 @@ const MIGRATIONS = [
       addColumnIfMissing(database, "map_location_states", "x", "ALTER TABLE map_location_states ADD COLUMN x REAL;");
       addColumnIfMissing(database, "map_location_states", "y", "ALTER TABLE map_location_states ADD COLUMN y REAL;");
     }
+  },
+  {
+    version: 20,
+    name: "character_profiles_reputation",
+    up(database) {
+      addColumnIfMissing(
+        database,
+        "character_profiles",
+        "reputation",
+        "ALTER TABLE character_profiles ADD COLUMN reputation INTEGER NOT NULL DEFAULT 0;"
+      );
+    }
   }
 ];
 
