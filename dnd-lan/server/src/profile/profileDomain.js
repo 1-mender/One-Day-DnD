@@ -4,6 +4,7 @@ import {
   normalizeClassKey,
   normalizeSpecializationKey
 } from "./classCatalog.js";
+import { getRaceProfile } from "../../../shared/raceCatalog.js";
 
 export const EDITABLE_FIELDS = new Set([
   "characterName",
@@ -95,7 +96,8 @@ export function mapPublicProfile(row) {
   const rawLevel = row.level;
   const reputation = normalizeReputation(row.reputation);
   const publicBlurb = String(row.public_blurb ?? row.publicBlurb ?? "").trim();
-  const race = String(stats?.race || "").trim();
+  const hasRace = Boolean(String(stats?.race || stats?.raceVariant || "").trim());
+  const raceProfile = getRaceProfile(stats);
 
   const profile = {};
   if (characterName) profile.characterName = characterName;
@@ -110,7 +112,12 @@ export function mapPublicProfile(row) {
     if (Number.isFinite(level)) profile.level = level;
   }
   if (publicFields.includes("reputation")) profile.reputation = reputation;
-  if (publicFields.includes("race") && race) profile.race = race;
+  if (publicFields.includes("race") && hasRace) {
+    profile.race = raceProfile.displayName;
+    profile.raceKey = raceProfile.raceKey;
+    profile.raceVariantKey = raceProfile.variantKey;
+    profile.raceTrait = raceProfile.trait;
+  }
   if (publicFields.includes("publicBlurb") && publicBlurb) profile.publicBlurb = publicBlurb;
   return profile;
 }

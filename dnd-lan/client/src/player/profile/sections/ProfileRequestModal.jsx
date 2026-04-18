@@ -1,14 +1,12 @@
 import { Send } from "lucide-react";
 import Modal from "../../../components/Modal.jsx";
 import { StatsEditor } from "../../../components/profile/StatsEditor.jsx";
+import RaceFields from "./RaceFields.jsx";
 import {
   PRESET_HINT,
-  RACE_OPTIONS,
   formatReputationLabel,
   getReputationTier,
-  getPresetStatsLabel,
-  getRaceValue,
-  setRaceInStats
+  getPresetStatsLabel
 } from "../../profileDomain.js";
 
 const INPUT_STYLE = { width: "100%" };
@@ -124,16 +122,11 @@ export default function ProfileRequestModal({ controller }) {
         ) : null}
         {canRequestStats ? (
           <>
-            <select
-              value={getRaceValue(requestDraft.stats)}
-              onChange={(event) => setRequestDraft({ ...requestDraft, stats: setRaceInStats(requestDraft.stats, event.target.value) })}
-              aria-label="Раса"
-              style={INPUT_STYLE}
-            >
-              {RACE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+            <RaceFields
+              stats={requestDraft.stats}
+              onChange={(stats) => setRequestDraft({ ...requestDraft, stats })}
+              disabled={readOnly}
+            />
             <StatsEditor value={requestDraft.stats} onChange={(stats) => setRequestDraft({ ...requestDraft, stats })} readOnly={readOnly} />
           </>
         ) : null}

@@ -1,14 +1,12 @@
 import { ImageUp } from "lucide-react";
 import Modal from "../../../components/Modal.jsx";
 import { StatsEditor } from "../../../components/profile/StatsEditor.jsx";
+import RaceFields from "./RaceFields.jsx";
 import {
   PRESET_HINT,
-  RACE_OPTIONS,
   formatReputationLabel,
   getReputationTier,
-  getPresetStatsLabel,
-  getRaceValue,
-  setRaceInStats
+  getPresetStatsLabel
 } from "../../profileDomain.js";
 
 const INPUT_STYLE = { width: "100%" };
@@ -111,17 +109,11 @@ export default function ProfileEditModal({ controller }) {
 
         {editMode === "stats" ? (
           <>
-            <div className="small note-hint">Раса влияет на лимит веса инвентаря.</div>
-            <select
-              value={getRaceValue(draft.stats)}
-              onChange={(event) => setDraft({ ...draft, stats: setRaceInStats(draft.stats, event.target.value) })}
-              aria-label="Раса"
-              style={INPUT_STYLE}
-            >
-              {RACE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
+            <RaceFields
+              stats={draft.stats}
+              onChange={(stats) => setDraft({ ...draft, stats })}
+              disabled={readOnly}
+            />
             <StatsEditor value={draft.stats} onChange={(stats) => setDraft({ ...draft, stats })} readOnly={readOnly} />
           </>
         ) : null}

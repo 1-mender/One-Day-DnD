@@ -50,6 +50,7 @@ export default function ProfileContent({ controller }) {
     raceBonusLabel,
     raceHint,
     raceLabel,
+    raceProfile,
     readOnly,
     reqLoading,
     reqStatus,
@@ -86,6 +87,7 @@ export default function ProfileContent({ controller }) {
           raceBonusLabel={raceBonusLabel}
           raceHint={raceHint}
           raceLabel={raceLabel}
+          raceProfile={raceProfile}
           readOnly={readOnly}
           savingClassPath={classPathSaving}
           saveClassPath={saveClassPath}
@@ -162,6 +164,7 @@ function MyCharacterPanel({
   raceBonusLabel,
   raceHint,
   raceLabel,
+  raceProfile,
   readOnly,
   savingClassPath,
   saveClassPath
@@ -218,7 +221,7 @@ function MyCharacterPanel({
                 </div>
               </div>
               <div className="small character-race profile-race-row" title={raceHint} aria-label={raceHint}>
-                <span className="character-race-label">Раса:</span>
+                <span className="character-race-label">Происхождение:</span>
                 <span className="character-race-value">{raceLabel}</span>
                 {showRaceBonus ? (
                   <span className={`badge profile-race-bonus ${raceBonus > 0 ? "ok" : "off"}`}>
@@ -226,6 +229,18 @@ function MyCharacterPanel({
                   </span>
                 ) : null}
               </div>
+              <div className="profile-race-lore">
+                <span>{raceProfile?.raceLabel || "Раса"}</span>
+                {raceProfile?.trait ? <b>{raceProfile.trait}</b> : null}
+                {raceProfile?.variantDescription ? <small>{raceProfile.variantDescription}</small> : null}
+              </div>
+              {raceProfile?.tags?.length ? (
+                <div className="profile-race-tags">
+                  {raceProfile.tags.slice(0, 3).map((tag) => (
+                    <span key={tag} className="badge secondary profile-race-tag">{tag}</span>
+                  ))}
+                </div>
+              ) : null}
               <div className="profile-hero-stats">
                 <div className="profile-stat-plaque">
                   <span className="profile-stat-label">ID игрока</span>
@@ -774,6 +789,7 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
   const publicFields = normalizePublicFields(publicSettingsDraft?.publicFields ?? profile?.publicFields);
   const publicFieldSet = new Set(publicFields);
   const publicBlurbDraft = publicSettingsDraft?.publicBlurb ?? profile?.publicBlurb ?? "";
+  const hasRace = Boolean(String(profile?.stats?.race || profile?.stats?.raceVariant || "").trim());
   return {
     publicFields,
     publicFieldSet,
@@ -783,7 +799,7 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
     classRole: publicFieldSet.has("classRole") ? profile?.classRole || "" : "",
     level: publicFieldSet.has("level") ? profile?.level ?? null : null,
     reputation: publicFieldSet.has("reputation") ? Number(profile?.reputation ?? 0) : null,
-    race: publicFieldSet.has("race") ? raceLabel || "" : "",
+    race: publicFieldSet.has("race") && hasRace ? raceLabel || "" : "",
     publicBlurb: publicFieldSet.has("publicBlurb") ? publicBlurbDraft || "" : ""
   };
 }

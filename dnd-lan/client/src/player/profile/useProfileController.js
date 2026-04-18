@@ -9,8 +9,8 @@ import {
   EMPTY_PROFILE_DRAFT,
   PUBLIC_PROFILE_FIELD_KEYS,
   diffProfile,
-  getRaceBonus,
-  getRaceLabel,
+  formatRaceBonus,
+  getRaceProfile,
   getRaceValue,
   mergePresets,
   normalizeReputation
@@ -327,10 +327,11 @@ export function useProfileController() {
 
   const updatedLabel = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "-";
   const raceValue = getRaceValue(profile?.stats);
-  const raceLabel = getRaceLabel(raceValue);
-  const raceBonus = getRaceBonus(raceValue);
-  const raceBonusLabel = raceBonus > 0 ? `+${raceBonus}` : String(raceBonus);
-  const raceHint = `Бонус лимита веса: ${raceBonusLabel}`;
+  const raceProfile = getRaceProfile(profile?.stats);
+  const raceLabel = raceProfile.displayName;
+  const raceBonus = raceProfile.carryBonus;
+  const raceBonusLabel = formatRaceBonus(raceBonus);
+  const raceHint = `${raceProfile.trait || raceProfile.raceLabel}. Бонус лимита веса: ${raceBonusLabel}`;
   const allowGlobalEdit = !!presetAccess?.enabled && !!presetAccess?.playerEdit;
   const allowGlobalRequest = !!presetAccess?.enabled && !!presetAccess?.playerRequest;
   const publicSettingsDirty = useMemo(
@@ -377,6 +378,7 @@ export function useProfileController() {
     raceBonusLabel,
     raceHint,
     raceLabel,
+    raceProfile,
     raceValue,
     readOnly,
     reqLoading,

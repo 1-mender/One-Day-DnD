@@ -1,3 +1,31 @@
+import {
+  RACE_OPTIONS,
+  getRaceBonus,
+  getRaceDisplayLabel,
+  getRaceLabel,
+  getRaceProfile,
+  getRaceValue,
+  getRaceVariantOptions,
+  getRaceVariantValue,
+  normalizeRace,
+  setRaceInStats,
+  setRaceVariantInStats
+} from "../../../shared/raceCatalog.js";
+
+export {
+  RACE_OPTIONS,
+  getRaceBonus,
+  getRaceDisplayLabel,
+  getRaceLabel,
+  getRaceProfile,
+  getRaceValue,
+  getRaceVariantOptions,
+  getRaceVariantValue,
+  normalizeRace,
+  setRaceInStats,
+  setRaceVariantInStats
+};
+
 export const EMPTY_PROFILE_DRAFT = {
   characterName: "",
   classRole: "",
@@ -94,99 +122,9 @@ export const PROFILE_PRESETS = [
 export const PRESET_HINT = "Шаблон заполнит имя, класс, уровень, статы и био. Можно потом поправить.";
 const PRESET_STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
 
-export const RACE_OPTIONS = [
-  { value: "human", label: "Человек" },
-  { value: "elf", label: "Эльф" },
-  { value: "half_elf", label: "Полуэльф" },
-  { value: "dwarf", label: "Дворф" },
-  { value: "halfling", label: "Полурослик" },
-  { value: "gnome", label: "Гном" },
-  { value: "orc", label: "Орк" },
-  { value: "half_orc", label: "Полуорк" },
-  { value: "dragonborn", label: "Драконорожденный" },
-  { value: "tiefling", label: "Тифлинг" },
-  { value: "goliath", label: "Голиаф" }
-];
-
-const DEFAULT_RACE = "human";
-
-const RACE_ALIASES = {
-  human: "human",
-  "человек": "human",
-  elf: "elf",
-  "эльф": "elf",
-  half_elf: "half_elf",
-  "полуэльф": "half_elf",
-  "полу_эльф": "half_elf",
-  dwarf: "dwarf",
-  "дварф": "dwarf",
-  "дворф": "dwarf",
-  halfling: "halfling",
-  "полурослик": "halfling",
-  "хоббит": "halfling",
-  gnome: "gnome",
-  "гном": "gnome",
-  orc: "orc",
-  "орк": "orc",
-  half_orc: "half_orc",
-  "полуорк": "half_orc",
-  "полу_орк": "half_orc",
-  dragonborn: "dragonborn",
-  "драконорожденный": "dragonborn",
-  "драконорождённый": "dragonborn",
-  tiefling: "tiefling",
-  "тифлинг": "tiefling",
-  goliath: "goliath",
-  "голиаф": "goliath"
-};
-
-const RACE_BONUS = {
-  human: 0,
-  elf: 0,
-  half_elf: 0,
-  dwarf: 5,
-  halfling: -5,
-  gnome: -5,
-  orc: 5,
-  half_orc: 5,
-  dragonborn: 5,
-  tiefling: 0,
-  goliath: 10
-};
-
-export function normalizeRace(raw) {
-  const key = String(raw || "").trim().toLowerCase().replace(/[\s.-]+/g, "_");
-  if (!key) return DEFAULT_RACE;
-  return RACE_ALIASES[key] || key;
-}
-
-export function getRaceValue(stats) {
-  return normalizeRace(stats?.race);
-}
-
-export function getRaceLabel(race) {
-  const key = normalizeRace(race);
-  return RACE_OPTIONS.find((opt) => opt.value === key)?.label || "Человек";
-}
-
-export function getRaceBonus(race) {
-  const key = normalizeRace(race);
-  return Number(RACE_BONUS[key] ?? RACE_BONUS[DEFAULT_RACE] ?? 0);
-}
-
 export function formatRaceBonus(bonus) {
   const value = Number(bonus) || 0;
   return value > 0 ? `+${value}` : String(value);
-}
-
-export function setRaceInStats(stats, race) {
-  const next = { ...(stats || {}) };
-  if (!race) {
-    delete next.race;
-    return next;
-  }
-  next.race = normalizeRace(race);
-  return next;
 }
 
 export function diffProfile(current, next) {
@@ -211,10 +149,13 @@ export function diffProfile(current, next) {
 
 export function mergePreset(prev, preset) {
   const data = preset?.data || {};
+  const nextStats = { ...(data.stats || {}) };
+  if (!Object.hasOwn(nextStats, "race")) nextStats.race = prev?.stats?.race;
+  if (!Object.hasOwn(nextStats, "raceVariant")) nextStats.raceVariant = prev?.stats?.raceVariant;
   return {
     ...prev,
     ...data,
-    stats: { ...(data.stats || {}), race: data?.stats?.race ?? prev?.stats?.race }
+    stats: setRaceInStats(nextStats, nextStats.race)
   };
 }
 

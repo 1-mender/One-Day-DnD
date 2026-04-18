@@ -2981,6 +2981,88 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
   justify-content: center;
 }
 
+.profile-race-lore{
+  display: grid;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(118, 99, 70, 0.22);
+  border-radius: 16px;
+  background: rgba(255, 251, 241, 0.58);
+  color: #5f5140;
+}
+
+.profile-race-lore span{
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8a765d;
+}
+
+.profile-race-lore b{
+  color: #342a20;
+}
+
+.profile-race-lore small{
+  color: #72624f;
+  line-height: 1.45;
+}
+
+.profile-race-tags,
+.race-tag-list{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.profile-race-tag,
+.race-tag{
+  font-size: 11px;
+}
+
+.race-fields{
+  display: grid;
+  gap: 10px;
+}
+
+.race-fields-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.race-field{
+  display: grid;
+  gap: 5px;
+}
+
+.race-summary-card{
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(118, 99, 70, 0.18);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.94), rgba(244, 235, 218, 0.88));
+  box-shadow: 0 10px 22px rgba(61, 47, 29, 0.08);
+}
+
+.race-summary-head{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.race-summary-title{
+  font-size: 18px;
+}
+
+.race-summary-description{
+  color: #625340;
+  line-height: 1.5;
+}
+
 .profile-hero-stats{
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));

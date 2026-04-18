@@ -1,4 +1,4 @@
-import { formatReputationLabel } from "./profileDomain.js";
+import { formatReputationLabel, getRaceProfile } from "./profileDomain.js";
 import { getClassPathLabelWithRole } from "./classCatalog.js";
 
 export function getPlayerPrimaryName(player, profile = player?.publicProfile || null) {
@@ -17,12 +17,25 @@ export function getPlayerSecondaryName(player, profile = player?.publicProfile |
 export function getPublicProfileMeta(profile) {
   if (!profile) return "";
   const classPath = profile.classKey ? getClassPathLabelWithRole(profile) : "";
+  const race = getPublicRaceLabel(profile);
   return [
     classPath || String(profile.classRole || "").trim(),
     profile.level != null ? `lvl ${profile.level}` : "",
     profile.reputation != null ? `rep ${formatReputationLabel(profile.reputation)}` : "",
-    String(profile.race || "").trim() ? `race: ${String(profile.race).trim()}` : ""
+    race ? `race: ${race}` : ""
   ].filter(Boolean).join(" • ");
+}
+
+function getPublicRaceLabel(profile) {
+  if (profile?.raceKey) {
+    return getRaceProfile({ race: profile.raceKey, raceVariant: profile.raceVariantKey }).displayName;
+  }
+  const raw = String(profile?.race || "").trim();
+  if (!raw) return "";
+  if (/^[a-z_\s.-]+$/i.test(raw)) {
+    return getRaceProfile({ race: raw }).displayName;
+  }
+  return raw;
 }
 
 export function matchesStatusFilter(player, filter = "all") {

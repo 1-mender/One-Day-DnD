@@ -3,6 +3,7 @@ import { ImageUp, Save } from "lucide-react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
 import { EmptyState } from "../../../foundation/primitives/index.js";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
+import RaceFields from "../../../player/profile/sections/RaceFields.jsx";
 import {
   DM_PROFILE_EDITABLE_OPTIONS,
   DM_PROFILE_PUBLIC_OPTIONS,
@@ -12,11 +13,7 @@ import {
   normalizeXp,
   normalizeReputation
 } from "../playerProfileAdminDomain.js";
-import {
-  RACE_OPTIONS,
-  getRaceValue,
-  setRaceInStats
-} from "../../../player/profileDomain.js";
+import { getRaceProfile } from "../../../player/profileDomain.js";
 import {
   CLASS_CATALOG,
   SPECIALIZATION_ROLE_LABELS,
@@ -61,6 +58,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
   const selectedSpecializationRole = getSpecializationRole(form);
   const selectedSpecializationTags = getSpecializationTags(form);
   const classPathLabel = getClassPathLabel(form);
+  const raceProfile = getRaceProfile(form.stats);
   const classXp = normalizeXp(form.xp);
   const specializationReady = !!selectedClass && !selectedSpecialization && classXp >= SPECIALIZATION_XP_THRESHOLD;
   const specializationProgress = Math.min(100, Math.round((classXp / SPECIALIZATION_XP_THRESHOLD) * 100));
@@ -381,17 +379,11 @@ export default function DMPlayerProfileProfileTab({ controller }) {
                 ))}
               </div>
               <div className="small note-hint">Пресет перезапишет текущие статы.</div>
-              <select
-                value={getRaceValue(form.stats)}
-                onChange={(event) => setForm({ ...form, stats: setRaceInStats(form.stats, event.target.value) })}
-                aria-label="Раса"
+              <RaceFields
+                stats={form.stats}
+                onChange={(stats) => setForm({ ...form, stats })}
                 disabled={readOnly}
-                style={INPUT_STYLE}
-              >
-                {RACE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
+              />
               <StatsEditor value={form.stats} onChange={(stats) => setForm({ ...form, stats })} readOnly={readOnly} />
             </div>
             <div className="kv">
@@ -469,7 +461,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
                 {publicMetaPreview || "Только имя и аватар"}
               </div>
               {(form.publicFields || []).includes("race") ? (
-                <div className="small u-mt-6">Раса: {getRaceValue(form.stats) || "human"}</div>
+                <div className="small u-mt-6">Раса: {raceProfile.displayName}</div>
               ) : null}
               {(form.publicFields || []).includes("publicBlurb") && form.publicBlurb ? (
                 <div className="small bio-text u-mt-8 u-pre-wrap">{form.publicBlurb}</div>

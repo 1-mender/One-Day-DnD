@@ -402,7 +402,10 @@ test("Other player can read only public profile projection", async () => {
     avatarUrl: "/uploads/aria.png",
     classRole: "Ranger",
     level: 4,
-    race: "elf",
+    race: "Городской эльф",
+    raceKey: "elf",
+    raceVariantKey: "city",
+    raceTrait: "Дипломатия улиц",
     publicBlurb: "Следопыт с севера"
   });
 });
@@ -437,7 +440,10 @@ test("Roster returns public profile projection without private fields", async ()
   assert.deepEqual(item.publicProfile, {
     characterName: "Aria",
     classRole: "Ranger",
-    race: "elf"
+    race: "Городской эльф",
+    raceKey: "elf",
+    raceVariantKey: "city",
+    raceTrait: "Дипломатия улиц"
   });
   assert.equal("bio" in item.publicProfile, false);
   assert.equal("stats" in item.publicProfile, false);
