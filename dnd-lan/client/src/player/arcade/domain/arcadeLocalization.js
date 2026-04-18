@@ -25,6 +25,29 @@ const PERFORMANCE_LABELS_RU = {
   elite: "Элитная комбинация"
 };
 
+const MODE_ROLE_COPY_RU = {
+  warmup: {
+    label: "Разогрев",
+    description: "Безопасный режим для старта: низкий риск и небольшая награда."
+  },
+  skill: {
+    label: "Скилл",
+    description: "Награда зависит от качества игры, точности и решений."
+  },
+  risk: {
+    label: "Риск",
+    description: "Дорогой вход и высокий штраф, но лучший потолок награды."
+  },
+  blitz: {
+    label: "Блиц",
+    description: "Короткая партия для быстрого квеста или одной попытки."
+  },
+  duel: {
+    label: "Дуэль",
+    description: "Режим для соревновательной партии, а не основного фарма."
+  }
+};
+
 const GAME_COPY_RU = {
   ttt: {
     title: "Крестики-нолики: Дуэль разума",
@@ -121,6 +144,17 @@ export function localizePerformanceLabel(label, key) {
   return raw;
 }
 
+export function localizeModeRole(role) {
+  const key = String(role || "").trim().toLowerCase();
+  const copy = MODE_ROLE_COPY_RU[key];
+  if (copy) return { key, ...copy };
+  return {
+    key: key || "unknown",
+    label: role ? String(role) : "Режим",
+    description: "Особый режим этой игры."
+  };
+}
+
 export function localizeOutcome(outcome) {
   const key = String(outcome || "").toLowerCase();
   if (key === "win") return "победа";
@@ -144,10 +178,16 @@ export function localizeGameCard(game) {
     difficulty: localizeTagValue(fallback.difficulty, "difficulty"),
     risk: localizeTagValue(fallback.risk, "risk"),
     time: localizeTagValue(fallback.time, "time"),
-    modes: (Array.isArray(fallback.modes) ? fallback.modes : []).map((mode) => ({
-      ...mode,
-      label: localizeModeLabel(mode?.key, mode?.label)
-    }))
+    modes: (Array.isArray(fallback.modes) ? fallback.modes : []).map((mode) => {
+      const role = localizeModeRole(mode?.role);
+      return {
+        ...mode,
+        role: role.key,
+        roleLabel: role.label,
+        roleDescription: role.description,
+        label: localizeModeLabel(mode?.key, mode?.label)
+      };
+    })
   };
 }
 

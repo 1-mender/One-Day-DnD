@@ -337,6 +337,7 @@ export default function Arcade() {
         {rankedGames.map((g) => {
           const modes = Array.isArray(g.modes) ? g.modes : [];
           const selectedModeKey = selectedModes[g.key] || modes[0]?.key || "";
+          const selectedMode = modes.find((mode) => mode.key === selectedModeKey) || modes[0] || null;
           const modeRules = resolveArcadeModeRules(rules?.games?.[g.key], selectedModeKey);
           const remaining = getGameRemaining(g.key, selectedModeKey);
           const disabledReason = getDisabledReason(g.key, selectedModeKey);
@@ -365,6 +366,11 @@ export default function Arcade() {
               </div>
               <div className="small arcade-blurb">{g.blurb}</div>
               <div className="arcade-meta">
+                {selectedMode?.roleLabel ? (
+                  <span className={`meta-chip arcade-role-chip arcade-role-${selectedMode.role}`}>
+                    {selectedMode.roleLabel}
+                  </span>
+                ) : null}
                 <span className="meta-chip" title={`Время: ${timeLabel}`}>Время: {timeLabel}</span>
                 <span className="meta-chip">Вход: {entryLabel}</span>
                 {usageLabel ? <span className="meta-chip">Лимит: {usageLabel}</span> : null}
@@ -382,6 +388,12 @@ export default function Arcade() {
                       {mode.label}
                     </button>
                   ))}
+                </div>
+              ) : null}
+              {selectedMode?.roleLabel ? (
+                <div className={`arcade-mode-role arcade-mode-role-${selectedMode.role}`}>
+                  <span>{selectedMode.roleLabel}</span>
+                  <small>{selectedMode.roleDescription}</small>
                 </div>
               ) : null}
               {canPlay ? (

@@ -15,6 +15,7 @@ export const GAME_CATALOG = [
       {
         key: "fast",
         label: "Быстрый",
+        role: "warmup",
         roundsToWin: 1,
         ai: "standard",
         summary: "Один решающий раунд. Бесплатный разогрев перед длинными матчами."
@@ -22,6 +23,7 @@ export const GAME_CATALOG = [
       {
         key: "normal",
         label: "Обычный",
+        role: "duel",
         roundsToWin: 2,
         ai: "standard",
         summary: "Матч до двух побед. Требует билет, но заметно лучше платит за чистую серию."
@@ -44,6 +46,7 @@ export const GAME_CATALOG = [
       {
         key: "easy",
         label: "Разминка",
+        role: "warmup",
         ranks: ["A", "K", "Q"],
         maxAttempts: 4,
         timeLimit: 50,
@@ -53,6 +56,7 @@ export const GAME_CATALOG = [
       {
         key: "normal",
         label: "Классика",
+        role: "skill",
         ranks: ["A", "K", "Q", "J"],
         maxAttempts: 3,
         timeLimit: 40,
@@ -62,6 +66,7 @@ export const GAME_CATALOG = [
       {
         key: "hard",
         label: "Мастер",
+        role: "risk",
         ranks: ["A", "K", "Q", "J", "10"],
         maxAttempts: 3,
         timeLimit: 32,
@@ -86,6 +91,7 @@ export const GAME_CATALOG = [
       {
         key: "compact",
         label: "Компакт",
+        role: "warmup",
         size: 5,
         moves: 14,
         target: 90,
@@ -96,6 +102,7 @@ export const GAME_CATALOG = [
       {
         key: "normal",
         label: "Классика",
+        role: "skill",
         size: 6,
         moves: 18,
         target: 120,
@@ -106,6 +113,7 @@ export const GAME_CATALOG = [
       {
         key: "chaos",
         label: "Хаос",
+        role: "risk",
         size: 7,
         moves: 20,
         target: 180,
@@ -131,6 +139,7 @@ export const GAME_CATALOG = [
       {
         key: "single",
         label: "Один шанс",
+        role: "warmup",
         allowReroll: false,
         targetScore: 1,
         timeLimit: 24,
@@ -139,6 +148,7 @@ export const GAME_CATALOG = [
       {
         key: "classic",
         label: "Классика",
+        role: "skill",
         allowReroll: true,
         targetScore: 2,
         timeLimit: 40,
@@ -147,6 +157,7 @@ export const GAME_CATALOG = [
       {
         key: "risk",
         label: "Риск",
+        role: "risk",
         allowReroll: true,
         targetScore: 4,
         timeLimit: 32,
@@ -170,6 +181,7 @@ export const GAME_CATALOG = [
       {
         key: "normal",
         label: "Классика",
+        role: "skill",
         timeLimit: 60,
         rackSize: 7,
         summary: "Базовый набор букв и мягкий темп на разгон."
@@ -177,6 +189,7 @@ export const GAME_CATALOG = [
       {
         key: "rush",
         label: "Блиц",
+        role: "blitz",
         timeLimit: 45,
         rackSize: 6,
         summary: "Меньше букв и жёстче таймер. Быстрый рискованный раунд."
@@ -184,6 +197,7 @@ export const GAME_CATALOG = [
       {
         key: "expert",
         label: "Эксперт",
+        role: "risk",
         timeLimit: 55,
         rackSize: 8,
         summary: "Больше букв и выше потолок награды за длинные слова."
@@ -202,6 +216,9 @@ export function validateGameCatalog(list = GAME_CATALOG) {
     if (!Array.isArray(game.rules)) throw new Error(`Game ${game.key} is missing rules.`);
     if (!Array.isArray(game.modes) || game.modes.length === 0) {
       throw new Error(`Game ${game.key} is missing modes.`);
+    }
+    for (const mode of game.modes) {
+      if (!mode?.role) throw new Error(`Game ${game.key} mode ${mode?.key || "unknown"} is missing role.`);
     }
   }
 }
