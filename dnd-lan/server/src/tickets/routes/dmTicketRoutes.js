@@ -1,6 +1,7 @@
 import { dmAuthMiddleware } from "../../auth.js";
 import { getDb, getSingleParty, getSinglePartyId } from "../../db.js";
 import {
+  adjustPlayerTicketsBulk,
   adjustPlayerTickets,
   listDmTickets,
   resetDailyQuest,
@@ -10,6 +11,7 @@ import {
 import { getDmTicketMetricsPayload, getTicketRulesPayload } from "../services/ticketQueryService.js";
 import {
   dmAdjustBodySchema,
+  dmAdjustBulkBodySchema,
   dmMetricsQuerySchema,
   dmQuestBodySchema,
   dmQuestResetBodySchema,
@@ -74,6 +76,19 @@ export function registerDmTicketRoutes(router, { buildMatchmakingPayload }) {
     const body = requireValidRouteInput(res, dmAdjustBodySchema, req.body);
     if (!body) return;
     const result = adjustPlayerTickets({
+      db: getDb(),
+      party: getSingleParty(),
+      body,
+      io: req.app.locals.io,
+      buildMatchmakingPayload
+    });
+    return res.status(result.status).json(result.body);
+  });
+
+  router.post("/dm/adjust-bulk", dmAuthMiddleware, (req, res) => {
+    const body = requireValidRouteInput(res, dmAdjustBulkBodySchema, req.body);
+    if (!body) return;
+    const result = adjustPlayerTicketsBulk({
       db: getDb(),
       party: getSingleParty(),
       body,

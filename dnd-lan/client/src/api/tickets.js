@@ -39,5 +39,6 @@ export const ticketsApi = {
   dmTicketsResetQuest: (questKey, dayKey = null) =>
     request("/api/tickets/dm/quest/reset", { method: "POST", body: JSON.stringify({ questKey, dayKey }) }),
   dmTicketsList: () => request("/api/tickets/dm/list", { method: "GET" }),
-  dmTicketsAdjust: (payload) => request("/api/tickets/dm/adjust", { method: "POST", body: JSON.stringify(payload) })
+  dmTicketsAdjust: (payload) => request("/api/tickets/dm/adjust", { method: "POST", body: JSON.stringify(payload) }),
+  dmTicketsAdjustBulk: (payload) => request("/api/tickets/dm/adjust-bulk", { method: "POST", body: JSON.stringify(payload) })
 };

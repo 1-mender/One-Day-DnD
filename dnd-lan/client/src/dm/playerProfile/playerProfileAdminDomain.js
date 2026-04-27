@@ -1,3 +1,10 @@
+import {
+  getRaceValue,
+  getRaceVariantValue,
+  setRaceInStats,
+  setRaceVariantInStats
+} from "../../../../shared/raceCatalog.js";
+
 export const DM_PROFILE_EDITABLE_OPTIONS = [
   { key: "characterName", label: "Имя персонажа" },
   { key: "classRole", label: "Класс / роль" },
@@ -54,6 +61,28 @@ export const DM_STAT_PRESETS = [
   { key: "standard", label: "15-14-13-12-10-8", stats: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } },
   { key: "hero", label: "16-14-13-12-10-8", stats: { str: 16, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } }
 ];
+
+export function normalizeDmProfileStats(stats, baseStats = null) {
+  const next = toStatsObject(stats);
+  const base = toStatsObject(baseStats);
+  const hasIncomingRace = Object.prototype.hasOwnProperty.call(next, "race");
+  const hasIncomingVariant = Object.prototype.hasOwnProperty.call(next, "raceVariant");
+  const hasBaseRace = Object.prototype.hasOwnProperty.call(base, "race") || Object.prototype.hasOwnProperty.call(base, "raceVariant");
+  if (!hasIncomingRace && !hasIncomingVariant && !hasBaseRace) return next;
+
+  let normalized = setRaceInStats(next, hasIncomingRace ? next.race : getRaceValue(base));
+  if (hasIncomingVariant) {
+    normalized = setRaceVariantInStats(normalized, next.raceVariant);
+  } else if (!hasIncomingRace && hasBaseRace) {
+    normalized = setRaceVariantInStats(normalized, getRaceVariantValue(base));
+  }
+  return normalized;
+}
+
+export function mergeDmProfileStats(stats, baseStats = null) {
+  const base = toStatsObject(baseStats);
+  return normalizeDmProfileStats({ ...base, ...toStatsObject(stats) }, base);
+}
 
 export function normalizeRequestChanges(changes) {
   const out = {};
@@ -116,7 +145,7 @@ function snapshotFromForm(form) {
     classKey: String(form.classKey || ""),
     specializationKey: String(form.specializationKey || ""),
     xp: normalizeXp(form.xp),
-    stats: sortObjectKeys(form.stats || {}),
+    stats: sortObjectKeys(normalizeDmProfileStats(form.stats || {})),
     bio: String(form.bio || ""),
     avatarUrl: String(form.avatarUrl || ""),
     publicFields: [...(form.publicFields || [])].sort(),
@@ -136,7 +165,7 @@ function snapshotFromProfile(profile) {
     classKey: String(profile.classKey || ""),
     specializationKey: String(profile.specializationKey || ""),
     xp: normalizeXp(profile.xp),
-    stats: sortObjectKeys(profile.stats || {}),
+    stats: sortObjectKeys(normalizeDmProfileStats(profile.stats || {})),
     bio: String(profile.bio || ""),
     avatarUrl: String(profile.avatarUrl || ""),
     publicFields: [...(profile.publicFields || [])].sort(),
@@ -185,4 +214,9 @@ function sortObjectKeys(obj) {
       acc[key] = obj[key];
       return acc;
     }, {});
+}
+
+function toStatsObject(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return { ...value };
 }

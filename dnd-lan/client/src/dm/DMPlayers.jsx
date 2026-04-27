@@ -15,6 +15,12 @@ import { t } from "../i18n/index.js";
 import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
 import { createImpersonationHandoffUrl } from "../lib/impersonationHandoff.js";
 import { SPECIALIZATION_ROLE_LABELS, getSpecializationRole } from "../player/classCatalog.js";
+import {
+  DM_PLAYER_FLAG_FILTERS,
+  filterDmPlayers,
+  getDmPlayerFilterSummary,
+  sortDmPlayers
+} from "./dmPlayersDomain.js";
 
 export default function DMPlayers() {
   const [players, setPlayers] = useState([]);
@@ -32,11 +38,13 @@ export default function DMPlayers() {
   const [bulkTicketDelta, setBulkTicketDelta] = useState("");
   const [bulkTicketReason, setBulkTicketReason] = useState("");
   const [bulkTicketBusy, setBulkTicketBusy] = useState(false);
+  const [bulkTicketSummary, setBulkTicketSummary] = useState(null);
   const [activityBusyId, setActivityBusyId] = useState(0);
   const [removeTarget, setRemoveTarget] = useState(null);
   const [q, setQ] = useQueryState("q", "");
   const [statusFilter, setStatusFilter] = useQueryState("status", "all");
   const [roleFilter, setRoleFilter] = useQueryState("role", "all");
+  const [flagFilter, setFlagFilter] = useQueryState("flag", "all");
   const [selectedIdParam, setSelectedIdParam] = useQueryState("id", "");
   const nav = useNavigate();
   const { socket } = useSocket();
@@ -205,17 +213,19 @@ export default function DMPlayers() {
     if (!targets.length) return;
     setErr("");
     setBulkTicketBusy(true);
+    setBulkTicketSummary(null);
     try {
-      for (const player of targets) {
-        await api.dmTicketsAdjust({
-          playerId: player.id,
-          delta,
-          reason: bulkTicketReason
-        });
+      const response = await api.dmTicketsAdjustBulk({
+        playerIds: targets.map((player) => player.id),
+        delta,
+        reason: bulkTicketReason
+      });
+      setBulkTicketSummary(response);
+      if (!response?.failedCount) {
+        setBulkTicketOpen(false);
+        setBulkTicketDelta("");
+        setBulkTicketReason("");
       }
-      setBulkTicketOpen(false);
-      setBulkTicketDelta("");
-      setBulkTicketReason("");
       await loadAll();
     } catch (error) {
       setErr(formatError(error));
@@ -250,7 +260,10 @@ export default function DMPlayers() {
         profileExists: Boolean(player.profileExists ?? player.profileCreated),
         specializationRole: getSpecializationRole(player),
         ticketBalance: Number(ticketData.balance || 0),
-        ticketStreak: Number(ticketData.streak || 0)
+        ticketStreak: Number(ticketData.streak || 0),
+        pendingRequestCount: Number(player.pendingRequestCount || 0),
+        characterName: String(player.characterName || ""),
+        classRole: String(player.classRole || "")
       };
     });
   }, [players, tickets]);
@@ -270,15 +283,13 @@ export default function DMPlayers() {
   }, [selectedPlayer?.id, trackRecent]);
 
   const filtered = useMemo(() => {
-    const query = String(q || "").toLowerCase().trim();
-    return playersWithTickets.filter((player) => {
-      const status = String(player.status || "offline");
-      if (statusFilter !== "all" && status !== statusFilter) return false;
-      if (roleFilter !== "all" && player.specializationRole?.key !== roleFilter) return false;
-      if (!query) return true;
-      return String(player.displayName || "").toLowerCase().includes(query);
-    });
-  }, [playersWithTickets, q, roleFilter, statusFilter]);
+    return sortDmPlayers(filterDmPlayers(playersWithTickets, {
+      query: q,
+      status: statusFilter,
+      role: roleFilter,
+      flag: flagFilter
+    }));
+  }, [flagFilter, playersWithTickets, q, roleFilter, statusFilter]);
 
   const statusCounts = useMemo(() => {
     return playersWithTickets.reduce(
@@ -294,12 +305,13 @@ export default function DMPlayers() {
   }, [playersWithTickets]);
 
   const currentFilterLabel = useMemo(() => {
-    const parts = [];
-    if (statusFilter !== "all") parts.push(`Статус: ${statusFilter}`);
-    if (roleFilter !== "all") parts.push(`Роль: ${SPECIALIZATION_ROLE_LABELS[roleFilter] || roleFilter}`);
-    if (q.trim()) parts.push(`Поиск: ${q.trim()}`);
-    return parts.length ? parts.join(" • ") : "Все игроки";
-  }, [q, roleFilter, statusFilter]);
+    return getDmPlayerFilterSummary({
+      query: q,
+      status: statusFilter,
+      role: roleFilter === "all" ? "all" : (SPECIALIZATION_ROLE_LABELS[roleFilter] || roleFilter),
+      flag: flagFilter === "all" ? "all" : (DM_PLAYER_FLAG_FILTERS.find((item) => item.key === flagFilter)?.label || flagFilter)
+    });
+  }, [flagFilter, q, roleFilter, statusFilter]);
 
   const selectedSummary = useMemo(() => {
     if (!selectedPlayer) return null;
@@ -311,6 +323,19 @@ export default function DMPlayers() {
       lastSeenLabel: selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "Нет данных"
     };
   }, [selectedPlayer]);
+
+  const operationalCounts = useMemo(() => {
+    return playersWithTickets.reduce(
+      (acc, player) => {
+        if (!player.profileExists) acc.noProfile += 1;
+        if (player.shieldActive) acc.shield += 1;
+        if (player.specializationAvailable) acc.specialization += 1;
+        if (Number(player.pendingRequestCount || 0) > 0) acc.requests += 1;
+        return acc;
+      },
+      { noProfile: 0, shield: 0, specialization: 0, requests: 0 }
+    );
+  }, [playersWithTickets]);
 
   return (
     <>
@@ -380,12 +405,6 @@ export default function DMPlayers() {
                   aria-label={t("dmPlayers.searchPlaceholder")}
                   className="u-w-min-360"
                 />
-                <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label={t("dmPlayers.statusAll")} className="u-w-180">
-                  <option value="all">{t("dmPlayers.statusAll")}</option>
-                  <option value="online">{t("dmPlayers.statusOnline")}</option>
-                  <option value="idle">{t("dmPlayers.statusIdle")}</option>
-                  <option value="offline">{t("dmPlayers.statusOffline")}</option>
-                </select>
                 <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} aria-label="Фильтр по роли специализации" className="u-w-180">
                   <option value="all">Все роли</option>
                   {Object.entries(SPECIALIZATION_ROLE_LABELS).map(([key, label]) => (
@@ -395,19 +414,62 @@ export default function DMPlayers() {
                 <button
                   type="button"
                   className="btn secondary"
-                  onClick={() => savedFilters.savePreset(currentFilterLabel, { q, statusFilter, roleFilter })}
+                  onClick={() => savedFilters.savePreset(currentFilterLabel, { q, statusFilter, roleFilter, flagFilter })}
                 >
                   Сохранить фильтр
                 </button>
                 <button
                   type="button"
                   className="btn secondary"
-                  onClick={() => setBulkTicketOpen(true)}
+                  onClick={() => {
+                    setBulkTicketSummary(null);
+                    setBulkTicketOpen(true);
+                  }}
                   disabled={readOnly || !filtered.length}
                 >
                   Билеты группе
                 </button>
               </FilterBar>
+              <div className="players-filterbar" aria-label="Статусы игроков">
+                {[
+                  { key: "all", label: "Все", count: playersWithTickets.length },
+                  { key: "online", label: "Онлайн", count: statusCounts.online },
+                  { key: "idle", label: "Нет активности", count: statusCounts.idle },
+                  { key: "offline", label: "Оффлайн", count: statusCounts.offline }
+                ].map((item) => (
+                  <button
+                    key={`status-${item.key}`}
+                    type="button"
+                    className={`players-filter-chip${statusFilter === item.key ? " active" : ""}`.trim()}
+                    onClick={() => setStatusFilter(item.key)}
+                  >
+                    {item.label} {item.count}
+                  </button>
+                ))}
+              </div>
+              <div className="players-filterbar" aria-label="Операционные фильтры игроков">
+                {DM_PLAYER_FLAG_FILTERS.map((item) => {
+                  const count = item.key === "all"
+                    ? playersWithTickets.length
+                    : item.key === "no_profile"
+                      ? operationalCounts.noProfile
+                      : item.key === "shield"
+                        ? operationalCounts.shield
+                        : item.key === "specialization"
+                          ? operationalCounts.specialization
+                          : operationalCounts.requests;
+                  return (
+                    <button
+                      key={`flag-${item.key}`}
+                      type="button"
+                      className={`players-filter-chip${flagFilter === item.key ? " active" : ""}`.trim()}
+                      onClick={() => setFlagFilter(item.key)}
+                    >
+                      {item.label} {count}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             {savedFilters.hasPresets ? (
               <div className="dm-saved-filters">
@@ -420,6 +482,7 @@ export default function DMPlayers() {
                         setQ(String(preset.values?.q || ""));
                         setStatusFilter(String(preset.values?.statusFilter || "all"));
                         setRoleFilter(String(preset.values?.roleFilter || "all"));
+                        setFlagFilter(String(preset.values?.flagFilter || "all"));
                       }}
                     >
                       {preset.label}
@@ -436,44 +499,53 @@ export default function DMPlayers() {
                 ))}
               </div>
             ) : null}
-            <VirtualizedStack
-              className="list dm-players-roster"
-              items={filtered}
-              estimateSize={164}
-              rowGap={14}
-              staticThreshold={20}
-              getItemKey={(player) => player.id}
-              renderItem={(player) => (
-                <PlayerDossierCard
-                  player={player}
-                  ticketBalance={player.ticketBalance}
-                  ticketStreak={player.ticketStreak}
-                  attentionBadges={player.specializationAvailable ? [
-                    { key: "specializationAvailable", label: "СПЕЦ. ДОСТУПНА", tone: "warn" }
-                  ] : []}
-                  selected={player.id === selectedId}
-                  onClick={() => selectPlayer(player.id)}
-                  menu={(
-                    <ActionMenu
-                      label={t("dmPlayers.menuLabel")}
-                      items={[
-                        ...(player.specializationAvailable ? [
-                          { label: "Выбрать специализацию", onClick: () => openProfile(player.id, "dm-specialization-panel") }
-                        ] : []),
-                        { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
-                        { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
-                        { label: player.shieldActive ? "Закрыть Щиток" : "Открыть Щиток", onClick: () => toggleShieldActivity(player), disabled: readOnly || activityBusyId === player.id },
-                        { label: t("dmPlayers.menuTickets"), onClick: () => openTickets(player), disabled: readOnly },
-                        { label: t("dmPlayers.menuEditName"), onClick: () => startEdit(player), disabled: readOnly },
-                        { label: t("dmPlayers.menuAsPlayer"), onClick: () => viewAs(player.id), disabled: readOnly },
-                        { label: t("dmPlayers.menuKick"), onClick: () => kickPlayer(player.id), disabled: readOnly, tone: "danger" },
-                        { label: t("dmPlayers.menuDelete"), onClick: () => requestRemove(player), disabled: readOnly, tone: "danger" }
-                      ]}
-                    />
-                  )}
-                />
-              )}
-            />
+            {!filtered.length ? (
+              <div className="paper-note">
+                <div className="title">Ничего не найдено</div>
+                <div className="small">Измени поиск или снимай фильтры: сейчас список игроков пуст.</div>
+              </div>
+            ) : (
+              <VirtualizedStack
+                className="list dm-players-roster"
+                items={filtered}
+                estimateSize={164}
+                rowGap={14}
+                staticThreshold={20}
+                getItemKey={(player) => player.id}
+                renderItem={(player) => (
+                  <PlayerDossierCard
+                    player={player}
+                    ticketBalance={player.ticketBalance}
+                    ticketStreak={player.ticketStreak}
+                    attentionBadges={[
+                      ...(player.specializationAvailable ? [{ key: "specializationAvailable", label: "СПЕЦ. ДОСТУПНА", tone: "warn" }] : []),
+                      ...(!player.profileExists ? [{ key: "profileMissing", label: "БЕЗ ПРОФ.", tone: "warn" }] : []),
+                      ...(player.shieldActive ? [{ key: "shieldActive", label: "ЩИТОК", tone: "ok" }] : []),
+                      ...(player.pendingRequestCount > 0 ? [{ key: "pendingRequests", label: `ЗАЯВКИ: ${player.pendingRequestCount}`, tone: "secondary" }] : [])
+                    ]}
+                    selected={player.id === selectedId}
+                    onClick={() => selectPlayer(player.id)}
+                    menu={(
+                      <ActionMenu
+                        label={t("dmPlayers.menuLabel")}
+                        items={[
+                          { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
+                          ...(player.specializationAvailable ? [
+                            { label: "Выбрать специализацию", onClick: () => openProfile(player.id, "dm-specialization-panel") }
+                          ] : []),
+                          ...(player.pendingRequestCount > 0 ? [
+                            { label: `Открыть заявки (${player.pendingRequestCount})`, onClick: () => openProfile(player.id, "dm-requests-panel") }
+                          ] : []),
+                          { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
+                          { label: player.shieldActive ? "Закрыть Щиток" : "Открыть Щиток", onClick: () => toggleShieldActivity(player), disabled: readOnly || activityBusyId === player.id },
+                          { label: t("dmPlayers.menuTickets"), onClick: () => openTickets(player), disabled: readOnly }
+                        ]}
+                      />
+                    )}
+                  />
+                )}
+              />
+            )}
           </div>
         </div>
 
@@ -491,6 +563,12 @@ export default function DMPlayers() {
                         lastSeen: selectedPlayer.lastSeen ? new Date(selectedPlayer.lastSeen).toLocaleString() : "-"
                       })}
                     </div>
+                    {selectedPlayer.characterName && selectedPlayer.characterName !== selectedPlayer.displayName ? (
+                      <div className="small dm-player-detail-meta">Персонаж: {selectedPlayer.characterName}</div>
+                    ) : null}
+                    {selectedPlayer.classRole ? (
+                      <div className="small dm-player-detail-meta">Роль: {selectedPlayer.classRole}</div>
+                    ) : null}
                   </div>
                   <div className="tf-command-actions">
                     <button className="btn secondary" onClick={() => selectPlayer(0)}>{t("dmPlayers.backToList")}</button>
@@ -520,6 +598,9 @@ export default function DMPlayers() {
                   {selectedPlayer.specializationRole ? (
                     <span className="badge ok">Роль: {selectedPlayer.specializationRole.label}</span>
                   ) : null}
+                  {selectedPlayer.pendingRequestCount > 0 ? (
+                    <span className="badge warn">Заявки: {selectedPlayer.pendingRequestCount}</span>
+                  ) : null}
                   <span className="badge secondary">Последний вход: {selectedSummary?.lastSeenLabel}</span>
                 </div>
                 <div className="row u-row-wrap dm-player-detail-badges">
@@ -540,12 +621,27 @@ export default function DMPlayers() {
                     <div className="small">Серия</div>
                     <strong>{selectedPlayer.ticketStreak ?? 0}</strong>
                   </div>
+                  <div className="tf-stat-card">
+                    <div className="small">Заявки</div>
+                    <strong>{selectedPlayer.pendingRequestCount ?? 0}</strong>
+                  </div>
                 </div>
                 <div className="paper-note dm-player-quick-links">
                   <div className="title">Быстрые переходы</div>
-                  <div className="small">Открой профиль для детального редактирования, запусти Щиток или зайди как игрок только для просмотра.</div>
+                  <div className="small">Профиль и редкие опасные действия собраны здесь, чтобы сам список игроков оставался короче.</div>
                 </div>
                 <div className="list u-list-mt-12 dm-player-action-list">
+                  <button className="btn secondary" onClick={() => openProfile(selectedPlayer.id)}>{t("dmPlayers.openProfile")}</button>
+                  {selectedPlayer.specializationAvailable ? (
+                    <button className="btn secondary" onClick={() => openProfile(selectedPlayer.id, "dm-specialization-panel")}>
+                      Выбрать специализацию
+                    </button>
+                  ) : null}
+                  {selectedPlayer.pendingRequestCount > 0 ? (
+                    <button className="btn secondary" onClick={() => openProfile(selectedPlayer.id, "dm-requests-panel")}>
+                      Открыть заявки
+                    </button>
+                  ) : null}
                   <button className="btn secondary" onClick={() => toggleShieldActivity(selectedPlayer)} disabled={readOnly || activityBusyId === selectedPlayer.id}>
                     {activityBusyId === selectedPlayer.id
                       ? (selectedPlayer.shieldActive ? "Закрываю..." : "Открываю...")
@@ -572,10 +668,22 @@ export default function DMPlayers() {
                     <div className="small">С профилем</div>
                     <strong>{playersWithTickets.filter((player) => player.profileExists).length}</strong>
                   </div>
+                  <div className="tf-stat-card">
+                    <div className="small">Без профиля</div>
+                    <strong>{operationalCounts.noProfile}</strong>
+                  </div>
+                  <div className="tf-stat-card">
+                    <div className="small">Активный Щиток</div>
+                    <strong>{operationalCounts.shield}</strong>
+                  </div>
+                  <div className="tf-stat-card">
+                    <div className="small">Заявки</div>
+                    <strong>{operationalCounts.requests}</strong>
+                  </div>
                 </div>
                 <div className="paper-note dm-player-empty-note">
                   <div className="title">Что доступно справа</div>
-                  <div className="small">После выбора игрока появятся быстрые действия, состояние профиля, билеты и переход в карточку игрока.</div>
+                  <div className="small">После выбора игрока появятся быстрые действия, профиль, билеты, заявки и редкие административные операции.</div>
                 </div>
               </div>
             )}
@@ -686,6 +794,25 @@ export default function DMPlayers() {
               {bulkTicketBusy ? "Применяю..." : "Применить ко всем"}
             </button>
           </div>
+          {bulkTicketSummary ? (
+            <div className="list u-mt-10">
+              <div className={`badge ${bulkTicketSummary.failedCount ? "warn" : "ok"}`}>
+                Изменено: {bulkTicketSummary.appliedCount || 0} • ошибок: {bulkTicketSummary.failedCount || 0} • пропусков: {bulkTicketSummary.skippedCount || 0}
+              </div>
+              {Array.isArray(bulkTicketSummary.items) && bulkTicketSummary.items.some((item) => !item.ok) ? (
+                <div className="paper-note">
+                  <div className="title">Проблемные игроки</div>
+                  <div className="list u-mt-8">
+                    {bulkTicketSummary.items.filter((item) => !item.ok).map((item) => (
+                      <div key={`bulk-ticket-error-${item.playerId}`} className="small">
+                        #{item.playerId}: {formatError(item.error || "request_failed")}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </SectionCard>
       </Modal>
     </>

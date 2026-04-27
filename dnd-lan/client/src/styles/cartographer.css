@@ -6187,11 +6187,11 @@ input:focus-visible, textarea:focus-visible, select:focus-visible{
 }
 
 .dm-player-detail-grid{
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+  }
 
 .dm-player-detail-grid .tf-stat-card strong{
   font-size: 20px;

@@ -5,6 +5,8 @@ import {
   formatProfileRequestValue,
   hasAnyData,
   hasUnsavedChanges,
+  mergeDmProfileStats,
+  normalizeDmProfileStats,
   normalizeRequestChanges
 } from "./playerProfileAdminDomain.js";
 
@@ -44,6 +46,57 @@ test("hasUnsavedChanges compares normalized snapshots", () => {
 
   assert.equal(hasUnsavedChanges({ ...profile, editableFields: ["stats", "bio"] }, profile), false);
   assert.equal(hasUnsavedChanges({ ...profile, bio: "Changed" }, profile), true);
+});
+
+test("normalizeDmProfileStats preserves existing race variant when patch omits it", () => {
+  const stats = normalizeDmProfileStats(
+    { str: 12 },
+    { race: "elf", raceVariant: "high", dex: 14 }
+  );
+
+  assert.deepEqual(stats, {
+    str: 12,
+    race: "elf",
+    raceVariant: "high"
+  });
+});
+
+test("mergeDmProfileStats keeps origin on presets and resets invalid variant on race change", () => {
+  assert.deepEqual(
+    mergeDmProfileStats(
+      { str: 15, dex: 13 },
+      { race: "elf", raceVariant: "dusk", wis: 9 }
+    ),
+    {
+      race: "elf",
+      raceVariant: "dusk",
+      wis: 9,
+      str: 15,
+      dex: 13
+    }
+  );
+
+  assert.deepEqual(
+    mergeDmProfileStats(
+      { race: "human", str: 11 },
+      { race: "elf", raceVariant: "high", dex: 14 }
+    ),
+    {
+      race: "human",
+      raceVariant: "city",
+      dex: 14,
+      str: 11
+    }
+  );
+});
+
+test("hasUnsavedChanges detects raceVariant-only change", () => {
+  const profile = {
+    ...EMPTY_DM_PROFILE_FORM,
+    stats: { race: "elf", raceVariant: "high" }
+  };
+
+  assert.equal(hasUnsavedChanges({ ...profile, stats: { race: "elf", raceVariant: "wood" } }, profile), true);
 });
 
 test("formatProfileRequestValue serializes objects for readable previews", () => {

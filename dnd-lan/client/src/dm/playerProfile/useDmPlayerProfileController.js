@@ -11,6 +11,8 @@ import {
   EMPTY_DM_PROFILE_FORM,
   hasAnyData,
   hasUnsavedChanges,
+  mergeDmProfileStats,
+  normalizeDmProfileStats,
   normalizeXp,
   normalizeReputation,
   normalizeRequestChanges
@@ -24,7 +26,7 @@ function buildDmProfilePayload(form) {
     classKey: form.classKey || "",
     specializationKey: form.specializationKey || "",
     xp: normalizeXp(form.xp),
-    stats: form.stats || {},
+    stats: normalizeDmProfileStats(form.stats || {}),
     publicFields: form.publicFields || [],
     publicBlurb: form.publicBlurb || "",
     editableFields: form.editableFields || [],
@@ -73,7 +75,7 @@ export function useDmPlayerProfileController() {
       specializationKey: nextProfile?.specializationKey || "",
       xp: normalizeXp(nextProfile?.xp),
       xpLog: Array.isArray(nextProfile?.xpLog) ? nextProfile.xpLog : [],
-      stats: nextProfile?.stats || {},
+      stats: normalizeDmProfileStats(nextProfile?.stats || {}),
       bio: nextProfile?.bio || "",
       avatarUrl: nextProfile?.avatarUrl || "",
       publicFields: nextProfile?.publicFields || [],
@@ -176,6 +178,14 @@ export function useDmPlayerProfileController() {
     }, 0);
   }, [loading, location.hash]);
 
+  useEffect(() => {
+    if (loading || location.hash !== "#dm-requests-panel") return;
+    setTab("requests");
+    window.setTimeout(() => {
+      document.getElementById("dm-requests-panel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }, [loading, location.hash]);
+
   const save = useCallback(async () => {
     if (readOnly || !playerId) return;
     setErr("");
@@ -232,7 +242,7 @@ export function useDmPlayerProfileController() {
   const applyPreset = useCallback((preset) => {
     setForm((prev) => ({
       ...prev,
-      stats: { ...preset.stats, race: prev?.stats?.race ?? preset?.stats?.race }
+      stats: mergeDmProfileStats(preset?.stats || {}, prev?.stats || {})
     }));
   }, []);
 
@@ -247,7 +257,7 @@ export function useDmPlayerProfileController() {
       level: Number.isFinite(nextLevel) ? nextLevel : prev.level,
       specializationKey: hasClassKey && !hasSpecializationKey ? "" : (data.specializationKey ?? prev.specializationKey),
       stats: data.stats
-        ? { ...(data.stats || {}), race: prev?.stats?.race ?? data?.stats?.race }
+        ? mergeDmProfileStats(data.stats || {}, prev?.stats || {})
         : prev.stats
     }));
   }, []);
@@ -255,7 +265,13 @@ export function useDmPlayerProfileController() {
   const applyFromRequest = useCallback((requestItem) => {
     const patch = normalizeRequestChanges(requestItem?.proposedChanges);
     if (!Object.keys(patch).length) return;
-    setForm((prev) => ({ ...prev, ...patch }));
+    setForm((prev) => ({
+      ...prev,
+      ...patch,
+      stats: Object.prototype.hasOwnProperty.call(patch, "stats")
+        ? normalizeDmProfileStats(patch.stats, prev?.stats || {})
+        : prev.stats
+    }));
     setTab("profile");
     toast.info("Изменения перенесены в форму");
   }, [toast]);
@@ -360,9 +376,9 @@ export function useDmPlayerProfileController() {
     loadRequests,
     loading,
     notCreated,
-    openPlayerProfile: (targetId) => {
+    openPlayerProfile: (targetId, focus = "") => {
       if (!targetId || targetId === playerId) return;
-      navigate(`/dm/app/players/${targetId}/profile`);
+      navigate(`/dm/app/players/${targetId}/profile${focus ? `#${focus}` : ""}`);
     },
     player,
     playerId,

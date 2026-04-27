@@ -66,21 +66,34 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
            p.status,
            p.last_seen as lastSeen,
            p.created_at as createdAt,
-           MAX(CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END) as profileCreated,
-           MAX(cp.stats) as profileStats,
-           MAX(cp.class_key) as classKey,
-           MAX(cp.specialization_key) as specializationKey,
-           MAX(cp.xp) as xp,
-           COALESCE(SUM(i.weight * i.qty), 0) as inventoryWeight,
-           MAX(CASE WHEN pla.kind='shield' THEN 1 ELSE 0 END) as shieldActive
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated,
+           cp.character_name as characterName,
+           cp.class_role as classRole,
+           cp.stats as profileStats,
+           cp.class_key as classKey,
+           cp.specialization_key as specializationKey,
+           cp.xp as xp,
+           COALESCE((
+             SELECT SUM(i.weight * i.qty)
+             FROM inventory_items i
+             WHERE i.player_id = p.id
+           ), 0) as inventoryWeight,
+           EXISTS(
+             SELECT 1
+             FROM player_live_activities pla
+             WHERE pla.player_id = p.id
+               AND pla.status='active'
+               AND pla.kind='shield'
+           ) as shieldActive,
+           (
+             SELECT COUNT(*)
+             FROM profile_change_requests pcr
+             WHERE pcr.player_id = p.id
+               AND pcr.status='pending'
+           ) as pendingRequestCount
     FROM players p
     LEFT JOIN character_profiles cp ON cp.player_id = p.id
-    LEFT JOIN inventory_items i ON i.player_id = p.id
-    LEFT JOIN player_live_activities pla
-      ON pla.player_id = p.id
-     AND pla.status='active'
     WHERE p.party_id=?
-    GROUP BY p.id, p.display_name, p.status, p.last_seen, p.created_at
     ORDER BY p.id
   `
   ).all(partyId);
@@ -94,8 +107,11 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
       inventoryLimit: limitInfo.limit,
       inventoryOverLimit: limitInfo.limit > 0 && Number.isFinite(total) && total > limitInfo.limit,
       profileExists: !!Number(row.profileCreated || 0),
+      characterName: row.characterName || "",
+      classRole: row.classRole || "",
       specializationAvailable: !!row.classKey && !row.specializationKey && Number(row.xp || 0) >= 100,
-      shieldActive: !!Number(row.shieldActive || 0)
+      shieldActive: !!Number(row.shieldActive || 0),
+      pendingRequestCount: Number(row.pendingRequestCount || 0)
     };
   });
   res.json({ items });

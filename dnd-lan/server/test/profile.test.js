@@ -176,6 +176,33 @@ test("DM players list marks profiles ready for specialization", async () => {
   assert.equal(player.specializationAvailable, true);
 });
 
+test("DM players list exposes character search fields and pending request count", async () => {
+  const playerId = createPlayer("Searchable Player");
+  const token = createSession(playerId);
+  const dmHeaders = { cookie: dmCookie() };
+
+  await api(`/api/players/${playerId}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: { characterName: "Selena", classRole: "Арканист", allowRequests: true }
+  });
+
+  const reqRes = await api(`/api/players/${playerId}/profile-requests`, {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: { proposedChanges: { bio: "Хочу обновить биографию" }, reason: "Новая сцена" }
+  });
+  assert.equal(reqRes.res.status, 200);
+
+  const listRes = await api("/api/players/dm/list", { headers: dmHeaders });
+  assert.equal(listRes.res.status, 200);
+
+  const player = listRes.data.items.find((item) => item.id === playerId);
+  assert.equal(player.characterName, "Selena");
+  assert.equal(player.classRole, "Арканист");
+  assert.equal(player.pendingRequestCount, 1);
+});
+
 test("Player can create request with reason and DM can approve", async () => {
   const playerId = createPlayer("Player Two");
   const token = createSession(playerId);
@@ -448,4 +475,69 @@ test("Roster returns public profile projection without private fields", async ()
   assert.equal("bio" in item.publicProfile, false);
   assert.equal("stats" in item.publicProfile, false);
   assert.equal("publicBlurb" in item.publicProfile, false);
+});
+
+test("Profile save normalizes race variant for selected race", async () => {
+  const playerId = createPlayer("Race Normalize");
+  const dmHeaders = { cookie: dmCookie() };
+
+  const res = await api(`/api/players/${playerId}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: {
+      characterName: "Origin",
+      stats: { race: "human", raceVariant: "high", str: 11 }
+    }
+  });
+
+  assert.equal(res.res.status, 200);
+  assert.deepEqual(res.data.profile.stats, {
+    race: "human",
+    raceVariant: "city",
+    str: 11
+  });
+});
+
+test("Approve request keeps existing race variant when stats patch omits race fields", async () => {
+  const playerId = createPlayer("Race Request");
+  const token = createSession(playerId);
+  const dmHeaders = { cookie: dmCookie() };
+
+  await api(`/api/players/${playerId}/profile`, {
+    method: "PUT",
+    headers: dmHeaders,
+    body: {
+      characterName: "Keeper",
+      allowRequests: true,
+      stats: { race: "elf", raceVariant: "high", dex: 14 }
+    }
+  });
+
+  const reqRes = await api(`/api/players/${playerId}/profile-requests`, {
+    method: "POST",
+    headers: { "x-player-token": token },
+    body: {
+      proposedChanges: { stats: { str: 12 } },
+      reason: "Need more strength"
+    }
+  });
+  assert.equal(reqRes.res.status, 200);
+
+  const approveRes = await api(`/api/profile-requests/${reqRes.data.requestId}/approve`, {
+    method: "POST",
+    headers: dmHeaders,
+    body: { note: "OK" }
+  });
+  assert.equal(approveRes.res.status, 200);
+
+  const profileRes = await api(`/api/players/${playerId}/profile`, {
+    method: "GET",
+    headers: dmHeaders
+  });
+  assert.equal(profileRes.res.status, 200);
+  assert.deepEqual(profileRes.data.profile.stats, {
+    race: "elf",
+    raceVariant: "high",
+    str: 12
+  });
 });

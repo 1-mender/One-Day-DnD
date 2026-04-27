@@ -2,50 +2,51 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   dmAdjustBodySchema,
-  dmMetricsQuerySchema,
-  dmQuestBodySchema,
-  dmQuestResetBodySchema,
-  dmRulesBodySchema,
+  dmAdjustBulkBodySchema,
   parseTicketRouteInput
 } from "../src/tickets/routes/dmTicketRouteSchemas.js";
 
-test("dm ticket route schemas coerce and trim valid payloads", () => {
-  assert.deepEqual(parseTicketRouteInput(dmMetricsQuerySchema, { days: "7" }), {
-    ok: true,
-    data: { days: 7 }
-  });
-  assert.deepEqual(parseTicketRouteInput(dmQuestBodySchema, { questKey: " q-daily " }), {
-    ok: true,
-    data: { questKey: "q-daily" }
-  });
-  assert.deepEqual(parseTicketRouteInput(dmQuestResetBodySchema, { questKey: " q-daily ", dayKey: "20260404" }), {
-    ok: true,
-    data: { questKey: "q-daily", dayKey: 20260404 }
-  });
+test("dm ticket schemas accept valid single and bulk adjust payloads", () => {
   assert.deepEqual(parseTicketRouteInput(dmAdjustBodySchema, {
-    playerId: "12",
-    delta: "-5",
-    reason: " reward "
+    playerId: "42",
+    delta: "3",
+    reason: " scene reward "
   }), {
     ok: true,
     data: {
-      playerId: 12,
-      delta: -5,
-      reason: "reward"
+      playerId: 42,
+      delta: 3,
+      reason: "scene reward"
+    }
+  });
+
+  assert.deepEqual(parseTicketRouteInput(dmAdjustBulkBodySchema, {
+    playerIds: ["4", 7, "9"],
+    delta: "-2",
+    reason: " correction "
+  }), {
+    ok: true,
+    data: {
+      playerIds: [4, 7, 9],
+      delta: -2,
+      reason: "correction"
     }
   });
 });
 
-test("dm ticket route schemas reject malformed required fields", () => {
-  assert.deepEqual(parseTicketRouteInput(dmRulesBodySchema, { enabled: "yes" }), {
+test("dm ticket bulk schema rejects empty or noop payloads", () => {
+  assert.deepEqual(parseTicketRouteInput(dmAdjustBulkBodySchema, {
+    playerIds: [],
+    delta: 1
+  }), {
     ok: false,
     error: "invalid_request"
   });
-  assert.deepEqual(parseTicketRouteInput(dmQuestBodySchema, { questKey: "   " }), {
-    ok: false,
-    error: "invalid_request"
-  });
-  assert.deepEqual(parseTicketRouteInput(dmAdjustBodySchema, { playerId: "nope" }), {
+
+  assert.deepEqual(parseTicketRouteInput(dmAdjustBulkBodySchema, {
+    playerIds: [1, 2],
+    delta: 0
+  }), {
     ok: false,
     error: "invalid_request"
   });

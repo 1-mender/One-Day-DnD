@@ -31,4 +31,21 @@ export const dmAdjustBodySchema = z.object({
   reason: z.string().trim().max(280).optional()
 }).passthrough();
 
+export const dmAdjustBulkBodySchema = z.object({
+  playerIds: z.array(playerIdSchema).min(1).max(100),
+  delta: z.coerce.number().int().min(-1000000).max(1000000).optional(),
+  set: z.coerce.number().int().min(0).max(1000000).nullable().optional(),
+  reason: z.string().trim().max(280).optional()
+}).passthrough().superRefine((value, ctx) => {
+  const hasSet = value.set != null;
+  const hasDelta = value.delta !== undefined && Number(value.delta) !== 0;
+  if (!hasSet && !hasDelta) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "delta_or_set_required",
+      path: ["delta"]
+    });
+  }
+});
+
 export { parseTicketRouteInput };

@@ -12,6 +12,89 @@ function error(status, code) {
   return { ok: false, status, body: { error: code } };
 }
 
+function normalizeAdjustInput(body) {
+  return {
+    delta: Number(body?.delta || 0),
+    set: body?.set != null ? Number(body.set) : null,
+    reason: String(body?.reason || "").trim()
+  };
+}
+
+function adjustPlayerTicketsInternal({
+  db,
+  playerId,
+  delta,
+  set,
+  reason,
+  partyId,
+  io,
+  buildMatchmakingPayload,
+  emitPlayerUpdate = false,
+  emitDmUpdate = false,
+  writeLog = false
+}) {
+  const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(playerId);
+  if (!player) {
+    return {
+      ok: false,
+      status: 404,
+      body: { error: "player_not_found" },
+      playerId
+    };
+  }
+  if (partyId && Number(player.party_id) !== Number(partyId)) {
+    return {
+      ok: false,
+      status: 404,
+      body: { error: "player_not_found" },
+      playerId
+    };
+  }
+
+  let row = ensureTicketRow(db, playerId);
+  const dayKey = getDayKey();
+  row = normalizeDay(db, row, dayKey);
+
+  const nextBalance = Math.max(0, set != null ? set : Number(row.balance || 0) + delta);
+  const t = now();
+  db.prepare("UPDATE tickets SET balance=?, updated_at=? WHERE player_id=?").run(nextBalance, t, playerId);
+
+  if (emitPlayerUpdate) {
+    io?.to(`player:${playerId}`).emit("tickets:updated");
+  }
+  if (emitDmUpdate) {
+    io?.to("dm").emit("tickets:updated");
+  }
+
+  if (writeLog) {
+    logEvent({
+      partyId: player.party_id,
+      type: "tickets.adjust",
+      actorRole: "dm",
+      actorName: "DM",
+      targetType: "player",
+      targetId: playerId,
+      message: `DM adjust tickets: ${set != null ? `set ${set}` : `delta ${delta}`}${reason ? ` (${reason})` : ""}`,
+      data: { playerId, delta, set, reason },
+      io
+    });
+  }
+
+  const rules = getEffectiveRules(player.party_id);
+  const payload = buildTicketPayload(db, playerId, dayKey, rules, {
+    partyId: player.party_id,
+    buildMatchmakingPayload
+  });
+
+  return {
+    ok: true,
+    status: 200,
+    playerId,
+    displayName: String(player.display_name || ""),
+    body: payload
+  };
+}
+
 export function updateDmRules({ party, body, io }) {
   const curSettings = getPartySettings(party.id);
   const currentOverrides = jsonParse(curSettings?.tickets_rules, {});
@@ -135,43 +218,98 @@ export function adjustPlayerTickets({ db, party, body, io, buildMatchmakingPaylo
   const playerId = Number(body?.playerId);
   if (!playerId) return error(400, "invalid_playerId");
 
-  const delta = Number(body?.delta || 0);
-  const set = body?.set != null ? Number(body.set) : null;
-  const reason = String(body?.reason || "").trim();
+  const { delta, set, reason } = normalizeAdjustInput(body);
+  const result = adjustPlayerTicketsInternal({
+    db,
+    playerId,
+    delta,
+    set,
+    reason,
+    partyId: party?.id,
+    io,
+    buildMatchmakingPayload,
+    emitPlayerUpdate: true,
+    emitDmUpdate: true,
+    writeLog: true
+  });
+  return {
+    ok: result.ok,
+    status: result.status,
+    body: result.body
+  };
+}
 
-  const player = db.prepare("SELECT id, party_id FROM players WHERE id=?").get(playerId);
-  if (!player) return error(404, "player_not_found");
+export function adjustPlayerTicketsBulk({ db, party, body, io, buildMatchmakingPayload }) {
+  const playerIds = Array.from(new Set((Array.isArray(body?.playerIds) ? body.playerIds : []).map((value) => Number(value)).filter(Boolean)));
+  if (!playerIds.length) return error(400, "invalid_playerIds");
 
-  let row = ensureTicketRow(db, playerId);
-  const dayKey = getDayKey();
-  row = normalizeDay(db, row, dayKey);
+  const { delta, set, reason } = normalizeAdjustInput(body);
+  const items = [];
+  const updatedPlayerIds = [];
 
-  const nextBalance = Math.max(0, set != null ? set : Number(row.balance || 0) + delta);
-  const t = now();
-  db.prepare("UPDATE tickets SET balance=?, updated_at=? WHERE player_id=?").run(nextBalance, t, playerId);
+  for (const playerId of playerIds) {
+    const result = adjustPlayerTicketsInternal({
+      db,
+      playerId,
+      delta,
+      set,
+      reason,
+      partyId: party?.id,
+      io,
+      buildMatchmakingPayload
+    });
+    if (result.ok) {
+      updatedPlayerIds.push(playerId);
+      items.push({
+        playerId,
+        displayName: result.displayName,
+        ok: true,
+        balance: Number(result.body?.state?.balance || 0),
+        streak: Number(result.body?.state?.streak || 0)
+      });
+    } else {
+      items.push({
+        playerId,
+        ok: false,
+        error: result.body?.error || "request_failed"
+      });
+    }
+  }
 
-  io?.to(`player:${playerId}`).emit("tickets:updated");
-  io?.to("dm").emit("tickets:updated");
+  for (const playerId of updatedPlayerIds) {
+    io?.to(`player:${playerId}`).emit("tickets:updated");
+  }
+  if (updatedPlayerIds.length) {
+    io?.to("dm").emit("tickets:updated");
+  }
 
   logEvent({
-    partyId: player.party_id,
-    type: "tickets.adjust",
+    partyId: party?.id,
+    type: "tickets.adjust_bulk",
     actorRole: "dm",
     actorName: "DM",
-    targetType: "player",
-    targetId: playerId,
-    message: `DM adjust tickets: ${set != null ? `set ${set}` : `delta ${delta}`}${reason ? ` (${reason})` : ""}`,
-    data: { playerId, delta, set, reason },
+    targetType: "player_group",
+    targetId: null,
+    message: `DM bulk adjust tickets: ${set != null ? `set ${set}` : `delta ${delta}`}${reason ? ` (${reason})` : ""}`,
+    data: {
+      playerIds,
+      delta,
+      set,
+      reason,
+      appliedCount: updatedPlayerIds.length,
+      failedCount: items.filter((item) => !item.ok).length
+    },
     io
   });
 
-  const rules = getEffectiveRules(player.party_id);
   return {
     ok: true,
     status: 200,
-    body: buildTicketPayload(db, playerId, dayKey, rules, {
-      partyId: player.party_id,
-      buildMatchmakingPayload
-    })
+    body: {
+      items,
+      appliedCount: updatedPlayerIds.length,
+      failedCount: items.filter((item) => !item.ok).length,
+      skippedCount: Math.max(0, (Array.isArray(body?.playerIds) ? body.playerIds.length : 0) - playerIds.length)
+    }
   };
 }

@@ -32,6 +32,7 @@ export default function DMOpsBar() {
   const [quickTicketScope, setQuickTicketScope] = useState("online");
   const [quickTicketDelta, setQuickTicketDelta] = useState("");
   const [quickTicketReason, setQuickTicketReason] = useState("");
+  const [quickTicketSummary, setQuickTicketSummary] = useState(null);
   const [copied, setCopied] = useState({ url: false, code: false });
   const [err, setErr] = useState("");
   const [quickErr, setQuickErr] = useState("");
@@ -362,19 +363,21 @@ export default function DMOpsBar() {
     }
     setQuickTicketsBusy(true);
     setErr("");
+    setQuickTicketSummary(null);
     try {
-      for (const player of quickTicketTargets) {
-        await api.dmTicketsAdjust({
-          playerId: player.id,
-          delta,
-          reason: quickTicketReason
-        });
+      const response = await api.dmTicketsAdjustBulk({
+        playerIds: quickTicketTargets.map((player) => player.id),
+        delta,
+        reason: quickTicketReason
+      });
+      setQuickTicketSummary(response);
+      if (!response?.failedCount) {
+        setQuickTicketsOpen(false);
+        setQuickTicketDelta("");
+        setQuickTicketReason("");
       }
-      setQuickTicketsOpen(false);
-      setQuickTicketDelta("");
-      setQuickTicketReason("");
       await loadPlayers();
-      pushQuickMsg(`Билеты изменены у игроков: ${quickTicketTargets.length}`);
+      pushQuickMsg(`Билеты изменены: ${response?.appliedCount || 0}${response?.failedCount ? `, ошибок: ${response.failedCount}` : ""}`);
     } catch (e) {
       setErr(formatError(e));
     } finally {
@@ -391,15 +394,13 @@ export default function DMOpsBar() {
     setQuickTicketsBusy(true);
     setErr("");
     try {
-      for (const player of targets) {
-        await api.dmTicketsAdjust({
-          playerId: player.id,
-          delta,
-          reason
-        });
-      }
+      const response = await api.dmTicketsAdjustBulk({
+        playerIds: targets.map((player) => player.id),
+        delta,
+        reason
+      });
       await loadPlayers();
-      pushQuickMsg(`Бонус выдан: ${targets.length} игрокам`);
+      pushQuickMsg(`Бонус выдан: ${response?.appliedCount || 0}${response?.failedCount ? `, ошибок: ${response.failedCount}` : ""}`);
     } catch (e) {
       setErr(formatError(e));
     } finally {
@@ -561,7 +562,10 @@ export default function DMOpsBar() {
                 <button
                   type="button"
                   className="btn secondary dm-ops-quick-action dm-ops-quick-action-compact"
-                  onClick={() => setQuickTicketsOpen(true)}
+                  onClick={() => {
+                    setQuickTicketSummary(null);
+                    setQuickTicketsOpen(true);
+                  }}
                 >
                   <Coins className="icon" aria-hidden="true" />
                   Билеты по группе
@@ -918,6 +922,25 @@ export default function DMOpsBar() {
           <button type="button" className="btn" onClick={applyQuickTickets} disabled={quickTicketsBusy}>
             {quickTicketsBusy ? "Применяю..." : "Применить"}
           </button>
+          {quickTicketSummary ? (
+            <div className="list">
+              <div className={`badge ${quickTicketSummary.failedCount ? "warn" : "ok"}`}>
+                Изменено: {quickTicketSummary.appliedCount || 0} • ошибок: {quickTicketSummary.failedCount || 0} • пропусков: {quickTicketSummary.skippedCount || 0}
+              </div>
+              {Array.isArray(quickTicketSummary.items) && quickTicketSummary.items.some((item) => !item.ok) ? (
+                <div className="paper-note">
+                  <div className="title">Проблемные игроки</div>
+                  <div className="list u-mt-8">
+                    {quickTicketSummary.items.filter((item) => !item.ok).map((item) => (
+                      <div key={`ops-bulk-ticket-error-${item.playerId}`} className="small">
+                        #{item.playerId}: {formatError(item.error || "request_failed")}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </Modal>
     </div>

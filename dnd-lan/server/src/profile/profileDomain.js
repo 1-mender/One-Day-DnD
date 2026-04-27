@@ -4,7 +4,13 @@ import {
   normalizeClassKey,
   normalizeSpecializationKey
 } from "./classCatalog.js";
-import { getRaceProfile } from "../../../shared/raceCatalog.js";
+import {
+  getRaceProfile,
+  getRaceValue,
+  getRaceVariantValue,
+  setRaceInStats,
+  setRaceVariantInStats
+} from "../../../shared/raceCatalog.js";
 
 export const EDITABLE_FIELDS = new Set([
   "characterName",
@@ -55,7 +61,7 @@ export const DEFAULT_PRESET_ACCESS = {
 };
 
 export function mapProfile(row) {
-  const stats = jsonParse(row.stats, {});
+  const stats = normalizeProfileStats(jsonParse(row.stats, {}));
   const editableFields = jsonParse(row.editable_fields, []);
   const publicFields = normalizePublicFields(jsonParse(row.public_fields, []));
   return {
@@ -126,6 +132,26 @@ function normalizeStats(value) {
   if (value == null) return {};
   if (value && typeof value === "object" && !Array.isArray(value)) return value;
   return null;
+}
+
+function normalizeProfileStats(stats, existingStats = {}) {
+  const next = normalizeStats(stats);
+  const base = normalizeStats(existingStats);
+  if (next === null) return null;
+  const safeNext = { ...(next || {}) };
+  const safeBase = { ...(base || {}) };
+  const hasIncomingRace = Object.prototype.hasOwnProperty.call(safeNext, "race");
+  const hasIncomingVariant = Object.prototype.hasOwnProperty.call(safeNext, "raceVariant");
+  const hasBaseRace = Object.prototype.hasOwnProperty.call(safeBase, "race") || Object.prototype.hasOwnProperty.call(safeBase, "raceVariant");
+  if (!hasIncomingRace && !hasIncomingVariant && !hasBaseRace) return safeNext;
+
+  let normalized = setRaceInStats(safeNext, hasIncomingRace ? safeNext.race : getRaceValue(safeBase));
+  if (hasIncomingVariant) {
+    normalized = setRaceVariantInStats(normalized, safeNext.raceVariant);
+  } else if (!hasIncomingRace && hasBaseRace) {
+    normalized = setRaceVariantInStats(normalized, getRaceVariantValue(safeBase));
+  }
+  return normalized;
 }
 
 function normalizeReputation(value) {
@@ -200,7 +226,7 @@ function normalizePresetData(raw) {
     classRole: String(changes.classRole || ""),
     level: changes.level === "" || changes.level == null ? "" : Number(changes.level),
     reputation: normalizeReputation(changes.reputation),
-    stats: changes.stats || {},
+    stats: normalizeProfileStats(changes.stats || {}),
     bio: String(changes.bio || ""),
     avatarUrl: String(changes.avatarUrl || "")
   };
@@ -244,11 +270,11 @@ export function buildProfilePayload(body, existing) {
   );
   let statsObj;
   if (input.stats !== undefined) {
-    const normalized = normalizeStats(input.stats);
+    const normalized = normalizeProfileStats(input.stats, jsonParse(existing?.stats, {}));
     if (normalized === null) return { error: "stats_invalid" };
     statsObj = normalized;
   } else {
-    const existingStats = normalizeStats(jsonParse(existing?.stats, {}));
+    const existingStats = normalizeProfileStats(jsonParse(existing?.stats, {}));
     statsObj = existingStats ?? {};
   }
   const bio = input.bio ?? existing?.bio ?? "";
@@ -310,7 +336,7 @@ export function sanitizePatch(body, existing = null) {
     const classKey = output.class_key ?? normalizeClassKey(input.classKey ?? existing?.class_key);
     output.specialization_key = normalizeSpecializationKey(classKey, input.specializationKey);
   }
-  if (has("stats")) output.stats = normalizeStats(input.stats);
+  if (has("stats")) output.stats = normalizeProfileStats(input.stats, jsonParse(existing?.stats, {}));
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatar_url = String(input.avatarUrl || "");
   if (has("publicFields")) output.public_fields = JSON.stringify(normalizePublicFields(input.publicFields));
@@ -335,7 +361,7 @@ export function sanitizeRequestChanges(body) {
   if (has("specializationKey")) {
     output.specializationKey = normalizeSpecializationKey(output.classKey ?? input.classKey, input.specializationKey);
   }
-  if (has("stats")) output.stats = normalizeStats(input.stats);
+  if (has("stats")) output.stats = normalizeProfileStats(input.stats);
   if (has("bio")) output.bio = String(input.bio || "");
   if (has("avatarUrl")) output.avatarUrl = String(input.avatarUrl || "");
 

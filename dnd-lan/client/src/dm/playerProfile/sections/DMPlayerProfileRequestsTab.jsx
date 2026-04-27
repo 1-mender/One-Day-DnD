@@ -22,7 +22,7 @@ export default function DMPlayerProfileRequestsTab({ controller }) {
   } = controller;
 
   return (
-    <div className="list">
+    <div className="list" id="dm-requests-panel">
       <div className="row u-row-wrap">
         <div className="small">Фильтр запросов:</div>
         {[
