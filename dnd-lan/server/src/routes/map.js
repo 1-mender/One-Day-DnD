@@ -1,9 +1,14 @@
 import express from "express";
+import fs from "node:fs";
+import path from "node:path";
+import multer from "multer";
+import sharp from "sharp";
 import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getSinglePartyId } from "../db.js";
 import { mapPublicProfile } from "../profile/profileDomain.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { now } from "../util.js";
+import { uploadsDir } from "../paths.js";
 
 export const mapRouter = express.Router();
 const LOCATION_VISIBILITIES = new Set(["hidden", "known", "active", "completed"]);
@@ -86,25 +91,89 @@ mapRouter.get("/state", (req, res) => {
 
   const db = getDb();
   const partyId = getSinglePartyId();
-  // read editable locations and tokens if present
+  // read editable locations, tokens and available maps
   const locations = db.prepare(
     `SELECT id, name, category, description, default_x as defaultX, default_y as defaultY, created_by as createdBy, created_at as createdAt, updated_at as updatedAt FROM map_locations WHERE party_id = ? ORDER BY name`
   ).all(partyId);
   const tokens = db.prepare(
     `SELECT id, name, type, x, y, updated_by as updatedBy, updated_at as updatedAt FROM map_tokens WHERE party_id = ? ORDER BY id`
   ).all(partyId);
+  const maps = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE party_id = ? ORDER BY COALESCE(updated_at, created_at) DESC`).all(partyId);
+
+  // choose active map (most recently updated or created), fallback to bundled image
+  let mapInfo = { imageUrl: "/map/where-is-the-lord.png", width: 1024, height: 1024 };
+  if (maps && maps.length > 0) {
+    const m = maps[0];
+    mapInfo = { id: m.id, imageUrl: `/uploads/maps/${m.filename}`, width: m.width || 1024, height: m.height || 1024 };
+  }
 
   res.json({
-    map: {
-      imageUrl: "/map/where-is-the-lord.png",
-      width: 1024,
-      height: 1024
-    },
+    map: mapInfo,
     players: readMapPlayers(db, partyId),
     locationStates: readLocationStates(db, partyId),
     locations: locations,
-    tokens: tokens
+    tokens: tokens,
+    maps: maps
   });
+});
+
+// --- Map uploads / maps listing ---
+const upload = multer({ dest: path.join(uploadsDir, "tmp") });
+
+mapRouter.get("/maps", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const rows = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE party_id = ? ORDER BY id DESC`).all(partyId);
+  res.json({ ok: true, maps: rows });
+});
+
+mapRouter.post("/maps", dmAuthMiddleware, upload.single("file"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "no_file" });
+  const partyId = getSinglePartyId();
+  const tmpPath = req.file.path;
+  try {
+    const mapsDir = path.join(uploadsDir, "maps");
+    fs.mkdirSync(mapsDir, { recursive: true });
+    const safeName = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+    const destPath = path.join(mapsDir, safeName);
+    fs.renameSync(tmpPath, destPath);
+
+    // try to read image size
+    let width = 1024, height = 1024;
+    try {
+      const meta = await sharp(destPath).metadata();
+      if (meta.width) width = meta.width;
+      if (meta.height) height = meta.height;
+    } catch {}
+
+    const db = getDb();
+    const t = now();
+    const info = db.prepare(`INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`)
+      .run(partyId, safeName, req.body?.name || req.file.originalname, width, height, t, t);
+    const mapId = info.lastInsertRowid;
+    const map = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId);
+    req.app.locals.io?.to(`party:${partyId}`).emit("map:mapsUpdated", { maps: [map] });
+    req.app.locals.io?.to("dm").emit("map:mapsUpdated", { maps: [map] });
+    res.json({ ok: true, map });
+  } catch (err) {
+    try { fs.rmSync(tmpPath, { force: true }); } catch {}
+    res.status(500).json({ error: "upload_failed" });
+  }
+});
+
+mapRouter.put("/maps/:id/activate", dmAuthMiddleware, (req, res) => {
+  const mapId = Number(req.params.id);
+  if (!mapId) return res.status(400).json({ error: "invalid_mapId" });
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const cur = db.prepare(`SELECT id FROM maps WHERE id = ? AND party_id = ?`).get(mapId, partyId);
+  if (!cur) return res.status(404).json({ error: "not_found" });
+  const t = now();
+  db.prepare(`UPDATE maps SET updated_at = ? WHERE id = ? AND party_id = ?`).run(t, mapId, partyId);
+  const map = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId);
+  req.app.locals.io?.to(`party:${partyId}`).emit("map:mapsUpdated", { maps: [map] });
+  req.app.locals.io?.to("dm").emit("map:mapsUpdated", { maps: [map] });
+  res.json({ ok: true, map });
 });
 
 mapRouter.put("/players/:id/position", dmAuthMiddleware, (req, res) => {

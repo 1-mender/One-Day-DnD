@@ -29,3 +29,18 @@ export const mapApi = {
   dmUpdateToken: (id, payload) => request(`/api/map/tokens/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
   dmDeleteToken: (id) => request(`/api/map/tokens/${encodeURIComponent(id)}`, { method: "DELETE" })
 };
+
+// Maps upload/list/activate
+export const mapAdminApi = {
+  dmListMaps: () => request(`/api/map/maps`, { method: "GET" }),
+  dmUploadMap: (file, name) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    if (name) fd.append("name", name);
+    return request(`/api/map/maps`, { method: "POST", body: fd, headers: {} , timeoutMs: 60000 });
+  },
+  dmActivateMap: (id) => request(`/api/map/maps/${encodeURIComponent(id)}/activate`, { method: "PUT" })
+};
+
+// Merge into default export shape for convenience
+export default { ...mapApi, ...mapAdminApi };

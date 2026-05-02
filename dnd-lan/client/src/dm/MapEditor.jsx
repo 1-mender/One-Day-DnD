@@ -19,6 +19,7 @@ function LocationRow({ loc, onEdit, onDelete }) {
 export default function MapEditor() {
   const [locations, setLocations] = useState([]);
   const [tokens, setTokens] = useState([]);
+  const [maps, setMaps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
@@ -31,8 +32,10 @@ export default function MapEditor() {
     try {
       const locs = await api.dmListLocations();
       const toks = await api.dmListTokens();
+      const ms = await api.dmListMaps();
       setLocations(Array.isArray(locs?.locations) ? locs.locations : []);
       setTokens(Array.isArray(toks?.tokens) ? toks.tokens : []);
+      setMaps(Array.isArray(ms?.maps) ? ms.maps : []);
     } catch (err) {
       setError(String(err?.message || err));
     } finally {
@@ -91,6 +94,28 @@ export default function MapEditor() {
     <div className="dm-map-editor">
       <h1>Map Editor (DM)</h1>
       {error ? <div className="badge off">{error}</div> : null}
+      <section className="card">
+        <h2>Maps</h2>
+        <div className="muted">Загрузите изображение карты (PNG/JPEG)</div>
+        <input type="file" accept="image/*" onChange={async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          try {
+            setError("");
+            const r = await api.dmUploadMap(f, f.name);
+            await load();
+            // optionally activate uploaded map immediately
+            if (r?.map?.id) await api.dmActivateMap(r.map.id);
+            await load();
+          } catch (err) { setError(String(err?.message || err)); }
+        }} />
+        {maps.length === 0 ? <div className="muted">Нет загруженных карт</div> : maps.map((m) => (
+          <div key={m.id} className="map-editor-row">
+            <div className="map-editor-row-main"><strong>{m.name || m.filename}</strong><div className="muted">{m.width}×{m.height}</div></div>
+            <div className="map-editor-row-actions"><button className="btn" onClick={async () => { try { setError(""); await api.dmActivateMap(m.id); await load(); } catch (err) { setError(String(err?.message||err)); } }}>Activate</button></div>
+          </div>
+        ))}
+      </section>
       <div className="dm-map-editor-actions">
         <button className="btn" onClick={startCreate}>Создать локацию</button>
         <button className="btn" onClick={createToken}>Создать жетон</button>
