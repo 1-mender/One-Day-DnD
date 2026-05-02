@@ -424,6 +424,42 @@ const MIGRATIONS = [
       database.exec("CREATE INDEX IF NOT EXISTS idx_profile_xp_log_player_created ON character_profile_xp_log(player_id, created_at DESC);");
     }
   }
+  ,
+  {
+    version: 23,
+    name: "seed_world_map_locations",
+    up(database) {
+      // Seed default world map locations into map_locations for existing parties if not present
+      if (!hasTable(database, "map_locations")) return;
+      const locations = [
+        { id: "eldoria", name: "Королевство Эльдория", category: "power", description: "Столица и культурный центр. Держава, диктующая моду и законы благодаря огромным богатствам.", default_x: 50, default_y: 40 },
+        { id: "ostelm", name: "Северная держава Остельм", category: "power", description: "Военный противовес югу. Суровое государство с мощной пехотой.", default_x: 50, default_y: 13 },
+        { id: "valleria", name: "Княжество Валлерия", category: "power", description: "Степной и долинный край. Поставщик лучшей кавалерии и коней для всех союзов.", default_x: 72, default_y: 37 },
+        { id: "mirtengard", name: "Миртенгард", category: "power", description: "Независимый город-бастион, контролирующий ключевой горный проход.", default_x: 42, default_y: 29 },
+        { id: "verdict", name: "Город-суд Вердикт", category: "city", description: "Нейтральная территория. Место дипломатии, высшего правосудия и заключения мировых трактатов.", default_x: 61, default_y: 64 },
+        { id: "brigport", name: "Вольный порт Бригпорт", category: "city", description: "Крупнейший торговый хаб. Здесь сходятся морские пути и оседает золото всех купцов.", default_x: 71, default_y: 75 },
+        { id: "callista", name: "Торговый узел Каллиста", category: "city", description: "Единственный путь через пустыню. Контролирует поставки драгоценного шелка.", default_x: 62, default_y: 30 },
+        { id: "arkheim", name: "Цитадель Аркхейм", category: "city", description: "Неприступный научный или архивный центр на скалах, защищённый своей труднодоступностью.", default_x: 86, default_y: 12 },
+        { id: "apple-ford", name: "Яблоневый брод", category: "resource", description: "Сельскохозяйственный центр, поставляющий провизию в центральные регионы.", default_x: 45, default_y: 57 },
+        { id: "hop-marks", name: "Хмельные вешки", category: "resource", description: "Деревня-монополист в производстве напитков, обеспечивающая трактиры всей страны.", default_x: 24, default_y: 39 },
+        { id: "stone-bowl", name: "Каменная чаша", category: "resource", description: "Горное поселение. Добыча редких минералов или геотермальное фермерство в кратере.", default_x: 38, default_y: 83 },
+        { id: "crooked-wood", name: "Криволесье", category: "resource", description: "Лесозаготовки и пограничный пост на границе с неосвоенными землями.", default_x: 23, default_y: 24 },
+        { id: "ephyria", name: "Облачные острова Эфирия", category: "anomaly", description: "Высокогорная или парящая обитель, живущая в изоляции от земных проблем.", default_x: 91, default_y: 20 },
+        { id: "tenebris", name: "Мёртвое королевство Тенебрис", category: "anomaly", description: "Бывшее государство, ставшее опасной пустошью и буферной зоной.", default_x: 22, default_y: 57 },
+        { id: "rift", name: "Разлом", category: "anomaly", description: "Город-шахта или город-тюрьма в каньоне, живущий по своим суровым правилам.", default_x: 15, default_y: 77 },
+        { id: "reed-whisper", name: "Шёпот камышей", category: "anomaly", description: "Деревня, о существовании которой короли в Эльдории даже не подозревают.", default_x: 86, default_y: 52 }
+      ];
+
+      const parties = database.prepare("SELECT id FROM parties").all().map((r) => r.id);
+      const nowStamp = Date.now();
+      const insert = database.prepare(`INSERT OR IGNORE INTO map_locations(party_id, id, name, category, description, default_x, default_y, created_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, ?, ?, 'migration', ?, ?)`);
+      for (const pid of parties) {
+        for (const loc of locations) {
+          insert.run(pid, loc.id, loc.name, loc.category, loc.description, loc.default_x, loc.default_y, nowStamp, nowStamp);
+        }
+      }
+    }
+  }
 ];
 
 function ensureMigrationTable(database) {

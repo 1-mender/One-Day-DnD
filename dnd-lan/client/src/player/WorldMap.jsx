@@ -145,6 +145,21 @@ function PlayerDetail({ player }) {
   );
 }
 
+function TokenDetail({ token }) {
+  if (!token) return null;
+  return (
+    <article className="world-map-detail-card">
+      <div className="eyebrow">Жетон</div>
+      <h2>{token.name || `Жетон #${token.id}`}</h2>
+      <p>Тип: {token.type || "-"}</p>
+      <div className="world-map-detail-meta">
+        <span className="badge secondary">#{token.id}</span>
+        <span className="badge">x {Math.round(token.x ?? 50)} / y {Math.round(token.y ?? 43)}</span>
+      </div>
+    </article>
+  );
+}
+
 function MapDetailPanel({
   dmMode,
   error,
@@ -152,7 +167,8 @@ function MapDetailPanel({
   onVisibilityChange,
   savingLocationId,
   selectedLocation,
-  selectedPlayer
+  selectedPlayer,
+  selectedToken
 }) {
   const hasSelection = Boolean(selectedPlayer || selectedLocation);
   return (
@@ -164,6 +180,7 @@ function MapDetailPanel({
         </button>
       ) : null}
       {selectedPlayer ? <PlayerDetail player={selectedPlayer} /> : null}
+      {selectedToken ? <TokenDetail token={selectedToken} /> : null}
       {selectedLocation ? (
         <LocationDetail
           location={selectedLocation}
@@ -191,6 +208,8 @@ export default function WorldMap({ mode = "player" }) {
   const imageLayerRef = useRef(null);
   const markersLayerRef = useRef(null);
   const [locationStates, setLocationStates] = useState({});
+  const [serverLocations, setServerLocations] = useState(null);
+  const [tokens, setTokens] = useState([]);
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -206,18 +225,35 @@ export default function WorldMap({ mode = "player" }) {
     y: coerceMapCoordinate(locationStates[location.id]?.y, location.y)
   })), [locationStates]);
 
+  const effectiveLocations = useMemo(() => {
+    const base = Array.isArray(serverLocations) ? serverLocations : WORLD_MAP_LOCATIONS;
+    return base.map((location) => {
+      const id = location.id;
+      const state = locationStates[id] || {};
+      return {
+        ...location,
+        visibility: state.visibility || location.visibility || location.defaultVisibility || "known",
+        x: coerceMapCoordinate(state.x, location.x ?? location.defaultX ?? location.default_x ?? 50),
+        y: coerceMapCoordinate(state.y, location.y ?? location.defaultY ?? location.default_y ?? 43)
+      };
+    });
+  }, [serverLocations, locationStates]);
+
   const visibleLocations = useMemo(() => {
     const filtered = category === "all"
-      ? locations
-      : locations.filter((location) => location.category === category);
+      ? effectiveLocations
+      : effectiveLocations.filter((location) => location.category === category);
     return dmMode ? filtered : filtered.filter((location) => location.visibility !== "hidden");
-  }, [category, dmMode, locations]);
+  }, [category, dmMode, effectiveLocations]);
 
   const selectedLocation = selected.kind === "location"
-    ? locations.find((location) => location.id === selected.id)
+    ? effectiveLocations.find((location) => location.id === selected.id)
     : null;
   const selectedPlayer = selected.kind === "player"
     ? players.find((player) => player.id === selected.id)
+    : null;
+  const selectedToken = selected.kind === "token"
+    ? tokens.find((t) => Number(t.id) === Number(selected.id))
     : null;
 
   const loadPlayers = useCallback(async () => {
@@ -231,6 +267,8 @@ export default function WorldMap({ mode = "player" }) {
           .filter((state) => state?.locationId)
           .map((state) => [state.locationId, state])
       ));
+      setServerLocations(Array.isArray(response?.locations) ? response.locations : null);
+      setTokens(Array.isArray(response?.tokens) ? response.tokens : []);
     } catch (err) {
       setError(String(err?.message || "Не удалось загрузить игроков"));
       setPlayers([]);
@@ -272,12 +310,58 @@ export default function WorldMap({ mode = "player" }) {
           : current));
       }
     };
+    const onLocationCreated = (payload) => {
+      const loc = payload?.location;
+      if (!loc) return;
+      setServerLocations((cur) => {
+        const next = Array.isArray(cur) ? [...cur] : [];
+        if (!next.find((l) => l.id === loc.id)) next.push(loc);
+        return next;
+      });
+    };
+    const onLocationDeleted = (payload) => {
+      const locationId = String(payload?.locationId || "");
+      if (!locationId) return;
+      setServerLocations((cur) => (Array.isArray(cur) ? cur.filter((l) => l.id !== locationId) : cur));
+      setLocationStates((cur) => {
+        const copy = { ...cur };
+        delete copy[locationId];
+        return copy;
+      });
+      setSelected((cur) => (cur.kind === "location" && cur.id === locationId ? { kind: "none", id: null } : cur));
+    };
+    const onTokenCreated = (payload) => {
+      const token = payload?.token;
+      if (!token) return;
+      setTokens((cur) => (Array.isArray(cur) ? [...cur, token] : [token]));
+    };
+    const onTokenUpdated = (payload) => {
+      const token = payload?.token;
+      if (!token) return;
+      setTokens((cur) => (Array.isArray(cur) ? cur.map((t) => (Number(t.id) === Number(token.id) ? token : t)) : [token]));
+    };
+    const onTokenDeleted = (payload) => {
+      const tokenId = Number(payload?.tokenId || 0);
+      if (!tokenId) return;
+      setTokens((cur) => (Array.isArray(cur) ? cur.filter((t) => Number(t.id) !== tokenId) : cur));
+      setSelected((cur) => (cur.kind === "token" && Number(cur.id) === tokenId ? { kind: "none", id: null } : cur));
+    };
     socket.on("map:positionUpdated", onPositionUpdated);
     socket.on("map:locationUpdated", onLocationUpdated);
+    socket.on("map:locationCreated", onLocationCreated);
+    socket.on("map:locationDeleted", onLocationDeleted);
+    socket.on("map:tokenCreated", onTokenCreated);
+    socket.on("map:tokenUpdated", onTokenUpdated);
+    socket.on("map:tokenDeleted", onTokenDeleted);
     socket.on("players:updated", onPlayersUpdated);
     return () => {
       socket.off("map:positionUpdated", onPositionUpdated);
       socket.off("map:locationUpdated", onLocationUpdated);
+      socket.off("map:locationCreated", onLocationCreated);
+      socket.off("map:locationDeleted", onLocationDeleted);
+      socket.off("map:tokenCreated", onTokenCreated);
+      socket.off("map:tokenUpdated", onTokenUpdated);
+      socket.off("map:tokenDeleted", onTokenDeleted);
       socket.off("players:updated", onPlayersUpdated);
     };
   }, [dmMode, loadPlayers, socket]);
@@ -298,6 +382,18 @@ export default function WorldMap({ mode = "player" }) {
       loadPlayers().catch(() => {});
     } finally {
       setSavingPlayerId(null);
+    }
+  }, [dmMode, loadPlayers]);
+
+  const saveTokenPosition = useCallback(async (tokenId, position) => {
+    if (!dmMode) return;
+    setError("");
+    setTokens((cur) => (Array.isArray(cur) ? cur.map((t) => (Number(t.id) === Number(tokenId) ? { ...t, x: position.x, y: position.y } : t)) : cur));
+    try {
+      await api.dmUpdateToken(tokenId, { x: position.x, y: position.y });
+    } catch (err) {
+      setError(String(err?.message || "Не удалось сохранить жетон"));
+      loadPlayers().catch(() => {});
     }
   }, [dmMode, loadPlayers]);
 
@@ -457,6 +553,7 @@ export default function WorldMap({ mode = "player" }) {
       marker.addTo(layer);
     });
 
+    // render tokens
     players.forEach((player) => {
       const position = player.mapPosition || { x: 50, y: 43 };
       const marker = L.marker(toMapLatLng(position.x, position.y), {
@@ -477,7 +574,7 @@ export default function WorldMap({ mode = "player" }) {
       }
       marker.addTo(layer);
     });
-  }, [dmMode, players, saveLocationPosition, savePlayerPosition, selected, visibleLocations]);
+  }, [dmMode, players, saveLocationPosition, savePlayerPosition, saveTokenPosition, selected, visibleLocations, tokens]);
 
   return (
     <div className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>

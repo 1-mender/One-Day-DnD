@@ -22,6 +22,7 @@ export default function MapEditor() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editing, setEditing] = useState(null);
+  const [editingToken, setEditingToken] = useState(null);
   const [form, setForm] = useState({ name: "", id: "", category: "", description: "", default_x: 50, default_y: 50 });
 
   const load = async () => {
@@ -71,6 +72,20 @@ export default function MapEditor() {
     try { await api.dmCreateToken({ name }); await load(); } catch (err) { setError(String(err?.message || err)); }
   };
   const deleteToken = async (id) => { if (!confirm("Удалить жетон?")) return; try { await api.dmDeleteToken(id); await load(); } catch (err) { setError(String(err?.message || err)); } };
+  const startEditToken = (token) => { setEditingToken(token.id); setForm({ name: token.name || "", type: token.type || "", id: token.id }); };
+  const saveToken = async () => {
+    try {
+      setError("");
+      if (editingToken) {
+        await api.dmUpdateToken(editingToken, { name: form.name, type: form.type });
+      }
+      await load();
+      setEditingToken(null);
+      setForm({ name: "", id: "", category: "", description: "", default_x: 50, default_y: 50 });
+    } catch (err) {
+      setError(String(err?.message || err));
+    }
+  };
 
   return (
     <div className="dm-map-editor">
@@ -94,7 +109,7 @@ export default function MapEditor() {
         {tokens.length === 0 ? <div className="muted">Нет жетонов</div> : tokens.map((t) => (
           <div key={t.id} className="map-editor-row">
             <div className="map-editor-row-main"><strong>{t.name || `#${t.id}`}</strong><div className="muted">{t.type || "-"}</div></div>
-            <div className="map-editor-row-actions"><button className="btn danger" onClick={() => deleteToken(t.id)}>Delete</button></div>
+            <div className="map-editor-row-actions"><button className="btn" onClick={() => startEditToken(t)}>Edit</button> <button className="btn danger" onClick={() => deleteToken(t.id)}>Delete</button></div>
           </div>
         ))}
       </section>
@@ -111,6 +126,17 @@ export default function MapEditor() {
           <div className="dm-map-editor-form-actions">
             <button className="btn primary" onClick={save}>Сохранить</button>
             <button className="btn" onClick={() => setEditing(null)}>Отмена</button>
+          </div>
+        </aside>
+      ) : null}
+      {editingToken ? (
+        <aside className="card">
+          <h3>{`Редактировать жетон ${editingToken}`}</h3>
+          <label>Имя<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
+          <label>Тип<input value={form.type || ""} onChange={(e) => setForm({ ...form, type: e.target.value })} /></label>
+          <div className="dm-map-editor-form-actions">
+            <button className="btn primary" onClick={saveToken}>Сохранить</button>
+            <button className="btn" onClick={() => setEditingToken(null)}>Отмена</button>
           </div>
         </aside>
       ) : null}

@@ -86,6 +86,14 @@ mapRouter.get("/state", (req, res) => {
 
   const db = getDb();
   const partyId = getSinglePartyId();
+  // read editable locations and tokens if present
+  const locations = db.prepare(
+    `SELECT id, name, category, description, default_x as defaultX, default_y as defaultY, created_by as createdBy, created_at as createdAt, updated_at as updatedAt FROM map_locations WHERE party_id = ? ORDER BY name`
+  ).all(partyId);
+  const tokens = db.prepare(
+    `SELECT id, name, type, x, y, updated_by as updatedBy, updated_at as updatedAt FROM map_tokens WHERE party_id = ? ORDER BY id`
+  ).all(partyId);
+
   res.json({
     map: {
       imageUrl: "/map/where-is-the-lord.png",
@@ -93,7 +101,9 @@ mapRouter.get("/state", (req, res) => {
       height: 1024
     },
     players: readMapPlayers(db, partyId),
-    locationStates: readLocationStates(db, partyId)
+    locationStates: readLocationStates(db, partyId),
+    locations: locations,
+    tokens: tokens
   });
 });
 
