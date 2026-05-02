@@ -210,6 +210,48 @@ CREATE TABLE IF NOT EXISTS map_location_states (
   FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );
 
+-- Editable map locations metadata (created/managed by DM)
+CREATE TABLE IF NOT EXISTS map_locations (
+  party_id INTEGER NOT NULL,
+  id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT,
+  description TEXT,
+  default_x REAL,
+  default_y REAL,
+  created_by TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER,
+  PRIMARY KEY(party_id, id),
+  FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
+);
+
+-- Independent tokens (NPCs, monsters, markers) placed on the map by DM
+CREATE TABLE IF NOT EXISTS map_tokens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party_id INTEGER NOT NULL,
+  name TEXT,
+  type TEXT,
+  x REAL NOT NULL DEFAULT 50,
+  y REAL NOT NULL DEFAULT 43,
+  updated_by TEXT,
+  updated_at INTEGER NOT NULL,
+  FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
+);
+
+-- Optional table to store multiple maps / uploaded images metadata
+CREATE TABLE IF NOT EXISTS maps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  party_id INTEGER NOT NULL,
+  filename TEXT NOT NULL,
+  name TEXT,
+  width INTEGER NOT NULL DEFAULT 1024,
+  height INTEGER NOT NULL DEFAULT 1024,
+  created_by TEXT,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS profile_change_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   player_id INTEGER NOT NULL,

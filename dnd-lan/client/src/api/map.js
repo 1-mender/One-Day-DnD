@@ -17,4 +17,15 @@ export const mapApi = {
       method: "PUT",
       body: JSON.stringify(position)
     })
+  ,
+  // New DM CRUD for editable locations
+  dmListLocations: () => request(`/api/map/locations`, { method: "GET" }),
+  dmCreateLocation: (payload) => request(`/api/map/locations`, { method: "POST", body: JSON.stringify(payload) }),
+  dmUpdateLocation: (id, payload) => request(`/api/map/locations/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+  dmDeleteLocation: (id) => request(`/api/map/locations/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  // New DM CRUD for tokens
+  dmListTokens: () => request(`/api/map/tokens`, { method: "GET" }),
+  dmCreateToken: (payload) => request(`/api/map/tokens`, { method: "POST", body: JSON.stringify(payload) }),
+  dmUpdateToken: (id, payload) => request(`/api/map/tokens/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(payload) }),
+  dmDeleteToken: (id) => request(`/api/map/tokens/${encodeURIComponent(id)}`, { method: "DELETE" })
 };
