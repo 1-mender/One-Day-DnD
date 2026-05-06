@@ -17,6 +17,52 @@ export default function InventoryItemMobileActions({
   onToggleVisibility,
   onDelete,
 }) {
+  const actions = [
+    {
+      show: !!onInspect,
+      onClick: () => { onInspect(); setQuickOpen(false); },
+      icon: FileText,
+      label: "Осмотреть"
+    },
+    {
+      show: !!onToggleFavorite,
+      onClick: () => { if (readOnly) return; onToggleFavorite(); setQuickOpen(false); },
+      disabled: readOnly,
+      icon: isFavorite ? StarOff : Star,
+      label: isFavorite ? "Убрать из избранного" : "В избранное",
+      ariaPressed: isFavorite
+    },
+    {
+      show: !!onEdit,
+      onClick: () => { if (readOnly) return; onEdit(); setQuickOpen(false); },
+      disabled: readOnly,
+      icon: PencilLine,
+      label: "Редактировать"
+    },
+    {
+      show: !!onTransfer,
+      onClick: () => { if (transferDisabled) return; onTransfer(); setQuickOpen(false); },
+      disabled: transferDisabled,
+      icon: Send,
+      label: "Передать"
+    },
+    {
+      show: !!onToggleVisibility,
+      onClick: () => { if (readOnly) return; onToggleVisibility(); setQuickOpen(false); },
+      disabled: readOnly,
+      icon: isHidden ? Eye : EyeOff,
+      label: isHidden ? "Сделать публичным" : "Скрыть"
+    },
+    {
+      show: !!onDelete,
+      onClick: () => { if (readOnly) return; onDelete(); setQuickOpen(false); },
+      disabled: readOnly,
+      icon: Trash2,
+      label: "Удалить",
+      className: "danger"
+    }
+  ];
+
   return (
     <ActionSheet
       open={quickOpen}
@@ -24,95 +70,22 @@ export default function InventoryItemMobileActions({
       onClose={() => setQuickOpen(false)}
     >
       <div className="action-sheet-actions">
-        {onInspect ? (
-          <button
-            type="button"
-            className="action-sheet-item"
-            onClick={() => {
-              onInspect?.();
-              setQuickOpen(false);
-            }}
-          >
-            <FileText className="icon" aria-hidden="true" />
-            <span>Осмотреть</span>
-          </button>
-        ) : null}
-        {onToggleFavorite ? (
-          <button
-            type="button"
-            className="action-sheet-item"
-            onClick={() => {
-              if (readOnly) return;
-              onToggleFavorite();
-              setQuickOpen(false);
-            }}
-            disabled={readOnly}
-            aria-pressed={isFavorite ? "true" : "false"}
-          >
-            {isFavorite ? <StarOff className="icon" aria-hidden="true" /> : <Star className="icon" aria-hidden="true" />}
-            <span>{isFavorite ? "Убрать из избранного" : "В избранное"}</span>
-          </button>
-        ) : null}
-        {onEdit ? (
-          <button
-            type="button"
-            className="action-sheet-item"
-            onClick={() => {
-              if (readOnly) return;
-              onEdit();
-              setQuickOpen(false);
-            }}
-            disabled={readOnly}
-          >
-            <PencilLine className="icon" aria-hidden="true" />
-            <span>Редактировать</span>
-          </button>
-        ) : null}
-        {onTransfer ? (
-          <button
-            type="button"
-            className="action-sheet-item"
-            onClick={() => {
-              if (transferDisabled) return;
-              onTransfer();
-              setQuickOpen(false);
-            }}
-            disabled={transferDisabled}
-          >
-            <Send className="icon" aria-hidden="true" />
-            <span>Передать</span>
-          </button>
-        ) : null}
-        {onToggleVisibility ? (
-          <button
-            type="button"
-            className="action-sheet-item"
-            onClick={() => {
-              if (readOnly) return;
-              onToggleVisibility();
-              setQuickOpen(false);
-            }}
-            disabled={readOnly}
-          >
-            {isHidden ? <Eye className="icon" aria-hidden="true" /> : <EyeOff className="icon" aria-hidden="true" />}
-            <span>{isHidden ? "Сделать публичным" : "Скрыть"}</span>
-          </button>
-        ) : null}
-        {onDelete ? (
-          <button
-            type="button"
-            className="action-sheet-item danger"
-            onClick={() => {
-              if (readOnly) return;
-              onDelete();
-              setQuickOpen(false);
-            }}
-            disabled={readOnly}
-          >
-            <Trash2 className="icon" aria-hidden="true" />
-            <span>Удалить</span>
-          </button>
-        ) : null}
+        {actions.filter(a => a.show).map((action, idx) => {
+          const Icon = action.icon;
+          return (
+            <button
+              key={idx}
+              type="button"
+              className={`action-sheet-item ${action.className || ""}`.trim()}
+              onClick={action.onClick}
+              disabled={action.disabled}
+              aria-pressed={action.ariaPressed !== undefined ? (action.ariaPressed ? "true" : "false") : undefined}
+            >
+              <Icon className="icon" aria-hidden="true" />
+              <span>{action.label}</span>
+            </button>
+          );
+        })}
       </div>
     </ActionSheet>
   );

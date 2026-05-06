@@ -111,7 +111,7 @@ export default function InventoryItemsBody(props) {
     return <InventoryLoadingState />;
   }
 
-  if (filtered.length === 0) {
+  if (!filtered || filtered.length === 0) {
     return <InventoryEmptyState hasAny={hasAny} />;
   }
 

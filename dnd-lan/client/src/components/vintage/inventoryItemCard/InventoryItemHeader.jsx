@@ -73,7 +73,7 @@ export default function InventoryItemHeader({
             </span>
           ) : null}
         </div>
-        {!lite && tags.length ? (
+        {!lite && tags?.length > 0 ? (
           <div className={`inv-tags${isMobile ? " inv-tags-mobile" : ""}`.trim()}>
             {tags.slice(0, isMobile ? 2 : 4).map((tag) => (
               <span key={tag} className="inv-tag">#{tag}</span>

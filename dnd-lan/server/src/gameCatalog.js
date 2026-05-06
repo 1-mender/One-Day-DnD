@@ -206,6 +206,8 @@ export const GAME_CATALOG = [
   }
 ];
 
+const ALLOWED_ROLES = ["warmup", "skill", "risk", "blitz", "duel"];
+
 export function validateGameCatalog(list = GAME_CATALOG) {
   if (!Array.isArray(list) || list.length === 0) throw new Error("Game catalog is empty.");
   const seen = new Set();
@@ -218,7 +220,12 @@ export function validateGameCatalog(list = GAME_CATALOG) {
       throw new Error(`Game ${game.key} is missing modes.`);
     }
     for (const mode of game.modes) {
-      if (!mode?.role) throw new Error(`Game ${game.key} mode ${mode?.key || "unknown"} is missing role.`);
+      if (!mode?.role) {
+        throw new Error(`Game ${game.key} mode ${mode?.key || "unknown"} is missing role.`);
+      }
+      if (!ALLOWED_ROLES.includes(mode.role)) {
+        throw new Error(`Game ${game.key} mode ${mode?.key} has invalid role: "${mode.role}". Allowed: ${ALLOWED_ROLES.join(", ")}`);
+      }
     }
   }
 }
