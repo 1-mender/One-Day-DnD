@@ -1,3 +1,5 @@
+import { ERROR_MESSAGES_RU } from "../../../lib/errorCodes.js";
+
 export function impactClass(label) {
   const v = String(label || "").toLowerCase();
   if (v.includes("слож") || v.includes("hard") || v.includes("high") || v.includes("высок")) return "impact-high";
@@ -45,26 +47,8 @@ export function formatDurationMs(ms) {
 }
 
 export function formatTicketError(code) {
-  const c = String(code || "");
-  if (c === "tickets_disabled") return "Аркада временно закрыта.";
-  if (c === "game_disabled") return "Эта игра сейчас закрыта.";
-  if (c === "not_enough_tickets") return "Недостаточно билетов для входа.";
-  if (c === "daily_game_limit") return "Достигнут дневной лимит попыток.";
-  if (c === "daily_spend_cap") return "Достигнут дневной лимит трат.";
-  if (c === "minigame_inactive") return "Аркада не открыта для запуска. Обновите страницу или попросите DM открыть доступ.";
-  if (c === "invalid_performance") return "Неверный бонус выполнения.";
-  if (c === "invalid_seed") return "Сессия игры устарела. Откройте игру снова.";
-  if (c === "invalid_proof") return "Результат игры не прошёл проверку.";
-  if (c === "invalid_game") return "Эта игра недоступна.";
-  if (c === "invalid_mode") return "Выбранный режим недоступен.";
-  if (c === "invalid_outcome") return "Некорректный результат матча.";
-  if (c === "already_in_queue") return "Вы уже в очереди.";
-  if (c === "already_submitted") return "Результат уже отправлен.";
-  if (c === "match_not_found") return "Матч не найден.";
-  if (c === "opponent_not_found") return "Соперник не найден.";
-  if (c === "winner_locked") return "Победитель уже зафиксирован.";
-  if (c === "forbidden") return "Действие недоступно.";
-  return "Не удалось выполнить действие в аркаде.";
+  const key = String(code || "");
+  return ERROR_MESSAGES_RU[key] || "Не удалось выполнить действие в аркаде.";
 }
 
 export function isGameLimitReached(gameKey, rules, usage) {

@@ -26,7 +26,7 @@ export default function InventoryItemMobileActions({
     },
     {
       show: !!onToggleFavorite,
-      onClick: () => { if (readOnly) return; onToggleFavorite(); setQuickOpen(false); },
+      onClick: () => { onToggleFavorite(); setQuickOpen(false); },
       disabled: readOnly,
       icon: isFavorite ? StarOff : Star,
       label: isFavorite ? "Убрать из избранного" : "В избранное",
@@ -34,28 +34,28 @@ export default function InventoryItemMobileActions({
     },
     {
       show: !!onEdit,
-      onClick: () => { if (readOnly) return; onEdit(); setQuickOpen(false); },
+      onClick: () => { onEdit(); setQuickOpen(false); },
       disabled: readOnly,
       icon: PencilLine,
       label: "Редактировать"
     },
     {
       show: !!onTransfer,
-      onClick: () => { if (transferDisabled) return; onTransfer(); setQuickOpen(false); },
+      onClick: () => { onTransfer(); setQuickOpen(false); },
       disabled: transferDisabled,
       icon: Send,
       label: "Передать"
     },
     {
       show: !!onToggleVisibility,
-      onClick: () => { if (readOnly) return; onToggleVisibility(); setQuickOpen(false); },
+      onClick: () => { onToggleVisibility(); setQuickOpen(false); },
       disabled: readOnly,
       icon: isHidden ? Eye : EyeOff,
       label: isHidden ? "Сделать публичным" : "Скрыть"
     },
     {
       show: !!onDelete,
-      onClick: () => { if (readOnly) return; onDelete(); setQuickOpen(false); },
+      onClick: () => { onDelete(); setQuickOpen(false); },
       disabled: readOnly,
       icon: Trash2,
       label: "Удалить",

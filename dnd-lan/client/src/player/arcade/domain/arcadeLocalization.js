@@ -118,9 +118,7 @@ export function localizeTagValue(value, field) {
   }
   if (field === "time") {
     return raw
-      .replace(/\bminutes?\b/gi, "мин")
-      .replace(/\bmins?\b/gi, "мин")
-      .replace(/\bmin\b/gi, "мин")
+      .replace(/\b(minutes?|mins?|min)\b/gi, "мин")
       .replace(/\s+/g, " ")
       .trim();
   }
@@ -163,14 +161,18 @@ export function localizeOutcome(outcome) {
   return outcome || "—";
 }
 
+function localizeField(enValue, ruValue) {
+  return isLikelyEnglish(enValue) && ruValue ? ruValue : enValue;
+}
+
 export function localizeGameCard(game) {
   const fallback = game || {};
   const ru = GAME_COPY_RU[fallback.key] || {};
   const rules = Array.isArray(fallback.rules) ? fallback.rules : [];
   return {
     ...fallback,
-    title: isLikelyEnglish(fallback.title) && ru.title ? ru.title : fallback.title,
-    blurb: isLikelyEnglish(fallback.blurb) && ru.blurb ? ru.blurb : fallback.blurb,
+    title: localizeField(fallback.title, ru.title),
+    blurb: localizeField(fallback.blurb, ru.blurb),
     rules: rules.map((rule, idx) => {
       const replacement = Array.isArray(ru.rules) ? ru.rules[idx] : "";
       return isLikelyEnglish(rule) && replacement ? replacement : rule;

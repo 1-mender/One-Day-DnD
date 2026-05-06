@@ -62,7 +62,7 @@ export const ERROR_MESSAGES_RU = {
 
   tickets_disabled: "Аркада и билеты сейчас отключены.",
   game_disabled: "Эта игра сейчас недоступна.",
-  not_enough_tickets: "Недостаточно билетов для действия.",
+  not_enough_tickets: "Недостаточно билетов для входа.",
   daily_shop_limit: "Достигнут дневной лимит покупок в магазине.",
   daily_game_limit: "Достигнут дневной лимит попыток.",
   daily_spend_cap: "Достигнут дневной лимит трат.",
@@ -71,7 +71,7 @@ export const ERROR_MESSAGES_RU = {
   invalid_proof: "Результат игры не прошёл проверку.",
   invalid_game: "Игра недоступна.",
   invalid_mode: "Выбранный режим недоступен.",
-  minigame_inactive: "Мини-игра сейчас не активна.",
+  minigame_inactive: "Аркада не открыта для запуска. Обновите страницу или попросите DM открыть доступ.",
   invalid_outcome: "Некорректный результат матча.",
   already_in_queue: "Вы уже в очереди.",
   already_submitted: "Результат уже отправлен.",

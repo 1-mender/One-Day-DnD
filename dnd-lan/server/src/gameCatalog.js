@@ -219,10 +219,18 @@ export function validateGameCatalog(list = GAME_CATALOG) {
     if (!Array.isArray(game.modes) || game.modes.length === 0) {
       throw new Error(`Game ${game.key} is missing modes.`);
     }
+    const seenModes = new Set();
     for (const mode of game.modes) {
       if (!mode?.role) {
         throw new Error(`Game ${game.key} mode ${mode?.key || "unknown"} is missing role.`);
       }
+      if (!mode?.key) {
+        throw new Error(`Game ${game.key} mode is missing key.`);
+      }
+      if (seenModes.has(mode.key)) {
+        throw new Error(`Game ${game.key} has duplicate mode key: ${mode.key}`);
+      }
+      seenModes.add(mode.key);
       if (!ALLOWED_ROLES.includes(mode.role)) {
         throw new Error(`Game ${game.key} mode ${mode?.key} has invalid role: "${mode.role}". Allowed: ${ALLOWED_ROLES.join(", ")}`);
       }
