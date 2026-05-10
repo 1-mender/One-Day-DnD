@@ -1,0 +1,82 @@
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { api } from "../api.js";
+import Modal from "../components/Modal.jsx";
+import MarkdownView from "../components/markdown/MarkdownView.jsx";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { useSocket } from "../context/SocketContext.jsx";
+
+export default function Notes() {
+  const [items, setItems] = useState([]);
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [cur, setCur] = useState(null);
+  const { socket } = useSocket();
+  const debouncedQ = useDebouncedValue(q, 200);
+
+  const load = useCallback(async () => {
+    const r = await api.infoBlocks();
+    setItems(r.items || []);
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return () => {};
+    load().catch(() => {});
+    const onUpdated = () => load().catch(() => {});
+    socket.on("infoBlocks:updated", onUpdated);
+    return () => {
+      socket.off("infoBlocks:updated", onUpdated);
+    };
+  }, [load, socket]);
+
+  const filtered = useMemo(() => {
+    const dq = String(debouncedQ || "").toLowerCase();
+    if (!dq) return items;
+    return items.filter((b) => (b.title || "").toLowerCase().includes(dq));
+  }, [items, debouncedQ]);
+
+  return (
+    <div className="card taped tf-shell tf-notes-shell">
+      <div className="tf-page-head">
+        <div className="tf-page-head-main">
+          <div className="tf-overline">Party notes</div>
+          <div className="tf-page-title">Заметки</div>
+          <div className="small">Показываются только доступные вам блоки</div>
+        </div>
+      </div>
+      <hr />
+      <input
+        value={q}
+        onChange={(e)=>setQ(e.target.value)}
+        placeholder="Поиск..."
+        aria-label="Поиск заметок"
+        style={{ width:"100%" }}
+      />
+      <div className="list" style={{ marginTop: 12 }}>
+        {filtered.map((b) => (
+          <div
+            key={b.id}
+            className="item taped note-card"
+            data-cat={b.category || "note"}
+            onClick={() => { setCur(b); setOpen(true); }}
+            style={{ cursor:"pointer" }}
+          >
+            <div>
+              <div className="note-title">{b.title}</div>
+              <div className="note-meta">
+                <span className="badge secondary">{b.category}</span>
+                <span className="badge">{b.access}</span>
+              </div>
+            </div>
+            <span className="badge note-cta">Открыть</span>
+          </div>
+        ))}
+      </div>
+
+      <Modal open={open} title={cur?.title || ""} onClose={() => setOpen(false)}>
+        <div className="small">Категория: {cur?.category}</div>
+        <hr />
+        <MarkdownView source={cur?.content} />
+      </Modal>
+    </div>
+  );
+}

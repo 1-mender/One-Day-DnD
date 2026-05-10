@@ -1,0 +1,184 @@
+import express from "express";
+import { dmAuthMiddleware } from "../auth.js";
+import { getDb, getSinglePartyId } from "../db.js";
+import { now, jsonParse } from "../util.js";
+import { logEvent } from "../events.js";
+import { LIMITS } from "../limits.js";
+import { getInventoryLimitFromStats } from "../inventoryLimit.js";
+import { mapPublicProfile } from "../profile/profileDomain.js";
+import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
+
+export const playersRouter = express.Router();
+
+playersRouter.get("/", (req, res) => {
+  const isDm = isDmRequest(req);
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
+  if (!isDm && !me) return res.status(401).json({ error: "not_authenticated" });
+
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const rows = db.prepare(
+    `
+    SELECT p.id,
+           p.display_name as displayName,
+           p.status,
+           p.last_seen as lastSeen,
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated,
+           cp.character_name,
+           cp.class_role,
+           cp.level,
+           cp.reputation,
+           cp.class_key,
+           cp.specialization_key,
+           cp.stats,
+           cp.avatar_url,
+           cp.public_fields,
+           cp.public_blurb
+    FROM players p
+    LEFT JOIN character_profiles cp ON cp.player_id = p.id
+    WHERE p.party_id=? AND p.banned=0
+    ORDER BY p.id
+  `
+  ).all(partyId);
+  const items = rows.map((row) => ({
+    ...row,
+    publicProfile: Number(row.profileCreated) ? mapPublicProfile(row) : null
+  }));
+  res.json({ items });
+});
+
+playersRouter.get("/me", (req, res) => {
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+  res.json({
+    player: { id: me.player.id, displayName: me.player.display_name, partyId: me.player.party_id }
+  });
+});
+
+playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const rows = db.prepare(
+    `
+    SELECT p.id,
+           p.display_name as displayName,
+           p.status,
+           p.last_seen as lastSeen,
+           p.created_at as createdAt,
+           CASE WHEN cp.player_id IS NULL THEN 0 ELSE 1 END as profileCreated,
+           cp.character_name as characterName,
+           cp.class_role as classRole,
+           cp.stats as profileStats,
+           cp.class_key as classKey,
+           cp.specialization_key as specializationKey,
+           cp.xp as xp,
+           COALESCE((
+             SELECT SUM(i.weight * i.qty)
+             FROM inventory_items i
+             WHERE i.player_id = p.id
+           ), 0) as inventoryWeight,
+           EXISTS(
+             SELECT 1
+             FROM player_live_activities pla
+             WHERE pla.player_id = p.id
+               AND pla.status='active'
+               AND pla.kind='shield'
+           ) as shieldActive,
+           (
+             SELECT COUNT(*)
+             FROM profile_change_requests pcr
+             WHERE pcr.player_id = p.id
+               AND pcr.status='pending'
+           ) as pendingRequestCount
+    FROM players p
+    LEFT JOIN character_profiles cp ON cp.player_id = p.id
+    WHERE p.party_id=?
+    ORDER BY p.id
+  `
+  ).all(partyId);
+  const items = rows.map((row) => {
+    const total = Number(row.inventoryWeight || 0);
+    const stats = jsonParse(row.profileStats, {});
+    const limitInfo = getInventoryLimitFromStats(stats);
+    return {
+      ...row,
+      inventoryWeight: Number.isFinite(total) ? total : 0,
+      inventoryLimit: limitInfo.limit,
+      inventoryOverLimit: limitInfo.limit > 0 && Number.isFinite(total) && total > limitInfo.limit,
+      profileExists: !!Number(row.profileCreated || 0),
+      characterName: row.characterName || "",
+      classRole: row.classRole || "",
+      specializationAvailable: !!row.classKey && !row.specializationKey && Number(row.xp || 0) >= 100,
+      shieldActive: !!Number(row.shieldActive || 0),
+      pendingRequestCount: Number(row.pendingRequestCount || 0)
+    };
+  });
+  res.json({ items });
+});
+
+playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {
+  const pid = Number(req.params.id);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "not_found" });
+
+  const name = String(req.body?.displayName || "").trim();
+  if (!name) return res.status(400).json({ error: "name_required" });
+  if (name.length > LIMITS.playerName) return res.status(400).json({ error: "name_too_long" });
+
+  db.prepare("UPDATE players SET display_name=? WHERE id=?").run(name, pid);
+
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: player.party_id });
+
+  logEvent({
+    partyId: player.party_id ?? getSinglePartyId(),
+    type: "player.updated",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: pid,
+    message: `Переименован игрок: ${player.display_name} → ${name}`,
+    data: { playerId: pid, from: player.display_name, to: name },
+    io: req.app.locals.io
+  });
+
+  res.json({ ok: true });
+});
+
+playersRouter.delete("/dm/:id", dmAuthMiddleware, (req, res) => {
+  const pid = Number(req.params.id);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+
+  const db = getDb();
+  const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
+  if (!player) return res.status(404).json({ error: "not_found" });
+
+  const t = now();
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
+    db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(t, pid);
+    db.prepare("DELETE FROM players WHERE id=?").run(pid);
+  });
+  tx();
+
+  req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
+  req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: player.party_id });
+
+  logEvent({
+    partyId: player.party_id ?? getSinglePartyId(),
+    type: "player.deleted",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: pid,
+    message: `Удалён игрок: ${player.display_name || pid}`,
+    data: { playerId: pid },
+    io: req.app.locals.io
+  });
+
+  res.json({ ok: true });
+});

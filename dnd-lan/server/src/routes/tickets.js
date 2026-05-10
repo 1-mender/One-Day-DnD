@@ -1,0 +1,28 @@
+import express from "express";
+
+import { GAME_CATALOG, validateGameCatalog } from "../gameCatalog.js";
+import { now } from "../util.js";
+import { createArcadeSessionStore } from "../tickets/domain/arcadeSessionStore.js";
+import { SEED_TTL_MS } from "../tickets/shared/ticketConstants.js";
+import { buildMatchmakingPayload } from "../tickets/services/matchmakingService.js";
+import { createTicketRouteAuth } from "../tickets/ticketRouteAuth.js";
+import { registerDmTicketRoutes } from "../tickets/routes/dmTicketRoutes.js";
+import { registerPlayerTicketRoutes } from "../tickets/routes/playerTicketRoutes.js";
+
+export const ticketsRouter = express.Router();
+
+validateGameCatalog(GAME_CATALOG);
+
+const auth = createTicketRouteAuth({ nowFn: Date.now });
+const arcadeSessions = createArcadeSessionStore({ ttlMs: SEED_TTL_MS, nowFn: now });
+
+registerPlayerTicketRoutes(ticketsRouter, {
+  arcadeSessions,
+  auth,
+  buildMatchmakingPayload,
+  nowFn: now
+});
+
+registerDmTicketRoutes(ticketsRouter, {
+  buildMatchmakingPayload
+});

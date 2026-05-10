@@ -1,0 +1,42 @@
+{
+  "name": "dnd-lan-server",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test --test-concurrency=1",
+    "cleanup:uploads": "node src/cleanupUploads.js",
+    "chaos:presence": "node scripts/presence-chaos.mjs",
+    "soak:sockets": "node scripts/socket-soak.mjs"
+  },
+  "dependencies": {
+    "archiver": "^6.0.2",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.5.0",
+    "body-parser": "^1.20.2",
+    "cookie": "^0.7.2",
+    "cookie-parser": "^1.4.7",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^2.0.2",
+    "pino": "^10.3.0",
+    "pino-http": "^11.0.0",
+    "sharp": "^0.32.1",
+    "socket.io": "^4.7.5",
+    "unzipper": "^0.12.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.7.5"
+  },
+  "overrides": {
+    "minimatch": "5.1.9"
+  }
+}

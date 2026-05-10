@@ -1,0 +1,236 @@
+import {
+  RACE_OPTIONS,
+  getRaceBonus,
+  getRaceDisplayLabel,
+  getRaceLabel,
+  getRaceProfile,
+  getRaceValue,
+  getRaceVariantOptions,
+  getRaceVariantValue,
+  normalizeRace,
+  setRaceInStats,
+  setRaceVariantInStats
+} from "../../../shared/raceCatalog.js";
+
+export {
+  RACE_OPTIONS,
+  getRaceBonus,
+  getRaceDisplayLabel,
+  getRaceLabel,
+  getRaceProfile,
+  getRaceValue,
+  getRaceVariantOptions,
+  getRaceVariantValue,
+  normalizeRace,
+  setRaceInStats,
+  setRaceVariantInStats
+};
+
+export const EMPTY_PROFILE_DRAFT = {
+  characterName: "",
+  classRole: "",
+  level: "",
+  reputation: 0,
+  classKey: "",
+  specializationKey: "",
+  xp: 0,
+  xpLog: [],
+  stats: {},
+  bio: "",
+  avatarUrl: ""
+};
+
+export const PUBLIC_PROFILE_FIELD_OPTIONS = [
+  { key: "classPath", label: "Класс и специализация" },
+  { key: "classRole", label: "Класс / роль" },
+  { key: "level", label: "Уровень" },
+  { key: "reputation", label: "Репутация" },
+  { key: "race", label: "Раса" },
+  { key: "publicBlurb", label: "Публичное описание" }
+];
+
+export const PUBLIC_PROFILE_FIELD_KEYS = PUBLIC_PROFILE_FIELD_OPTIONS.map((option) => option.key);
+
+export const PROFILE_PRESETS = [
+  {
+    key: "ranger",
+    title: "Следопыт",
+    subtitle: "Лесной разведчик и охотник",
+    statsLabel: "DEX 16 • WIS 14 • CON 12",
+    data: {
+      characterName: "Лира Туман",
+      classRole: "Следопыт",
+      level: 3,
+      stats: { str: 10, dex: 16, con: 12, int: 12, wis: 14, cha: 10 },
+      bio: "Лесная проводница, читает следы и охраняет тропы. Ищет потерянный артефакт рода."
+    }
+  },
+  {
+    key: "warrior",
+    title: "Воин",
+    subtitle: "Ветеран и защитник отряда",
+    statsLabel: "STR 16 • CON 14 • CHA 12",
+    data: {
+      characterName: "Бран Утес",
+      classRole: "Воин",
+      level: 2,
+      stats: { str: 16, dex: 11, con: 14, int: 10, wis: 11, cha: 12 },
+      bio: "Служил в гарнизоне, привык держать строй. Хочет вернуть честь семьи."
+    }
+  },
+  {
+    key: "mage",
+    title: "Маг",
+    subtitle: "Учёный и мастер ритуалов",
+    statsLabel: "INT 16 • WIS 13 • DEX 12",
+    data: {
+      characterName: "Эмрис Клинокниг",
+      classRole: "Маг",
+      level: 3,
+      stats: { str: 8, dex: 12, con: 11, int: 16, wis: 13, cha: 10 },
+      bio: "Исследователь древних руин. Считает, что каждый артефакт — ключ к новой школе магии."
+    }
+  },
+  {
+    key: "rogue",
+    title: "Разбойник",
+    subtitle: "Незаметный и дерзкий",
+    statsLabel: "DEX 16 • CHA 13 • INT 12",
+    data: {
+      characterName: "Ника Лис",
+      classRole: "Разбойник",
+      level: 2,
+      stats: { str: 9, dex: 16, con: 11, int: 12, wis: 10, cha: 13 },
+      bio: "Городская легенда: вскрывает любые замки. Работает ради свободы — и долга."
+    }
+  },
+  {
+    key: "cleric",
+    title: "Жрец",
+    subtitle: "Поддержка и духовный щит",
+    statsLabel: "WIS 16 • CON 12 • STR 11",
+    data: {
+      characterName: "Сора Нимб",
+      classRole: "Жрец",
+      level: 3,
+      stats: { str: 11, dex: 10, con: 12, int: 11, wis: 16, cha: 12 },
+      bio: "Несёт свет и исцеление. Ищет знамение, чтобы изменить судьбу общины."
+    }
+  }
+];
+
+export const PRESET_HINT = "Шаблон заполнит имя, класс, уровень, статы и био. Можно потом поправить.";
+const PRESET_STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
+
+export function formatRaceBonus(bonus) {
+  const value = Number(bonus) || 0;
+  return value > 0 ? `+${value}` : String(value);
+}
+
+export function diffProfile(current, next) {
+  const out = {};
+  if (String(current.characterName || "") !== String(next.characterName || "")) out.characterName = next.characterName || "";
+  if (String(current.classRole || "") !== String(next.classRole || "")) out.classRole = next.classRole || "";
+  if (String(current.classKey || "") !== String(next.classKey || "")) out.classKey = next.classKey || "";
+  if (String(current.specializationKey || "") !== String(next.specializationKey || "")) {
+    out.specializationKey = next.specializationKey || "";
+  }
+  const curLevel = current.level == null ? "" : String(current.level);
+  const nextLevel = next.level == null ? "" : String(next.level);
+  if (curLevel !== nextLevel) out.level = next.level === "" ? null : Number(next.level);
+  if (normalizeReputation(current.reputation) !== normalizeReputation(next.reputation)) {
+    out.reputation = normalizeReputation(next.reputation);
+  }
+  if (JSON.stringify(current.stats || {}) !== JSON.stringify(next.stats || {})) out.stats = next.stats || {};
+  if (String(current.bio || "") !== String(next.bio || "")) out.bio = next.bio || "";
+  if (String(current.avatarUrl || "") !== String(next.avatarUrl || "")) out.avatarUrl = next.avatarUrl || "";
+  return out;
+}
+
+export function mergePreset(prev, preset) {
+  const data = preset?.data || {};
+  const nextStats = { ...(data.stats || {}) };
+  if (!Object.hasOwn(nextStats, "race")) nextStats.race = prev?.stats?.race;
+  if (!Object.hasOwn(nextStats, "raceVariant")) nextStats.raceVariant = prev?.stats?.raceVariant;
+  return {
+    ...prev,
+    ...data,
+    stats: setRaceInStats(nextStats, nextStats.race)
+  };
+}
+
+export function mergePresets(globalPresets, allowGlobal, hideLocal) {
+  const list = [];
+  if (allowGlobal && Array.isArray(globalPresets)) {
+    list.push(...globalPresets.map((preset) => ({ ...preset, source: "dm" })));
+  }
+  if (!hideLocal) {
+    list.push(...PROFILE_PRESETS.map((preset) => ({ ...preset, source: "local" })));
+  }
+  return list;
+}
+
+export function getPresetStatsLabel(preset) {
+  if (preset?.statsLabel) return preset.statsLabel;
+  return buildStatsLabel(preset?.data?.stats || preset?.stats || {});
+}
+
+function buildStatsLabel(stats) {
+  if (!stats || typeof stats !== "object") return "";
+  const ordered = [];
+  for (const key of PRESET_STAT_KEYS) {
+    if (Object.prototype.hasOwnProperty.call(stats, key)) ordered.push([key, stats[key]]);
+  }
+  for (const key of Object.keys(stats)) {
+    if (PRESET_STAT_KEYS.includes(key)) continue;
+    ordered.push([key, stats[key]]);
+  }
+  return ordered
+    .slice(0, 3)
+    .map(([k, v]) => `${String(k).toUpperCase()} ${v}`)
+    .join(" • ");
+}
+
+const changeLabels = {
+  characterName: "Имя",
+  classRole: "Класс/роль",
+  level: "Уровень",
+  reputation: "Репутация",
+  classKey: "Класс",
+  specializationKey: "Специализация",
+  stats: "Статы",
+  bio: "Биография",
+  avatarUrl: "Аватар"
+};
+
+export function formatChangeFields(changes) {
+  const keys = Object.keys(changes || {});
+  if (!keys.length) return "—";
+  return keys.map((k) => changeLabels[k] || k).join(", ");
+}
+
+export function normalizeReputation(value) {
+  const numeric = Number(value ?? 0);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(-100, Math.min(100, Math.round(numeric)));
+}
+
+export function formatReputation(value) {
+  const reputation = normalizeReputation(value);
+  if (reputation > 0) return `+${reputation}`;
+  return String(reputation);
+}
+
+export function getReputationTier(value) {
+  const reputation = normalizeReputation(value);
+  if (reputation <= -75) return { key: "outcast", label: "Изгой", tone: "off" };
+  if (reputation <= -25) return { key: "bad", label: "Плохая", tone: "off" };
+  if (reputation < 25) return { key: "neutral", label: "Нейтральная", tone: "secondary" };
+  if (reputation < 75) return { key: "good", label: "Хорошая", tone: "ok" };
+  return { key: "legendary", label: "Легендарная", tone: "ok" };
+}
+
+export function formatReputationLabel(value) {
+  const tier = getReputationTier(value);
+  return `${formatReputation(value)} · ${tier.label}`;
+}

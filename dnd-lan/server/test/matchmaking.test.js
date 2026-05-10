@@ -1,0 +1,331 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import express from "express";
+
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-matchmaking-test-"));
+process.env.DND_LAN_DATA_DIR = tmpDir;
+process.env.ARCADE_QUEUE_TTL_MS = "120000";
+
+const { getDb, getSinglePartyId, initDb } = await import("../src/db.js");
+const { ticketsRouter } = await import("../src/routes/tickets.js");
+const { now } = await import("../src/util.js");
+const { seedActiveArcadeActivity } = await import("./liveActivityTestHelper.js");
+
+initDb();
+
+const app = express();
+app.use(express.json({ limit: "2mb" }));
+app.use("/api/tickets", ticketsRouter);
+
+const server = app.listen(0);
+const base = `http://127.0.0.1:${server.address().port}`;
+
+test.after(() => {
+  server.close();
+});
+
+function createPlayer(displayName = "Player") {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = now();
+  return db.prepare(
+    "INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)"
+  ).run(partyId, displayName, "offline", t, 0, t).lastInsertRowid;
+}
+
+function createSession(playerId) {
+  const db = getDb();
+  const t = now();
+  const token = `tok_${playerId}_${t}`;
+  db.prepare(
+    "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,?,?,?)"
+  ).run(token, playerId, getSinglePartyId(), t, t + 24 * 60 * 60 * 1000, 0, 0, 0);
+  return token;
+}
+
+async function api(pathname, { method = "GET", token = "", body } = {}) {
+  const headers = {};
+  if (token) headers["x-player-token"] = token;
+  if (body) headers["Content-Type"] = "application/json";
+  const res = await fetch(`${base}${pathname}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  return { res, data };
+}
+
+async function createActiveMatch(gameKey = "ttt") {
+  const p1 = createPlayer(`M-${gameKey}-A-${Date.now()}`);
+  const p2 = createPlayer(`M-${gameKey}-B-${Date.now()}`);
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey }
+  });
+  assert.equal(q1.res.status, 200);
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "matched");
+
+  const matchId = Number(q2.data?.matchmakingAction?.matchId || 0);
+  assert.ok(matchId > 0);
+  return { p1, p2, t1, t2, matchId };
+}
+
+test("queue join + auto match for same game/mode", async () => {
+  const p1 = createPlayer("Queue-A");
+  const p2 = createPlayer("Queue-B");
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q1.res.status, 200);
+  assert.equal(q1.data?.matchmakingAction?.status, "queued");
+  assert.equal(!!q1.data?.matchmaking?.activeQueue, true);
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "matched");
+
+  const db = getDb();
+  const matchCount = db.prepare("SELECT COUNT(*) AS c FROM arcade_matches").get()?.c || 0;
+  const matchedQueues = db.prepare("SELECT COUNT(*) AS c FROM arcade_match_queue WHERE status='matched'").get()?.c || 0;
+  assert.equal(matchCount, 1);
+  assert.equal(matchedQueues, 2);
+});
+
+test("queue join respects explicit skillBand when provided", async () => {
+  const p1 = createPlayer("Skill-Bronze-1");
+  const p2 = createPlayer("Skill-Gold");
+  const p3 = createPlayer("Skill-Bronze-2");
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
+  seedActiveArcadeActivity(p3);
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+  const t3 = createSession(p3);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey: "ttt", skillBand: "bronze" }
+  });
+  assert.equal(q1.res.status, 200);
+  assert.equal(q1.data?.matchmakingAction?.status, "queued");
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey: "ttt", skillBand: "gold" }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "queued");
+
+  const q3 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t3,
+    body: { gameKey: "ttt", skillBand: "bronze" }
+  });
+  assert.equal(q3.res.status, 200);
+  assert.equal(q3.data?.matchmakingAction?.status, "matched");
+
+  const db = getDb();
+  const goldQueue = db.prepare(
+    "SELECT status, skill_band FROM arcade_match_queue WHERE player_id=? ORDER BY id DESC LIMIT 1"
+  ).get(p2);
+  assert.equal(goldQueue.status, "queued");
+  assert.equal(goldQueue.skill_band, "gold");
+
+  const bronzeQueues = db.prepare(
+    "SELECT status, skill_band FROM arcade_match_queue WHERE player_id IN (?,?) ORDER BY id"
+  ).all(p1, p3);
+  assert.deepEqual(
+    bronzeQueues.map((row) => `${row.skill_band}:${row.status}`),
+    ["bronze:matched", "bronze:matched"]
+  );
+
+  const cancelGold = await api("/api/tickets/matchmaking/cancel", {
+    method: "POST",
+    token: t2,
+    body: {}
+  });
+  assert.equal(cancelGold.res.status, 200);
+  assert.equal(cancelGold.data?.matchmakingAction?.status, "canceled");
+});
+
+test("queue cancel removes active queue", async () => {
+  const p = createPlayer("Queue-Cancel");
+  seedActiveArcadeActivity(p);
+  const token = createSession(p);
+
+  const q = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q.res.status, 200);
+  assert.equal(q.data?.matchmakingAction?.status, "queued");
+
+  const cancel = await api("/api/tickets/matchmaking/cancel", {
+    method: "POST",
+    token,
+    body: {}
+  });
+  assert.equal(cancel.res.status, 200);
+  assert.equal(cancel.data?.matchmakingAction?.status, "canceled");
+  assert.equal(cancel.data?.matchmaking?.activeQueue, null);
+});
+
+test("rematch creates second match with rematch_of", async () => {
+  const p1 = createPlayer("Rematch-A");
+  const p2 = createPlayer("Rematch-B");
+  seedActiveArcadeActivity(p1);
+  seedActiveArcadeActivity(p2);
+  const t1 = createSession(p1);
+  const t2 = createSession(p2);
+
+  const q1 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t1,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q1.res.status, 200);
+
+  const q2 = await api("/api/tickets/matchmaking/queue", {
+    method: "POST",
+    token: t2,
+    body: { gameKey: "ttt" }
+  });
+  assert.equal(q2.res.status, 200);
+  assert.equal(q2.data?.matchmakingAction?.status, "matched");
+
+  const hist1 = await api("/api/tickets/matches/history?limit=1", { token: t1 });
+  assert.equal(hist1.res.status, 200);
+  assert.equal(Array.isArray(hist1.data?.items), true);
+  const firstMatchId = Number(hist1.data.items?.[0]?.matchId || 0);
+  assert.ok(firstMatchId > 0);
+
+  const rematch1 = await api(`/api/tickets/matches/${firstMatchId}/rematch`, {
+    method: "POST",
+    token: t1
+  });
+  assert.equal(rematch1.res.status, 200);
+  assert.equal(rematch1.data?.matchmakingAction?.status, "queued");
+
+  const rematch2 = await api(`/api/tickets/matches/${firstMatchId}/rematch`, {
+    method: "POST",
+    token: t2
+  });
+  assert.equal(rematch2.res.status, 200);
+  assert.equal(rematch2.data?.matchmakingAction?.status, "matched");
+
+  const db = getDb();
+  const rows = db.prepare("SELECT id, rematch_of FROM arcade_matches ORDER BY id ASC").all();
+  assert.ok(rows.length >= 2);
+  const last = rows[rows.length - 1];
+  assert.equal(Number(last.rematch_of), firstMatchId);
+});
+
+test("match complete rejects client-provided winner", async () => {
+  const { p1, t1, matchId } = await createActiveMatch("ttt");
+
+  const complete = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: { winnerPlayerId: p1, durationMs: 120000 }
+  });
+  assert.equal(complete.res.status, 403);
+  assert.equal(complete.data.error, "winner_locked");
+});
+
+test("match complete requires explicit outcome", async () => {
+  const { t1, matchId } = await createActiveMatch("ttt");
+
+  const complete = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: {}
+  });
+  assert.equal(complete.res.status, 400);
+  assert.equal(complete.data.error, "invalid_outcome");
+});
+
+test("match complete waits for opponent and resolves winner by paired outcomes", async () => {
+  const { p1, p2, t1, t2, matchId } = await createActiveMatch("ttt");
+
+  const first = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: { outcome: "win", durationMs: 1200 }
+  });
+  assert.equal(first.res.status, 200);
+  assert.equal(first.data.awaitingOpponent, true);
+
+  const second = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t2,
+    body: { outcome: "loss", durationMs: 1400 }
+  });
+  assert.equal(second.res.status, 200);
+  assert.equal(second.data?.match?.status, "completed");
+  assert.equal(second.data?.match?.result, "loss");
+
+  const db = getDb();
+  const row = db.prepare("SELECT winner_player_id, loser_player_id, status, duration_ms FROM arcade_matches WHERE id=?").get(matchId);
+  assert.equal(Number(row.winner_player_id), Number(p1));
+  assert.equal(Number(row.loser_player_id), Number(p2));
+  assert.equal(String(row.status), "completed");
+  assert.equal(Number(row.duration_ms), 1400);
+});
+
+test("match complete resolves conflicting outcomes as draw", async () => {
+  const { t1, t2, matchId } = await createActiveMatch("ttt");
+
+  const first = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t1,
+    body: { outcome: "win" }
+  });
+  assert.equal(first.res.status, 200);
+  assert.equal(first.data.awaitingOpponent, true);
+
+  const second = await api(`/api/tickets/matches/${matchId}/complete`, {
+    method: "POST",
+    token: t2,
+    body: { outcome: "win" }
+  });
+  assert.equal(second.res.status, 200);
+  assert.equal(second.data?.match?.status, "completed");
+  assert.equal(second.data?.match?.result, "draw");
+
+  const db = getDb();
+  const row = db.prepare("SELECT winner_player_id, loser_player_id, status FROM arcade_matches WHERE id=?").get(matchId);
+  assert.equal(row.winner_player_id, null);
+  assert.equal(row.loser_player_id, null);
+  assert.equal(String(row.status), "completed");
+});

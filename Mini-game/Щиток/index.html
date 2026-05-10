@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Электрощиток</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="device">
+        <header class="device-header">
+          <div class="device-title">
+            <h1>Щиток</h1>
+          </div>
+
+          <div class="device-readouts">
+            <div class="readout">
+              <span class="tiny-label">Состояние</span>
+              <strong id="stateBadge">Диагностика</strong>
+            </div>
+            <div class="readout">
+              <span class="tiny-label">Раунд</span>
+              <strong id="roundCounter">1 / 5</strong>
+            </div>
+            <div class="alarm-bank" aria-label="Сигнальные лампы щитка">
+              <span class="tiny-label">Авария</span>
+              <div class="alarm-strip">
+                <span class="fault-dot alarm-bulb"></span>
+                <span class="fault-dot alarm-bulb"></span>
+                <span class="fault-dot alarm-bulb"></span>
+              </div>
+              <span class="sr-only" id="faultCounter">0 / 3</span>
+            </div>
+          </div>
+        </header>
+
+        <section class="status-line">
+          <strong id="currentStep">Контур I</strong>
+          <p id="statusMessage">Восстановите питание.</p>
+          <strong class="timer-label" id="timerLabel">00:45</strong>
+        </section>
+
+        <section class="screen">
+          <div class="screen-room"></div>
+          <div class="screen-beam"></div>
+          <div class="screen-grime"></div>
+          <div class="screen-vignette"></div>
+          <div class="screen-scanlines"></div>
+          <div class="screen-flash"></div>
+
+          <div class="cabinet" id="cabinet">
+            <img class="decor decor-frame" src="BackRoid.png" alt="">
+            <div class="cabinet-cutout" aria-hidden="true"></div>
+            <div class="cabinet-door door-left" aria-hidden="true"></div>
+            <div class="cabinet-door door-right" aria-hidden="true"></div>
+            <div class="cabinet-door-seam" aria-hidden="true"></div>
+            <div class="cabinet-handle handle-left" aria-hidden="true"></div>
+            <div class="cabinet-handle handle-right" aria-hidden="true"></div>
+            <div class="cable-bundle" aria-hidden="true">
+              <span class="bundle-cable cable-1"></span>
+              <span class="bundle-cable cable-2"></span>
+              <span class="bundle-cable cable-3"></span>
+              <span class="bundle-cable cable-4"></span>
+              <span class="bundle-cable cable-5"></span>
+            </div>
+            <img class="decor decor-plate" src="Accet/drop_plate.png" alt="">
+            <img class="decor decor-rail rail-top" src="Accet/Mounting_Rail.png" alt="">
+            <img class="decor decor-rail rail-bottom" src="Accet/Mounting_Rail.png" alt="">
+            <img class="decor decor-busbar" src="Accet/Busbar.png" alt="">
+            <img class="decor decor-wires" src="Accet/Wires.png" alt="">
+            <img class="decor decor-danger" src="Accet/Danger_220V.png" alt="">
+            <img class="decor decor-danger-mini" src="Accet/Danger.png" alt="">
+            <img class="decor decor-passive-breaker-left" src="Accet/C16_off.png" alt="">
+            <img class="decor decor-passive-breaker-right" src="Accet/C32_off.png" alt="">
+            <img class="decor decor-passive-terminal" src="Accet/Terminal_Block2.png" alt="">
+            <img class="decor decor-terminal-left" src="Accet/Terminal_Block.png" alt="">
+            <img class="decor decor-terminal-right" src="Accet/Terminal_Block2.png" alt="">
+            <img class="decor decor-ribbon" src="Accet/Ribbon_Cable.png" alt="">
+            <img class="decor decor-toggle-passive" src="Accet/Toggle_Switch_off.png" alt="">
+            <img class="decor decor-strain-left" src="Accet/Strain_relief.png" alt="">
+            <img class="decor decor-strain-right" src="Accet/Strain_relief.png" alt="">
+            <div class="voltage-tag" aria-hidden="true">220</div>
+            <div class="wire-run wire-run-left" aria-hidden="true"></div>
+            <div class="wire-run wire-run-right" aria-hidden="true"></div>
+            <div class="cabinet-stamp stamp-left" aria-hidden="true">LINE A</div>
+            <div class="cabinet-stamp stamp-right" aria-hidden="true">SVC-04</div>
+            <div class="cabinet-shadow"></div>
+            <div class="cabinet-rust"></div>
+            <div class="cabinet-smear"></div>
+            <div class="spark spark-left" aria-hidden="true"></div>
+            <div class="spark spark-right" aria-hidden="true"></div>
+
+            <button class="component component-main" data-action="network" aria-label="Сетевой ввод">
+              <img src="Accet/C32_off.png" alt="" data-off="Accet/C32_off.png" data-on="Accet/C32_On.png">
+              <span>Сеть</span>
+            </button>
+
+            <button class="component component-fuse" data-action="fuse" aria-label="Предохранитель">
+              <img src="Accet/Glass_Fuse_Off.png" alt="" data-off="Accet/Glass_Fuse_Off.png" data-on="Accet/Glass_Fuse_On.png">
+              <span>Пред.</span>
+            </button>
+
+            <button class="component component-line" data-action="line" aria-label="Линия">
+              <img src="Accet/C16_off.png" alt="" data-off="Accet/C16_off.png" data-on="Accet/C16_on.png">
+              <span>Линия</span>
+            </button>
+
+            <button class="component component-load" data-action="load" aria-label="Выключатель нагрузки">
+              <img src="Accet/Rocker_Switch_Off.png" alt="" data-off="Accet/Rocker_Switch_Off.png" data-on="Accet/Rocker_Switch_On.png">
+              <span>Нагрузка</span>
+            </button>
+
+            <div class="indicator indicator-power" id="powerIndicator" aria-hidden="true">
+              <img src="Accet/Round_Green_Button_Off.png" alt="">
+              <small>ON</small>
+            </div>
+
+            <div class="indicator indicator-alarm" id="alarmIndicator" aria-hidden="true">
+              <img src="Accet/LED_Red.png" alt="">
+              <small>ERR</small>
+            </div>
+          </div>
+        </section>
+
+        <footer class="bottom-bar">
+          <div class="gauge-block">
+            <span class="tiny-label">Линия</span>
+            <div class="voltage-dial" id="voltageDial" aria-label="Напряжение линии">
+              <div class="voltage-dial-face"></div>
+              <div class="voltage-dial-needle" id="voltageNeedle"></div>
+              <div class="voltage-dial-cracks"></div>
+              <span class="voltage-state" id="voltageState">ТИХО</span>
+              <strong id="voltageLabel">0В</strong>
+            </div>
+          </div>
+
+          <ol class="step-list" aria-hidden="true">
+            <li id="step-fuse">Предохранитель</li>
+            <li id="step-network">Сеть</li>
+            <li id="step-line">Линия</li>
+            <li id="step-load">Нагрузка</li>
+          </ol>
+
+          <div class="action-row">
+            <p class="hint" id="ambientHint">Тишина в коридоре хуже любого шума.</p>
+            <button class="restart-button emergency-reset" id="restartButton" type="button">
+              <span class="restart-cap">Аварийный</span>
+              <span class="restart-main">Сброс</span>
+              <span class="restart-fracture" aria-hidden="true"></span>
+            </button>
+          </div>
+        </footer>
+      </main>
+
+      <div class="overlay hidden" id="overlay" role="dialog" aria-live="polite">
+        <div class="overlay-card">
+          <div class="overlay-glow" aria-hidden="true"></div>
+          <div class="overlay-static" aria-hidden="true"></div>
+          <p class="tiny-label" id="overlayEyebrow">Диагностика завершена</p>
+          <h2 id="overlayTitle">Питание восстановлено</h2>
+          <p id="overlayText">Щиток снова в строю.</p>
+          <button class="restart-button emergency-reset" id="overlayRestartButton" type="button">
+            <span class="restart-cap">Повтор</span>
+            <span class="restart-main">Сброс</span>
+            <span class="restart-fracture" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

@@ -1,0 +1,251 @@
+import express from "express";
+import rateLimit from "express-rate-limit";
+import { getDb, getSingleParty } from "../db.js";
+import { randId, now, normalizeIp } from "../util.js";
+import { dmAuthMiddleware } from "../auth.js";
+import { logEvent } from "../events.js";
+import { LIMITS } from "../limits.js";
+import { emitSinglePartyEvent } from "../singlePartyEmit.js";
+import {
+  impersonateBodySchema,
+  joinCodeBodySchema,
+  joinRequestBodySchema,
+  joinRequestDecisionBodySchema,
+  parsePartyRouteInput,
+  playerActionBodySchema
+} from "./partyRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
+
+export const partyRouter = express.Router();
+
+const joinLimiter = rateLimit({
+  windowMs: 10_000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const readValidBody = createRouteInputReader(parsePartyRouteInput);
+
+partyRouter.post("/join-request", joinLimiter, (req, res) => {
+  const db = getDb();
+  const party = getSingleParty();
+  const body = readValidBody(res, joinRequestBodySchema, req.body);
+  if (!body) return;
+  const { displayName, joinCode } = body;
+  const name = String(displayName || "").trim();
+  if (!name) return res.status(400).json({ error: "name_required" });
+  if (name.length > LIMITS.playerName) return res.status(400).json({ error: "name_too_long" });
+
+  const joinCodeStr = String(joinCode || "");
+  if (joinCodeStr.length > LIMITS.joinCode) return res.status(400).json({ error: "join_code_too_long" });
+
+  const ip = normalizeIp(req.ip || req.socket.remoteAddress || "");
+  const banned = db.prepare("SELECT 1 FROM banned_ips WHERE ip=?").get(ip);
+  if (banned) return res.status(403).json({ error: "banned" });
+
+  if (party.join_code) {
+    if (joinCodeStr !== String(party.join_code)) return res.status(403).json({ error: "bad_join_code" });
+  }
+
+  const id = randId(20);
+  const ua = String(req.headers["user-agent"] || "").slice(0, LIMITS.userAgent);
+  const existingRequest = ip
+    ? db.prepare("SELECT id FROM join_requests WHERE party_id=? AND display_name=? AND ip=? ORDER BY created_at DESC LIMIT 1")
+      .get(party.id, name, ip)
+    : null;
+  if (existingRequest?.id) {
+    return res.json({ ok: true, joinRequestId: existingRequest.id });
+  }
+  db.prepare("INSERT INTO join_requests(id, party_id, display_name, ip, user_agent, created_at) VALUES(?,?,?,?,?,?)")
+    .run(id, party.id, name, ip, ua, now());
+
+  req.app.locals.io?.to("dm").emit("player:joinRequested", { id, displayName: name, ip, ua: req.headers["user-agent"] || "", createdAt: now() });
+  return res.json({ ok: true, joinRequestId: id });
+});
+
+partyRouter.get("/requests", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const rows = db.prepare("SELECT * FROM join_requests ORDER BY created_at DESC").all();
+  res.json({ items: rows });
+});
+
+partyRouter.post("/approve", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const body = readValidBody(res, joinRequestDecisionBodySchema, req.body);
+  if (!body) return;
+  const { joinRequestId } = body;
+  const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
+  if (!jr) return res.status(404).json({ error: "not_found" });
+
+  const t = now();
+  const ttlDays = Number(process.env.PLAYER_TOKEN_TTL_DAYS || 14);
+  const expiresAt = t + ttlDays * 24 * 60 * 60 * 1000;
+  const token = randId(48);
+
+  let playerId;
+  const tx = db.transaction(() => {
+    playerId = db.prepare("INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)")
+      .run(jr.party_id, jr.display_name, "offline", t, 0, t).lastInsertRowid;
+
+    db.prepare(
+      "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,0,0,0)"
+    ).run(token, playerId, jr.party_id, t, expiresAt);
+
+    db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  });
+  tx();
+
+  // notify waiting client
+  req.app.locals.io?.to(`joinreq:${jr.id}`).emit("player:approved", { playerToken: token, playerId, partyId: jr.party_id, displayName: jr.display_name });
+  // notify dm & party
+  req.app.locals.io?.to("dm").emit("player:approved", { playerId, displayName: jr.display_name });
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: jr.party_id });
+
+  logEvent({
+    partyId: jr.party_id,
+    type: "join.approved",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: Number(playerId),
+    message: `Принят игрок: ${jr.display_name}`,
+    data: { joinRequestId: jr.id, ip: jr.ip },
+    io: req.app.locals.io
+  });
+
+  res.json({ ok: true, playerId, playerToken: token });
+});
+
+partyRouter.post("/reject", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const body = readValidBody(res, joinRequestDecisionBodySchema, req.body);
+  if (!body) return;
+  const { joinRequestId } = body;
+  const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
+  if (!jr) return res.status(404).json({ error: "not_found" });
+  db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  req.app.locals.io?.to(`joinreq:${jr.id}`).emit("player:rejected", { joinRequestId: jr.id });
+  req.app.locals.io?.to("dm").emit("player:rejected", { joinRequestId: jr.id });
+  logEvent({
+    partyId: jr.party_id,
+    type: "join.rejected",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "join_request",
+    targetId: null,
+    message: `Отклонён запрос: ${jr.display_name}`,
+    data: { joinRequestId: jr.id, ip: jr.ip },
+    io: req.app.locals.io
+  });
+  res.json({ ok: true });
+});
+
+partyRouter.post("/ban", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const body = readValidBody(res, joinRequestDecisionBodySchema, req.body);
+  if (!body) return;
+  const { joinRequestId } = body;
+  const jr = db.prepare("SELECT * FROM join_requests WHERE id=?").get(String(joinRequestId || ""));
+  if (!jr) return res.status(404).json({ error: "not_found" });
+  const t = now();
+  const tx = db.transaction(() => {
+    if (jr.ip) db.prepare("INSERT OR IGNORE INTO banned_ips(ip, created_at) VALUES(?,?)").run(jr.ip, t);
+    db.prepare("DELETE FROM join_requests WHERE id=?").run(jr.id);
+  });
+  tx();
+  req.app.locals.io?.to(`joinreq:${jr.id}`).emit("player:rejected", { joinRequestId: jr.id, banned: true });
+  req.app.locals.io?.to("dm").emit("player:banned", { ip: jr.ip, joinRequestId: jr.id });
+  logEvent({
+    partyId: jr.party_id,
+    type: "join.banned",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "join_request",
+    targetId: null,
+    message: `Заблокирован IP/запрос: ${jr.display_name}`,
+    data: { joinRequestId: jr.id, ip: jr.ip },
+    io: req.app.locals.io
+  });
+  res.json({ ok: true });
+});
+
+partyRouter.post("/kick", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const body = readValidBody(res, playerActionBodySchema, req.body);
+  if (!body) return;
+  const { playerId } = body;
+  const pid = Number(playerId);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+
+  const p = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
+  if (!p) return res.status(404).json({ error: "not_found" });
+  const t = now();
+  const tx = db.transaction(() => {
+    db.prepare("UPDATE sessions SET revoked=1 WHERE player_id=?").run(pid);
+    db.prepare("UPDATE players SET status='offline', last_seen=? WHERE id=?").run(t, pid);
+  });
+  tx();
+
+  req.app.locals.io?.to(`player:${pid}`).emit("player:kicked");
+  req.app.locals.io?.to(`player:${pid}`).disconnectSockets(true);
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: p.party_id });
+  logEvent({
+    partyId: p.party_id,
+    type: "player.kicked",
+    actorRole: "dm",
+    actorName: "DM",
+    targetType: "player",
+    targetId: pid,
+    message: `Кикнут игрок: ${p.display_name}`,
+    data: { playerId: pid },
+    io: req.app.locals.io
+  });
+  res.json({ ok: true });
+});
+
+partyRouter.get("/join-code", dmAuthMiddleware, (req, res) => {
+  const party = getSingleParty();
+  res.json({
+    enabled: !!party.join_code,
+    joinCode: party.join_code || ""
+  });
+});
+
+partyRouter.post("/join-code", dmAuthMiddleware, (req, res) => {
+  const body = readValidBody(res, joinCodeBodySchema, req.body);
+  if (!body) return;
+  const { joinCode } = body;
+  const party = getSingleParty();
+  const joinCodeStr = joinCode ? String(joinCode) : "";
+  if (joinCodeStr && joinCodeStr.length > LIMITS.joinCode) {
+    return res.status(400).json({ error: "join_code_too_long" });
+  }
+  getDb().prepare("UPDATE parties SET join_code=? WHERE id=?").run(joinCodeStr || null, party.id);
+  emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId: party.id });
+  res.json({ ok: true });
+});
+
+partyRouter.post("/impersonate", dmAuthMiddleware, (req, res) => {
+  const db = getDb();
+  const body = readValidBody(res, impersonateBodySchema, req.body);
+  if (!body) return;
+  const { playerId, mode } = body;
+  const pid = Number(playerId);
+  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+
+  const player = db.prepare("SELECT * FROM players WHERE id=? AND banned=0").get(pid);
+  if (!player) return res.status(404).json({ error: "player_not_found" });
+
+  const write = String(mode || "ro").toLowerCase() === "rw" ? 1 : 0;
+
+  const t = now();
+  const expiresAt = t + 2 * 60 * 60 * 1000;
+  const token = randId(48);
+
+  db.prepare(
+    "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,0,1,?)"
+  ).run(token, pid, player.party_id, t, expiresAt, write);
+
+  res.json({ ok: true, playerToken: token, expiresAt, canWrite: !!write });
+});

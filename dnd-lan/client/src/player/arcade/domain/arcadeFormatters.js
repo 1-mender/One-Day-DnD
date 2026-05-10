@@ -1,0 +1,59 @@
+import { ERROR_MESSAGES_RU } from "../../../lib/errorCodes.js";
+
+export function impactClass(label) {
+  const v = String(label || "").toLowerCase();
+  if (v.includes("слож") || v.includes("hard") || v.includes("high") || v.includes("высок")) return "impact-high";
+  if (v.includes("сред") || v.includes("mid") || v.includes("medium")) return "impact-mid";
+  if (v.includes("лег") || v.includes("easy") || v.includes("низ")) return "impact-low";
+  return "impact-low";
+}
+
+export function formatEntry(entry) {
+  const qty = Number(entry || 0);
+  if (!qty) return "Вход: бесплатно";
+  return `Вход: ${formatTicketAmount(qty)}`;
+}
+
+export function formatTicketAmount(value) {
+  const qty = Math.max(0, Number(value || 0));
+  return `${qty} ${formatTicketWord(qty)}`;
+}
+
+export function formatTicketWord(value) {
+  const qty = Math.abs(Number(value || 0));
+  const mod10 = qty % 10;
+  const mod100 = qty % 100;
+  if (mod10 === 1 && mod100 !== 11) return "билет";
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "билета";
+  return "билетов";
+}
+
+export function formatDayKey(dayKey) {
+  const n = Number(dayKey);
+  if (!Number.isFinite(n) || n <= 0) return String(dayKey || "");
+  const d = new Date(n * 24 * 60 * 60 * 1000);
+  const months = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const month = months[d.getUTCMonth()] || "";
+  return month ? `${day} ${month}` : day;
+}
+
+export function formatDurationMs(ms) {
+  const total = Math.max(0, Math.floor(Number(ms || 0) / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  if (m <= 0) return `${s} с`;
+  return `${m} мин ${String(s).padStart(2, "0")} с`;
+}
+
+export function formatTicketError(code) {
+  const key = String(code || "");
+  return ERROR_MESSAGES_RU[key] || "Не удалось выполнить действие в аркаде.";
+}
+
+export function isGameLimitReached(gameKey, rules, usage) {
+  const lim = rules?.games?.[gameKey]?.dailyLimit;
+  if (!lim) return false;
+  const used = usage?.playsToday?.[gameKey] || 0;
+  return used >= lim;
+}

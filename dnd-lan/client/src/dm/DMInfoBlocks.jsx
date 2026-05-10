@@ -1,0 +1,585 @@
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { api } from "../api.js";
+import Modal from "../components/Modal.jsx";
+import VirtualizedStack from "../components/VirtualizedStack.jsx";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
+import { formatError } from "../lib/formatError.js";
+import { ERROR_CODES } from "../lib/errorCodes.js";
+import { useQuickAccess } from "../lib/useQuickAccess.js";
+import { useSavedFilters } from "../lib/useSavedFilters.js";
+import { ActionMenu } from "../foundation/primitives/index.js";
+import MarkdownView from "../components/markdown/MarkdownView.jsx";
+import { useSocket } from "../context/SocketContext.jsx";
+import { useReadOnly } from "../hooks/useReadOnly.js";
+import { useQueryState } from "../hooks/useQueryState.js";
+import { t } from "../i18n/index.js";
+
+const empty = { title:"", content:"", category:"note", access:"dm", selectedPlayerIds:[], tags:[] };
+
+function getAccessLabel(access) {
+  if (access === "all") return "Все игроки";
+  if (access === "selected") return "Выбранные";
+  return "Только DM";
+}
+
+export default function DMInfoBlocks() {
+  const [items, setItems] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [q, setQ] = useQueryState("q", "");
+  const [cat, setCat] = useQueryState("cat", "");
+  const [acc, setAcc] = useQueryState("access", "");
+  const [selectedIdParam, setSelectedIdParam] = useQueryState("id", "");
+  const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState(null);
+  const [form, setForm] = useState(empty);
+  const [bulkAccessTarget, setBulkAccessTarget] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const fileRef = useRef(null);
+  const taRef = useRef(null);
+  const { socket } = useSocket();
+  const readOnly = useReadOnly();
+  const debouncedQ = useDebouncedValue(q, 200);
+
+  const load = useCallback(async () => {
+    try {
+      const r = await api.infoBlocks();
+      setItems(r.items || []);
+      const p = await api.dmPlayers();
+      setPlayers(p.items || []);
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!socket) return () => {};
+    load().catch(() => {});
+    const onUpdated = () => load().catch(() => {});
+    socket.on("infoBlocks:updated", onUpdated);
+    return () => {
+      socket.off("infoBlocks:updated", onUpdated);
+    };
+  }, [load, socket]);
+
+  const selectedId = Number(selectedIdParam || 0);
+  const selected = useMemo(() => items.find((b) => b.id === selectedId) || null, [items, selectedId]);
+
+  const filtered = useMemo(() => {
+    const dq = String(debouncedQ || "").toLowerCase();
+    return items.filter((b) => {
+      if (cat && String(b.category || "") !== cat) return false;
+      if (acc && String(b.access || "") !== acc) return false;
+      if (!dq) return true;
+      const hay = [b.title, b.content, ...(b.tags || [])].filter(Boolean).join(" ").toLowerCase();
+      return hay.includes(dq);
+    });
+  }, [items, debouncedQ, cat, acc]);
+
+  const quickAccess = useQuickAccess("dm_info_blocks", items);
+  const savedFilters = useSavedFilters("dm_info_blocks");
+  const { pinnedItems, recentItems, isPinned, togglePinned, trackRecent } = quickAccess;
+
+  useEffect(() => {
+    if (!selected?.id) return;
+    trackRecent(selected.id);
+  }, [selected?.id, trackRecent]);
+
+  const playerMap = useMemo(() => new Map(players.map((p) => [p.id, p.displayName])), [players]);
+  const selectedCount = useMemo(() => items.filter((block) => block.access === "selected").length, [items]);
+  const currentFilterLabel = useMemo(() => {
+    const parts = [];
+    if (cat) parts.push(`Категория: ${cat}`);
+    if (acc) parts.push(`Доступ: ${getAccessLabel(acc)}`);
+    if (q.trim()) parts.push(`Поиск: ${q.trim()}`);
+    return parts.length ? parts.join(" • ") : "Все инфоблоки";
+  }, [acc, cat, q]);
+
+  function startNew() {
+    if (readOnly) return;
+    setErr("");
+    setEdit(null);
+    setForm(empty);
+    setOpen(true);
+  }
+  function startEdit(b) {
+    if (readOnly) return;
+    setErr("");
+    setEdit(b);
+    setForm({ ...b });
+    setOpen(true);
+  }
+
+  function startSelectedAccessEdit(block) {
+    if (readOnly || !block) return;
+    setErr("");
+    setEdit(block);
+    setForm({
+      ...block,
+      access: "selected",
+      selectedPlayerIds: Array.isArray(block.selectedPlayerIds) ? block.selectedPlayerIds.map(Number) : []
+    });
+    setOpen(true);
+  }
+
+  function selectBlock(id) {
+    if (!id) setSelectedIdParam("");
+    else setSelectedIdParam(String(id));
+  }
+
+  async function setAccess(block, access) {
+    if (readOnly) return;
+    if (!block) return;
+    if (access === "selected") {
+      startSelectedAccessEdit(block);
+      return;
+    }
+    setErr("");
+    try {
+      const payload = {
+        ...block,
+        access,
+        tags: Array.isArray(block.tags) ? block.tags : [],
+        selectedPlayerIds: Array.isArray(block.selectedPlayerIds) ? block.selectedPlayerIds.map(Number) : []
+      };
+      await api.dmInfoUpdate(block.id, payload);
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
+  async function save() {
+    if (readOnly) return;
+    setErr("");
+    const selectedPlayerIds = (form.selectedPlayerIds || []).map(Number).filter((id) => Number.isFinite(id) && id > 0);
+    if (form.access === "selected" && !selectedPlayerIds.length) {
+      setErr("Выберите хотя бы одного игрока");
+      return;
+    }
+    const payload = {
+      ...form,
+      tags: (form.tagsText || "").split(",").map(s=>s.trim()).filter(Boolean),
+      selectedPlayerIds
+    };
+    delete payload.tagsText;
+    try {
+      if (edit) await api.dmInfoUpdate(edit.id, payload);
+      else await api.dmInfoCreate(payload);
+      setOpen(false);
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+  async function del(id) {
+    if (readOnly) return;
+    setErr("");
+    try {
+      await api.dmInfoDelete(id);
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    }
+  }
+
+  function insertAtCursor(snippet) {
+    const el = taRef.current;
+    if (!el) {
+      setForm((p) => ({ ...p, content: (p.content || "") + "\n" + snippet + "\n" }));
+      return;
+    }
+    const start = el.selectionStart ?? (form.content || "").length;
+    const end = el.selectionEnd ?? start;
+    const next = (form.content || "").slice(0, start) + snippet + (form.content || "").slice(end);
+    setForm((p) => ({ ...p, content: next }));
+    setTimeout(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    }, 0);
+  }
+
+  async function onPickFile(ev) {
+    if (readOnly) return;
+    const f = ev.target.files?.[0];
+    if (!f) return;
+    setErr("");
+    try {
+      const r = await api.dmInfoUploadAsset(f);
+      insertAtCursor(`\n${r.markdown}\n`);
+    } catch (e) {
+      setErr(formatError(e, ERROR_CODES.UPLOAD_FAILED));
+    } finally {
+      ev.target.value = "";
+    }
+  }
+
+  async function applyBulkAccess(access) {
+    if (readOnly) return;
+    const targets = filtered.filter((block) => String(block.access || "") !== access);
+    if (!targets.length) {
+      setBulkAccessTarget("");
+      return;
+    }
+    setErr("");
+    setBulkBusy(true);
+    try {
+      for (const block of targets) {
+        await api.dmInfoUpdate(block.id, {
+          ...block,
+          access,
+          tags: Array.isArray(block.tags) ? block.tags : [],
+          selectedPlayerIds: access === "selected"
+            ? (Array.isArray(block.selectedPlayerIds) ? block.selectedPlayerIds.map(Number) : [])
+            : []
+        });
+      }
+      setBulkAccessTarget("");
+      await load();
+    } catch (e) {
+      setErr(formatError(e));
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <div className="two-pane dm-info-board" data-detail={selected ? "1" : "0"}>
+        <div className="pane pane-list">
+          <div className="card taped scrap-card paper-stack tf-shell tf-dm-info-shell">
+            <div className="tf-page-head">
+              <div className="tf-page-head-main">
+                <div className="tf-overline">Lore registry</div>
+                <div className="u-title-xl tf-page-title">{t("dmInfoBlocks.title", null, "Инфоблоки (мастер)")}</div>
+                <div className="small">{t("dmInfoBlocks.subtitle", null, "Доступ: только мастер / все / выбранные")}</div>
+              </div>
+              <button className="btn" onClick={startNew} disabled={readOnly}>+ {t("dmInfoBlocks.add", null, "Добавить")}</button>
+            </div>
+            <hr />
+            {readOnly ? <div className="badge warn">{t("dmInfoBlocks.readOnly", null, "Режим только чтения: изменения отключены")}</div> : null}
+            {err && <div className="badge off">{t("common.error")}: {err}</div>}
+            <div className="dm-info-summary">
+              <span className="badge secondary">Блоков: {filtered.length}</span>
+              <span className="badge secondary">Выбранным: {selectedCount}</span>
+              <span className="badge secondary">Категория: {cat || "все"}</span>
+            </div>
+            {(pinnedItems.length || recentItems.length) ? (
+              <div className="tf-panel dm-quick-access">
+                <div className="tf-section-kicker">Quick access</div>
+                {pinnedItems.length ? (
+                  <div className="dm-quick-access-group">
+                    <div className="small">Закреплённые</div>
+                    <div className="dm-quick-access-chips">
+                      {pinnedItems.map((block) => (
+                        <button key={`pin-${block.id}`} className="btn secondary dm-quick-access-chip is-pinned" onClick={() => selectBlock(block.id)}>
+                          {block.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                {recentItems.length ? (
+                  <div className="dm-quick-access-group">
+                    <div className="small">Недавние</div>
+                    <div className="dm-quick-access-chips">
+                      {recentItems.map((block) => (
+                        <button key={`recent-${block.id}`} className="btn secondary dm-quick-access-chip" onClick={() => selectBlock(block.id)}>
+                          {block.title}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="row u-row-wrap tf-panel dm-info-toolbar">
+              <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder={t("dmInfoBlocks.search", null, "Поиск...")} aria-label={t("dmInfoBlocks.search", null, "Поиск...")} className="u-w-min-420" />
+              <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t("dmInfoBlocks.categoryAll", null, "Категория: все")} className="u-w-160">
+                <option value="">{t("dmInfoBlocks.categoryAll", null, "Категория: все")}</option>
+                <option value="lore">lore</option>
+                <option value="quest">quest</option>
+                <option value="note">note</option>
+                <option value="other">other</option>
+              </select>
+              <select value={acc} onChange={(e) => setAcc(e.target.value)} aria-label={t("dmInfoBlocks.accessAll", null, "Доступ: все")} className="u-w-180">
+                <option value="">{t("dmInfoBlocks.accessAll", null, "Доступ: все")}</option>
+                <option value="dm">{t("dmInfoBlocks.accessDm", null, "Только мастер")}</option>
+                <option value="all">{t("dmInfoBlocks.accessPlayers", null, "Все игроки")}</option>
+                <option value="selected">{t("dmInfoBlocks.accessSelected", null, "Выбранные")}</option>
+              </select>
+              <button className="btn secondary" onClick={() => savedFilters.savePreset(currentFilterLabel, { q, cat, acc })}>
+                Сохранить фильтр
+              </button>
+              <button className="btn secondary" onClick={() => setBulkAccessTarget("all")} disabled={readOnly || !filtered.length}>
+                Всем по фильтру
+              </button>
+              <button className="btn secondary" onClick={() => setBulkAccessTarget("dm")} disabled={readOnly || !filtered.length}>
+                Только DM по фильтру
+              </button>
+            </div>
+            {savedFilters.hasPresets ? (
+              <div className="dm-saved-filters">
+                {savedFilters.presets.map((preset) => (
+                  <div key={preset.id} className="dm-saved-filters-item">
+                    <button
+                      type="button"
+                      className="dm-quick-access-chip"
+                      onClick={() => {
+                        setQ(String(preset.values?.q || ""));
+                        setCat(String(preset.values?.cat || ""));
+                        setAcc(String(preset.values?.acc || ""));
+                      }}
+                    >
+                      {preset.label}
+                    </button>
+                    <button
+                      type="button"
+                      className="dm-saved-filters-remove"
+                      onClick={() => savedFilters.removePreset(preset.id)}
+                      aria-label={`Удалить фильтр ${preset.label}`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <VirtualizedStack
+              className="list u-list-mt-12 dm-info-list"
+              items={filtered}
+              estimateSize={112}
+              rowGap={12}
+              staticThreshold={30}
+              getItemKey={(block) => block.id}
+              renderItem={(b) => (
+                <div
+                  className={`item taped note-card dm-info-card${selected?.id === b.id ? " selected" : ""}`}
+                  data-cat={b.category || "note"}
+                  onClick={() => selectBlock(b.id)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      selectBlock(b.id);
+                    }
+                  }}
+                >
+                  <div>
+                    <div className="note-title">{b.title}</div>
+                    <div className="note-meta">
+                      <span className="badge secondary">{b.category}</span>
+                      <span className="badge">{getAccessLabel(b.access)}</span>
+                      {b.access === "selected" ? <span className="badge secondary">Игроков: {(b.selectedPlayerIds || []).length}</span> : null}
+                    </div>
+                  </div>
+                  <ActionMenu
+                    items={[
+                      { label: t("dmInfoBlocks.edit", null, "Редактировать"), onClick: () => startEdit(b), disabled: readOnly },
+                      { label: isPinned(b.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(b.id) },
+                      { label: t("dmInfoBlocks.delete", null, "Удалить"), onClick: () => del(b.id), disabled: readOnly, tone: "danger" },
+                      { label: t("dmInfoBlocks.showAll", null, "Показать всем"), onClick: () => setAccess(b, "all"), disabled: readOnly },
+                      { label: t("dmInfoBlocks.onlyDm", null, "Только DM"), onClick: () => setAccess(b, "dm"), disabled: readOnly },
+                      { label: t("dmInfoBlocks.onlySelected", null, "Выбранным"), onClick: () => startSelectedAccessEdit(b), disabled: readOnly }
+                    ]}
+                  />
+                </div>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="pane pane-detail">
+          <div className="card taped scrap-card pane-sticky tf-panel dm-info-detail">
+            {selected ? (
+              <>
+                <div className="tf-page-head">
+                  <div className="tf-page-head-main">
+                    <div className="tf-overline">Selected block</div>
+                    <div className="u-title-xl tf-page-title">{selected.title}</div>
+                    <div className="small">{selected.category} - {getAccessLabel(selected.access)}</div>
+                  </div>
+                  <div className="row u-row-gap-8">
+                    <button className="btn secondary" onClick={() => selectBlock(0)}>Назад к списку</button>
+                    <button className="btn" onClick={() => startEdit(selected)} disabled={readOnly}>{t("dmInfoBlocks.edit", null, "Редактировать")}</button>
+                  </div>
+                </div>
+                <hr />
+                <div className="dm-info-detail-summary">
+                  <button className="btn secondary dm-quick-access-chip" onClick={() => togglePinned(selected.id)}>
+                    {isPinned(selected.id) ? "Убрать из закреплённых" : "Закрепить блок"}
+                  </button>
+                  <span className="badge secondary">Категория: {selected.category || "note"}</span>
+                  <span className="badge">{getAccessLabel(selected.access)}</span>
+                </div>
+                <div className="row u-row-wrap">
+                  {(selected.tags || []).slice(0, 4).map((t) => (
+                    <span key={t} className="badge secondary">{t}</span>
+                  ))}
+                </div>
+                {selected.access === "selected" ? (
+                  <div className="small u-mt-8 dm-info-selected-targets">
+                    Видят: {(selected.selectedPlayerIds || []).map((id) => playerMap.get(id) || `#${id}`).join(", ") || "-"}
+                  </div>
+                ) : null}
+                <div className="u-mt-12">
+                  <MarkdownView source={selected.content || ""} />
+                </div>
+                <div className="row u-row-gap-8 u-row-wrap u-mt-12">
+                  <button className="btn secondary" onClick={() => setAccess(selected, "all")} disabled={readOnly}>{t("dmInfoBlocks.showAll", null, "Показать всем")}</button>
+                  <button className="btn secondary" onClick={() => setAccess(selected, "dm")} disabled={readOnly}>{t("dmInfoBlocks.onlyDm", null, "Только DM")}</button>
+                  <button className="btn secondary" onClick={() => startSelectedAccessEdit(selected)} disabled={readOnly}>{t("dmInfoBlocks.onlySelected", null, "Выбранным")}</button>
+                  <button className="btn danger" onClick={() => del(selected.id)} disabled={readOnly}>{t("dmInfoBlocks.delete", null, "Удалить")}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="dm-info-empty">
+                  <div className="tf-overline">Selected block</div>
+                  <div className="u-fw-800 u-mt-6">Выберите блок</div>
+                  <div className="small u-mt-6">Справа появятся текст, медиа, теги и быстрые действия по доступу.</div>
+                </div>
+                <div className="paper-note u-mt-10 tf-panel">
+                  <div className="title">Подсказка</div>
+                  <div className="small">Markdown поддерживается для текста и изображений.</div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+<Modal open={open} title={edit ? t("dmInfoBlocks.editBlock", null, "Редактировать блок") : t("dmInfoBlocks.newBlock", null, "Новый блок")} onClose={() => setOpen(false)}>
+        <div className="list dm-info-editor">
+          {err && <div className="badge off">{t("common.error")}: {err}</div>}
+          <section className="dm-info-editor-section">
+            <div className="tf-overline">Core block</div>
+            <div className="u-fw-800">Основное</div>
+            <div className="small">Заголовок, категория и кому виден этот блок.</div>
+            <div className="list u-mt-10">
+              <input value={form.title||""} onChange={(e)=>setForm({ ...form, title: e.target.value })} placeholder="Заголовок*" aria-label="Заголовок инфоблока" style={inp} disabled={readOnly} />
+              <div className="row">
+                <select value={form.category||"note"} onChange={(e)=>setForm({ ...form, category: e.target.value })} aria-label="Категория инфоблока" style={inp} disabled={readOnly}>
+                  <option value="lore">lore</option>
+                  <option value="quest">quest</option>
+                  <option value="note">note</option>
+                  <option value="other">other</option>
+                </select>
+                <select value={form.access||"dm"} onChange={(e)=>setForm({ ...form, access: e.target.value })} aria-label="Доступ к инфоблоку" style={inp} disabled={readOnly}>
+                  <option value="dm">{t("dmInfoBlocks.accessDmOnly", null, "DM-only")}</option>
+                  <option value="all">{t("dmInfoBlocks.accessAllPlayers", null, "All players")}</option>
+                  <option value="selected">{t("dmInfoBlocks.accessSelectedPlayers", null, "Selected players")}</option>
+                </select>
+              </div>
+              <div className="dm-info-access-hint">
+                {form.access === "dm" ? "Блок увидит только мастер." : null}
+                {form.access === "all" ? "Блок увидят все игроки." : null}
+                {form.access === "selected" ? "Блок увидят только отмеченные игроки ниже." : null}
+              </div>
+            </div>
+          </section>
+
+          {form.access === "selected" && (
+            <div className="card taped dm-info-editor-section">
+              <div className="u-fw-700">Кто видит</div>
+              <div className="small">Выберите игроков, которым откроется этот блок.</div>
+              <VirtualizedStack
+                className="list u-mt-8"
+                containerStyle={{ maxHeight: 360 }}
+                items={players}
+                minHeight={220}
+                maxHeight={360}
+                estimateSize={34}
+                rowGap={8}
+                staticThreshold={30}
+                getItemKey={(player) => player.id}
+                renderItem={(p) => {
+                  const checked = (form.selectedPlayerIds || []).includes(p.id);
+                  return (
+                    <label className="small row u-row-gap-8">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={readOnly}
+                        onChange={(e) => {
+                          const set = new Set(form.selectedPlayerIds || []);
+                          e.target.checked ? set.add(p.id) : set.delete(p.id);
+                          setForm({ ...form, selectedPlayerIds: Array.from(set) });
+                        }}
+                      />
+                      {p.displayName} (id:{p.id})
+                    </label>
+                  );
+                }}
+              />
+            </div>
+          )}
+
+          <section className="dm-info-editor-section">
+            <div className="tf-overline">Content</div>
+            <div className="u-fw-800">Текст и медиа</div>
+            <div className="small">Markdown, изображения, PDF и текстовые вложения.</div>
+            <div className="row u-row-gap-8 u-mt-10">
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/avif,.avif,image/heic,image/heif,.heic,.heif,application/pdf,text/plain,.md,.markdown"
+                className="u-hidden-input"
+                aria-label="Загрузить файл в инфоблок"
+                onChange={onPickFile}
+              />
+              <button className="btn secondary" onClick={() => fileRef.current?.click()} disabled={readOnly}>Загрузить файл</button>
+              <div className="small">Поддерживаются JPG, PNG, WEBP, GIF, AVIF, HEIC, PDF и текст/Markdown.</div>
+            </div>
+
+            <textarea
+              ref={taRef}
+              value={form.content||""}
+              onChange={(e)=>setForm({ ...form, content: e.target.value })}
+              placeholder="Содержание (markdown/текст)"
+              aria-label="Содержание инфоблока"
+              rows={8}
+              style={inp}
+              disabled={readOnly}
+              className="u-mt-10"
+            />
+            <input
+              value={form.tagsText ?? (form.tags || []).join(", ")}
+              onChange={(e)=>setForm({ ...form, tagsText: e.target.value })}
+              placeholder="Теги (через запятую)"
+              aria-label="Теги инфоблока через запятую"
+              style={inp}
+              disabled={readOnly}
+            />
+          </section>
+          <button className="btn" onClick={save} disabled={readOnly}>Сохранить</button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={!!bulkAccessTarget}
+        title="Массовое изменение доступа"
+        onClose={() => {
+          if (!bulkBusy) setBulkAccessTarget("");
+        }}
+      >
+        <div className="list">
+          <div className="small">
+            Это изменит доступ у {filtered.length} отфильтрованных инфоблоков.
+            Новый режим: {bulkAccessTarget === "all" ? "Все игроки" : "Только DM"}.
+          </div>
+          <button
+            className="btn"
+            onClick={() => applyBulkAccess(bulkAccessTarget)}
+            disabled={readOnly || bulkBusy}
+          >
+            {bulkBusy ? "Применяю..." : "Подтвердить"}
+          </button>
+        </div>
+      </Modal>
+    </>
+  );
+}
+const inp = { width: "100%" };

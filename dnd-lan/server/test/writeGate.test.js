@@ -1,0 +1,196 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import express from "express";
+import cookieParser from "cookie-parser";
+
+const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "dnd-lan-write-gate-test-"));
+process.env.DND_LAN_DATA_DIR = tmpDir;
+process.env.JWT_SECRET = "test_secret";
+process.env.DM_COOKIE = "dm_token_test";
+
+const { initDb, getDb, getSinglePartyId } = await import("../src/db.js");
+const { signDmToken, createDmUser } = await import("../src/auth.js");
+const { setDegraded, clearDegraded } = await import("../src/degraded.js");
+const { assertWritable } = await import("../src/writeGate.js");
+const { backupRouter } = await import("../src/routes/backup.js");
+const { authRouter } = await import("../src/routes/auth.js");
+const { ticketsRouter } = await import("../src/routes/tickets.js");
+const { now, randId } = await import("../src/util.js");
+
+initDb();
+const dmUser = createDmUser("dm", "secret123");
+
+const app = express();
+app.use(express.json());
+app.use(cookieParser());
+app.use(assertWritable);
+app.post("/api/party/write-probe", (_req, res) => res.json({ ok: true }));
+app.use("/api/auth", authRouter);
+app.use("/api/backup", backupRouter);
+app.use("/api/tickets", ticketsRouter);
+
+const server = app.listen(0);
+const base = `http://127.0.0.1:${server.address().port}`;
+
+function dmCookie() {
+  const token = signDmToken(dmUser);
+  return `${process.env.DM_COOKIE}=${token}`;
+}
+
+function createPlayerToken() {
+  const db = getDb();
+  const t = now();
+  const partyId = getSinglePartyId();
+  const playerId = db
+    .prepare("INSERT INTO players(party_id, display_name, status, last_seen, banned, created_at) VALUES(?,?,?,?,?,?)")
+    .run(partyId, `Player-${randId(4)}`, "offline", t, 0, t).lastInsertRowid;
+  const token = randId(48);
+  const expiresAt = t + 24 * 60 * 60 * 1000;
+  db.prepare(
+    "INSERT INTO sessions(token, player_id, party_id, created_at, expires_at, revoked, impersonated, impersonated_write) VALUES(?,?,?,?,?,0,0,0)"
+  ).run(token, playerId, partyId, t, expiresAt);
+  return token;
+}
+
+test.after(() => {
+  clearDegraded();
+  server.close();
+});
+
+test("write gate blocks non-whitelisted writes when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/party/write-probe`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}"
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.equal(res.status, 503);
+    assert.equal(res.headers.get("retry-after"), "60");
+    assert.equal(data.error, "read_only");
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows backup import endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/backup/import`, {
+      method: "POST",
+      headers: { cookie: dmCookie() }
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(data.error, "file_required");
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth login endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "dm", password: "secret123" })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth logout endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/auth/logout`, {
+      method: "POST",
+      headers: { cookie: dmCookie() }
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth player session endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const token = createPlayerToken();
+    const res = await fetch(`${base}/api/auth/player/session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ playerToken: token })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate allows auth player logout endpoint when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const token = createPlayerToken();
+    const res = await fetch(`${base}/api/auth/player/logout`, {
+      method: "POST",
+      headers: { cookie: `player_token=${token}` }
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.notEqual(res.status, 503);
+    assert.equal(res.status, 200);
+    assert.equal(data.ok, true);
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate keeps auth change-password blocked when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/auth/change-password`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        cookie: dmCookie()
+      },
+      body: JSON.stringify({ newPassword: "new-password-123" })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.equal(res.status, 503);
+    assert.equal(data.error, "read_only");
+  } finally {
+    clearDegraded();
+  }
+});
+
+test("write gate blocks matchmaking writes when degraded", async () => {
+  setDegraded("not_ready");
+  try {
+    const res = await fetch(`${base}/api/tickets/matchmaking/queue`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameKey: "ttt" })
+    });
+    const data = await res.json().catch(() => ({}));
+    assert.equal(res.status, 503);
+    assert.equal(data.error, "read_only");
+  } finally {
+    clearDegraded();
+  }
+});
