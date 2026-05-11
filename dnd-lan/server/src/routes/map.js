@@ -7,13 +7,26 @@ import { dmAuthMiddleware } from "../auth.js";
 import { getDb, getSinglePartyId } from "../db.js";
 import { mapPublicProfile } from "../profile/profileDomain.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
-import { now } from "../util.js";
+import { asyncHandler, now, randId, wrapMulter } from "../util.js";
 import { uploadsDir } from "../paths.js";
+import { finalizeUploadedFile, normalizeAllowedMimes, safeUnlink } from "../uploadSecurity.js";
 
 export const mapRouter = express.Router();
 const LOCATION_VISIBILITIES = new Set(["hidden", "known", "active", "completed"]);
+const TMP_UPLOAD_DIR = path.join(uploadsDir, "tmp");
+const MAPS_DIR = path.join(uploadsDir, "maps");
+const MAP_UPLOAD_MAX_BYTES = Number(process.env.MAP_UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
+const MAP_ALLOWED_MIMES = normalizeAllowedMimes(
+  process.env.MAP_UPLOAD_ALLOWED_MIMES
+    ? String(process.env.MAP_UPLOAD_ALLOWED_MIMES).split(",")
+    : ["image/jpeg", "image/png", "image/webp", "image/gif"]
+);
+
+fs.mkdirSync(TMP_UPLOAD_DIR, { recursive: true });
+fs.mkdirSync(MAPS_DIR, { recursive: true });
 
 function clampCoordinate(value) {
+  if (value == null || value === "") return null;
   const num = Number(value);
   if (!Number.isFinite(num)) return null;
   return Math.min(100, Math.max(0, num));
@@ -84,6 +97,26 @@ function readLocationStates(db, partyId) {
   }));
 }
 
+function readLocation(db, partyId, locationId) {
+  const row = db.prepare(
+    `SELECT id, name, category, description, default_x as defaultX, default_y as defaultY, created_by as createdBy, created_at as createdAt, updated_at as updatedAt
+     FROM map_locations
+     WHERE party_id = ? AND id = ?`
+  ).get(partyId, locationId);
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    description: row.description,
+    defaultX: row.defaultX,
+    defaultY: row.defaultY,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt
+  };
+}
+
 mapRouter.get("/state", (req, res) => {
   const isDm = isDmRequest(req);
   const me = getPlayerContextFromRequest(req, { at: Date.now() });
@@ -118,7 +151,10 @@ mapRouter.get("/state", (req, res) => {
 });
 
 // --- Map uploads / maps listing ---
-const upload = multer({ dest: path.join(uploadsDir, "tmp") });
+const upload = multer({
+  dest: TMP_UPLOAD_DIR,
+  limits: { fileSize: MAP_UPLOAD_MAX_BYTES }
+});
 
 mapRouter.get("/maps", dmAuthMiddleware, (req, res) => {
   const db = getDb();
@@ -127,39 +163,56 @@ mapRouter.get("/maps", dmAuthMiddleware, (req, res) => {
   res.json({ ok: true, maps: rows });
 });
 
-mapRouter.post("/maps", dmAuthMiddleware, upload.single("file"), async (req, res) => {
+mapRouter.post("/maps", dmAuthMiddleware, wrapMulter(upload.single("file")), asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "no_file" });
   const partyId = getSinglePartyId();
-  const tmpPath = req.file.path;
-  try {
-    const mapsDir = path.join(uploadsDir, "maps");
-    fs.mkdirSync(mapsDir, { recursive: true });
-    const safeName = `${Date.now()}-${req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
-    const destPath = path.join(mapsDir, safeName);
-    fs.renameSync(tmpPath, destPath);
+  const normalized = await finalizeUploadedFile(req.file, {
+    allowText: false,
+    allowedMimes: MAP_ALLOWED_MIMES
+  });
+  if (!normalized.ok) {
+    const status = normalized.error === "upload_failed" ? 400 : 415;
+    return res.status(status).json({ error: normalized.error });
+  }
 
-    // try to read image size
-    let width = 1024, height = 1024;
-    try {
-      const meta = await sharp(destPath).metadata();
-      if (meta.width) width = meta.width;
-      if (meta.height) height = meta.height;
-    } catch {}
+  const ext = path.extname(normalized.filename).toLowerCase();
+  const originalBase = path.basename(req.file.originalname || "map", path.extname(req.file.originalname || ""));
+  const safeBase = String(originalBase || "map")
+    .replace(/[^\w.\-]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^\.+/, "")
+    .slice(0, 80) || "map";
+  const safeName = `map_${Date.now()}_${randId(8)}_${safeBase}${ext}`;
+  const destPath = path.join(MAPS_DIR, safeName);
+
+  try {
+    fs.renameSync(normalized.path, destPath);
+
+    const meta = await sharp(destPath).metadata();
+    const width = Number(meta.width || 0);
+    const height = Number(meta.height || 0);
+    if (!width || !height) {
+      safeUnlink(destPath);
+      return res.status(415).json({ error: "unsupported_file_type" });
+    }
 
     const db = getDb();
     const t = now();
+    const requestedName = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+    const mapName = requestedName || req.file.originalname || safeBase;
     const info = db.prepare(`INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`)
-      .run(partyId, safeName, req.body?.name || req.file.originalname, width, height, t, t);
+      .run(partyId, safeName, mapName, width, height, t, t);
     const mapId = info.lastInsertRowid;
     const map = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId);
     req.app.locals.io?.to(`party:${partyId}`).emit("map:mapsUpdated", { maps: [map] });
     req.app.locals.io?.to("dm").emit("map:mapsUpdated", { maps: [map] });
-    res.json({ ok: true, map });
-  } catch (err) {
-    try { fs.rmSync(tmpPath, { force: true }); } catch {}
-    res.status(500).json({ error: "upload_failed" });
+    return res.json({ ok: true, map });
+  } catch {
+    safeUnlink(normalized.path);
+    safeUnlink(destPath);
+    return res.status(500).json({ error: "upload_failed" });
   }
-});
+}));
 
 mapRouter.put("/maps/:id/activate", dmAuthMiddleware, (req, res) => {
   const mapId = Number(req.params.id);
@@ -309,7 +362,8 @@ mapRouter.post("/locations", dmAuthMiddleware, (req, res) => {
      ON CONFLICT(party_id, id) DO UPDATE SET name=excluded.name, category=excluded.category, description=excluded.description, default_x=excluded.default_x, default_y=excluded.default_y, updated_at=excluded.updated_at`
   ).run(partyId, id, name, category, description, defaultX, defaultY, t, t);
 
-  const payload = { locationId: id, location: { id, name, category, description, defaultX, defaultY, updatedAt: t } };
+  const location = readLocation(db, partyId, id);
+  const payload = { locationId: id, location };
   req.app.locals.io?.to(`party:${partyId}`).emit("map:locationCreated", payload);
   req.app.locals.io?.to("dm").emit("map:locationCreated", payload);
   res.json({ ok: true, ...payload });
@@ -332,7 +386,8 @@ mapRouter.put("/locations/:id", dmAuthMiddleware, (req, res) => {
     `UPDATE map_locations SET name = COALESCE(?, name), category = COALESCE(?, category), description = COALESCE(?, description), default_x = COALESCE(?, default_x), default_y = COALESCE(?, default_y), updated_at = ? WHERE party_id = ? AND id = ?`
   ).run(name, category, description, defaultX, defaultY, t, partyId, locationId);
 
-  const payload = { locationId, location: { id: locationId, name, category, description, defaultX, defaultY, updatedAt: t } };
+  const location = readLocation(db, partyId, locationId);
+  const payload = { locationId, location };
   req.app.locals.io?.to(`party:${partyId}`).emit("map:locationUpdated", payload);
   req.app.locals.io?.to("dm").emit("map:locationUpdated", payload);
   res.json({ ok: true, ...payload });

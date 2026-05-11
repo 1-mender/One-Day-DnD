@@ -9,14 +9,14 @@ function LocationRow({ loc, onEdit, onDelete }) {
         <div className="muted">{loc.id} • {loc.category || "-"}</div>
       </div>
       <div className="map-editor-row-actions">
-        <button className="btn" onClick={() => onEdit(loc)}>Edit</button>
-        <button className="btn danger" onClick={() => onDelete(loc.id)}>Delete</button>
+        <button className="btn" onClick={() => onEdit(loc)}>Редактировать</button>
+        <button className="btn danger" onClick={() => onDelete(loc.id)}>Удалить</button>
       </div>
     </div>
   );
 }
 
-export default function MapEditor() {
+export default function MapEditor({ embedded = false, onChanged = null }) {
   const [locations, setLocations] = useState([]);
   const [tokens, setTokens] = useState([]);
   const [maps, setMaps] = useState([]);
@@ -45,8 +45,26 @@ export default function MapEditor() {
 
   useEffect(() => { load(); }, []);
 
-  const startCreate = () => { setEditing("new"); setForm({ name: "", id: "", category: "", description: "", default_x: 50, default_y: 50 }); };
-  const startEdit = (loc) => { setEditing(loc.id); setForm({ name: loc.name, id: loc.id, category: loc.category || "", description: loc.description || "", default_x: loc.defaultX ?? loc.default_x ?? 50, default_y: loc.defaultY ?? loc.default_y ?? 50 }); };
+  const startCreate = () => {
+    setEditing("new");
+    setForm({ name: "", id: "", category: "", description: "", default_x: 50, default_y: 50 });
+  };
+  const startEdit = (loc) => {
+    setEditing(loc.id);
+    setForm({
+      name: loc.name,
+      id: loc.id,
+      category: loc.category || "",
+      description: loc.description || "",
+      default_x: loc.defaultX ?? loc.default_x ?? 50,
+      default_y: loc.defaultY ?? loc.default_y ?? 50
+    });
+  };
+
+  const syncAfterChange = async () => {
+    await load();
+    if (typeof onChanged === "function") await onChanged();
+  };
 
   const save = async () => {
     try {
@@ -56,7 +74,7 @@ export default function MapEditor() {
       } else {
         await api.dmUpdateLocation(editing, form);
       }
-      await load();
+      await syncAfterChange();
       setEditing(null);
     } catch (err) {
       setError(String(err?.message || err));
@@ -65,24 +83,47 @@ export default function MapEditor() {
 
   const remove = async (id) => {
     if (!confirm("Удалить локацию?")) return;
-    try { setError(""); await api.dmDeleteLocation(id); await load(); } catch (err) { setError(String(err?.message || err)); }
+    try {
+      setError("");
+      await api.dmDeleteLocation(id);
+      await syncAfterChange();
+    } catch (err) {
+      setError(String(err?.message || err));
+    }
   };
 
-  // Simple token create/delete (no edit form for brevity)
   const createToken = async () => {
     const name = prompt("Имя жетона (NPC)");
     if (!name) return;
-    try { await api.dmCreateToken({ name }); await load(); } catch (err) { setError(String(err?.message || err)); }
+    try {
+      setError("");
+      await api.dmCreateToken({ name });
+      await syncAfterChange();
+    } catch (err) {
+      setError(String(err?.message || err));
+    }
   };
-  const deleteToken = async (id) => { if (!confirm("Удалить жетон?")) return; try { await api.dmDeleteToken(id); await load(); } catch (err) { setError(String(err?.message || err)); } };
-  const startEditToken = (token) => { setEditingToken(token.id); setForm({ name: token.name || "", type: token.type || "", id: token.id }); };
+  const deleteToken = async (id) => {
+    if (!confirm("Удалить жетон?")) return;
+    try {
+      setError("");
+      await api.dmDeleteToken(id);
+      await syncAfterChange();
+    } catch (err) {
+      setError(String(err?.message || err));
+    }
+  };
+  const startEditToken = (token) => {
+    setEditingToken(token.id);
+    setForm({ name: token.name || "", type: token.type || "", id: token.id });
+  };
   const saveToken = async () => {
     try {
       setError("");
       if (editingToken) {
         await api.dmUpdateToken(editingToken, { name: form.name, type: form.type });
       }
-      await load();
+      await syncAfterChange();
       setEditingToken(null);
       setForm({ name: "", id: "", category: "", description: "", default_x: 50, default_y: 50 });
     } catch (err) {
@@ -91,28 +132,43 @@ export default function MapEditor() {
   };
 
   return (
-    <div className="dm-map-editor">
-      <h1>Map Editor (DM)</h1>
+    <div className={`dm-map-editor${embedded ? " is-embedded" : ""}`}>
+      <div className="card">
+        <div className="eyebrow">DM Tools</div>
+        <h2>{embedded ? "Редактор карты" : "Map Editor"}</h2>
+        <p className="muted">Управляй картами, локациями и жетонами из одного места.</p>
+      </div>
       {error ? <div className="badge off">{error}</div> : null}
       <section className="card">
-        <h2>Maps</h2>
-        <div className="muted">Загрузите изображение карты (PNG/JPEG)</div>
+        <h3>Карты</h3>
+        <div className="muted">Загрузи изображение карты и сразу активируй нужную версию.</div>
         <input type="file" accept="image/*" onChange={async (e) => {
           const f = e.target.files?.[0];
           if (!f) return;
           try {
             setError("");
             const r = await api.dmUploadMap(f, f.name);
-            await load();
-            // optionally activate uploaded map immediately
             if (r?.map?.id) await api.dmActivateMap(r.map.id);
-            await load();
+            await syncAfterChange();
           } catch (err) { setError(String(err?.message || err)); }
         }} />
         {maps.length === 0 ? <div className="muted">Нет загруженных карт</div> : maps.map((m) => (
           <div key={m.id} className="map-editor-row">
             <div className="map-editor-row-main"><strong>{m.name || m.filename}</strong><div className="muted">{m.width}×{m.height}</div></div>
-            <div className="map-editor-row-actions"><button className="btn" onClick={async () => { try { setError(""); await api.dmActivateMap(m.id); await load(); } catch (err) { setError(String(err?.message||err)); } }}>Activate</button></div>
+            <div className="map-editor-row-actions">
+              <button className="btn" onClick={async () => {
+                try {
+                  setError("");
+                  await api.dmActivateMap(m.id);
+                  await syncAfterChange();
+                } catch (err) {
+                  setError(String(err?.message || err));
+                }
+              }}
+              >
+                Активировать
+              </button>
+            </div>
           </div>
         ))}
       </section>
@@ -123,18 +179,21 @@ export default function MapEditor() {
       </div>
 
       <section className="card">
-        <h2>Локации</h2>
+        <h3>Локации</h3>
         {locations.length === 0 ? <div className="muted">Нет локаций</div> : locations.map((l) => (
           <LocationRow key={l.id} loc={l} onEdit={startEdit} onDelete={remove} />
         ))}
       </section>
 
       <section className="card">
-        <h2>Жетоны</h2>
+        <h3>Жетоны</h3>
         {tokens.length === 0 ? <div className="muted">Нет жетонов</div> : tokens.map((t) => (
           <div key={t.id} className="map-editor-row">
             <div className="map-editor-row-main"><strong>{t.name || `#${t.id}`}</strong><div className="muted">{t.type || "-"}</div></div>
-            <div className="map-editor-row-actions"><button className="btn" onClick={() => startEditToken(t)}>Edit</button> <button className="btn danger" onClick={() => deleteToken(t.id)}>Delete</button></div>
+            <div className="map-editor-row-actions">
+              <button className="btn" onClick={() => startEditToken(t)}>Редактировать</button>
+              <button className="btn danger" onClick={() => deleteToken(t.id)}>Удалить</button>
+            </div>
           </div>
         ))}
       </section>

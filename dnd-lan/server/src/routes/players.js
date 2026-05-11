@@ -8,8 +8,11 @@ import { getInventoryLimitFromStats } from "../inventoryLimit.js";
 import { mapPublicProfile } from "../profile/profileDomain.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { emitSinglePartyEvent } from "../singlePartyEmit.js";
+import { playerIdParamsSchema, playerRenameBodySchema, parsePlayersRouteInput } from "./playersRouteSchemas.js";
+import { createRouteInputReader } from "./routeValidation.js";
 
 export const playersRouter = express.Router();
+const readValidInput = createRouteInputReader(parsePlayersRouteInput);
 
 playersRouter.get("/", (req, res) => {
   const isDm = isDmRequest(req);
@@ -118,14 +121,17 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
 });
 
 playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.id);
-  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const body = readValidInput(res, playerRenameBodySchema, req.body);
+  if (!body) return;
+  const pid = Number(params.id);
 
   const db = getDb();
   const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);
   if (!player) return res.status(404).json({ error: "not_found" });
 
-  const name = String(req.body?.displayName || "").trim();
+  const name = String(body.displayName || "").trim();
   if (!name) return res.status(400).json({ error: "name_required" });
   if (name.length > LIMITS.playerName) return res.status(400).json({ error: "name_too_long" });
 
@@ -149,8 +155,9 @@ playersRouter.put("/dm/:id", dmAuthMiddleware, (req, res) => {
 });
 
 playersRouter.delete("/dm/:id", dmAuthMiddleware, (req, res) => {
-  const pid = Number(req.params.id);
-  if (!pid) return res.status(400).json({ error: "invalid_playerId" });
+  const params = readValidInput(res, playerIdParamsSchema, req.params, { error: "invalid_playerId" });
+  if (!params) return;
+  const pid = Number(params.id);
 
   const db = getDb();
   const player = db.prepare("SELECT id, party_id, display_name FROM players WHERE id=?").get(pid);

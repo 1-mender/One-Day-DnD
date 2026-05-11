@@ -28,6 +28,15 @@ import { setupRouter } from "../routes/setup.js";
 import { ticketsRouter } from "../routes/tickets.js";
 
 const CSP_DISABLED = String(process.env.CSP_DISABLED || "0") === "1";
+const secureCookie = process.env.NODE_ENV === "production";
+const CSRF_COOKIE_NAME = process.env.CSRF_COOKIE || "csrf_token";
+const CSRF_COOKIE_OPTS = {
+  httpOnly: true,
+  sameSite: "lax",
+  secure: secureCookie,
+  path: "/"
+};
+const CSRF_TOKEN_RE = /^[a-f0-9]{64}$/i;
 
 function buildCspDirectives() {
   const allowUnsafeEval = String(process.env.CSP_ALLOW_UNSAFE_EVAL || "0") === "1";
@@ -81,7 +90,7 @@ export function createApp() {
         else res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Vary", "Origin");
         res.setHeader("Access-Control-Allow-Credentials", "true");
-        res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Player-Token");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Player-Token, X-CSRF-Token");
         res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
       }
       if (req.method === "OPTIONS") return res.sendStatus(204);
@@ -125,35 +134,34 @@ export function createApp() {
   }
 
   app.use(assertWritable);
-  
-  // Simple session-less CSRF protection middleware
-  const csrfTokens = new Map(); // In-memory store (ok for LAN)
-  
+
+  function readCsrfCookieToken(req) {
+    const token = String(req.cookies?.[CSRF_COOKIE_NAME] || "");
+    return CSRF_TOKEN_RE.test(token) ? token : "";
+  }
+
   function verifyCsrfToken(req, res, next) {
-    // GET, HEAD, OPTIONS don't need CSRF
     if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
-    
-    const token = req.headers["x-csrf-token"] || (req.body && req.body._csrf);
-    if (!token) {
+    const token = Array.isArray(req.headers["x-csrf-token"])
+      ? String(req.headers["x-csrf-token"][0] || "")
+      : String(req.headers["x-csrf-token"] || (req.body && req.body._csrf) || "");
+    const cookieToken = readCsrfCookieToken(req);
+    if (!token || !cookieToken) {
       return res.status(403).json({ error: "csrf_token_missing" });
     }
-    
-    // Verify token exists and is recent (valid for 1 hour)
-    const stored = csrfTokens.get(token);
-    if (!stored || Date.now() - stored > 3600000) {
-      csrfTokens.delete(token);
+    if (!CSRF_TOKEN_RE.test(token) || token !== cookieToken) {
       return res.status(403).json({ error: "csrf_token_mismatch" });
     }
-    
-    // Token is valid - do NOT delete (reusable during TTL)
-    next();
+    return next();
   }
-  
+
   function generateCsrfToken(req, res, next) {
-    const token = crypto.randomBytes(32).toString("hex");
-    csrfTokens.set(token, Date.now());
+    const token = readCsrfCookieToken(req) || crypto.randomBytes(32).toString("hex");
+    if (token !== readCsrfCookieToken(req)) {
+      res.cookie(CSRF_COOKIE_NAME, token, CSRF_COOKIE_OPTS);
+    }
     res.locals.csrfToken = token;
-    next();
+    return next();
   }
 
   app.use("/api/auth", authRouter);
@@ -171,12 +179,10 @@ export function createApp() {
   app.use("/api/events", verifyCsrfToken, eventsRouter);
   app.use("/api", verifyCsrfToken, profileRouter);
   app.use("/api/tickets", verifyCsrfToken, ticketsRouter);
-  
-  // GET endpoint to fetch CSRF token
   app.get("/api/csrf-token", generateCsrfToken, (req, res) => {
     res.json({ csrfToken: res.locals.csrfToken });
   });
-  
+
   app.use("/api/server", serverInfoRouter);
 
   return app;

@@ -8604,6 +8604,63 @@ body.arcade-modal-open{
   gap: 10px;
 }
 
+.dm-map-editor{
+  display: grid;
+  gap: 10px;
+}
+
+.dm-map-editor.is-embedded{
+  margin-top: 2px;
+}
+
+.dm-map-editor h2,
+.dm-map-editor h3{
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+}
+
+.dm-map-editor p{
+  margin: 0;
+}
+
+.dm-map-editor-actions,
+.dm-map-editor-form-actions,
+.map-editor-row-actions{
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.map-editor-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px dashed rgba(85, 70, 44, .18);
+}
+
+.map-editor-row:first-of-type{
+  border-top: 0;
+  padding-top: 0;
+}
+
+.map-editor-row-main{
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.dm-map-editor label{
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.dm-map-editor input,
+.dm-map-editor textarea{
+  width: 100%;
+}
+
 .world-map-detail-card{
   padding: 18px;
   border: 1px solid rgba(85, 70, 44, .18);
@@ -8804,10 +8861,6 @@ body.arcade-modal-open{
     overflow: visible;
   }
 
-  .world-map-sidebar{
-    display: none;
-  }
-
   .world-map-mobile-sheet{
     display: block;
     position: fixed;
@@ -8886,6 +8939,17 @@ body.arcade-modal-open{
   .world-map-page.is-player .world-map-toolbar,
   .world-map-page.is-player .world-map-sidebar{
     display: none;
+  }
+
+  .world-map-page.is-dm .world-map-sidebar{
+    display: grid;
+    gap: 10px;
+    position: static;
+  }
+
+  .map-editor-row{
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .world-map-page.is-player .world-map-layout{

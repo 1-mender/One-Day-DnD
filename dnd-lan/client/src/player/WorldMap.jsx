@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Crosshair, RefreshCcw } from "lucide-react";
@@ -11,6 +11,8 @@ import {
   WORLD_MAP_LOCATIONS,
   WORLD_MAP_SIZE
 } from "./worldMapLocations.js";
+
+const DMMapEditor = lazy(() => import("../dm/MapEditor.jsx"));
 
 const MAP_IMAGE_URL = "/map/where-is-the-lord.png";
 const MAP_BOUNDS = [[0, 0], [WORLD_MAP_SIZE, WORLD_MAP_SIZE]];
@@ -238,8 +240,6 @@ export default function WorldMap({ mode = "player" }) {
   const [savingPlayerId, setSavingPlayerId] = useState(null);
   const [category, setCategory] = useState("all");
   const [selected, setSelected] = useState({ kind: "none", id: null });
-  const [showMapSelector, setShowMapSelector] = useState(false);
-  const [availableMaps, setAvailableMaps] = useState([]);
   const loadPlayers = useCallback(async () => {
     setError("");
     setLoading(true);
@@ -261,9 +261,6 @@ export default function WorldMap({ mode = "player" }) {
 
   useEffect(() => {
     loadPlayers();
-    if (dmMode) {
-      api.dmListMaps().then(setAvailableMaps).catch(() => {});
-    }
   }, [dmMode, loadPlayers]);
 
   useEffect(() => {
@@ -433,7 +430,7 @@ export default function WorldMap({ mode = "player" }) {
   }, [selected, visibleLocations, players, dmMode, saveLocationPosition, savePlayerPosition]);
 
   return (
-    <div className="world-map-page">
+    <div className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>
       <section className="tf-page-header">
         <h1>Карта мира</h1>
         <div className="tf-header-actions">
@@ -466,7 +463,6 @@ export default function WorldMap({ mode = "player" }) {
               <div className="world-map-dm-controls">
                 <button className="btn secondary" type="button" onClick={focusParty} disabled={players.length === 0}>Центрировать на партии</button>
                 <button className="btn secondary" type="button" onClick={() => setCategory("all")}>Показать все категории</button>
-                <button className="btn secondary" type="button" onClick={() => setShowMapSelector(true)}>Сменить карту</button>
               </div>
             )}
           </div>
@@ -488,21 +484,6 @@ export default function WorldMap({ mode = "player" }) {
               </div>
             )}
           </div>
-          {showMapSelector && (
-            <div className="world-map-map-selector">
-              <h3>Выбрать карту</h3>
-              {availableMaps.map((map) => (
-                <button key={map.id} className="btn secondary" onClick={() => {
-                  api.dmActivateMap(map.id).then(() => { setShowMapSelector(false); loadPlayers(); }).catch(setError);
-                }}>{map.name}</button>
-              ))}
-              <input type="file" accept="image/*" onChange={(e) => {
-                const file = e.target.files[0];
-                if (file) api.dmUploadMap(file, file.name).then(() => api.dmListMaps().then(setAvailableMaps)).catch(setError);
-              }} style={{ display: 'block', marginTop: '10px' }} />
-              <button className="btn secondary" onClick={() => setShowMapSelector(false)}>Закрыть</button>
-            </div>
-          )}
           {error || selectedPlayer || selectedLocation ? (
             <div className="world-map-mobile-sheet" aria-live="polite">
               <MapDetailPanel dmMode={dmMode} error={error} onClear={clearSelection} onVisibilityChange={saveLocationVisibility}
@@ -539,6 +520,11 @@ export default function WorldMap({ mode = "player" }) {
                 setSavingLocationId(null);
               }
             }} />
+          {dmMode ? (
+            <Suspense fallback={null}>
+              <DMMapEditor embedded onChanged={loadPlayers} />
+            </Suspense>
+          ) : null}
         </aside>
       </section>
     </div>

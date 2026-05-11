@@ -15,7 +15,6 @@ const primaryItems = [
 
 const secondaryItems = [
   { to: "/dm/app/map", label: t("dmTabBar.map") },
-  { to: "/dm/app/map-editor", label: "Map Editor" },
   { to: "/dm/app/inventory", label: t("dmTabBar.inventory") },
   { to: "/dm/app/bestiary", label: t("dmTabBar.bestiary") },
   { to: "/dm/app/info", label: t("dmTabBar.infoBlocks") }

@@ -31,7 +31,6 @@ const DMEvents = lazy(() => import("./dm/DMEvents.jsx"));
 const DMInfoBlocks = lazy(() => import("./dm/DMInfoBlocks.jsx"));
 const DMSettings = lazy(() => import("./dm/DMSettings.jsx"));
 const DMPlayerProfile = lazy(() => import("./dm/DMPlayerProfile.jsx"));
-const DMMapEditor = lazy(() => import("./dm/MapEditor.jsx"));
 
 const withSuspense = (element) => (
   <Suspense fallback={<PageFallback />}>
@@ -78,7 +77,7 @@ export default function App() {
           <Route path="players" element={withSuspense(<DMPlayers />)} />
           <Route path="players/:id/profile" element={withSuspense(<DMPlayerProfile />)} />
           <Route path="map" element={withSuspense(<WorldMap mode="dm" />)} />
-          <Route path="map-editor" element={withSuspense(<DMMapEditor />)} />
+          <Route path="map-editor" element={<Navigate to="/dm/app/map" replace />} />
           <Route path="inventory" element={withSuspense(<DMInventory />)} />
           <Route path="bestiary" element={withSuspense(<DMBestiary />)} />
           <Route path="events" element={withSuspense(<DMEvents />)} />
