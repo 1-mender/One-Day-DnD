@@ -25,6 +25,18 @@ const LOCATION_VISIBILITY_LABELS = {
   completed: "Пройдена"
 };
 
+function formatMapUiError(error, fallback = "Не удалось загрузить карту") {
+  const raw = String(error?.message || error || "").trim().replace(/^Error:\s*/i, "");
+  if (!raw) return fallback;
+  if (raw === "not_authenticated") return "Нужна авторизация для доступа к карте.";
+  if (raw === "request_failed" || raw === "server_error") return fallback;
+  if (raw === "invalid_json") return "Сервер вернул повреждённый ответ.";
+  if (raw.toUpperCase().includes("SQLITE_")) {
+    return "Данные карты сейчас недоступны. Проверь базу данных модуля карты.";
+  }
+  return raw;
+}
+
 function coerceMapCoordinate(value, fallback) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
@@ -217,7 +229,11 @@ function MapDetailPanel({
         <article className="world-map-detail-card">
           <div className="eyebrow">Выбор</div>
           <h2>Нажми на маркер</h2>
-          <p>Выбери локацию или жетон игрока, чтобы открыть краткую карточку.</p>
+          <p>
+            {dmMode
+              ? "Выбери локацию или жетон игрока, чтобы открыть карточку. В DM-режиме маркеры можно перетаскивать прямо по карте."
+              : "Выбери локацию или жетон игрока, чтобы открыть краткую карточку."}
+          </p>
         </article>
       ) : null}
     </>
@@ -253,7 +269,7 @@ export default function WorldMap({ mode = "player" }) {
       ));
       setServerLocations(Array.isArray(response?.locations) ? response.locations : null);
     } catch (err) {
-      setError(String(err?.message || "Не удалось загрузить карту"));
+      setError(formatMapUiError(err));
     } finally {
       setLoading(false);
     }
@@ -292,7 +308,7 @@ export default function WorldMap({ mode = "player" }) {
     try {
       await api.dmUpdateLocationState(locationId, { visibility });
     } catch (err) {
-      setError(String(err?.message || "Не удалось обновить локацию"));
+      setError(formatMapUiError(err, "Не удалось обновить локацию"));
       loadPlayers().catch(() => {});
     } finally {
       setSavingLocationId(null);
@@ -306,7 +322,7 @@ export default function WorldMap({ mode = "player" }) {
     try {
       await api.dmUpdateMapPosition(playerId, position);
     } catch (err) {
-      setError(String(err?.message || "Не удалось обновить позицию"));
+      setError(formatMapUiError(err, "Не удалось обновить позицию"));
     } finally {
       setSavingPlayerId(null);
     }
@@ -377,7 +393,7 @@ export default function WorldMap({ mode = "player" }) {
     try {
       await api.dmUpdateLocationPosition(location.id, position);
     } catch (err) {
-      setError(String(err?.message || "Не удалось обновить позицию локации"));
+      setError(formatMapUiError(err, "Не удалось обновить позицию локации"));
       loadPlayers().catch(() => {});
     } finally {
       setSavingLocationId(null);
@@ -431,9 +447,17 @@ export default function WorldMap({ mode = "player" }) {
 
   return (
     <div className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>
-      <section className="tf-page-header">
-        <h1>Карта мира</h1>
-        <div className="tf-header-actions">
+      <section className="card world-map-hero">
+        <div className="world-map-hero-copy">
+          <div className="eyebrow">{dmMode ? "DM Control" : "Adventure Atlas"}</div>
+          <h1>Карта мира</h1>
+          <p>
+            {dmMode
+              ? "Двигай жетоны, открывай локации и держи всю навигацию партии в одном экране."
+              : "Следи за маршрутом группы, открывай точки интереса и смотри текущее положение игроков."}
+          </p>
+        </div>
+        <div className="world-map-hero-actions">
           <button className="btn secondary" type="button" onClick={focusParty} disabled={players.length === 0}>
             <Crosshair className="icon" aria-hidden="true" />
             Партия
@@ -442,6 +466,11 @@ export default function WorldMap({ mode = "player" }) {
             <RefreshCcw className="icon" aria-hidden="true" />
             Обновить
           </button>
+          {dmMode ? (
+            <button className="btn secondary" type="button" onClick={() => setCategory("all")}>
+              Все категории
+            </button>
+          ) : null}
         </div>
       </section>
       <section className="world-map-layout">
@@ -454,17 +483,18 @@ export default function WorldMap({ mode = "player" }) {
                 </button>
               ))}
             </div>
-            <div className="world-map-counter">
-              <span>{visibleLocations.length} мест</span>
-              <span>{players.length} игроков</span>
-              {dmMode ? <span>{savingLocationId ? "Сохраняю метку" : savingPlayerId ? `Сохраняю #${savingPlayerId}` : "DM-режим"}</span> : null}
-            </div>
-            {dmMode && (
-              <div className="world-map-dm-controls">
-                <button className="btn secondary" type="button" onClick={focusParty} disabled={players.length === 0}>Центрировать на партии</button>
-                <button className="btn secondary" type="button" onClick={() => setCategory("all")}>Показать все категории</button>
+            <div className="world-map-toolbar-side">
+              <div className="world-map-counter">
+                <span>{visibleLocations.length} мест</span>
+                <span>{players.length} игроков</span>
+                {dmMode ? <span>{savingLocationId ? "Сохраняю метку" : savingPlayerId ? `Сохраняю #${savingPlayerId}` : "DM-режим"}</span> : null}
               </div>
-            )}
+              {dmMode ? (
+                <div className="world-map-toolbar-note">
+                  Перетаскивай маркеры и жетоны прямо на карте.
+                </div>
+              ) : null}
+            </div>
           </div>
           <div className="world-map-stage">
             <div className="world-map-map-actions" aria-label="Действия карты">
@@ -496,7 +526,7 @@ export default function WorldMap({ mode = "player" }) {
                     setServerLocations((current) => current?.map((loc) => loc.id === locationId ? { ...loc, description } : loc));
                     done(false);
                   } catch (err) {
-                    setError(String(err?.message || "Не удалось обновить описание"));
+                    setError(formatMapUiError(err, "Не удалось обновить описание"));
                   } finally {
                     setSavingLocationId(null);
                   }
@@ -515,7 +545,7 @@ export default function WorldMap({ mode = "player" }) {
                 setServerLocations((current) => current?.map((loc) => loc.id === locationId ? { ...loc, description } : loc));
                 done(false);
               } catch (err) {
-                setError(String(err?.message || "Не удалось обновить описание"));
+                setError(formatMapUiError(err, "Не удалось обновить описание"));
               } finally {
                 setSavingLocationId(null);
               }
