@@ -16,6 +16,7 @@ const DATA_DIR = process.env.DND_LAN_DATA_DIR
     ? path.join(process.env.LOCALAPPDATA, "dnd-lan")
     : path.join(repoRoot, "server", "data"));
 const DB_PATH = path.join(DATA_DIR, "app.db");
+console.log("Server is using database at:", DB_PATH);
 const SCHEMA_PATH = path.join(__dirname, "schema.sql");
 
 let db;
