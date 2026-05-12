@@ -42,18 +42,8 @@ export async function safeFetch(path, opts) {
       signal: controller?.signal || signal
     });
   } catch (e) {
-    if (timedOut) {
-      const err = new Error(ERROR_CODES.REQUEST_TIMEOUT);
-      err.status = 0;
-      err.body = { error: ERROR_CODES.REQUEST_TIMEOUT };
-      err.cause = e;
-      throw err;
-    }
-    const err = new Error(ERROR_CODES.OFFLINE);
-    err.status = 0;
-    err.body = { error: ERROR_CODES.OFFLINE };
-    err.cause = e;
-    throw err;
+    const code = timedOut ? ERROR_CODES.REQUEST_TIMEOUT : ERROR_CODES.OFFLINE;
+    throw makeNetworkError(code, e);
   } finally {
     if (timerId) clearTimeout(timerId);
     removeSignalListener?.();
@@ -70,6 +60,14 @@ export function makeError(message, res, body) {
   const err = new Error(message);
   err.status = res?.status ?? 0;
   err.body = body;
+  return err;
+}
+
+function makeNetworkError(message, cause) {
+  const err = new Error(message);
+  err.status = 0;
+  err.body = { error: message };
+  err.cause = cause;
   return err;
 }
 
