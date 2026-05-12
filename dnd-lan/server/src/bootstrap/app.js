@@ -165,6 +165,7 @@ export function createApp() {
   }
 
   app.use("/api/auth", authRouter);
+  app.use("/api/dm", verifyCsrfToken, setupRouter);
   app.use("/api/party", verifyCsrfToken, partyRouter);
   app.use("/api/players", verifyCsrfToken, playersRouter);
   app.use("/api/live-activity", verifyCsrfToken, liveActivityRouter);

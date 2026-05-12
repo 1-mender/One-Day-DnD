@@ -53,8 +53,13 @@ export function dmAuthMiddleware(req, res, next) {
     const payload = verifyDmToken(token);
     req.dm = payload;
     return next();
-  } catch {
-    return res.status(401).json({ error: "not_authenticated" });
+  } catch (e) {
+    const knownErrors = ["dm_user_not_found", "dm_token_revoked"];
+    if (e instanceof jwt.JsonWebTokenError || e instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ error: "dm_token_invalid" });
+    }
+    const message = knownErrors.includes(e.message) ? e.message : "not_authenticated";
+    return res.status(401).json({ error: message });
   }
 }
 

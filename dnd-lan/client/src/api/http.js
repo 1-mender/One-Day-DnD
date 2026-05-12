@@ -45,7 +45,7 @@ export async function safeFetch(path, opts) {
           timedOut = true;
           controller.abort();
         }, ms);
-      }
+      } 
     }
 
     try {

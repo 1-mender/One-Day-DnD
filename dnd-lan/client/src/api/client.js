@@ -6,11 +6,33 @@ const DEFAULT_HTTP_TIMEOUT_MS = 15_000;
 const DEFAULT_HTTP_WRITE_TIMEOUT_MS = 20_000;
 const DEFAULT_UPLOAD_TIMEOUT_MS = 60_000;
 
-function getCookie(name) {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
+let csrfTokenPromise = null;
+
+async function fetchAndStoreCsrfToken() {
+  try {
+    // We use safeFetch directly to avoid circular dependency with request()
+    const res = await safeFetch("/api/csrf-token");
+    if (!res.ok) {
+      csrfTokenPromise = null; // Allow retrying
+      return null;
+    }
+    const body = await parseBody(res);
+    const token = body?.csrfToken;
+    if (!token) {
+      csrfTokenPromise = null; // Allow retrying
+    }
+    return token;
+  } catch {
+    csrfTokenPromise = null; // Allow retrying
+    return null;
+  }
+}
+
+function getCsrfToken() {
+  if (!csrfTokenPromise) {
+    csrfTokenPromise = fetchAndStoreCsrfToken();
+  }
+  return csrfTokenPromise;
 }
 
 export async function request(path, opts = {}) {
@@ -19,9 +41,8 @@ export async function request(path, opts = {}) {
   if (token) headers["x-player-token"] = token;
   const method = String(opts.method || "GET").toUpperCase();
 
-  // Add CSRF token for all mutating requests
   if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
-    const csrfToken = getCookie("csrf-token"); // The cookie name might be different, e.g., '_csrf'
+    const csrfToken = await getCsrfToken();
     if (csrfToken) {
       headers["x-csrf-token"] = csrfToken;
     }
@@ -51,7 +72,7 @@ export async function uploadForm(path, formData, fallbackError) {
   const token = storage.getPlayerToken();
   if (token) headers["x-player-token"] = token;
 
-  const csrfToken = getCookie("csrf-token");
+  const csrfToken = await getCsrfToken();
   if (csrfToken) {
     headers["x-csrf-token"] = csrfToken;
   }
