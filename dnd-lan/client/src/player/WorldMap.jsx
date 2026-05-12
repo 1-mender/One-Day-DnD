@@ -256,6 +256,13 @@ export default function WorldMap({ mode = "player" }) {
   const [savingPlayerId, setSavingPlayerId] = useState(null);
   const [category, setCategory] = useState("all");
   const [selected, setSelected] = useState({ kind: "none", id: null });
+
+  // === ИСПРАВЛЕНИЕ 1: Сохраняем актуальный режим без ререндеров ===
+  const dmModeRef = useRef(dmMode);
+  useEffect(() => {
+    dmModeRef.current = dmMode;
+  }, [dmMode]);
+
   const loadPlayers = useCallback(async () => {
     setError("");
     setLoading(true);
@@ -350,37 +357,61 @@ export default function WorldMap({ mode = "player" }) {
   const selectedLocation = selected.kind === "location" ? effectiveLocations.find((location) => location.id === selected.id) : null;
   const selectedPlayer = selected.kind === "player" ? players.find((player) => player.id === selected.id) : null;
 
+  // === ИСПРАВЛЕНИЕ 2: Инициализация карты (создается 1 раз, правильно удаляется) ===
   useEffect(() => {
     const mapEl = mapElRef.current;
     if (!mapEl) return;
+    
+    // Защита от двойной инициализации (исправляет ReferenceError)
+    if (mapRef.current) return;
+
     const map = L.map(mapEl, { crs: L.CRS.Simple, maxZoom: 2, minZoom: -1.25, zoomSnap: 0.25, zoomDelta: 0.25, wheelPxPerZoomLevel: 60 });
     mapRef.current = map;
+    
     const imageLayer = L.imageOverlay(MAP_IMAGE_URL, MAP_BOUNDS, { interactive: false, crossOrigin: false }).addTo(map);
     imageLayerRef.current = imageLayer;
+    
     const markersLayer = L.layerGroup().addTo(map);
     markersLayerRef.current = markersLayer;
+    
     map.setMaxBounds(MAP_PADDED_BOUNDS);
     map.setView(MAP_CENTER, -1);
+    
     const applyPlayerMobileView = () => {
       window.requestAnimationFrame(() => {
+        if (!mapRef.current) return;
         map.invalidateSize();
-        if (!isMobileViewport() || dmMode) {
+        
+        // Используем dmModeRef.current, чтобы не зависеть от ререндера компонента
+        if (!isMobileViewport() || dmModeRef.current) {
           map.setMinZoom(-1.25);
           map.setMaxBounds(MAP_PADDED_BOUNDS);
           if (!map.getBounds().isValid()) map.fitBounds(MAP_BOUNDS, { padding: [16, 16] });
           return;
         }
+        
         const coverZoom = Math.max(-1.25, getCoverZoom(map));
         map.setMinZoom(coverZoom);
         map.setMaxBounds(MAP_BOUNDS);
         if (map.getZoom() < coverZoom) map.setView(MAP_CENTER, coverZoom, { animate: false });
       });
     };
+    
     applyPlayerMobileView();
     window.addEventListener("resize", applyPlayerMobileView);
     window.addEventListener("orientationchange", applyPlayerMobileView);
-    return () => { window.removeEventListener("resize", applyPlayerMobileView); window.removeEventListener("orientationchange", applyPlayerMobileView); };
-  }, [dmMode]);
+    
+    return () => { 
+      window.removeEventListener("resize", applyPlayerMobileView); 
+      window.removeEventListener("orientationchange", applyPlayerMobileView); 
+      
+      // Очистка при размонтировании (убивает утечки памяти)
+      if (mapRef.current) {
+         mapRef.current.remove();
+         mapRef.current = null;
+      }
+    };
+  }, []); // Пустой массив - запускается один раз
 
   const saveLocationPosition = useCallback(async (location, position) => {
     if (!dmMode) return;
