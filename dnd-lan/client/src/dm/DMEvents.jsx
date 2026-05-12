@@ -2,8 +2,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { api } from "../api.js";
 import { useToast } from "../foundation/providers/index.js";
 import { useDebouncedValue } from "../lib/useDebouncedValue.js";
-import { formatError } from "../lib/formatError.js";
-import { ERROR_CODES } from "../lib/errorCodes.js";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
@@ -11,6 +9,7 @@ import { useQueryState } from "../hooks/useQueryState.js";
 import { Copy } from "lucide-react";
 import { t } from "../i18n/index.js";
 import { ConfirmDialog, FilterBar, PageHeader, SectionCard, StatusBanner } from "../foundation/primitives/index.js";
+import { formatDmSurfaceError } from "./dmErrorCopy.js";
 
 const scopes = [
   { key: "", labelKey: "dmEvents.scopeAll", prefix: "" },
@@ -77,7 +76,10 @@ export default function DMEvents() {
       }
       setHasMore(!!response.hasMore);
     } catch (error) {
-      setErr(formatError(error, ERROR_CODES.LOAD_FAILED));
+      setErr(formatDmSurfaceError(error, {
+        subject: "Журнал событий",
+        fallback: "Не удалось получить /api/events. Проверь авторизацию DM, сеть и доступность сервера."
+      }));
     } finally {
       setBusy(false);
     }
@@ -103,7 +105,11 @@ export default function DMEvents() {
 
   const rows = useMemo(() => items.map((event) => ({
     ...event,
-    _time: fmtTime(event.created_at)
+    _time: fmtTime(event.created_at),
+    _typeLabel: getEventTypeLabel(event),
+    _actorLabel: getEventActorLabel(event),
+    _targetLabel: getEventTargetLabel(event),
+    _headline: getEventHeadline(event)
   })), [items]);
 
   const displayRows = useMemo(() => {
@@ -176,7 +182,10 @@ export default function DMEvents() {
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setErr(formatError(error, ERROR_CODES.EXPORT_FAILED));
+      setErr(formatDmSurfaceError(error, {
+        subject: "Экспорт журнала",
+        fallback: "Не удалось собрать JSON-файл событий."
+      }));
     } finally {
       setBusy(false);
     }
@@ -190,7 +199,10 @@ export default function DMEvents() {
       await load(true);
       toast.success(t("dmEvents.cleanupDeleted", { count: response.deleted }));
     } catch (error) {
-      const message = formatError(error, ERROR_CODES.LOAD_FAILED);
+      const message = formatDmSurfaceError(error, {
+        subject: "Очистка журнала",
+        fallback: "Не удалось удалить записи событий."
+      });
       setErr(message);
       toast.error(message);
     } finally {
@@ -322,17 +334,12 @@ export default function DMEvents() {
                 >
                   <div className="kv u-minw-170">
                     <div className="u-fw-800">{eventItem._time}</div>
-                    <div className="small">{eventItem.type}</div>
-                    <div className="small">
-                      {eventItem.actor_role}{eventItem.actor_name ? ` • ${eventItem.actor_name}` : ""}
-                    </div>
+                    <div className="small">{eventItem._typeLabel}</div>
+                    <div className="small">{eventItem._actorLabel}</div>
                   </div>
                   <div className="u-flex-1">
-                    <div className="u-fw-700">{eventItem.message || t("common.notAvailable")}</div>
-                    <div className="small">
-                      {eventItem.target_type ? `${t("dmEvents.targetLabel")} ${eventItem.target_type}` : ""}
-                      {eventItem.target_id ? ` #${eventItem.target_id}` : ""}
-                    </div>
+                    <div className="u-fw-700">{eventItem._headline}</div>
+                    <div className="small">{eventItem._targetLabel}</div>
                   </div>
                   <div className="row u-row-gap-6">
                     <button
@@ -391,11 +398,74 @@ function fmtTime(ts) {
   return date.toLocaleString();
 }
 
+function getEventTypeLabel(eventItem) {
+  switch (String(eventItem?.type || "")) {
+    case "player.online":
+      return "Подключение игрока";
+    case "player.offline":
+      return "Отключение игрока";
+    case "join.approved":
+      return "Заявка принята";
+    case "join.rejected":
+      return "Заявка отклонена";
+    case "join.banned":
+      return "IP заблокирован";
+    case "player.kicked":
+      return "Игрок кикнут";
+    default:
+      return String(eventItem?.type || t("common.notAvailable"));
+  }
+}
+
+function getEventActorLabel(eventItem) {
+  const role = String(eventItem?.actor_role || "");
+  const name = String(eventItem?.actor_name || "").trim();
+  const roleLabel = role === "system" ? "Система" : role === "dm" ? "DM" : role === "player" ? "Игрок" : role || "Источник";
+  return name ? `${roleLabel} • ${name}` : roleLabel;
+}
+
+function getEventTargetLabel(eventItem) {
+  const targetType = String(eventItem?.target_type || "");
+  const targetId = eventItem?.target_id;
+  if (!targetType && !targetId) return "";
+
+  const targetLabel = {
+    player: "Цель: игрок",
+    join_request: "Цель: заявка",
+    inventory_item: "Цель: предмет",
+    profile_request: "Цель: запрос профиля"
+  }[targetType] || `${t("dmEvents.targetLabel")} ${targetType}`;
+
+  return targetId ? `${targetLabel} #${targetId}` : targetLabel;
+}
+
+function getEventHeadline(eventItem) {
+  const actorName = String(eventItem?.actor_name || "").trim();
+  const fallbackName = actorName || (eventItem?.target_id ? `Игрок #${eventItem.target_id}` : "Игрок");
+
+  switch (String(eventItem?.type || "")) {
+    case "player.online":
+      return `${fallbackName} подключился`;
+    case "player.offline":
+      return `${fallbackName} отключился`;
+    case "join.approved":
+      return actorName ? `DM одобрил вход для ${actorName}` : String(eventItem?.message || "");
+    case "join.rejected":
+      return actorName ? `DM отклонил запрос ${actorName}` : String(eventItem?.message || "");
+    case "join.banned":
+      return actorName ? `DM заблокировал запрос ${actorName}` : String(eventItem?.message || "");
+    case "player.kicked":
+      return actorName ? `${actorName} был отключён DM` : String(eventItem?.message || "");
+    default:
+      return String(eventItem?.message || t("common.notAvailable"));
+  }
+}
+
 function formatEventSnippet(eventItem) {
   const time = fmtTime(eventItem?.created_at);
-  const actor = eventItem?.actor_name ? `${eventItem.actor_role} • ${eventItem.actor_name}` : String(eventItem?.actor_role || "");
-  const target = eventItem?.target_type ? `${eventItem.target_type}${eventItem?.target_id ? ` #${eventItem.target_id}` : ""}` : "";
-  const message = eventItem?.message || "";
-  return [time, eventItem?.type, actor, target, message].filter(Boolean).join(" | ");
+  const actor = getEventActorLabel(eventItem);
+  const target = getEventTargetLabel(eventItem);
+  const message = getEventHeadline(eventItem);
+  return [time, getEventTypeLabel(eventItem), actor, target, message].filter(Boolean).join(" | ");
 }
 

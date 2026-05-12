@@ -8399,6 +8399,11 @@ body.arcade-modal-open{
   padding: clamp(14px, 3vw, 22px);
 }
 
+.world-map-hero-copy{
+  display: grid;
+  gap: 4px;
+}
+
 .world-map-hero h1{
   margin: 2px 0 4px;
   font-family: var(--font-display);
@@ -8427,7 +8432,7 @@ body.arcade-modal-open{
 
 .world-map-layout{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 410px);
   gap: 14px;
   align-items: start;
 }
@@ -8442,8 +8447,15 @@ body.arcade-modal-open{
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  align-items: center;
+  align-items: flex-start;
+  flex-wrap: wrap;
   padding: 2px 2px 10px;
+}
+
+.world-map-toolbar-side{
+  display: grid;
+  justify-items: end;
+  gap: 6px;
 }
 
 .world-map-tabs{
@@ -8482,6 +8494,12 @@ body.arcade-modal-open{
   border-radius: 999px;
   background: rgba(255, 251, 239, .58);
   padding: 5px 8px;
+}
+
+.world-map-toolbar-note{
+  color: var(--map-muted);
+  font-size: .82rem;
+  text-align: right;
 }
 
 .world-map-stage{
@@ -8601,16 +8619,61 @@ body.arcade-modal-open{
   position: sticky;
   top: 10px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
+}
+
+.world-map-inline-error{
+  padding: 12px 14px;
+  border: 1px solid rgba(156, 88, 76, .28);
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(246, 227, 223, .96), rgba(236, 214, 208, .9));
+  color: #6b3f36;
+  box-shadow: 0 12px 24px rgba(79, 38, 30, .08);
 }
 
 .dm-map-editor{
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .dm-map-editor.is-embedded{
   margin-top: 2px;
+}
+
+.dm-map-editor-hero{
+  display: grid;
+  gap: 14px;
+}
+
+.dm-map-editor-copy{
+  display: grid;
+  gap: 6px;
+}
+
+.dm-map-editor-stats{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.dm-map-editor-stat{
+  display: grid;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px solid rgba(85, 70, 44, .14);
+  border-radius: 18px;
+  background: rgba(255, 251, 239, .66);
+}
+
+.dm-map-editor-stat strong{
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.dm-map-editor-stat span{
+  color: var(--map-muted);
+  font-size: .82rem;
 }
 
 .dm-map-editor h2,
@@ -8631,9 +8694,66 @@ body.arcade-modal-open{
   flex-wrap: wrap;
 }
 
+.dm-map-section-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.dm-map-editor-list{
+  display: grid;
+}
+
+.dm-map-empty-state{
+  padding: 12px 0 4px;
+  color: var(--map-muted);
+}
+
+.dm-map-upload{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 12px 0 6px;
+  padding: 12px;
+  border: 1px dashed rgba(85, 70, 44, .22);
+  border-radius: 18px;
+  background: rgba(255, 251, 239, .46);
+  cursor: pointer;
+}
+
+.dm-map-upload input{
+  display: none;
+}
+
+.dm-map-upload-button{
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border: 1px solid rgba(87, 68, 40, .18);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(242, 233, 211, .96));
+  box-shadow: 0 4px 0 rgba(74, 62, 38, .08);
+  font: 800 .82rem/1 var(--font-display);
+}
+
+.dm-map-upload-name{
+  color: var(--map-muted);
+  font-size: .92rem;
+}
+
+.dm-map-upload-name.has-file{
+  color: var(--map-text);
+  font-weight: 700;
+}
+
 .map-editor-row{
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 12px;
   padding: 10px 0;
   border-top: 1px dashed rgba(85, 70, 44, .18);
@@ -8650,15 +8770,36 @@ body.arcade-modal-open{
   min-width: 0;
 }
 
+.map-editor-row-meta{
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dm-map-editor-sheet{
+  display: grid;
+  gap: 12px;
+}
+
+.dm-map-form-grid{
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
 .dm-map-editor label{
   display: grid;
   gap: 6px;
-  margin-bottom: 10px;
 }
 
 .dm-map-editor input,
-.dm-map-editor textarea{
+.dm-map-editor textarea,
+.dm-map-editor select{
   width: 100%;
+}
+
+.dm-map-form-span-2{
+  grid-column: 1 / -1;
 }
 
 .world-map-detail-card{
@@ -8780,6 +8921,10 @@ body.arcade-modal-open{
     display: grid;
     gap: 6px;
     padding: 0 0 7px;
+  }
+
+  .world-map-toolbar-side{
+    justify-items: start;
   }
 
   .world-map-tabs{
@@ -8945,6 +9090,16 @@ body.arcade-modal-open{
     display: grid;
     gap: 10px;
     position: static;
+  }
+
+  .dm-map-editor-stats,
+  .dm-map-form-grid{
+    grid-template-columns: 1fr;
+  }
+
+  .dm-map-upload{
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .map-editor-row{

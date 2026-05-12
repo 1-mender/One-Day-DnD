@@ -209,7 +209,7 @@ function MapDetailPanel({
   const hasSelection = Boolean(selectedPlayer || selectedLocation);
   return (
     <>
-      {error ? <div className="badge off">{error}</div> : null}
+      {error ? <div className="world-map-inline-error">{error}</div> : null}
       {hasSelection && onClear ? (
         <button className="world-map-detail-close" type="button" onClick={onClear} aria-label="Закрыть карточку">
           ×

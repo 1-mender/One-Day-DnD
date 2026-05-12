@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { api } from "../api.js";
-import { formatError } from "../lib/formatError.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { useReadOnly } from "../hooks/useReadOnly.js";
+import { formatDmSurfaceError } from "./dmErrorCopy.js";
 
 export default function DMLobby() {
   const [items, setItems] = useState([]);
@@ -11,8 +11,16 @@ export default function DMLobby() {
   const readOnly = useReadOnly();
 
   const load = useCallback(async () => {
-    const r = await api.dmRequests();
-    setItems(r.items || []);
+    setErr("");
+    try {
+      const r = await api.dmRequests();
+      setItems(r.items || []);
+    } catch (error) {
+      setErr(formatDmSurfaceError(error, {
+        subject: "Лобби / Подключения",
+        fallback: "Не удалось получить список заявок. Проверь авторизацию DM и доступность /api/party/requests."
+      }));
+    }
   }, []);
 
   useEffect(() => {
@@ -28,17 +36,32 @@ export default function DMLobby() {
   async function approve(id) {
     if (readOnly) return;
     setErr("");
-    try { await api.dmApprove(id); await load(); } catch (e) { setErr(formatError(e)); }
+    try { await api.dmApprove(id); await load(); } catch (e) {
+      setErr(formatDmSurfaceError(e, {
+        subject: "Заявка на вход",
+        fallback: "Не удалось принять игрока."
+      }));
+    }
   }
   async function reject(id) {
     if (readOnly) return;
     setErr("");
-    try { await api.dmReject(id); await load(); } catch (e) { setErr(formatError(e)); }
+    try { await api.dmReject(id); await load(); } catch (e) {
+      setErr(formatDmSurfaceError(e, {
+        subject: "Заявка на вход",
+        fallback: "Не удалось отклонить игрока."
+      }));
+    }
   }
   async function ban(id) {
     if (readOnly) return;
     setErr("");
-    try { await api.dmBan(id); await load(); } catch (e) { setErr(formatError(e)); }
+    try { await api.dmBan(id); await load(); } catch (e) {
+      setErr(formatDmSurfaceError(e, {
+        subject: "Заявка на вход",
+        fallback: "Не удалось заблокировать IP запроса."
+      }));
+    }
   }
 
   const uniqueIpCount = new Set(items.map((item) => item.ip).filter(Boolean)).size;
