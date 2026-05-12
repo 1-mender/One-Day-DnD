@@ -8,45 +8,70 @@ function envNumber(name, fallback) {
 
 const DEFAULT_HTTP_TIMEOUT_MS = envNumber("VITE_HTTP_TIMEOUT_MS", 15_000);
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function safeFetch(path, opts) {
-  const { timeoutMs, signal, ...fetchOpts } = opts || {};
-  const timeout = Number(timeoutMs);
-  const ms = Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_HTTP_TIMEOUT_MS;
-  const canAbort = typeof AbortController !== "undefined";
-  const controller = canAbort ? new AbortController() : null;
-  let timedOut = false;
-  let timerId = null;
-  let removeSignalListener = null;
+  const {
+    timeoutMs,
+    signal,
+    retries = 0,
+    retryDelay = 1000,
+    ...fetchOpts
+  } = opts || {};
 
-  if (controller) {
-    if (signal?.aborted) {
-      controller.abort();
-    } else if (signal && typeof signal.addEventListener === "function") {
-      const onAbort = () => controller.abort();
-      signal.addEventListener("abort", onAbort, { once: true });
-      removeSignalListener = () => {
-        signal.removeEventListener("abort", onAbort);
-      };
-    }
-    if (ms > 0) {
-      timerId = setTimeout(() => {
-        timedOut = true;
+  for (let i = 0; i <= retries; i++) {
+    const timeout = Number(timeoutMs);
+    const ms = Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_HTTP_TIMEOUT_MS;
+    const canAbort = typeof AbortController !== "undefined";
+    const controller = canAbort ? new AbortController() : null;
+    let timedOut = false;
+    let timerId = null;
+    let removeSignalListener = null;
+
+    if (controller) {
+      if (signal?.aborted) {
         controller.abort();
-      }, ms);
+      } else if (signal && typeof signal.addEventListener === "function") {
+        const onAbort = () => controller.abort();
+        signal.addEventListener("abort", onAbort, { once: true });
+        removeSignalListener = () => {
+          signal.removeEventListener("abort", onAbort);
+        };
+      }
+      if (ms > 0) {
+        timerId = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, ms);
+      }
     }
-  }
 
-  try {
-    return await fetch(path, {
-      ...fetchOpts,
-      signal: controller?.signal || signal
-    });
-  } catch (e) {
-    const code = timedOut ? ERROR_CODES.REQUEST_TIMEOUT : ERROR_CODES.OFFLINE;
-    throw makeNetworkError(code, e);
-  } finally {
-    if (timerId) clearTimeout(timerId);
-    removeSignalListener?.();
+    try {
+      const response = await fetch(path, {
+        ...fetchOpts,
+        signal: controller?.signal || signal
+      });
+      if (timerId) clearTimeout(timerId);
+      removeSignalListener?.();
+      return response;
+    } catch (e) {
+      if (timerId) clearTimeout(timerId);
+      removeSignalListener?.();
+
+      if (signal?.aborted) {
+        throw makeNetworkError(ERROR_CODES.OFFLINE, e);
+      }
+
+      if (i < retries) {
+        await delay(retryDelay * Math.pow(2, i));
+        continue;
+      }
+
+      const code = timedOut ? ERROR_CODES.REQUEST_TIMEOUT : ERROR_CODES.OFFLINE;
+      throw makeNetworkError(code, e);
+    }
   }
 }
 

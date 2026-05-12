@@ -22,7 +22,8 @@ export async function request(path, opts = {}) {
     ...opts,
     headers,
     credentials: "include",
-    timeoutMs
+    timeoutMs,
+    retries: 2
   });
   const body = await parseBody(res);
   if (!res.ok) throw makeError(body?.error || ERROR_CODES.REQUEST_FAILED, res, body);
