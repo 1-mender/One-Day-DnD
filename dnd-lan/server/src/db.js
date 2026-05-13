@@ -16,7 +16,6 @@ const DATA_DIR = process.env.DND_LAN_DATA_DIR
     ? path.join(process.env.LOCALAPPDATA, "dnd-lan")
     : path.join(repoRoot, "server", "data"));
 const DB_PATH = path.join(DATA_DIR, "app.db");
-console.log("Server is using database at:", DB_PATH);
 const SCHEMA_PATH = path.join(__dirname, "schema.sql");
 
 let db;
@@ -44,6 +43,7 @@ export function closeDb() {
 
 export function initDb() {
   ensureDir(DATA_DIR);
+  logger.info({ dbPath: DB_PATH }, "initializing database");
   const nextDb = new Database(DB_PATH);
   try {
     nextDb.pragma("foreign_keys = ON");
