@@ -424,9 +424,48 @@ const MIGRATIONS = [
       database.exec("CREATE INDEX IF NOT EXISTS idx_profile_xp_log_player_created ON character_profile_xp_log(player_id, created_at DESC);");
     }
   }
-  ,
+  , // Add comma for the next migration
   {
-    version: 23,
+    version: 23, // New migration version
+    name: "map_locations_table",
+    up(database) {
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS map_locations(
+          id TEXT PRIMARY KEY,
+          party_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          category TEXT NOT NULL,
+          description TEXT,
+          default_x REAL NOT NULL DEFAULT 50,
+          default_y REAL NOT NULL DEFAULT 43,
+          created_by TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
+        );`
+      );
+      database.exec("CREATE INDEX IF NOT EXISTS idx_map_locations_party ON map_locations(party_id);");
+    }
+  },
+  {
+    version: 24, // New migration version
+    name: "map_tokens_table",
+    up(database) {
+      database.exec(
+        `CREATE TABLE IF NOT EXISTS map_tokens(
+          id TEXT PRIMARY KEY,
+          party_id INTEGER NOT NULL,
+          kind TEXT NOT NULL,
+          x REAL NOT NULL,
+          y REAL NOT NULL,
+          FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
+        );`
+      );
+      database.exec("CREATE INDEX IF NOT EXISTS idx_map_tokens_party ON map_tokens(party_id);");
+    }
+  },
+  { // Renumber the existing migration
+    version: 25,
     name: "seed_world_map_locations",
     up(database) {
       // Seed default world map locations into map_locations for existing parties if not present
