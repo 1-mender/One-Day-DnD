@@ -498,6 +498,18 @@ const MIGRATIONS = [
         }
       }
     }
+  },
+  {
+    version: 26,
+    name: "maps_timestamps",
+    up(database) {
+      if (hasTable(database, "maps")) {
+        const nowStamp = Date.now();
+        addColumnIfMissing(database, "maps", "created_at", "ALTER TABLE maps ADD COLUMN created_at INTEGER;");
+        addColumnIfMissing(database, "maps", "updated_at", "ALTER TABLE maps ADD COLUMN updated_at INTEGER;");
+        database.prepare("UPDATE maps SET created_at = ?, updated_at = ? WHERE created_at IS NULL").run(nowStamp, nowStamp);
+      }
+    }
   }
 ];
 
