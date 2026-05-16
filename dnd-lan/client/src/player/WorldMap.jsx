@@ -441,14 +441,26 @@ export default function WorldMap({ mode = "player" }) {
     const map = mapRef.current;
     if (!map || !mapImageUrl) return;
 
-    // If an old layer exists, remove it
+    // Если есть старый слой — удаляем его
     if (imageLayerRef.current) {
       imageLayerRef.current.remove();
     }
 
-    const newImageLayer = L.imageOverlay(mapImageUrl, MAP_BOUNDS, { interactive: false, crossOrigin: false }).addTo(map);
+    const newImageLayer = L.imageOverlay(mapImageUrl, MAP_BOUNDS, { 
+      interactive: false, 
+      crossOrigin: false 
+    }).addTo(map);
+    
     newImageLayer.bringToBack();
     imageLayerRef.current = newImageLayer;
+
+    // ВАЖНО: Возвращаем cleanup-функцию
+    return () => {
+      if (imageLayerRef.current) {
+        imageLayerRef.current.remove();
+        imageLayerRef.current = null;
+      }
+    };
   }, [mapImageUrl]);
 
   const saveLocationPosition = useCallback(async (location, position) => {
