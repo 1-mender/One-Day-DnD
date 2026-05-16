@@ -15,7 +15,6 @@ import {
 
 const DMMapEditor = lazy(() => import("../dm/MapEditor.jsx"));
 
-const MAP_IMAGE_URL = "/map/where-is-the-lord.png";
 const MAP_BOUNDS = [[0, 0], [WORLD_MAP_SIZE, WORLD_MAP_SIZE]];
 const MAP_PADDED_BOUNDS = [[-96, -96], [WORLD_MAP_SIZE + 96, WORLD_MAP_SIZE + 96]];
 const MAP_CENTER = [WORLD_MAP_SIZE / 2, WORLD_MAP_SIZE / 2];
@@ -259,6 +258,7 @@ export default function WorldMap({ mode = "player" }) {
   const [category, setCategory] = useState("all");
   const [selected, setSelected] = useState({ kind: "none", id: null });
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mapImageUrl, setMapImageUrl] = useState(null);
 
   // === ИСПРАВЛЕНИЕ 1: Сохраняем актуальный режим без ререндеров ===
   const dmModeRef = useRef(dmMode);
@@ -278,6 +278,7 @@ export default function WorldMap({ mode = "player" }) {
           .map((state) => [state.locationId, state])
       ));
       setServerLocations(Array.isArray(response?.locations) ? response.locations : null);
+      setMapImageUrl(response?.activeMap?.url || "/map/where-is-the-lord.png");
     } catch (err) {
       setError(formatMapUiError(err));
     } finally {
@@ -393,9 +394,6 @@ export default function WorldMap({ mode = "player" }) {
     const map = L.map(mapEl, { crs: L.CRS.Simple, maxZoom: 2, minZoom: -1.25, zoomSnap: 0.25, zoomDelta: 0.25, wheelPxPerZoomLevel: 60 });
     mapRef.current = map;
     
-    const imageLayer = L.imageOverlay(MAP_IMAGE_URL, MAP_BOUNDS, { interactive: false, crossOrigin: false }).addTo(map);
-    imageLayerRef.current = imageLayer;
-    
     const markersLayer = L.layerGroup().addTo(map);
     markersLayerRef.current = markersLayer;
     
@@ -437,6 +435,21 @@ export default function WorldMap({ mode = "player" }) {
       }
     };
   }, []); // Пустой массив - запускается один раз
+
+  // Effect to manage the map image overlay
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapImageUrl) return;
+
+    // If an old layer exists, remove it
+    if (imageLayerRef.current) {
+      imageLayerRef.current.remove();
+    }
+
+    const newImageLayer = L.imageOverlay(mapImageUrl, MAP_BOUNDS, { interactive: false, crossOrigin: false }).addTo(map);
+    newImageLayer.bringToBack();
+    imageLayerRef.current = newImageLayer;
+  }, [mapImageUrl]);
 
   const saveLocationPosition = useCallback(async (location, position) => {
     if (!dmMode) return;
