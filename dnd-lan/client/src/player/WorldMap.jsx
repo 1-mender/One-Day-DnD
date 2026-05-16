@@ -15,7 +15,7 @@ import {
 
 const DMMapEditor = lazy(() => import("../dm/MapEditor.jsx"));
 
-const MAP_BOUNDS = [[0, 0], [WORLD_MAP_SIZE, WORLD_MAP_SIZE]];
+// Базовые статические настройки для инициализации
 const MAP_PADDED_BOUNDS = [[-96, -96], [WORLD_MAP_SIZE + 96, WORLD_MAP_SIZE + 96]];
 const MAP_CENTER = [WORLD_MAP_SIZE / 2, WORLD_MAP_SIZE / 2];
 const LOCATION_VISIBILITY_LABELS = {
@@ -42,16 +42,21 @@ function coerceMapCoordinate(value, fallback) {
   return Number.isFinite(num) ? num : fallback;
 }
 
-function toMapLatLng(x, y) {
-  return [WORLD_MAP_SIZE - (y / 100) * WORLD_MAP_SIZE, (x / 100) * WORLD_MAP_SIZE];
+// === ОБНОВЛЕННАЯ ФУНКЦИЯ КООРДИНАТ: Принимает динамические размеры ===
+function toMapLatLng(x, y, dimensions) {
+  const h = dimensions?.height || WORLD_MAP_SIZE;
+  const w = dimensions?.width || WORLD_MAP_SIZE;
+  return [h - (y / 100) * h, (x / 100) * w];
 }
 
-function getCoverZoom(map) {
+function getCoverZoom(map, dimensions) {
   const size = map.getSize();
+  const h = dimensions?.height || WORLD_MAP_SIZE;
+  const w = dimensions?.width || WORLD_MAP_SIZE;
   if (!size.x || !size.y) return 0;
   return Math.max(
-    Math.log2(size.x / WORLD_MAP_SIZE),
-    Math.log2(size.y / WORLD_MAP_SIZE)
+    Math.log2(size.x / w),
+    Math.log2(size.y / h)
   );
 }
 
@@ -67,6 +72,7 @@ function getPlayerInitial(player) {
   return String(getPlayerName(player)).trim().slice(0, 1).toUpperCase() || "?";
 }
 
+// Экранирование HTML тегов для защиты
 function escapeMarkerHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (char) => ({
     "&": "&amp;",
@@ -260,13 +266,34 @@ export default function WorldMap({ mode = "player" }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapImageUrl, setMapImageUrl] = useState(null);
 
-  // === ИСПРАВЛЕНИЕ 1: Сохраняем актуальный режим без ререндеров ===
+  // === ИСПРАВЛЕНИЕ ДЛЯ ПРОПОРЦИЙ: Храним реальные размеры карты ===
+  const [mapDimensions, setMapDimensions] = useState({ width: WORLD_MAP_SIZE, height: WORLD_MAP_SIZE });
+
+  // Вычисляем динамические границы на основе пропорций картинки
+  const currentBounds = useMemo(() => [[0, 0], [mapDimensions.height, mapDimensions.width]], [mapDimensions]);
+  const currentPaddedBounds = useMemo(() => [[-96, -96], [mapDimensions.height + 96, mapDimensions.width + 96]], [mapDimensions]);
+
+  // Ссылка для отслеживания режима DM
   const dmModeRef = useRef(dmMode);
   useEffect(() => {
     dmModeRef.current = dmMode;
   }, [dmMode]);
 
-    const loadPlayers = useCallback(async () => {
+  // Автоматический расчет пропорций файла при изменении ссылки на изображение
+  useEffect(() => {
+    if (!mapImageUrl) return;
+    const img = new Image();
+    img.onload = () => {
+      const aspect = img.naturalWidth / img.naturalHeight;
+      setMapDimensions({
+        width: WORLD_MAP_SIZE * aspect, // Масштабируем ширину относительно базового размера
+        height: WORLD_MAP_SIZE
+      });
+    };
+    img.src = mapImageUrl;
+  }, [mapImageUrl]);
+
+  const loadPlayers = useCallback(async () => {
     setError("");
     setLoading(true);
     try {
@@ -280,15 +307,11 @@ export default function WorldMap({ mode = "player" }) {
       ));
       setServerLocations(Array.isArray(response?.locations) ? response.locations : null);
 
-      // === ИСПРАВЛЕННЫЙ КУСОК ===
       const activeUrl = response?.activeMap?.url;
       const latestUploadedMap = response?.maps?.[0]?.filename;
-      
-      // Формируем ссылку. Замени "/uploads/" на название папки, куда сохраняются картинки, если они не загрузятся!
-      const finalUrl = activeUrl || (latestUploadedMap ? `/uploads/${latestUploadedMap}` : "/map/where-is-the-lord.png");
+      const finalUrl = activeUrl || (latestUploadedMap ? `/map/${latestUploadedMap}` : "/map/map_1778949781221_9aztm8vr_Gemini_Generated_Image_np1vfdnp1vfdnp1v-_.png");
 
       setMapImageUrl(finalUrl);
-      // =========================
 
     } catch (err) {
       setError(formatMapUiError(err));
@@ -312,10 +335,10 @@ export default function WorldMap({ mode = "player" }) {
     const map = mapRef.current;
     if (!map || players.length === 0) return;
     const bounds = L.latLngBounds(
-      players.map((player) => toMapLatLng(player.mapPosition?.x || 50, player.mapPosition?.y || 43))
+      players.map((player) => toMapLatLng(player.mapPosition?.x || 50, player.mapPosition?.y || 43, mapDimensions))
     );
     map.fitBounds(bounds, { padding: [50, 50] });
-  }, [players]);
+  }, [players, mapDimensions]);
 
   const clearSelection = useCallback(() => setSelected({ kind: "none", id: null }), []);
 
@@ -394,12 +417,10 @@ export default function WorldMap({ mode = "player" }) {
   const selectedLocation = selected.kind === "location" ? effectiveLocations.find((location) => location.id === selected.id) : null;
   const selectedPlayer = selected.kind === "player" ? players.find((player) => player.id === selected.id) : null;
 
-  // === ИСПРАВЛЕНИЕ 2: Инициализация карты (создается 1 раз, правильно удаляется) ===
+  // Инициализация холста карты Leaflet
   useEffect(() => {
     const mapEl = mapElRef.current;
     if (!mapEl) return;
-    
-    // Защита от двойной инициализации (исправляет ReferenceError)
     if (mapRef.current) return;
 
     const map = L.map(mapEl, { crs: L.CRS.Simple, maxZoom: 2, minZoom: -1.25, zoomSnap: 0.25, zoomDelta: 0.25, wheelPxPerZoomLevel: 60 });
@@ -409,25 +430,21 @@ export default function WorldMap({ mode = "player" }) {
     markersLayerRef.current = markersLayer;
     
     map.setMaxBounds(MAP_PADDED_BOUNDS);
-    map.setView(MAP_CENTER, -1);
+    map.setView([WORLD_MAP_SIZE / 2, WORLD_MAP_SIZE / 2], -1);
     
     const applyPlayerMobileView = () => {
       window.requestAnimationFrame(() => {
         if (!mapRef.current) return;
         map.invalidateSize();
         
-        // Используем dmModeRef.current, чтобы не зависеть от ререндера компонента
         if (!isMobileViewport() || dmModeRef.current) {
           map.setMinZoom(-1.25);
-          map.setMaxBounds(MAP_PADDED_BOUNDS);
-          if (!map.getBounds().isValid()) map.fitBounds(MAP_BOUNDS, { padding: [16, 16] });
           return;
         }
         
-        const coverZoom = Math.max(-1.25, getCoverZoom(map));
+        const coverZoom = Math.max(-1.25, getCoverZoom(map, mapDimensions));
         map.setMinZoom(coverZoom);
-        map.setMaxBounds(MAP_BOUNDS);
-        if (map.getZoom() < coverZoom) map.setView(MAP_CENTER, coverZoom, { animate: false });
+        if (map.getZoom() < coverZoom) map.setView([mapDimensions.height / 2, mapDimensions.width / 2], coverZoom, { animate: false });
       });
     };
     
@@ -438,26 +455,23 @@ export default function WorldMap({ mode = "player" }) {
     return () => { 
       window.removeEventListener("resize", applyPlayerMobileView); 
       window.removeEventListener("orientationchange", applyPlayerMobileView); 
-      
-      // Очистка при размонтировании (убивает утечки памяти)
       if (mapRef.current) {
          mapRef.current.remove();
          mapRef.current = null;
       }
     };
-  }, []); // Пустой массив - запускается один раз
+  }, []);
 
-  // Effect to manage the map image overlay
+  // Управление слоем изображения подложки и его динамическими границами
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapImageUrl) return;
 
-    // Если есть старый слой — удаляем его
     if (imageLayerRef.current) {
       imageLayerRef.current.remove();
     }
 
-    const newImageLayer = L.imageOverlay(mapImageUrl, MAP_BOUNDS, { 
+    const newImageLayer = L.imageOverlay(mapImageUrl, currentBounds, { 
       interactive: false, 
       crossOrigin: false 
     }).addTo(map);
@@ -465,14 +479,17 @@ export default function WorldMap({ mode = "player" }) {
     newImageLayer.bringToBack();
     imageLayerRef.current = newImageLayer;
 
-    // ВАЖНО: Возвращаем cleanup-функцию
+    // Переопределяем границы перемещения камеры под новую форму изображения
+    map.setMaxBounds(currentPaddedBounds);
+    map.invalidateSize();
+
     return () => {
       if (imageLayerRef.current) {
         imageLayerRef.current.remove();
         imageLayerRef.current = null;
       }
     };
-  }, [mapImageUrl]);
+  }, [mapImageUrl, currentBounds, currentPaddedBounds]);
 
   const saveLocationPosition = useCallback(async (location, position) => {
     if (!dmMode) return;
@@ -492,13 +509,15 @@ export default function WorldMap({ mode = "player" }) {
     }
   }, [dmMode, setError, setSavingLocationId, setLocationStates, loadPlayers]);
 
+  // Рендеринг токенов игроков и маркеров с обновленной математикой
   useEffect(() => {
     const map = mapRef.current;
     const layer = markersLayerRef.current;
     if (!map || !layer) return;
     layer.clearLayers();
+
     visibleLocations.forEach((location) => {
-      const marker = L.marker(toMapLatLng(location.x, location.y), {
+      const marker = L.marker(toMapLatLng(location.x, location.y, mapDimensions), {
         icon: makeLocationIcon(location, selected.kind === "location" && selected.id === location.id),
         keyboard: true,
         title: location.name,
@@ -508,16 +527,18 @@ export default function WorldMap({ mode = "player" }) {
       if (dmMode) {
         marker.on("dragend", () => {
           const latLng = marker.getLatLng();
-          const x = Math.min(100, Math.max(0, (latLng.lng / WORLD_MAP_SIZE) * 100));
-          const y = Math.min(100, Math.max(0, ((WORLD_MAP_SIZE - latLng.lat) / WORLD_MAP_SIZE) * 100));
+          // Рассчитываем процент относительно динамической ширины и высоты
+          const x = Math.min(100, Math.max(0, (latLng.lng / mapDimensions.width) * 100));
+          const y = Math.min(100, Math.max(0, ((mapDimensions.height - latLng.lat) / mapDimensions.height) * 100));
           saveLocationPosition(location, { x, y });
         });
       }
       marker.addTo(layer);
     });
+
     players.forEach((player) => {
       const position = player.mapPosition || { x: 50, y: 43 };
-      const marker = L.marker(toMapLatLng(position.x, position.y), {
+      const marker = L.marker(toMapLatLng(position.x, position.y, mapDimensions), {
         icon: makePlayerIcon(player, selected.kind === "player" && selected.id === player.id),
         keyboard: true,
         title: getPlayerName(player),
@@ -528,14 +549,15 @@ export default function WorldMap({ mode = "player" }) {
       if (dmMode) {
         marker.on("dragend", () => {
           const latLng = marker.getLatLng();
-          const x = Math.min(100, Math.max(0, (latLng.lng / WORLD_MAP_SIZE) * 100));
-          const y = Math.min(100, Math.max(0, ((WORLD_MAP_SIZE - latLng.lat) / WORLD_MAP_SIZE) * 100));
+          // Рассчитываем процент относительно динамической ширины и высоты
+          const x = Math.min(100, Math.max(0, (latLng.lng / mapDimensions.width) * 100));
+          const y = Math.min(100, Math.max(0, ((mapDimensions.height - latLng.lat) / mapDimensions.height) * 100));
           savePlayerPosition(player.id, { x, y });
         });
       }
       marker.addTo(layer);
     });
-  }, [selected, visibleLocations, players, dmMode, saveLocationPosition, savePlayerPosition]);
+  }, [selected, visibleLocations, players, dmMode, mapDimensions, saveLocationPosition, savePlayerPosition]);
 
   return (
     <div ref={mapPageRef} className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>
