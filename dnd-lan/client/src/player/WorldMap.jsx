@@ -266,11 +266,12 @@ export default function WorldMap({ mode = "player" }) {
     dmModeRef.current = dmMode;
   }, [dmMode]);
 
-  const loadPlayers = useCallback(async () => {
+    const loadPlayers = useCallback(async () => {
     setError("");
     setLoading(true);
     try {
       const response = await api.worldMapState();
+      
       setPlayers(Array.isArray(response?.players) ? response.players : []);
       setLocationStates(Object.fromEntries(
         (Array.isArray(response?.locationStates) ? response.locationStates : [])
@@ -278,7 +279,17 @@ export default function WorldMap({ mode = "player" }) {
           .map((state) => [state.locationId, state])
       ));
       setServerLocations(Array.isArray(response?.locations) ? response.locations : null);
-      setMapImageUrl(response?.activeMap?.url || "/map/where-is-the-lord.png");
+
+      // === ИСПРАВЛЕННЫЙ КУСОК ===
+      const activeUrl = response?.activeMap?.url;
+      const latestUploadedMap = response?.maps?.[0]?.filename;
+      
+      // Формируем ссылку. Замени "/uploads/" на название папки, куда сохраняются картинки, если они не загрузятся!
+      const finalUrl = activeUrl || (latestUploadedMap ? `/uploads/${latestUploadedMap}` : "/map/where-is-the-lord.png");
+
+      setMapImageUrl(finalUrl);
+      // =========================
+
     } catch (err) {
       setError(formatMapUiError(err));
     } finally {
