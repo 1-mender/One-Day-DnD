@@ -1,0 +1,83 @@
+/* --- Стили для полноэкранного режима --- */
+.world-map-page:fullscreen {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #1a1a1a;
+}
+
+.world-map-page:fullscreen .world-map-layout {
+  flex-grow: 1;
+  height: 100%;
+}
+
+.world-map-page:fullscreen .world-map-board {
+  height: 100%;
+}
+
+.world-map-page:fullscreen .world-map-stage {
+  height: 100%;
+}
+
+/* Скрываем лишние элементы в полноэкранном режиме для игрока */
+.world-map-page.is-player:fullscreen .world-map-sidebar,
+.world-map-page.is-player:fullscreen .world-map-hero,
+.world-map-page.is-player:fullscreen .world-map-map-actions {
+  display: none;
+}
+
+/* --- Стили для мобильных и десктопных кнопок --- */
+
+/* По умолчанию (десктоп) показываем десктопные кнопки, скрываем мобильные */
+.world-map-mobile-actions {
+  display: none;
+}
+
+/* На мобильных устройствах (до 768px) делаем наоборот */
+@media (max-width: 768px) {
+  /* Скрываем десктопные кнопки */
+  .world-map-map-actions {
+    display: none;
+  }
+
+  /* Показываем и стилизуем мобильные кнопки */
+  .world-map-mobile-actions {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 401; /* Выше элементов управления Leaflet */
+
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+
+    padding: 6px;
+    background: rgba(10, 10, 10, 0.75);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+  }
+
+  .world-map-mobile-actions .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 8px;
+    font-size: 11px;
+    line-height: 1;
+    background: transparent;
+    border: none;
+    color: #f0f0f0;
+  }
+
+  .world-map-mobile-actions .btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .world-map-mobile-actions .btn .icon {
+    width: 20px;
+    height: 20px;
+  }
+}

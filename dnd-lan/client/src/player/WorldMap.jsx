@@ -1,7 +1,8 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Crosshair, RefreshCcw } from "lucide-react";
+import { Crosshair, Fullscreen, Minimize, RefreshCcw } from "lucide-react";
+import "./WorldMap.css";
 import { api } from "../api.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { getClassPathLabel } from "./classCatalog.js";
@@ -243,6 +244,7 @@ function MapDetailPanel({
 export default function WorldMap({ mode = "player" }) {
   const dmMode = mode === "dm";
   const { socket } = useSocket();
+  const mapPageRef = useRef(null);
   const mapElRef = useRef(null);
   const mapRef = useRef(null);
   const imageLayerRef = useRef(null);
@@ -256,6 +258,7 @@ export default function WorldMap({ mode = "player" }) {
   const [savingPlayerId, setSavingPlayerId] = useState(null);
   const [category, setCategory] = useState("all");
   const [selected, setSelected] = useState({ kind: "none", id: null });
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   // === ИСПРАВЛЕНИЕ 1: Сохраняем актуальный режим без ререндеров ===
   const dmModeRef = useRef(dmMode);
@@ -334,6 +337,28 @@ export default function WorldMap({ mode = "player" }) {
       setSavingPlayerId(null);
     }
   }, [dmMode, setError, setSavingPlayerId]);
+
+  const handleFullscreenToggle = useCallback(() => {
+    const el = mapPageRef.current;
+    if (!el) return;
+
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch((err) => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+      });
+    } else if (document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+      setTimeout(() => mapRef.current?.invalidateSize(), 100);
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
 
   const effectiveLocations = useMemo(() => {
     const base = Array.isArray(serverLocations) ? serverLocations : WORLD_MAP_LOCATIONS;
@@ -477,7 +502,7 @@ export default function WorldMap({ mode = "player" }) {
   }, [selected, visibleLocations, players, dmMode, saveLocationPosition, savePlayerPosition]);
 
   return (
-    <div className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>
+    <div ref={mapPageRef} className={`world-map-page ${dmMode ? "is-dm" : "is-player"}`}>
       <section className="card world-map-hero">
         <div className="world-map-hero-copy">
           <div className="eyebrow">{dmMode ? "DM Control" : "Adventure Atlas"}</div>
@@ -497,6 +522,14 @@ export default function WorldMap({ mode = "player" }) {
             <RefreshCcw className="icon" aria-hidden="true" />
             Обновить
           </button>
+          {!dmMode ? (
+            <button className="btn secondary" type="button" onClick={handleFullscreenToggle}>
+              {isFullscreen
+                ? <Minimize className="icon" aria-hidden="true" />
+                : <Fullscreen className="icon" aria-hidden="true" />}
+              {isFullscreen ? "Выйти" : "На весь экран"}
+            </button>
+          ) : null}
           {dmMode ? (
             <button className="btn secondary" type="button" onClick={() => setCategory("all")}>
               Все категории
@@ -537,6 +570,12 @@ export default function WorldMap({ mode = "player" }) {
                 <RefreshCcw className="icon" aria-hidden="true" />
                 Обновить
               </button>
+              {!dmMode ? (
+                <button className="btn secondary" type="button" onClick={handleFullscreenToggle}>
+                  {isFullscreen ? <Minimize className="icon" aria-hidden="true" /> : <Fullscreen className="icon" aria-hidden="true" />}
+                  {isFullscreen ? "Выйти" : "На весь экран"}
+                </button>
+              ) : null}
             </div>
             <div ref={mapElRef} className="world-map-canvas" aria-label="Интерактивная карта мира" />
             {loading && (
@@ -544,6 +583,24 @@ export default function WorldMap({ mode = "player" }) {
                 <div className="world-map-loading-spinner">Загрузка карты...</div>
               </div>
             )}
+          </div>
+          <div className="world-map-mobile-actions" aria-label="Действия карты">
+            <button className="btn secondary" type="button" onClick={focusParty} disabled={players.length === 0}>
+              <Crosshair className="icon" aria-hidden="true" />
+              <span>Партия</span>
+            </button>
+            <button className="btn secondary" type="button" onClick={loadPlayers} disabled={loading}>
+              <RefreshCcw className="icon" aria-hidden="true" />
+              <span>Обновить</span>
+            </button>
+            {!dmMode ? (
+              <button className="btn secondary" type="button" onClick={handleFullscreenToggle}>
+                {isFullscreen
+                  ? <Minimize className="icon" aria-hidden="true" />
+                  : <Fullscreen className="icon" aria-hidden="true" />}
+                <span>{isFullscreen ? "Выйти" : "На весь экран"}</span>
+              </button>
+            ) : null}
           </div>
           {error || selectedPlayer || selectedLocation ? (
             <div className="world-map-mobile-sheet" aria-live="polite">
