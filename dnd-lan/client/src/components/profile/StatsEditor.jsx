@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
-const MAX_STATS = 20;
+const DEFAULT_MAX_STATS = 20;
 const KEY_MAX = 24;
 const VALUE_MAX = 64;
 const genRowId = () => `row_${Math.random().toString(36).slice(2, 10)}`;
@@ -11,11 +11,19 @@ function normalizeStats(stats) {
   return {};
 }
 
-function buildRows(stats) {
+function normalizeDefaultKeys(keys) {
+  if (!Array.isArray(keys) || !keys.length) return [];
+  return keys
+    .map((key) => String(key || "").trim())
+    .filter(Boolean)
+    .filter((key, index, list) => list.indexOf(key) === index);
+}
+
+function buildRows(stats, defaultKeys) {
   const s = normalizeStats(stats);
   const rows = [];
   const used = new Set();
-  for (const key of DEFAULT_KEYS) {
+  for (const key of defaultKeys) {
     rows.push({ id: `fixed_${key}`, key, value: s[key] ?? "", fixed: true });
     used.add(key);
   }
@@ -39,34 +47,49 @@ function rowsToStats(rows) {
   return out;
 }
 
-export function StatsView({ stats }) {
-  const items = useMemo(() => Object.entries(normalizeStats(stats)), [stats]);
-  if (!items.length) return <div className="small">Статы не заполнены</div>;
+function getKeyLabel(key, keyLabels) {
+  return String(keyLabels?.[key] || key || "");
+}
+
+export function StatsView({ stats, keyLabels = null, emptyLabel = "Статы не заполнены" }) {
+  const items = Object.entries(normalizeStats(stats));
+  if (!items.length) return <div className="small">{emptyLabel}</div>;
   return (
     <div className="stat-grid">
-      {items.map(([k, v]) => (
-        <div key={k} className="stat-chip">
-          <span className="stat-key">{k}</span>
-          <span className="stat-val">{String(v)}</span>
+      {items.map(([key, value]) => (
+        <div key={key} className="stat-chip">
+          <span className="stat-key">{getKeyLabel(key, keyLabels) || key}</span>
+          <span className="stat-val">{String(value)}</span>
         </div>
       ))}
     </div>
   );
 }
 
-export function StatsEditor({ value, onChange, readOnly = false }) {
-  const [rows, setRows] = useState(() => buildRows(value));
+export function StatsEditor({
+  value,
+  onChange,
+  readOnly = false,
+  defaultKeys = DEFAULT_KEYS,
+  keyLabels = null,
+  addLabel = "+ Добавить стат",
+  maxStats = DEFAULT_MAX_STATS
+}) {
+  const normalizedDefaultKeys = useMemo(() => normalizeDefaultKeys(defaultKeys), [defaultKeys]);
+  const resolvedDefaultKeys = normalizedDefaultKeys.length ? normalizedDefaultKeys : DEFAULT_KEYS;
+  const defaultKeysSignature = resolvedDefaultKeys.join("|");
+  const [rows, setRows] = useState(() => buildRows(value, resolvedDefaultKeys));
   const lastEmitted = useRef("");
 
   useEffect(() => {
     const incoming = JSON.stringify(normalizeStats(value));
     if (incoming === lastEmitted.current) return;
-    setRows(buildRows(value));
-  }, [value]);
+    setRows(buildRows(value, resolvedDefaultKeys));
+  }, [defaultKeysSignature, resolvedDefaultKeys, value]);
 
   function updateRow(idx, patch) {
     if (readOnly) return;
-    const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
+    const next = rows.map((row, index) => (index === idx ? { ...row, ...patch } : row));
     setRows(next);
     const nextStats = rowsToStats(next);
     lastEmitted.current = JSON.stringify(nextStats);
@@ -75,14 +98,13 @@ export function StatsEditor({ value, onChange, readOnly = false }) {
 
   function addRow() {
     if (readOnly) return;
-    if (rows.length >= MAX_STATS) return;
-    const next = [...rows, { id: genRowId(), key: "", value: "", fixed: false }];
-    setRows(next);
+    if (rows.length >= maxStats) return;
+    setRows((current) => [...current, { id: genRowId(), key: "", value: "", fixed: false }]);
   }
 
   function removeRow(idx) {
     if (readOnly) return;
-    const next = rows.filter((_, i) => i !== idx);
+    const next = rows.filter((_, index) => index !== idx);
     setRows(next);
     const nextStats = rowsToStats(next);
     lastEmitted.current = JSON.stringify(nextStats);
@@ -94,13 +116,13 @@ export function StatsEditor({ value, onChange, readOnly = false }) {
       {rows.map((row, idx) => (
         <div key={row.id} className="row" style={{ alignItems: "center" }}>
           {row.fixed ? (
-            <div className="badge" style={{ minWidth: 74, textTransform: "uppercase", textAlign: "center" }}>
-              {row.key}
+            <div className="badge" style={{ minWidth: 74, textAlign: "center" }}>
+              {getKeyLabel(row.key, keyLabels) || row.key}
             </div>
           ) : (
             <input
               value={row.key}
-              onChange={(e) => updateRow(idx, { key: e.target.value })}
+              onChange={(event) => updateRow(idx, { key: event.target.value })}
               placeholder="ключ"
               aria-label={`Ключ стата ${idx + 1}`}
               maxLength={KEY_MAX}
@@ -110,7 +132,7 @@ export function StatsEditor({ value, onChange, readOnly = false }) {
           )}
           <input
             value={row.value}
-            onChange={(e) => updateRow(idx, { value: e.target.value })}
+            onChange={(event) => updateRow(idx, { value: event.target.value })}
             placeholder="значение"
             aria-label={`Значение стата ${row.key || idx + 1}`}
             maxLength={VALUE_MAX}
@@ -122,10 +144,10 @@ export function StatsEditor({ value, onChange, readOnly = false }) {
           ) : null}
         </div>
       ))}
-      <button className="btn secondary" onClick={addRow} disabled={readOnly || rows.length >= MAX_STATS}>
-        + Добавить стат
+      <button className="btn secondary" onClick={addRow} disabled={readOnly || rows.length >= maxStats}>
+        {addLabel}
       </button>
-      <div className="small">Максимум статов: {MAX_STATS}</div>
+      <div className="small">Максимум полей: {maxStats}</div>
     </div>
   );
 }

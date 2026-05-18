@@ -12,7 +12,7 @@ import { BookOpen, Gamepad2, Map, Package, Send, StickyNote, Store, User, Users 
 import { t } from "../i18n/index.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
-const OPTIONAL_NAV_BASE_ORDER = ["/app/map", "/app/arcade", "/app/shop", "/app/bestiary", "/app/notes", "/app/transfers"];
+const OPTIONAL_NAV_BASE_ORDER = ["/app/bestiary", "/app/map", "/app/shop", "/app/arcade", "/app/notes", "/app/transfers"];
 const PRIMARY_NAV_ROUTES = new Set([
   "/app/players",
   "/app/profile",

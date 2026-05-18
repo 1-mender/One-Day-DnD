@@ -190,6 +190,9 @@ export function useProfileController() {
       if (canEdit("classRole")) patch.classRole = draft.classRole;
       if (canEdit("level")) patch.level = draft.level === "" ? null : Number(draft.level);
       if (canEdit("reputation")) patch.reputation = normalizeReputation(draft.reputation);
+      if (canEdit("stats") && JSON.stringify(profile.stats || {}) !== JSON.stringify(draft.stats || {})) {
+        patch.stats = draft.stats || {};
+      }
     }
     if (editMode === "stats" && canEdit("stats")) patch.stats = draft.stats || {};
     if (editMode === "bio" && canEdit("bio")) patch.bio = draft.bio || "";

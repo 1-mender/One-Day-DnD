@@ -118,6 +118,71 @@ test("map location partial update returns persisted values instead of null field
   }
 });
 
+test("map state returns active map alias with default proxied image url", async () => {
+  const out = await api("/api/map/state");
+
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data.map.imageUrl, "/api/map/default-image");
+  assert.equal(out.data.activeMap.url, "/api/map/default-image");
+  assert.equal(Array.isArray(out.data.maps), true);
+});
+
+test("map list returns currently active map first after activation", async () => {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = now();
+  const first = db.prepare(
+    `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
+  ).run(partyId, "alpha.png", "Alpha", 1000, 800, t - 20, t - 20).lastInsertRowid;
+  const second = db.prepare(
+    `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
+  ).run(partyId, "beta.png", "Beta", 1200, 900, t - 10, t - 10).lastInsertRowid;
+
+  const activateOut = await api(`/api/map/maps/${first}/activate`, {
+    method: "PUT"
+  });
+  assert.equal(activateOut.res.status, 200);
+
+  const out = await api("/api/map/maps");
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data.maps[0].id, first);
+  assert.equal(out.data.maps[1].id, second);
+});
+
+test("map delete removes file and falls back to the next active map", async () => {
+  io.emissions.length = 0;
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = now();
+  db.prepare("DELETE FROM maps WHERE party_id=?").run(partyId);
+  const activeId = db.prepare(
+    `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
+  ).run(partyId, "active-delete.png", "Active Delete", 1400, 900, t - 20, t).lastInsertRowid;
+  const backupId = db.prepare(
+    `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
+  ).run(partyId, "backup-delete.png", "Backup Delete", 1000, 700, t - 40, t - 10).lastInsertRowid;
+
+  fs.writeFileSync(path.join(uploadsDir, "maps", "active-delete.png"), "active");
+  fs.writeFileSync(path.join(uploadsDir, "maps", "backup-delete.png"), "backup");
+
+  const out = await api(`/api/map/maps/${activeId}`, {
+    method: "DELETE"
+  });
+
+  assert.equal(out.res.status, 200);
+  assert.equal(out.data.deletedMapId, activeId);
+  assert.equal(out.data.activeMap.id, backupId);
+  assert.equal(fs.existsSync(path.join(uploadsDir, "maps", "active-delete.png")), false);
+  assert.equal(Number(db.prepare("SELECT COUNT(*) AS c FROM maps WHERE id=?").get(activeId).c || 0), 0);
+
+  const updates = io.emissions.filter((entry) => entry.event === "map:mapsUpdated");
+  assert.equal(updates.length >= 2, true);
+});
+
 test("map upload rejects spoofed non-image payloads", async () => {
   const db = getDb();
   const before = Number(db.prepare("SELECT COUNT(*) AS c FROM maps").get().c || 0);

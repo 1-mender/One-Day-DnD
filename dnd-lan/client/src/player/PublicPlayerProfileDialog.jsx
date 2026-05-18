@@ -7,6 +7,7 @@ import PlayerStatusPill from "../components/PlayerStatusPill.jsx";
 import { EmptyState, ErrorBanner, Skeleton } from "../foundation/primitives/index.js";
 import { formatError } from "../lib/formatError.js";
 import {
+  getPublicProfileMetaItems,
   getPlayerPrimaryName,
   getPlayerSecondaryName,
   getPublicProfileMeta
@@ -58,6 +59,7 @@ export default function PublicPlayerProfileDialog({ open, player, onClose }) {
   const primaryName = getPlayerPrimaryName(player, effectiveProfile);
   const secondaryName = getPlayerSecondaryName(player, effectiveProfile);
   const meta = getPublicProfileMeta(effectiveProfile);
+  const metaItems = getPublicProfileMetaItems(effectiveProfile);
   const avatar = effectiveProfile?.avatarUrl || player?.avatarUrl || null;
   const initial = primaryName.slice(0, 1).toUpperCase() || "?";
   const hasPublicBlurb = Boolean(effectiveProfile?.publicBlurb);
@@ -93,7 +95,14 @@ export default function PublicPlayerProfileDialog({ open, player, onClose }) {
                   <span className="badge secondary">Игрок #{player.id}</span>
                 </div>
                 {hasExpandedCard ? (
-                  <div className="player-public-profile-meta">{meta}</div>
+                  <>
+                    <div className="player-public-profile-meta">{meta}</div>
+                    <div className="player-public-profile-chip-row">
+                      {metaItems.map((item) => (
+                        <span key={item} className="badge secondary">{item}</span>
+                      ))}
+                    </div>
+                  </>
                 ) : (
                   <div className="small player-public-profile-muted">
                     Открыта базовая карточка: имя, аватар и статус игрока.

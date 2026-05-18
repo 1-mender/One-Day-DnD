@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  getPublicProfileMetaItems,
   getPlayerPrimaryName,
   getPlayerSecondaryName,
   getPublicProfileMeta,
@@ -22,6 +23,7 @@ test("public profile helpers prefer character name and preserve player handle", 
   assert.equal(getPlayerPrimaryName(player), "Aria");
   assert.equal(getPlayerSecondaryName(player), "Nik");
   assert.equal(getPublicProfileMeta(player.publicProfile), "Ranger • lvl 4 • race: Городской эльф");
+  assert.deepEqual(getPublicProfileMetaItems(player.publicProfile), ["Ranger", "lvl 4", "race: Городской эльф"]);
 });
 
 test("public profile meta includes specialization role when class path is public", () => {

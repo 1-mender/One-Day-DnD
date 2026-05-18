@@ -7,7 +7,7 @@ import {
 
 export const DM_PROFILE_EDITABLE_OPTIONS = [
   { key: "characterName", label: "Имя персонажа" },
-  { key: "classRole", label: "Класс / роль" },
+  { key: "classRole", label: "Роль / архетип" },
   { key: "level", label: "Уровень" },
   { key: "reputation", label: "Репутация" },
   { key: "stats", label: "Статы" },
@@ -16,18 +16,18 @@ export const DM_PROFILE_EDITABLE_OPTIONS = [
 ];
 
 export const DM_PROFILE_PUBLIC_OPTIONS = [
-  { key: "classPath", label: "Класс и специализация" },
-  { key: "classRole", label: "Класс / роль" },
+  { key: "classPath", label: "Класс и ветка" },
+  { key: "classRole", label: "Роль / архетип" },
   { key: "level", label: "Уровень" },
   { key: "reputation", label: "Репутация" },
-  { key: "race", label: "Раса" },
+  { key: "race", label: "Происхождение / вид" },
   { key: "publicBlurb", label: "Публичное описание" }
 ];
 
 export const DM_PROFILE_FIELD_LABELS = {
   characterName: "Имя",
-  classRole: "Класс/роль",
-  classPath: "Класс и специализация",
+  classRole: "Роль/архетип",
+  classPath: "Класс и ветка",
   level: "Уровень",
   reputation: "Репутация",
   classKey: "Класс",
@@ -61,6 +61,134 @@ export const DM_STAT_PRESETS = [
   { key: "standard", label: "15-14-13-12-10-8", stats: { str: 15, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } },
   { key: "hero", label: "16-14-13-12-10-8", stats: { str: 16, dex: 14, con: 13, int: 12, wis: 10, cha: 8 } }
 ];
+
+const FANTASY_STAT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
+const MODERN_STAT_KEYS = ["body", "agility", "mind", "tech", "empathy", "grit"];
+const SCIFI_STAT_KEYS = ["might", "reflex", "logic", "systems", "presence", "resolve"];
+const CORE_TEMPLATE_KEYS = [...new Set([...FANTASY_STAT_KEYS, ...MODERN_STAT_KEYS, ...SCIFI_STAT_KEYS])];
+
+export const DM_PROFILE_STAT_LABELS = {
+  str: "STR",
+  dex: "DEX",
+  con: "CON",
+  int: "INT",
+  wis: "WIS",
+  cha: "CHA",
+  vit: "VIT",
+  body: "Тело",
+  agility: "Ловкость",
+  mind: "Разум",
+  tech: "Техника",
+  empathy: "Эмпатия",
+  grit: "Стойкость",
+  might: "Сила",
+  reflex: "Рефлекс",
+  logic: "Логика",
+  systems: "Системы",
+  presence: "Присутствие",
+  resolve: "Воля"
+};
+
+export const DM_PROFILE_TEMPLATES = [
+  {
+    key: "fantasy",
+    label: "Фэнтези",
+    summary: "Класс, происхождение и классические атрибуты.",
+    statKeys: FANTASY_STAT_KEYS,
+    supportsClassPath: true,
+    supportsOrigin: true,
+    stats: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10, vit: 10 }
+  },
+  {
+    key: "modern",
+    label: "Современность",
+    summary: "Убирает fantasy-слой и оставляет универсальные характеристики.",
+    statKeys: MODERN_STAT_KEYS,
+    supportsClassPath: false,
+    supportsOrigin: false,
+    stats: { body: 10, agility: 10, mind: 10, tech: 10, empathy: 10, grit: 10 }
+  },
+  {
+    key: "scifi",
+    label: "Sci-fi",
+    summary: "Фокус на технике, системах и командных ролях.",
+    statKeys: SCIFI_STAT_KEYS,
+    supportsClassPath: false,
+    supportsOrigin: false,
+    stats: { might: 10, reflex: 10, logic: 10, systems: 10, presence: 10, resolve: 10 }
+  },
+  {
+    key: "custom",
+    label: "Свободный",
+    summary: "Пустая база под любой собственный сеттинг.",
+    statKeys: [],
+    supportsClassPath: false,
+    supportsOrigin: false,
+    stats: {}
+  }
+];
+
+export function getDmProfileTemplate(key) {
+  return DM_PROFILE_TEMPLATES.find((template) => template.key === key) || DM_PROFILE_TEMPLATES[0];
+}
+
+export function detectDmProfileTemplate(source) {
+  const stats = toStatsObject(source?.stats ?? source);
+  const keys = Object.keys(stats);
+  const hasFantasy = keys.some((key) => FANTASY_STAT_KEYS.includes(key)) || Boolean(source?.classKey) || Boolean(stats.race || stats.raceVariant);
+  const hasModern = keys.some((key) => MODERN_STAT_KEYS.includes(key));
+  const hasScifi = keys.some((key) => SCIFI_STAT_KEYS.includes(key));
+  if (!keys.length && !source?.classKey) return "custom";
+  if (hasFantasy) return "fantasy";
+  if (hasScifi) return "scifi";
+  if (hasModern) return "modern";
+  return "custom";
+}
+
+export function applyDmProfileTemplate(source, templateKey) {
+  const template = getDmProfileTemplate(templateKey);
+  const base = source && typeof source === "object" ? source : {};
+  const nextStats = buildTemplateStats(base.stats, template);
+  const nextPublicFields = Array.isArray(base.publicFields) ? [...base.publicFields] : [];
+  const filteredPublicFields = template.supportsClassPath
+    ? nextPublicFields
+    : nextPublicFields.filter((field) => field !== "classPath" && field !== "race");
+  const next = {
+    ...base,
+    classKey: template.supportsClassPath ? String(base.classKey || "") : "",
+    specializationKey: template.supportsClassPath ? String(base.specializationKey || "") : "",
+    stats: nextStats
+  };
+  if (Object.prototype.hasOwnProperty.call(base, "publicFields")) {
+    next.publicFields = filteredPublicFields;
+  }
+  return next;
+}
+
+function buildTemplateStats(stats, template) {
+  const current = toStatsObject(stats);
+  const preserved = Object.entries(current).reduce((acc, [key, value]) => {
+    if (CORE_TEMPLATE_KEYS.includes(key)) return acc;
+    if (!template.supportsOrigin && (key === "race" || key === "raceVariant")) return acc;
+    acc[key] = value;
+    return acc;
+  }, {});
+  const next = {
+    ...preserved,
+    ...template.stats
+  };
+
+  if (template.supportsOrigin) {
+    const normalized = normalizeDmProfileStats({
+      ...next,
+      race: current.race || "human",
+      raceVariant: current.raceVariant || "city"
+    }, current);
+    return normalized;
+  }
+
+  return next;
+}
 
 export function normalizeDmProfileStats(stats, baseStats = null) {
   const next = toStatsObject(stats);

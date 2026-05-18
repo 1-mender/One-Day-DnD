@@ -8,3 +8,5 @@ artifacts/visual/current/
 artifacts/visual/diff/
 .env
 .DS_Store
+*.log
+tmp-shield-*.png

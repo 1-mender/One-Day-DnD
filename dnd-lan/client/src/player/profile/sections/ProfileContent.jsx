@@ -229,18 +229,6 @@ function MyCharacterPanel({
                   </span>
                 ) : null}
               </div>
-              <div className="profile-race-lore">
-                <span>{raceProfile?.raceLabel || "Раса"}</span>
-                {raceProfile?.trait ? <b>{raceProfile.trait}</b> : null}
-                {raceProfile?.variantDescription ? <small>{raceProfile.variantDescription}</small> : null}
-              </div>
-              {raceProfile?.tags?.length ? (
-                <div className="profile-race-tags">
-                  {raceProfile.tags.slice(0, 3).map((tag) => (
-                    <span key={tag} className="badge secondary profile-race-tag">{tag}</span>
-                  ))}
-                </div>
-              ) : null}
               <div className="profile-hero-stats">
                 <div className="profile-stat-plaque">
                   <span className="profile-stat-label">ID игрока</span>
@@ -268,6 +256,16 @@ function MyCharacterPanel({
         </div>
 
         <div className="list profile-side-stack">
+          <OriginPanel
+            canEditStats={canEdit("stats")}
+            onEdit={openEdit}
+            raceBonus={raceBonus}
+            raceBonusLabel={raceBonusLabel}
+            raceHint={raceHint}
+            raceLabel={raceLabel}
+            raceProfile={raceProfile}
+          />
+
           <ClassPathPanel
             profile={profile}
             readOnly={readOnly}
@@ -297,11 +295,57 @@ function MyCharacterPanel({
   );
 }
 
+function OriginPanel({ canEditStats, onEdit, raceBonus, raceBonusLabel, raceHint, raceLabel, raceProfile }) {
+  const showRaceBonus = raceBonus !== 0;
+
+  return (
+    <div className="paper-note profile-section profile-codex-inset tf-panel profile-origin-card">
+      <div className="profile-section-head tf-section-head">
+        <div>
+          <div className="profile-section-kicker tf-section-kicker">Происхождение</div>
+          <div className="title profile-card-title">{raceLabel}</div>
+        </div>
+        {canEditStats ? (
+          <button className="btn secondary profile-inline-btn" onClick={() => onEdit("basic")}>
+            <PencilLine className="icon" aria-hidden="true" />Изменить
+          </button>
+        ) : null}
+      </div>
+
+      <div className="profile-origin-summary" title={raceHint} aria-label={raceHint}>
+        <div className="profile-origin-top">
+          <span className="badge secondary">{raceProfile?.raceLabel || "Раса"}</span>
+          {showRaceBonus ? (
+            <span className={`badge ${raceBonus > 0 ? "ok" : "off"}`}>
+              вес {raceBonusLabel}
+            </span>
+          ) : (
+            <span className="badge secondary">вес {raceBonusLabel}</span>
+          )}
+        </div>
+        {raceProfile?.trait ? <b className="profile-origin-trait">{raceProfile.trait}</b> : null}
+        <div className="small profile-origin-copy">
+          {raceProfile?.variantDescription || raceProfile?.description || "Происхождение пока не описано."}
+        </div>
+        {raceProfile?.tags?.length ? (
+          <div className="profile-race-tags">
+            {raceProfile.tags.slice(0, 4).map((tag) => (
+              <span key={tag} className="badge secondary profile-race-tag">{tag}</span>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function ClassPathPanel({ profile, readOnly, saving, onSave }) {
   const baseClass = getClassByKey(profile?.classKey);
   const specialization = getSpecializationByKey(profile?.classKey, profile?.specializationKey);
   const specializationRole = getSpecializationRole(profile);
   const specializationTags = getSpecializationTags(profile);
+  const classRoles = getBaseClassRoles(baseClass);
+  const classTags = getBaseClassTags(baseClass);
   const xp = Math.max(0, Number(profile?.xp || 0));
   const progress = Math.min(100, Math.round((xp / SPECIALIZATION_XP_THRESHOLD) * 100));
   const specializationReady = canChooseSpecialization(profile);
@@ -336,6 +380,7 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
                 onClick={() => onSave?.({ classKey: item.key })}
               >
                 <span>{item.label}</span>
+                <RoleTagStrip role={null} tags={getBaseClassRoles(item)} compact />
                 <small>{item.description}</small>
               </button>
             ))}
@@ -347,6 +392,14 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
             <div>
               <span className="small note-hint">Базовый класс</span>
               <b>{baseClass.label}</b>
+              <RoleTagStrip role={null} tags={classRoles} compact />
+              {classTags.length ? (
+                <div className="profile-class-subtags">
+                  {classTags.map((tag) => (
+                    <span key={tag} className="badge secondary profile-role-chip">{tag}</span>
+                  ))}
+                </div>
+              ) : null}
               <span className="small">{baseClass.description}</span>
             </div>
             {!specialization ? (
@@ -845,7 +898,7 @@ function formatEditableFieldLabel(value) {
   const labels = {
     avatarUrl: "Аватар",
     bio: "Биография",
-    stats: "Статы",
+    stats: "Статы и происхождение",
     reputation: "Репутация",
     level: "Уровень",
     classRole: "Класс / роль",
@@ -898,6 +951,28 @@ function getRequestCallout({ allowRequests, canEditAny, readOnly }) {
     buttonLabel: "Отправить запрос",
     hint: "Прямое редактирование отключено. Изменения профиля отправляются через DM."
   };
+}
+
+function getBaseClassRoles(baseClass) {
+  if (!baseClass?.specializations?.length) return [];
+  return Array.from(
+    new Set(
+      baseClass.specializations
+        .map((item) => SPECIALIZATION_ROLE_LABELS[item.role] || item.role)
+        .filter(Boolean)
+    )
+  ).slice(0, 3);
+}
+
+function getBaseClassTags(baseClass) {
+  if (!baseClass?.specializations?.length) return [];
+  return Array.from(
+    new Set(
+      baseClass.specializations
+        .flatMap((item) => Array.isArray(item.tags) ? item.tags : [])
+        .filter(Boolean)
+    )
+  ).slice(0, 4);
 }
 
 function hasStatsData(stats) {

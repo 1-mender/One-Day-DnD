@@ -15,7 +15,11 @@ export function getPlayerSecondaryName(player, profile = player?.publicProfile |
 }
 
 export function getPublicProfileMeta(profile) {
-  if (!profile) return "";
+  return getPublicProfileMetaItems(profile).join(" • ");
+}
+
+export function getPublicProfileMetaItems(profile) {
+  if (!profile) return [];
   const classPath = profile.classKey ? getClassPathLabelWithRole(profile) : "";
   const race = getPublicRaceLabel(profile);
   return [
@@ -23,7 +27,7 @@ export function getPublicProfileMeta(profile) {
     profile.level != null ? `lvl ${profile.level}` : "",
     profile.reputation != null ? `rep ${formatReputationLabel(profile.reputation)}` : "",
     race ? `race: ${race}` : ""
-  ].filter(Boolean).join(" • ");
+  ].filter(Boolean);
 }
 
 function getPublicRaceLabel(profile) {

@@ -8,15 +8,17 @@ import { getDb, getSinglePartyId } from "../db.js";
 import { mapPublicProfile } from "../profile/profileDomain.js";
 import { getPlayerContextFromRequest, isDmRequest } from "../sessionAuth.js";
 import { asyncHandler, now, randId, wrapMulter } from "../util.js";
-import { uploadsDir } from "../paths.js";
+import { repoRoot, uploadsDir } from "../paths.js";
 import { finalizeUploadedFile, normalizeAllowedMimes, safeUnlink } from "../uploadSecurity.js";
 
 export const mapRouter = express.Router();
 const LOCATION_VISIBILITIES = new Set(["hidden", "known", "active", "completed"]);
 const TMP_UPLOAD_DIR = path.join(uploadsDir, "tmp");
 const MAPS_DIR = path.join(uploadsDir, "maps");
-const MAP_UPLOAD_MAX_BYTES = Number(process.env.MAP_UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
-const MAP_ALLOWED_MIMES = normalizeAllowedMimes(
+const DEFAULT_MAP_FILE = path.join(repoRoot, "Img", "Карта", "Where_is_the_Lord.png");
+const DEFAULT_MAP_URL = "/api/map/default-image";
+export const MAP_UPLOAD_MAX_BYTES = Number(process.env.MAP_UPLOAD_MAX_BYTES || 10 * 1024 * 1024);
+export const MAP_ALLOWED_MIMES = normalizeAllowedMimes(
   process.env.MAP_UPLOAD_ALLOWED_MIMES
     ? String(process.env.MAP_UPLOAD_ALLOWED_MIMES).split(",")
     : ["image/jpeg", "image/png", "image/webp", "image/gif"]
@@ -25,11 +27,51 @@ const MAP_ALLOWED_MIMES = normalizeAllowedMimes(
 fs.mkdirSync(TMP_UPLOAD_DIR, { recursive: true });
 fs.mkdirSync(MAPS_DIR, { recursive: true });
 
+function readMapRows(db, partyId) {
+  return db.prepare(
+    `SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt
+     FROM maps
+     WHERE party_id = ?
+     ORDER BY COALESCE(updated_at, created_at) DESC, id DESC`
+  ).all(partyId);
+}
+
 function clampCoordinate(value) {
   if (value == null || value === "") return null;
   const num = Number(value);
   if (!Number.isFinite(num)) return null;
   return Math.min(100, Math.max(0, num));
+}
+
+function toMapResponse(row) {
+  if (!row) return null;
+  const filename = String(row.filename || "").trim();
+  return {
+    ...row,
+    url: filename ? `/uploads/maps/${filename}` : DEFAULT_MAP_URL
+  };
+}
+
+function getActiveMapInfo(maps) {
+  if (Array.isArray(maps) && maps.length > 0) {
+    const activeMap = toMapResponse(maps[0]);
+    return {
+      ...activeMap,
+      imageUrl: activeMap.url,
+      isDefault: false
+    };
+  }
+
+  return {
+    id: "default",
+    name: "World Map",
+    filename: "",
+    width: 1024,
+    height: 1024,
+    url: DEFAULT_MAP_URL,
+    imageUrl: DEFAULT_MAP_URL,
+    isDefault: true
+  };
 }
 
 function readMapPlayers(db, partyId) {
@@ -117,6 +159,13 @@ function readLocation(db, partyId, locationId) {
   };
 }
 
+mapRouter.get("/default-image", (_req, res) => {
+  if (!fs.existsSync(DEFAULT_MAP_FILE)) {
+    return res.status(404).json({ error: "default_map_missing" });
+  }
+  return res.sendFile(DEFAULT_MAP_FILE);
+});
+
 mapRouter.get("/state", (req, res) => {
   const isDm = isDmRequest(req);
   const me = getPlayerContextFromRequest(req, { at: Date.now() });
@@ -131,22 +180,18 @@ mapRouter.get("/state", (req, res) => {
   const tokens = db.prepare(
     `SELECT id, name, type, x, y, updated_by as updatedBy, updated_at as updatedAt FROM map_tokens WHERE party_id = ? ORDER BY id`
   ).all(partyId);
-  const maps = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE party_id = ? ORDER BY COALESCE(updated_at, created_at) DESC`).all(partyId);
-
-  // choose active map (most recently updated or created), fallback to bundled image
-  let mapInfo = { imageUrl: "/map/where-is-the-lord.png", width: 1024, height: 1024 };
-  if (maps && maps.length > 0) {
-    const m = maps[0];
-    mapInfo = { id: m.id, imageUrl: `/uploads/maps/${m.filename}`, width: m.width || 1024, height: m.height || 1024 };
-  }
+  const maps = readMapRows(db, partyId);
+  const responseMaps = maps.map(toMapResponse);
+  const mapInfo = getActiveMapInfo(responseMaps);
 
   res.json({
     map: mapInfo,
+    activeMap: mapInfo,
     players: readMapPlayers(db, partyId),
     locationStates: readLocationStates(db, partyId),
     locations: locations,
     tokens: tokens,
-    maps: maps
+    maps: responseMaps
   });
 });
 
@@ -159,8 +204,8 @@ const upload = multer({
 mapRouter.get("/maps", dmAuthMiddleware, (req, res) => {
   const db = getDb();
   const partyId = getSinglePartyId();
-  const rows = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE party_id = ? ORDER BY id DESC`).all(partyId);
-  res.json({ ok: true, maps: rows });
+  const rows = readMapRows(db, partyId);
+  res.json({ ok: true, maps: rows.map(toMapResponse) });
 });
 
 mapRouter.post("/maps", dmAuthMiddleware, wrapMulter(upload.single("file")), asyncHandler(async (req, res) => {
@@ -203,7 +248,9 @@ mapRouter.post("/maps", dmAuthMiddleware, wrapMulter(upload.single("file")), asy
     const info = db.prepare(`INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at) VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`)
       .run(partyId, safeName, mapName, width, height, t, t);
     const mapId = info.lastInsertRowid;
-    const map = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId);
+    const map = toMapResponse(
+      db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId)
+    );
     req.app.locals.io?.to(`party:${partyId}`).emit("map:mapsUpdated", { maps: [map] });
     req.app.locals.io?.to("dm").emit("map:mapsUpdated", { maps: [map] });
     return res.json({ ok: true, map });
@@ -223,10 +270,38 @@ mapRouter.put("/maps/:id/activate", dmAuthMiddleware, (req, res) => {
   if (!cur) return res.status(404).json({ error: "not_found" });
   const t = now();
   db.prepare(`UPDATE maps SET updated_at = ? WHERE id = ? AND party_id = ?`).run(t, mapId, partyId);
-  const map = db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId);
+  const map = toMapResponse(
+    db.prepare(`SELECT id, filename, name, width, height, created_at as createdAt, updated_at as updatedAt FROM maps WHERE id = ?`).get(mapId)
+  );
   req.app.locals.io?.to(`party:${partyId}`).emit("map:mapsUpdated", { maps: [map] });
   req.app.locals.io?.to("dm").emit("map:mapsUpdated", { maps: [map] });
   res.json({ ok: true, map });
+});
+
+mapRouter.delete("/maps/:id", dmAuthMiddleware, (req, res) => {
+  const mapId = Number(req.params.id);
+  if (!mapId) return res.status(400).json({ error: "invalid_mapId" });
+
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const row = db.prepare(
+    `SELECT id, filename
+     FROM maps
+     WHERE id = ? AND party_id = ?`
+  ).get(mapId, partyId);
+  if (!row) return res.status(404).json({ error: "not_found" });
+
+  db.prepare("DELETE FROM maps WHERE id = ? AND party_id = ?").run(mapId, partyId);
+  if (row.filename) {
+    safeUnlink(path.join(MAPS_DIR, path.basename(String(row.filename))));
+  }
+
+  const maps = readMapRows(db, partyId).map(toMapResponse);
+  const activeMap = getActiveMapInfo(maps);
+  const payload = { ok: true, deletedMapId: mapId, activeMap, maps };
+  req.app.locals.io?.to(`party:${partyId}`).emit("map:mapsUpdated", payload);
+  req.app.locals.io?.to("dm").emit("map:mapsUpdated", payload);
+  res.json(payload);
 });
 
 mapRouter.put("/players/:id/position", dmAuthMiddleware, (req, res) => {

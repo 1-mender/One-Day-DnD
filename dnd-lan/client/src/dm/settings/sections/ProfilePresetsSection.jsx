@@ -2,6 +2,13 @@ import React from "react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import { formatReputationLabel } from "../../../player/profileDomain.js";
+import {
+  applyDmProfileTemplate,
+  detectDmProfileTemplate,
+  DM_PROFILE_STAT_LABELS,
+  DM_PROFILE_TEMPLATES,
+  getDmProfileTemplate
+} from "../../playerProfile/playerProfileAdminDomain.js";
 import { inp } from "../domain/settingsConstants.js";
 
 export default function ProfilePresetsSection({
@@ -111,8 +118,8 @@ export default function ProfilePresetsSection({
                     <input
                       value={preset.data?.classRole || ""}
                       onChange={(e) => updatePresetData(idx, { classRole: e.target.value })}
-                      placeholder={"Класс / роль"}
-                      aria-label="Класс или роль в пресете"
+                      placeholder={"Роль / архетип / профессия"}
+                      aria-label="Роль или архетип в пресете"
                       maxLength={80}
                       style={inp}
                       className="u-minw-220"
@@ -140,9 +147,39 @@ export default function ProfilePresetsSection({
                       disabled={readOnly}
                     />
                   </div>
+                  <div className="preset-panel">
+                    <div className="row u-row-between-baseline">
+                      <div className="small">Шаблон сеттинга</div>
+                      <div className="small note-hint">Быстро меняет базовые атрибуты заготовки.</div>
+                    </div>
+                    <div className="preset-grid">
+                      {DM_PROFILE_TEMPLATES.map((template) => {
+                        const currentTemplateKey = detectDmProfileTemplate(preset.data || {});
+                        return (
+                          <button
+                            key={`${preset.id || idx}-${template.key}`}
+                            type="button"
+                            className={`preset-card${currentTemplateKey === template.key ? " is-active" : ""}`}
+                            onClick={() => updatePresetData(idx, applyDmProfileTemplate(preset.data || {}, template.key))}
+                            disabled={readOnly}
+                          >
+                            <div className="preset-title">{template.label}</div>
+                            <div className="small">{template.summary}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
                   <div className="kv">
                     <div className="title">{"Статы"}</div>
-                    <StatsEditor value={preset.data?.stats || {}} onChange={(stats) => updatePresetData(idx, { stats })} readOnly={readOnly} />
+                    <StatsEditor
+                      value={preset.data?.stats || {}}
+                      onChange={(stats) => updatePresetData(idx, { stats })}
+                      readOnly={readOnly}
+                      defaultKeys={getDmProfileTemplate(detectDmProfileTemplate(preset.data || {})).statKeys}
+                      keyLabels={DM_PROFILE_STAT_LABELS}
+                      addLabel="+ Добавить поле"
+                    />
                   </div>
                   <div className="paper-note u-mt-8">
                     <div className="title">{"Превью"}</div>
@@ -156,12 +193,12 @@ export default function ProfilePresetsSection({
                       <div className="u-minw-0">
                         <div className="u-fw-900">{preset.data?.characterName || "Без имени"}</div>
                         <div className="small u-mt-4">
-                          {preset.data?.classRole || "Класс/роль"} • lvl {preset.data?.level || "?"} • реп. {formatReputationLabel(preset.data?.reputation)}
+                          {preset.data?.classRole || "Роль/архетип"} • lvl {preset.data?.level || "?"} • реп. {formatReputationLabel(preset.data?.reputation)}
                         </div>
                       </div>
                     </div>
                     <div className="u-mt-10">
-                      <StatsView stats={preset.data?.stats || {}} />
+                      <StatsView stats={preset.data?.stats || {}} keyLabels={DM_PROFILE_STAT_LABELS} />
                     </div>
                     <div className="small bio-text u-mt-10 u-pre-wrap">
                       {preset.data?.bio || "Биография не заполнена"}

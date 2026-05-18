@@ -21,6 +21,7 @@ export const mapAdminApi = {
     return uploadForm("/api/map/maps", formData, ERROR_CODES.UPLOAD_FAILED);
   },
   dmActivateMap: (id) => request(`/api/map/maps/${encodeURIComponent(id)}/activate`, { method: "PUT" }),
+  dmDeleteMap: (id) => request(`/api/map/maps/${encodeURIComponent(id)}`, { method: "DELETE" }),
 
   // Player position on map
   dmUpdateMapPosition: (playerId, position) =>

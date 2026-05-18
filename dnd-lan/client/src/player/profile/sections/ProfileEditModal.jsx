@@ -104,6 +104,13 @@ export default function ProfileEditModal({ controller }) {
                 </span>
               </label>
             ) : null}
+            {canEdit("stats") ? (
+              <RaceFields
+                stats={draft.stats}
+                onChange={(stats) => setDraft({ ...draft, stats })}
+                disabled={readOnly}
+              />
+            ) : null}
           </>
         ) : null}
 

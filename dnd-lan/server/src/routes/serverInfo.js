@@ -4,6 +4,7 @@ import { getLanIPv4 } from "../ip.js";
 import { dbHasDm, getPartySettings, getSingleParty } from "../db.js";
 import { LIMITS } from "../limits.js";
 import { getRuntimeMetricsSnapshot } from "../runtimeMetrics.js";
+import { MAP_ALLOWED_MIMES, MAP_UPLOAD_MAX_BYTES } from "./map.js";
 
 export const serverInfoRouter = express.Router();
 
@@ -21,7 +22,12 @@ serverInfoRouter.get("/info", (req, res) => {
     settings: {
       bestiaryEnabled: !!settings.bestiary_enabled,
       ticketsEnabled: settings.tickets_enabled == null ? true : !!settings.tickets_enabled,
-      inventoryWeightLimit: LIMITS.inventoryWeight || 0
+      inventoryWeightLimit: LIMITS.inventoryWeight || 0,
+      mapUpload: {
+        maxBytes: MAP_UPLOAD_MAX_BYTES,
+        maxMegabytes: Number((MAP_UPLOAD_MAX_BYTES / (1024 * 1024)).toFixed(1)),
+        allowedMimeTypes: MAP_ALLOWED_MIMES
+      }
     }
   });
 });

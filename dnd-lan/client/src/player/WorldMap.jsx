@@ -12,12 +12,16 @@ import {
   WORLD_MAP_LOCATIONS,
   WORLD_MAP_SIZE
 } from "./worldMapLocations.js";
+import {
+  resolveWorldMapDimensions,
+  resolveWorldMapImageUrl,
+  WORLD_MAP_SOCKET_EVENTS
+} from "./worldMapDomain.js";
 
 const DMMapEditor = lazy(() => import("../dm/MapEditor.jsx"));
 
 // Базовые статические настройки для инициализации
 const MAP_PADDED_BOUNDS = [[-96, -96], [WORLD_MAP_SIZE + 96, WORLD_MAP_SIZE + 96]];
-const MAP_CENTER = [WORLD_MAP_SIZE / 2, WORLD_MAP_SIZE / 2];
 const LOCATION_VISIBILITY_LABELS = {
   hidden: "Скрыта",
   known: "Известна",
@@ -268,6 +272,7 @@ export default function WorldMap({ mode = "player" }) {
 
   // === ИСПРАВЛЕНИЕ ДЛЯ ПРОПОРЦИЙ: Храним реальные размеры карты ===
   const [mapDimensions, setMapDimensions] = useState({ width: WORLD_MAP_SIZE, height: WORLD_MAP_SIZE });
+  const mapDimensionsRef = useRef(mapDimensions);
 
   // Вычисляем динамические границы на основе пропорций картинки
   const currentBounds = useMemo(() => [[0, 0], [mapDimensions.height, mapDimensions.width]], [mapDimensions]);
@@ -278,6 +283,10 @@ export default function WorldMap({ mode = "player" }) {
   useEffect(() => {
     dmModeRef.current = dmMode;
   }, [dmMode]);
+
+  useEffect(() => {
+    mapDimensionsRef.current = mapDimensions;
+  }, [mapDimensions]);
 
   // Автоматический расчет пропорций файла при изменении ссылки на изображение
   useEffect(() => {
@@ -306,12 +315,9 @@ export default function WorldMap({ mode = "player" }) {
           .map((state) => [state.locationId, state])
       ));
       setServerLocations(Array.isArray(response?.locations) ? response.locations : null);
-
-      const activeUrl = response?.activeMap?.url;
-      const latestUploadedMap = response?.maps?.[0]?.filename;
-      const finalUrl = activeUrl || (latestUploadedMap ? `/map/${latestUploadedMap}` : "/map/map_1778949781221_9aztm8vr_Gemini_Generated_Image_np1vfdnp1vfdnp1v-_.png");
-
-      setMapImageUrl(finalUrl);
+      const nextDimensions = resolveWorldMapDimensions(response);
+      if (nextDimensions) setMapDimensions(nextDimensions);
+      setMapImageUrl(resolveWorldMapImageUrl(response));
 
     } catch (err) {
       setError(formatMapUiError(err));
@@ -327,8 +333,10 @@ export default function WorldMap({ mode = "player" }) {
   useEffect(() => {
     if (!socket) return;
     const handleMapUpdate = () => loadPlayers();
-    socket.on('map:state', handleMapUpdate);
-    return () => socket.off('map:state', handleMapUpdate);
+    WORLD_MAP_SOCKET_EVENTS.forEach((eventName) => socket.on(eventName, handleMapUpdate));
+    return () => {
+      WORLD_MAP_SOCKET_EVENTS.forEach((eventName) => socket.off(eventName, handleMapUpdate));
+    };
   }, [socket, loadPlayers]);
 
   const focusParty = useCallback(() => {
@@ -441,10 +449,13 @@ export default function WorldMap({ mode = "player" }) {
           map.setMinZoom(-1.25);
           return;
         }
-        
-        const coverZoom = Math.max(-1.25, getCoverZoom(map, mapDimensions));
+
+        const dims = mapDimensionsRef.current;
+        const coverZoom = Math.max(-1.25, getCoverZoom(map, dims));
         map.setMinZoom(coverZoom);
-        if (map.getZoom() < coverZoom) map.setView([mapDimensions.height / 2, mapDimensions.width / 2], coverZoom, { animate: false });
+        if (map.getZoom() < coverZoom) {
+          map.setView([dims.height / 2, dims.width / 2], coverZoom, { animate: false });
+        }
       });
     };
     
