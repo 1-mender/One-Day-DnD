@@ -20,6 +20,7 @@ export const mapAdminApi = {
     if (name) formData.append("name", name);
     return uploadForm("/api/map/maps", formData, ERROR_CODES.UPLOAD_FAILED);
   },
+  dmActivateDefaultMap: () => request(`/api/map/maps/default/activate`, { method: "PUT" }),
   dmActivateMap: (id) => request(`/api/map/maps/${encodeURIComponent(id)}/activate`, { method: "PUT" }),
   dmDeleteMap: (id) => request(`/api/map/maps/${encodeURIComponent(id)}`, { method: "DELETE" }),
 

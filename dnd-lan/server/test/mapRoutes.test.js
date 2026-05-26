@@ -131,6 +131,8 @@ test("map list returns currently active map first after activation", async () =>
   const db = getDb();
   const partyId = getSinglePartyId();
   const t = now();
+  db.prepare("DELETE FROM maps WHERE party_id=?").run(partyId);
+  db.prepare("UPDATE party_settings SET active_map_id=NULL WHERE party_id=?").run(partyId);
   const first = db.prepare(
     `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
      VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
@@ -147,8 +149,41 @@ test("map list returns currently active map first after activation", async () =>
 
   const out = await api("/api/map/maps");
   assert.equal(out.res.status, 200);
+  assert.equal(out.data.activeMap.id, first);
   assert.equal(out.data.maps[0].id, first);
+  assert.equal(out.data.maps[0].isActive, true);
   assert.equal(out.data.maps[1].id, second);
+  assert.equal(out.data.maps[1].isActive, false);
+});
+
+test("map list can switch back to the built-in default map without deleting uploads", async () => {
+  const db = getDb();
+  const partyId = getSinglePartyId();
+  const t = now();
+  db.prepare("DELETE FROM maps WHERE party_id=?").run(partyId);
+  db.prepare("UPDATE party_settings SET active_map_id=NULL WHERE party_id=?").run(partyId);
+  const uploadedId = db.prepare(
+    `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
+  ).run(partyId, "default-toggle.png", "Default Toggle", 1280, 720, t - 5, t - 5).lastInsertRowid;
+
+  const activateOut = await api(`/api/map/maps/${uploadedId}/activate`, {
+    method: "PUT"
+  });
+  assert.equal(activateOut.res.status, 200);
+
+  const defaultOut = await api("/api/map/maps/default/activate", {
+    method: "PUT"
+  });
+  assert.equal(defaultOut.res.status, 200);
+  assert.equal(defaultOut.data.activeMap.id, "default");
+  assert.equal(defaultOut.data.activeMap.url, "/api/map/default-image");
+  assert.equal(defaultOut.data.maps.every((item) => item.isActive === false), true);
+
+  const stateOut = await api("/api/map/state");
+  assert.equal(stateOut.res.status, 200);
+  assert.equal(stateOut.data.activeMap.id, "default");
+  assert.equal(stateOut.data.map.imageUrl, "/api/map/default-image");
 });
 
 test("map delete removes file and falls back to the next active map", async () => {
@@ -165,6 +200,7 @@ test("map delete removes file and falls back to the next active map", async () =
     `INSERT INTO maps(party_id, filename, name, width, height, created_by, created_at, updated_at)
      VALUES(?, ?, ?, ?, ?, 'dm', ?, ?)`
   ).run(partyId, "backup-delete.png", "Backup Delete", 1000, 700, t - 40, t - 10).lastInsertRowid;
+  db.prepare("UPDATE party_settings SET active_map_id=? WHERE party_id=?").run(activeId, partyId);
 
   fs.writeFileSync(path.join(uploadsDir, "maps", "active-delete.png"), "active");
   fs.writeFileSync(path.join(uploadsDir, "maps", "backup-delete.png"), "backup");

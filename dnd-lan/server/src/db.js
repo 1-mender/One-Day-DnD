@@ -59,8 +59,8 @@ export function initDb() {
       const partyId = nextDb.prepare("INSERT INTO parties(name, join_code, created_at) VALUES(?,?,?)")
         .run("Default Party", null, t).lastInsertRowid;
       nextDb.prepare(
-        "INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access) VALUES(?,?,?,?,?,?)"
-      ).run(partyId, 0, 1, "{}", "[]", "{}");
+        "INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access, active_map_id) VALUES(?,?,?,?,?,?,?)"
+      ).run(partyId, 0, 1, "{}", "[]", "{}", null);
     }
 
     assertSinglePartyInvariant(nextDb);
@@ -168,7 +168,8 @@ export function getPartySettings(partyId) {
     tickets_enabled: 1,
     tickets_rules: "{}",
     profile_presets: "[]",
-    profile_presets_access: "{}"
+    profile_presets_access: "{}",
+    active_map_id: null
   };
 }
 
@@ -179,16 +180,20 @@ export function setPartySettings(partyId, patch) {
   const ticketsRules = patch.tickets_rules ?? cur.tickets_rules ?? "{}";
   const profilePresets = patch.profile_presets ?? cur.profile_presets ?? "[]";
   const profilePresetsAccess = patch.profile_presets_access ?? cur.profile_presets_access ?? "{}";
+  const activeMapId = Object.prototype.hasOwnProperty.call(patch || {}, "active_map_id")
+    ? (patch.active_map_id ?? null)
+    : (cur.active_map_id ?? null);
   getDb().prepare(
-    `INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access)
-     VALUES(?,?,?,?,?,?)
+    `INSERT INTO party_settings(party_id, bestiary_enabled, tickets_enabled, tickets_rules, profile_presets, profile_presets_access, active_map_id)
+     VALUES(?,?,?,?,?,?,?)
      ON CONFLICT(party_id) DO UPDATE SET
        bestiary_enabled=excluded.bestiary_enabled,
        tickets_enabled=excluded.tickets_enabled,
        tickets_rules=excluded.tickets_rules,
        profile_presets=excluded.profile_presets,
-       profile_presets_access=excluded.profile_presets_access`
-  ).run(partyId, bestiary, ticketsEnabled, ticketsRules, profilePresets, profilePresetsAccess);
+       profile_presets_access=excluded.profile_presets_access,
+       active_map_id=excluded.active_map_id`
+  ).run(partyId, bestiary, ticketsEnabled, ticketsRules, profilePresets, profilePresetsAccess, activeMapId);
 }
 
 export function getSingleParty() {

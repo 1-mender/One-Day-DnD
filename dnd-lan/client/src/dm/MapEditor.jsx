@@ -128,7 +128,7 @@ function EmptyState({ children }) {
   return <div className="dm-map-empty-state">{children}</div>;
 }
 
-function SectionTitle({ eyebrow, title, detail, count }) {
+function SectionTitle({ eyebrow, title, detail, count, actions = null }) {
   return (
     <div className="dm-map-section-head">
       <div>
@@ -136,7 +136,10 @@ function SectionTitle({ eyebrow, title, detail, count }) {
         <h3>{title}</h3>
         {detail ? <p className="dm-map-section-note muted">{detail}</p> : null}
       </div>
-      {count != null ? <span className="badge secondary">{count}</span> : null}
+      <div className="dm-map-section-head-side">
+        {count != null ? <span className="badge secondary">{count}</span> : null}
+        {actions}
+      </div>
     </div>
   );
 }
@@ -164,6 +167,31 @@ function MapRow({ map, isActive, onActivate, onDelete, deleting, activating }) {
         </button>
         <button className="btn danger" type="button" onClick={() => onDelete(map)} disabled={deleting || activating}>
           {deleting ? "Удаляю..." : "Удалить"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DefaultMapRow({ isActive, onActivate, activating }) {
+  return (
+    <div className={`map-editor-row map-editor-row-compact${isActive ? " is-active" : ""}`}>
+      <div className="map-editor-row-main">
+        <div className="map-editor-row-main-head">
+          <strong>Встроенная карта мира</strong>
+          <div className="map-editor-row-inline">
+            <span className={`badge ${isActive ? "ok" : "secondary"}`}>{isActive ? "Активна" : "База"}</span>
+            <span className="badge secondary">1024×1024</span>
+          </div>
+        </div>
+        <div className="map-editor-row-subline">
+          <span>Без загрузки файлов</span>
+          <span>Удобно для возврата к стандартной карте партии</span>
+        </div>
+      </div>
+      <div className="map-editor-row-actions">
+        <button className="btn secondary" type="button" onClick={onActivate} disabled={isActive || activating}>
+          {activating ? "..." : isActive ? "Активна" : "Сделать активной"}
         </button>
       </div>
     </div>
@@ -257,7 +285,8 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
   const [editingToken, setEditingToken] = useState(null);
   const [form, setForm] = useState({ name: "", id: "", category: "city", description: "", default_x: 50, default_y: 50, type: "" });
 
-  const activeMap = maps[0] || null;
+  const activeMap = useMemo(() => maps.find((map) => map?.isActive) || null, [maps]);
+  const usingDefaultMap = !activeMap;
   const mapUpload = useMemo(() => getMapUploadSettings(info), [info]);
   const uploadFormatLabels = useMemo(
     () => [...new Set(mapUpload.allowedMimeTypes.map(formatMimeLabel).filter(Boolean))],
@@ -494,6 +523,19 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
     }
   };
 
+  const activateDefaultMap = async () => {
+    setActivatingMapId("default");
+    try {
+      setError("");
+      await api.dmActivateDefaultMap();
+      await syncAfterChange();
+    } catch (err) {
+      setError(formatMapEditorError(err, "Не удалось переключить карту на встроенную."));
+    } finally {
+      setActivatingMapId(null);
+    }
+  };
+
   const removeMap = async (map) => {
     const isActive = map?.id === activeMap?.id;
     const question = isActive
@@ -546,8 +588,8 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
           <div className="eyebrow">DM Tools</div>
           <h2>{embedded ? "Редактор карты" : "Картограф"}</h2>
           <div className="dm-map-editor-subline">
-            <span><b>{activeMap?.name || "Встроенная карта мира"}</b></span>
-            <span>{activeMap ? `${activeMap.width}×${activeMap.height}` : "1024×1024"}</span>
+            <span><b>{usingDefaultMap ? "Встроенная карта мира" : activeMap?.name || "Загруженная карта"}</b></span>
+            <span>{usingDefaultMap ? "1024×1024" : `${activeMap?.width || 1024}×${activeMap?.height || 1024}`}</span>
             <span>{sectionDetail}</span>
           </div>
         </div>
@@ -630,15 +672,6 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
 
       {error ? <div className="world-map-inline-error">{error}</div> : null}
 
-      <div className="dm-map-editor-actions">
-        <button className={`btn ${activeSection === "locations" ? "primary" : "secondary"}`} type="button" onClick={startCreateLocation}>
-          Новая локация
-        </button>
-        <button className={`btn ${activeSection === "tokens" ? "primary" : "secondary"}`} type="button" onClick={startCreateToken}>
-          Новый жетон
-        </button>
-      </div>
-
       {activeSection === "maps" ? (
         <section className="card">
           <SectionTitle
@@ -646,6 +679,11 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
             title="Библиотека карт"
             count={buildCountLabel(maps.length, filteredMaps.length, Boolean(normalizedQuery))}
             detail="Здесь только загрузка, быстрый просмотр, активация и удаление карт."
+            actions={(
+              <button className="btn secondary" type="button" onClick={activateDefaultMap} disabled={usingDefaultMap || activatingMapId === "default"}>
+                {activatingMapId === "default" ? "..." : usingDefaultMap ? "База активна" : "Встроенная"}
+              </button>
+            )}
           />
           <label className="dm-map-upload">
             <span className="dm-map-upload-button">{uploadingMap ? "Загружаю..." : "Загрузить карту"}</span>
@@ -655,6 +693,7 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
             <input type="file" accept={mapUpload.allowedMimeTypes.join(",")} disabled={uploadingMap} onChange={handleMapUpload} />
           </label>
           <div className="dm-map-editor-list">
+            <DefaultMapRow isActive={usingDefaultMap} onActivate={activateDefaultMap} activating={activatingMapId === "default"} />
             {maps.length === 0 ? (
               <EmptyState>Пока нет загруженных карт. Игрокам показывается встроенная карта мира.</EmptyState>
             ) : filteredMaps.length === 0 ? (
@@ -663,7 +702,7 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
               <MapRow
                 key={map.id}
                 map={map}
-                isActive={map.id === activeMap?.id}
+                isActive={!!map.isActive}
                 onActivate={activateMap}
                 onDelete={removeMap}
                 deleting={deletingMapId === map.id}
@@ -688,6 +727,11 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
             title="Локации"
             count={buildCountLabel(locations.length, filteredLocations.length, Boolean(normalizedQuery) || locationFilter !== "all")}
             detail="Описание в списке укорочено, чтобы навигация не раздувала панель. Полный текст открывается в редактировании."
+            actions={(
+              <button className="btn secondary" type="button" onClick={startCreateLocation}>
+                Новая локация
+              </button>
+            )}
           />
           <div className="dm-map-editor-list">
             {locations.length === 0 ? (
@@ -715,6 +759,11 @@ export default function MapEditor({ embedded = false, onChanged = null }) {
             title="Жетоны"
             count={buildCountLabel(tokens.length, filteredTokens.length, Boolean(normalizedQuery) || tokenFilter !== "all")}
             detail="Жетоны вынесены в отдельную вкладку, чтобы не мешать картам и локациям."
+            actions={(
+              <button className="btn secondary" type="button" onClick={startCreateToken}>
+                Новый жетон
+              </button>
+            )}
           />
           <div className="dm-map-editor-list">
             {tokens.length === 0 ? (

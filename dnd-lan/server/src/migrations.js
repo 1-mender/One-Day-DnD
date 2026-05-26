@@ -510,6 +510,33 @@ const MIGRATIONS = [
         database.prepare("UPDATE maps SET created_at = ?, updated_at = ? WHERE created_at IS NULL").run(nowStamp, nowStamp);
       }
     }
+  },
+  {
+    version: 27,
+    name: "party_settings_active_map",
+    up(database) {
+      if (!hasTable(database, "party_settings")) return;
+      addColumnIfMissing(database, "party_settings", "active_map_id", "ALTER TABLE party_settings ADD COLUMN active_map_id INTEGER;");
+      if (!hasTable(database, "maps")) return;
+
+      const parties = database.prepare("SELECT id FROM parties ORDER BY id").all();
+      const pickLatestMap = database.prepare(
+        `SELECT id
+         FROM maps
+         WHERE party_id=?
+         ORDER BY COALESCE(updated_at, created_at) DESC, id DESC
+         LIMIT 1`
+      );
+      const setActiveMap = database.prepare(
+        "UPDATE party_settings SET active_map_id=? WHERE party_id=? AND active_map_id IS NULL"
+      );
+
+      for (const party of parties) {
+        const fallback = pickLatestMap.get(party.id);
+        if (!fallback?.id) continue;
+        setActiveMap.run(fallback.id, party.id);
+      }
+    }
   }
 ];
 

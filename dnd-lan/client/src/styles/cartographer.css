@@ -8751,6 +8751,10 @@ body.arcade-modal-open{
   flex-wrap: wrap;
 }
 
+.dm-map-editor-summary-row .badge{
+  font-size: .74rem;
+}
+
 .dm-map-editor-toolbar{
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
@@ -8764,6 +8768,10 @@ body.arcade-modal-open{
 
 .dm-map-editor-tabs .profile-view-tab{
   min-height: 42px;
+}
+
+.dm-map-editor-tabs .badge{
+  font-size: .72rem;
 }
 
 .dm-map-editor-search{
@@ -8817,6 +8825,14 @@ body.arcade-modal-open{
   margin-bottom: 8px;
 }
 
+.dm-map-section-head-side{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .dm-map-section-note{
   margin-top: 4px !important;
   max-width: 54ch;
@@ -8835,10 +8851,10 @@ body.arcade-modal-open{
 .dm-map-upload{
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin: 12px 0 6px;
-  padding: 12px;
+  margin: 10px 0 6px;
+  padding: 10px 12px;
   border: 1px dashed rgba(85, 70, 44, .22);
   border-radius: 18px;
   background: rgba(255, 251, 239, .46);
@@ -8852,13 +8868,13 @@ body.arcade-modal-open{
 .dm-map-upload-button{
   display: inline-flex;
   align-items: center;
-  min-height: 38px;
-  padding: 0 14px;
+  min-height: 36px;
+  padding: 0 13px;
   border: 1px solid rgba(87, 68, 40, .18);
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(255,255,255,.78), rgba(242, 233, 211, .96));
   box-shadow: 0 4px 0 rgba(74, 62, 38, .08);
-  font: 800 .82rem/1 var(--font-display);
+  font: 800 .8rem/1 var(--font-display);
 }
 
 .dm-map-upload-name{
@@ -8938,6 +8954,18 @@ body.arcade-modal-open{
   line-height: 1.34;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
+}
+
+.map-editor-row-actions{
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.map-editor-row-actions .btn,
+.dm-map-section-head-side .btn{
+  min-height: 34px;
+  padding-inline: 12px;
+  font-size: .78rem;
 }
 
 .map-editor-row-meta{
@@ -9301,6 +9329,8 @@ body.arcade-modal-open{
     flex-direction: column;
   }
 
+  .dm-map-section-head,
+  .dm-map-section-head-side,
   .dm-map-editor-head-actions,
   .dm-map-position-presets{
     align-items: flex-start;

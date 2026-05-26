@@ -5,6 +5,7 @@ import { EmptyState } from "../../../foundation/primitives/index.js";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import RaceFields from "../../../player/profile/sections/RaceFields.jsx";
 import {
+  DM_PROFILE_ACCESS_PRESETS,
   applyDmProfileTemplate,
   detectDmProfileTemplate,
   DM_PROFILE_EDITABLE_OPTIONS,
@@ -86,6 +87,21 @@ export default function DMPlayerProfileProfileTab({ controller }) {
   };
   const applyTemplate = (templateKey) => {
     setForm((current) => applyDmProfileTemplate(current, templateKey));
+  };
+  const applyAccessPreset = (preset) => {
+    setForm((current) => ({
+      ...current,
+      publicFields: [...(preset.publicFields || [])],
+      editableFields: [...(preset.editableFields || [])],
+      allowRequests: !!preset.allowRequests
+    }));
+  };
+  const isAccessPresetActive = (preset) => {
+    const publicFields = [...(form.publicFields || [])].sort().join("|");
+    const editableFields = [...(form.editableFields || [])].sort().join("|");
+    return publicFields === [...(preset.publicFields || [])].sort().join("|")
+      && editableFields === [...(preset.editableFields || [])].sort().join("|")
+      && !!form.allowRequests === !!preset.allowRequests;
   };
 
   return (
@@ -550,6 +566,26 @@ export default function DMPlayerProfileProfileTab({ controller }) {
 
           <div className="paper-note">
             <div className="title">Права игрока</div>
+            <div className="preset-panel u-mt-10">
+              <div className="row u-row-between-baseline">
+                <div className="small">Быстрые режимы</div>
+                <div className="small note-hint">Мгновенно переключают видимость и редактирование.</div>
+              </div>
+              <div className="preset-grid">
+                {DM_PROFILE_ACCESS_PRESETS.map((preset) => (
+                  <button
+                    key={preset.key}
+                    type="button"
+                    className={`preset-card${isAccessPresetActive(preset) ? " is-active" : ""}`}
+                    onClick={() => applyAccessPreset(preset)}
+                    disabled={readOnly}
+                  >
+                    <div className="preset-title">{preset.label}</div>
+                    <div className="small">{preset.summary}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="list u-mt-10">
               {DM_PROFILE_EDITABLE_OPTIONS.map((option) => (
                 <label key={option.key} className="row">
@@ -575,7 +611,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
               </label>
             </div>
             <div className="small note-hint u-mt-6">
-              Игрок сможет менять только отмеченные поля. Для всего остального остаются запросы.
+              Игрок сможет менять только отмеченные поля. Сейчас открыто: {(form.editableFields || []).length || 0} для редактирования и {(form.publicFields || []).length || 0} для публичной карточки.
             </div>
             <div className="row u-mt-12 u-row-gap-8">
               <button className="btn secondary" onClick={resetForm} disabled={readOnly}>Сбросить</button>

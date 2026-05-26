@@ -24,6 +24,41 @@ export const DM_PROFILE_PUBLIC_OPTIONS = [
   { key: "publicBlurb", label: "Публичное описание" }
 ];
 
+export const DM_PROFILE_ACCESS_PRESETS = [
+  {
+    key: "dm_only",
+    label: "Только DM",
+    summary: "Игрок не редактирует лист и не отправляет запросы.",
+    publicFields: ["classRole", "level"],
+    editableFields: [],
+    allowRequests: false
+  },
+  {
+    key: "journal",
+    label: "Личный журнал",
+    summary: "Игрок правит историю и аватар, остальное остаётся у мастера.",
+    publicFields: ["classRole", "level", "publicBlurb"],
+    editableFields: ["bio", "avatarUrl"],
+    allowRequests: true
+  },
+  {
+    key: "shared",
+    label: "Совместный лист",
+    summary: "Игрок поддерживает анкету, мастер контролирует путь и прогрессию.",
+    publicFields: ["classRole", "level", "reputation", "publicBlurb"],
+    editableFields: ["characterName", "classRole", "level", "reputation", "stats", "bio", "avatarUrl"],
+    allowRequests: true
+  },
+  {
+    key: "party_open",
+    label: "Открыт группе",
+    summary: "Карточка видна группе шире, но редактирование остаётся выборочным.",
+    publicFields: ["classPath", "classRole", "level", "reputation", "race", "publicBlurb"],
+    editableFields: ["characterName", "classRole", "bio", "avatarUrl"],
+    allowRequests: true
+  }
+];
+
 export const DM_PROFILE_FIELD_LABELS = {
   characterName: "Имя",
   classRole: "Роль/архетип",
