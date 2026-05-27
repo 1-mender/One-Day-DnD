@@ -3,6 +3,14 @@ import { ImageUp, Save } from "lucide-react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
 import { EmptyState } from "../../../foundation/primitives/index.js";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
+import {
+  applyOriginCatalogEntryToProfile,
+  applyRoleCatalogEntryToProfile,
+  getProfileOriginMeta,
+  getProfileRoleMeta,
+  joinProfileTags,
+  parseProfileCarryBonus
+} from "../../../profileCatalogDomain.js";
 import RaceFields from "../../../player/profile/sections/RaceFields.jsx";
 import {
   DM_PROFILE_ACCESS_PRESETS,
@@ -19,7 +27,7 @@ import {
   normalizeXp,
   normalizeReputation
 } from "../playerProfileAdminDomain.js";
-import { getRaceProfile } from "../../../player/profileDomain.js";
+import { PROFILE_HIDDEN_STAT_KEYS, resolveProfileOrigin } from "../../../player/profileDomain.js";
 import {
   CLASS_CATALOG,
   SPECIALIZATION_ROLE_LABELS,
@@ -46,6 +54,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
     handleAvatarFileChange,
     notCreated,
     profilePresets,
+    profileCatalogs,
     readOnly,
     resetForm,
     save,
@@ -64,7 +73,9 @@ export default function DMPlayerProfileProfileTab({ controller }) {
   const selectedSpecializationRole = getSpecializationRole(form);
   const selectedSpecializationTags = getSpecializationTags(form);
   const classPathLabel = getClassPathLabel(form);
-  const raceProfile = getRaceProfile(form.stats);
+  const raceProfile = resolveProfileOrigin(form.stats);
+  const roleMeta = getProfileRoleMeta(form.stats);
+  const originMeta = getProfileOriginMeta(form.stats);
   const classXp = normalizeXp(form.xp);
   const specializationReady = !!selectedClass && !selectedSpecialization && classXp >= SPECIALIZATION_XP_THRESHOLD;
   const specializationProgress = Math.min(100, Math.round((classXp / SPECIALIZATION_XP_THRESHOLD) * 100));
@@ -102,6 +113,21 @@ export default function DMPlayerProfileProfileTab({ controller }) {
     return publicFields === [...(preset.publicFields || [])].sort().join("|")
       && editableFields === [...(preset.editableFields || [])].sort().join("|")
       && !!form.allowRequests === !!preset.allowRequests;
+  };
+  const updateStatsMeta = (patch) => {
+    setForm((current) => ({
+      ...current,
+      stats: {
+        ...(current?.stats || {}),
+        ...patch
+      }
+    }));
+  };
+  const applyRoleCatalog = (entry) => {
+    setForm((current) => applyRoleCatalogEntryToProfile(current, entry));
+  };
+  const applyOriginCatalog = (entry) => {
+    setForm((current) => applyOriginCatalogEntryToProfile(current, entry));
   };
 
   return (
@@ -234,6 +260,126 @@ export default function DMPlayerProfileProfileTab({ controller }) {
           </div>
 
           <div className="kv u-mt-12">
+            <div className="title"><span className="section-icon stat" aria-hidden="true" />Роль / класс и описание</div>
+            <div className="small note-hint">
+              Здесь хранится свободная роль персонажа. Каталог ниже только ускоряет заполнение, но не ограничивает ручную настройку.
+            </div>
+            {profileCatalogs?.roles?.length ? (
+              <div className="preset-grid u-mt-8">
+                {profileCatalogs.roles.map((entry) => (
+                  <button
+                    key={entry.id || entry.key}
+                    type="button"
+                    className={`preset-card${String(roleMeta?.key || "") === String(entry.key || "") ? " is-active" : ""}`}
+                    onClick={() => applyRoleCatalog(entry)}
+                    disabled={readOnly}
+                  >
+                    <div className="preset-title">{entry.label}</div>
+                    <div className="small">{entry.description || "Без описания"}</div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <textarea
+              value={form.stats?.roleDescription || ""}
+              onChange={(event) => updateStatsMeta({ roleDescription: String(event.target.value || "").slice(0, 280) })}
+              rows={4}
+              maxLength={280}
+              placeholder="Короткое описание роли, архетипа или класса"
+              aria-label="Описание роли"
+              disabled={readOnly}
+              style={INPUT_STYLE}
+            />
+            <input
+              value={form.stats?.roleTags || ""}
+              onChange={(event) => updateStatsMeta({ roleTags: String(event.target.value || "").slice(0, 280) })}
+              placeholder="Теги роли через запятую"
+              aria-label="Теги роли"
+              maxLength={280}
+              disabled={readOnly}
+              style={INPUT_STYLE}
+            />
+            {roleMeta?.description || roleMeta?.tags?.length ? (
+              <div className="small note-hint">
+                {roleMeta?.description || "Описание роли не заполнено."}
+                {roleMeta?.tags?.length ? ` • ${joinProfileTags(roleMeta.tags)}` : ""}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="kv u-mt-12">
+            <div className="title"><span className="section-icon bio" aria-hidden="true" />Происхождение / вид</div>
+            <div className="small note-hint">
+              Для кастомных сеттингов можно вообще не использовать fantasy-расы. Мастер задаёт любое происхождение, описание, теги и бонус веса.
+            </div>
+            {profileCatalogs?.origins?.length ? (
+              <div className="preset-grid u-mt-8">
+                {profileCatalogs.origins.map((entry) => (
+                  <button
+                    key={entry.id || entry.key}
+                    type="button"
+                    className={`preset-card${String(originMeta?.key || "") === String(entry.key || "") ? " is-active" : ""}`}
+                    onClick={() => applyOriginCatalog(entry)}
+                    disabled={readOnly}
+                  >
+                    <div className="preset-title">{entry.label}</div>
+                    <div className="small">{entry.description || "Без описания"}</div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            <div className="row u-row-gap-8 u-row-wrap">
+              <input
+                value={form.stats?.originName || ""}
+                onChange={(event) => updateStatsMeta({ originName: String(event.target.value || "").slice(0, 80) })}
+                placeholder="Название происхождения / вида"
+                aria-label="Название происхождения"
+                maxLength={80}
+                disabled={readOnly}
+                style={INPUT_STYLE}
+                className="u-minw-220"
+              />
+              <input
+                type="number"
+                min="-50"
+                max="50"
+                value={form.stats?.originCarryBonus ?? 0}
+                onChange={(event) => updateStatsMeta({ originCarryBonus: parseProfileCarryBonus(event.target.value) })}
+                placeholder="Бонус веса"
+                aria-label="Бонус веса происхождения"
+                disabled={readOnly}
+                style={INPUT_STYLE}
+                className="u-minw-140"
+              />
+            </div>
+            <textarea
+              value={form.stats?.originDescription || ""}
+              onChange={(event) => updateStatsMeta({ originDescription: String(event.target.value || "").slice(0, 280) })}
+              rows={4}
+              maxLength={280}
+              placeholder="Описание происхождения, культуры, вида или фракции"
+              aria-label="Описание происхождения"
+              disabled={readOnly}
+              style={INPUT_STYLE}
+            />
+            <input
+              value={form.stats?.originTags || ""}
+              onChange={(event) => updateStatsMeta({ originTags: String(event.target.value || "").slice(0, 280) })}
+              placeholder="Теги происхождения через запятую"
+              aria-label="Теги происхождения"
+              maxLength={280}
+              disabled={readOnly}
+              style={INPUT_STYLE}
+            />
+            {originMeta?.name ? (
+              <div className="small note-hint">
+                Сейчас выбрано: <b>{originMeta.name}</b>{` • вес ${originMeta.carryBonus >= 0 ? "+" : ""}${originMeta.carryBonus}`}
+                {originMeta?.tags?.length ? ` • ${joinProfileTags(originMeta.tags)}` : ""}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="kv u-mt-12">
             <div className="title"><span className="section-icon stat" aria-hidden="true" />Атрибуты и свободные поля</div>
             <div className="small note-hint">
               Шаблон <b>{currentTemplate.label}</b>. Для любого сеттинга можно добавлять свои поля: фракция, мир, позывной, долг, лицензия и т.п.
@@ -257,6 +403,7 @@ export default function DMPlayerProfileProfileTab({ controller }) {
               defaultKeys={currentTemplate.statKeys}
               keyLabels={DM_PROFILE_STAT_LABELS}
               addLabel="+ Добавить поле"
+              hiddenKeys={PROFILE_HIDDEN_STAT_KEYS}
             />
           </div>
 
@@ -509,10 +656,12 @@ export default function DMPlayerProfileProfileTab({ controller }) {
                   {classPathLabel || form.classRole || "Роль / архетип"} • lvl {form.level || "?"} • реп. {formatReputationLabel(form.reputation)}
                 </div>
                 {form.classRole ? <div className="small u-mt-6">Роль: {form.classRole}</div> : null}
+                {roleMeta?.description ? <div className="small u-mt-6 u-pre-wrap">{roleMeta.description}</div> : null}
+                {originMeta?.name ? <div className="small u-mt-6">Происхождение: {originMeta.name}</div> : null}
               </div>
             </div>
             <div className="u-mt-12">
-              <StatsView stats={form.stats} keyLabels={DM_PROFILE_STAT_LABELS} />
+              <StatsView stats={form.stats} keyLabels={DM_PROFILE_STAT_LABELS} hiddenKeys={PROFILE_HIDDEN_STAT_KEYS} />
             </div>
             <div className="small bio-text u-mt-12 u-pre-wrap">
               {form.bio || "Биография не заполнена"}

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_KEYS = ["str", "dex", "con", "int", "wis", "cha", "vit"];
-const DEFAULT_MAX_STATS = 20;
+const DEFAULT_MAX_STATS = 24;
 const KEY_MAX = 24;
-const VALUE_MAX = 64;
+const VALUE_MAX = 280;
 const genRowId = () => `row_${Math.random().toString(36).slice(2, 10)}`;
 
 function normalizeStats(stats) {
@@ -34,8 +34,16 @@ function buildRows(stats, defaultKeys) {
   return rows;
 }
 
-function rowsToStats(rows) {
-  const out = {};
+function normalizeHiddenKeys(keys) {
+  if (!Array.isArray(keys) || !keys.length) return [];
+  return keys
+    .map((key) => String(key || "").trim())
+    .filter(Boolean)
+    .filter((key, index, list) => list.indexOf(key) === index);
+}
+
+function rowsToStats(rows, hiddenStats = {}) {
+  const out = { ...normalizeStats(hiddenStats) };
   for (const row of rows) {
     const key = String(row.key || "").trim();
     if (!key) continue;
@@ -51,8 +59,9 @@ function getKeyLabel(key, keyLabels) {
   return String(keyLabels?.[key] || key || "");
 }
 
-export function StatsView({ stats, keyLabels = null, emptyLabel = "Статы не заполнены" }) {
-  const items = Object.entries(normalizeStats(stats));
+export function StatsView({ stats, keyLabels = null, hiddenKeys = [], emptyLabel = "Статы не заполнены" }) {
+  const hidden = new Set(normalizeHiddenKeys(hiddenKeys));
+  const items = Object.entries(normalizeStats(stats)).filter(([key]) => !hidden.has(key));
   if (!items.length) return <div className="small">{emptyLabel}</div>;
   return (
     <div className="stat-grid">
@@ -73,25 +82,32 @@ export function StatsEditor({
   defaultKeys = DEFAULT_KEYS,
   keyLabels = null,
   addLabel = "+ Добавить стат",
-  maxStats = DEFAULT_MAX_STATS
+  maxStats = DEFAULT_MAX_STATS,
+  hiddenKeys = []
 }) {
   const normalizedDefaultKeys = useMemo(() => normalizeDefaultKeys(defaultKeys), [defaultKeys]);
+  const normalizedHiddenKeys = useMemo(() => normalizeHiddenKeys(hiddenKeys), [hiddenKeys]);
+  const hiddenKeySet = useMemo(() => new Set(normalizedHiddenKeys), [normalizedHiddenKeys]);
+  const hiddenStats = useMemo(() => {
+    const source = normalizeStats(value);
+    return Object.fromEntries(Object.entries(source).filter(([key]) => hiddenKeySet.has(key)));
+  }, [hiddenKeySet, value]);
   const resolvedDefaultKeys = normalizedDefaultKeys.length ? normalizedDefaultKeys : DEFAULT_KEYS;
   const defaultKeysSignature = resolvedDefaultKeys.join("|");
-  const [rows, setRows] = useState(() => buildRows(value, resolvedDefaultKeys));
+  const [rows, setRows] = useState(() => buildRows(value, resolvedDefaultKeys).filter((row) => !hiddenKeySet.has(row.key)));
   const lastEmitted = useRef("");
 
   useEffect(() => {
     const incoming = JSON.stringify(normalizeStats(value));
     if (incoming === lastEmitted.current) return;
-    setRows(buildRows(value, resolvedDefaultKeys));
-  }, [defaultKeysSignature, resolvedDefaultKeys, value]);
+    setRows(buildRows(value, resolvedDefaultKeys).filter((row) => !hiddenKeySet.has(row.key)));
+  }, [defaultKeysSignature, hiddenKeySet, resolvedDefaultKeys, value]);
 
   function updateRow(idx, patch) {
     if (readOnly) return;
     const next = rows.map((row, index) => (index === idx ? { ...row, ...patch } : row));
     setRows(next);
-    const nextStats = rowsToStats(next);
+    const nextStats = rowsToStats(next, hiddenStats);
     lastEmitted.current = JSON.stringify(nextStats);
     onChange?.(nextStats);
   }
@@ -106,7 +122,7 @@ export function StatsEditor({
     if (readOnly) return;
     const next = rows.filter((_, index) => index !== idx);
     setRows(next);
-    const nextStats = rowsToStats(next);
+    const nextStats = rowsToStats(next, hiddenStats);
     lastEmitted.current = JSON.stringify(nextStats);
     onChange?.(nextStats);
   }

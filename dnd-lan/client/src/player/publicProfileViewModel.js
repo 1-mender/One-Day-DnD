@@ -1,4 +1,4 @@
-import { formatReputationLabel, getRaceProfile } from "./profileDomain.js";
+import { formatReputationLabel, getRaceProfile, normalizeRace } from "./profileDomain.js";
 import { getClassPathLabelWithRole } from "./classCatalog.js";
 
 export function getPlayerPrimaryName(player, profile = player?.publicProfile || null) {
@@ -31,15 +31,16 @@ export function getPublicProfileMetaItems(profile) {
 }
 
 function getPublicRaceLabel(profile) {
+  const raw = String(profile?.race || "").trim();
+  if (profile?.originKey && raw) return raw;
   if (profile?.raceKey) {
     return getRaceProfile({ race: profile.raceKey, raceVariant: profile.raceVariantKey }).displayName;
   }
-  const raw = String(profile?.race || "").trim();
   if (!raw) return "";
-  if (/^[a-z_\s.-]+$/i.test(raw)) {
-    return getRaceProfile({ race: raw }).displayName;
-  }
-  return raw;
+  const normalized = normalizeRace(raw);
+  const profileRace = getRaceProfile({ race: raw });
+  if (profileRace?.raceKey === "human" && normalized !== "human") return raw;
+  return profileRace.displayName || raw;
 }
 
 export function matchesStatusFilter(player, filter = "all") {

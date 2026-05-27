@@ -10,10 +10,10 @@ import {
   PUBLIC_PROFILE_FIELD_KEYS,
   diffProfile,
   formatRaceBonus,
-  getRaceProfile,
   getRaceValue,
   mergePresets,
-  normalizeReputation
+  normalizeReputation,
+  resolveProfileOrigin
 } from "../profileDomain.js";
 
 const DEFAULT_PRESET_ACCESS = {
@@ -330,7 +330,7 @@ export function useProfileController() {
 
   const updatedLabel = profile?.updatedAt ? new Date(profile.updatedAt).toLocaleString() : "-";
   const raceValue = getRaceValue(profile?.stats);
-  const raceProfile = getRaceProfile(profile?.stats);
+  const raceProfile = resolveProfileOrigin(profile?.stats);
   const raceLabel = raceProfile.displayName;
   const raceBonus = raceProfile.carryBonus;
   const raceBonusLabel = formatRaceBonus(raceBonus);

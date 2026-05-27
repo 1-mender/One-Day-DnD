@@ -2,6 +2,8 @@ import React from "react";
 import { StatsEditor, StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import { formatReputationLabel } from "../../../player/profileDomain.js";
+import { PROFILE_HIDDEN_STAT_KEYS } from "../../../player/profileDomain.js";
+import { joinProfileTags } from "../../../profileCatalogDomain.js";
 import {
   applyDmProfileTemplate,
   detectDmProfileTemplate,
@@ -21,14 +23,18 @@ export default function ProfilePresetsSection({
   readOnly,
   presetBusy,
   profilePresets,
+  profileCatalogs,
   removePreset,
   updatePreset,
-  updatePresetData
+  updatePresetData,
+  addCatalogEntry,
+  removeCatalogEntry,
+  updateCatalogEntry
 }) {
   return (
     <div className="card taped">
       <div className="u-fw-800">{"Пресеты профиля"}</div>
-      <div className="small">{"Шаблоны профиля для игроков."}</div>
+      <div className="small">{"Шаблоны профиля и каталоги сеттинга для игроков."}</div>
       <hr />
       {presetErr ? <div className="badge off">{"Ошибка: "}{presetErr}</div> : null}
       {presetMsg ? <div className="badge ok">{presetMsg}</div> : null}
@@ -179,6 +185,7 @@ export default function ProfilePresetsSection({
                       defaultKeys={getDmProfileTemplate(detectDmProfileTemplate(preset.data || {})).statKeys}
                       keyLabels={DM_PROFILE_STAT_LABELS}
                       addLabel="+ Добавить поле"
+                      hiddenKeys={PROFILE_HIDDEN_STAT_KEYS}
                     />
                   </div>
                   <div className="paper-note u-mt-8">
@@ -198,7 +205,7 @@ export default function ProfilePresetsSection({
                       </div>
                     </div>
                     <div className="u-mt-10">
-                      <StatsView stats={preset.data?.stats || {}} keyLabels={DM_PROFILE_STAT_LABELS} />
+                      <StatsView stats={preset.data?.stats || {}} keyLabels={DM_PROFILE_STAT_LABELS} hiddenKeys={PROFILE_HIDDEN_STAT_KEYS} />
                     </div>
                     <div className="small bio-text u-mt-10 u-pre-wrap">
                       {preset.data?.bio || "Биография не заполнена"}
@@ -228,6 +235,144 @@ export default function ProfilePresetsSection({
             ))}
           </div>
         )}
+
+        <hr />
+
+        <div className="u-fw-800">Каталоги сеттинга</div>
+        <div className="small">Роли, классы, происхождения и расы, которые мастер применяет к профилям без правки кода.</div>
+
+        <div className="paper-note u-mt-10">
+          <div className="row u-row-between-center">
+            <div className="title">Каталог ролей / классов</div>
+            <button className="btn secondary" type="button" onClick={() => addCatalogEntry("roles")} disabled={readOnly}>
+              + Добавить роль
+            </button>
+          </div>
+          <div className="small note-hint u-mt-6">
+            Эти записи подставляются в профиль как роль, описание и теги. Игрок остаётся редактируемым вручную.
+          </div>
+          <div className="list u-mt-10">
+            {(profileCatalogs?.roles || []).length === 0 ? (
+              <div className="badge warn">Каталог ролей пока пуст.</div>
+            ) : (
+              profileCatalogs.roles.map((entry, index) => (
+                <CatalogEntryEditor
+                  key={entry.id || `role-${index}`}
+                  title={`Роль #${index + 1}`}
+                  entry={entry}
+                  readOnly={readOnly}
+                  onChange={(patch) => updateCatalogEntry("roles", index, patch)}
+                  onRemove={() => removeCatalogEntry("roles", index)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="paper-note u-mt-10">
+          <div className="row u-row-between-center">
+            <div className="title">Каталог происхождений / рас</div>
+            <button className="btn secondary" type="button" onClick={() => addCatalogEntry("origins")} disabled={readOnly}>
+              + Добавить происхождение
+            </button>
+          </div>
+          <div className="small note-hint u-mt-6">
+            Здесь можно задать собственные виды, культуры, фракции или происхождения вместе с описанием, тегами и бонусом к лимиту веса.
+          </div>
+          <div className="list u-mt-10">
+            {(profileCatalogs?.origins || []).length === 0 ? (
+              <div className="badge warn">Каталог происхождений пока пуст.</div>
+            ) : (
+              profileCatalogs.origins.map((entry, index) => (
+                <CatalogEntryEditor
+                  key={entry.id || `origin-${index}`}
+                  title={`Происхождение #${index + 1}`}
+                  entry={entry}
+                  readOnly={readOnly}
+                  showCarryBonus
+                  onChange={(patch) => updateCatalogEntry("origins", index, patch)}
+                  onRemove={() => removeCatalogEntry("origins", index)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CatalogEntryEditor({ title, entry, readOnly, showCarryBonus = false, onChange, onRemove }) {
+  return (
+    <div className="paper-note">
+      <div className="row u-row-between-center">
+        <div className="title">{title}</div>
+        <button className="btn danger" type="button" onClick={onRemove} disabled={readOnly}>Удалить</button>
+      </div>
+      <div className="list u-mt-10">
+        <div className="row u-row-gap-8 u-row-wrap">
+          <input
+            value={entry.label || ""}
+            onChange={(event) => onChange({ label: event.target.value })}
+            placeholder="Название"
+            aria-label={`${title} название`}
+            maxLength={80}
+            style={inp}
+            className="u-minw-220"
+            disabled={readOnly}
+          />
+          <input
+            value={entry.key || ""}
+            onChange={(event) => onChange({ key: event.target.value })}
+            placeholder="Ключ"
+            aria-label={`${title} ключ`}
+            maxLength={40}
+            style={inp}
+            className="u-minw-180"
+            disabled={readOnly}
+          />
+          {showCarryBonus ? (
+            <input
+              type="number"
+              min="-50"
+              max="50"
+              value={entry.carryBonus ?? 0}
+              onChange={(event) => onChange({ carryBonus: event.target.value })}
+              placeholder="Бонус веса"
+              aria-label={`${title} бонус веса`}
+              style={inp}
+              className="u-minw-140"
+              disabled={readOnly}
+            />
+          ) : null}
+        </div>
+        <textarea
+          value={entry.description || ""}
+          onChange={(event) => onChange({ description: event.target.value })}
+          rows={4}
+          maxLength={500}
+          placeholder="Описание и суть записи"
+          aria-label={`${title} описание`}
+          style={inp}
+          disabled={readOnly}
+        />
+        <input
+          value={joinProfileTags(entry.tags)}
+          onChange={(event) => onChange({ tags: event.target.value })}
+          placeholder="Теги через запятую"
+          aria-label={`${title} теги`}
+          maxLength={280}
+          style={inp}
+          disabled={readOnly}
+        />
+        <div className="row u-row-gap-8 u-row-wrap">
+          <span className="badge secondary">{entry.key || "без ключа"}</span>
+          <span className="badge secondary">{(entry.label || "Без названия").slice(0, 48)}</span>
+          {joinProfileTags(entry.tags).split(", ").filter(Boolean).slice(0, 4).map((tag) => (
+            <span key={tag} className="badge secondary">{tag}</span>
+          ))}
+          {showCarryBonus ? <span className="badge secondary">вес {Number(entry.carryBonus || 0) >= 0 ? "+" : ""}{Number(entry.carryBonus || 0)}</span> : null}
+        </div>
       </div>
     </div>
   );

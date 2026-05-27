@@ -537,6 +537,22 @@ const MIGRATIONS = [
         setActiveMap.run(fallback.id, party.id);
       }
     }
+  },
+  {
+    version: 28,
+    name: "party_settings_profile_catalogs",
+    up(database) {
+      if (!hasTable(database, "party_settings")) return;
+      addColumnIfMissing(
+        database,
+        "party_settings",
+        "profile_catalogs",
+        "ALTER TABLE party_settings ADD COLUMN profile_catalogs TEXT NOT NULL DEFAULT '{}';"
+      );
+      database.prepare(
+        "UPDATE party_settings SET profile_catalogs='{}' WHERE profile_catalogs IS NULL OR TRIM(profile_catalogs) = ''"
+      ).run();
+    }
   }
 ];
 

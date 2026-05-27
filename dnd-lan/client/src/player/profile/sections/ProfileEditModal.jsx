@@ -3,6 +3,7 @@ import Modal from "../../../components/Modal.jsx";
 import { StatsEditor } from "../../../components/profile/StatsEditor.jsx";
 import RaceFields from "./RaceFields.jsx";
 import {
+  PROFILE_HIDDEN_STAT_KEYS,
   PRESET_HINT,
   formatReputationLabel,
   getReputationTier,
@@ -121,7 +122,12 @@ export default function ProfileEditModal({ controller }) {
               onChange={(stats) => setDraft({ ...draft, stats })}
               disabled={readOnly}
             />
-            <StatsEditor value={draft.stats} onChange={(stats) => setDraft({ ...draft, stats })} readOnly={readOnly} />
+            <StatsEditor
+              value={draft.stats}
+              onChange={(stats) => setDraft({ ...draft, stats })}
+              readOnly={readOnly}
+              hiddenKeys={PROFILE_HIDDEN_STAT_KEYS}
+            />
           </>
         ) : null}
 

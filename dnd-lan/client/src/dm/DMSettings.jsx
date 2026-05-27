@@ -37,6 +37,7 @@ export default function DMSettings() {
     profilePresets,
     presetAccess,
     setPresetAccess,
+    profileCatalogs,
     presetBusy,
     presetMsg,
     presetErr,
@@ -67,6 +68,9 @@ export default function DMSettings() {
     removePreset,
     updatePreset,
     updatePresetData,
+    addCatalogEntry,
+    removeCatalogEntry,
+    updateCatalogEntry,
     saveProfilePresets,
     exportZip,
     importZip
@@ -74,7 +78,7 @@ export default function DMSettings() {
 
   const joinSummary = joinEnabled ? "Код входа включён" : "Код входа выключен";
   const presetsEnabled = presetAccess?.enabled !== false;
-  const presetSummary = `Пресетов: ${profilePresets.length} • ${presetsEnabled ? "доступны" : "выключены"}`;
+  const presetSummary = `Пресетов: ${profilePresets.length} • ролей: ${profileCatalogs?.roles?.length || 0} • происхождений: ${profileCatalogs?.origins?.length || 0} • ${presetsEnabled ? "доступны" : "выключены"}`;
   const passwordSummary = readOnly ? "Только просмотр" : "Сменить пароль мастера";
   const networkSummary = lanUrl ? "LAN URL готов" : "Ссылка не найдена";
   const backupSummary = readOnly ? "Только экспорт" : "Экспорт и импорт ZIP";
@@ -130,9 +134,13 @@ export default function DMSettings() {
             readOnly={readOnly}
             presetBusy={presetBusy}
             profilePresets={profilePresets}
+            profileCatalogs={profileCatalogs}
             removePreset={removePreset}
             updatePreset={updatePreset}
             updatePresetData={updatePresetData}
+            addCatalogEntry={addCatalogEntry}
+            removeCatalogEntry={removeCatalogEntry}
+            updateCatalogEntry={updateCatalogEntry}
           />
         </DMSettingsFold>
 

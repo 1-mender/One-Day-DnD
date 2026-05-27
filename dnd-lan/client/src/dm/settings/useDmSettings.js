@@ -43,7 +43,7 @@ export function useDmSettings() {
       hydrateJoinSettings(jc);
       setInfo(si);
       hydrateTicketRules(tr?.rules || null);
-      hydrateProfilePresets(presets?.presets, presets?.access);
+      hydrateProfilePresets(presets?.presets, presets?.access, presets?.catalogs);
     } catch (e) {
       setErr(formatError(e, ERROR_CODES.SERVER_INFO_FAILED));
     }

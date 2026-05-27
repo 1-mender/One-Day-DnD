@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS party_settings (
   tickets_rules TEXT NOT NULL DEFAULT '{}',
   profile_presets TEXT NOT NULL DEFAULT '[]',
   profile_presets_access TEXT NOT NULL DEFAULT '{}',
+  profile_catalogs TEXT NOT NULL DEFAULT '{}',
   active_map_id INTEGER,
   FOREIGN KEY(party_id) REFERENCES parties(id) ON DELETE CASCADE
 );

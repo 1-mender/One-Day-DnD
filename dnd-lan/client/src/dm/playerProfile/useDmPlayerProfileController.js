@@ -8,6 +8,10 @@ import { useReadOnly } from "../../hooks/useReadOnly.js";
 import { formatError } from "../../lib/formatError.js";
 import { useQuickAccess } from "../../lib/useQuickAccess.js";
 import {
+  DEFAULT_PROFILE_CATALOGS,
+  normalizeProfileCatalogs,
+} from "../../profileCatalogDomain.js";
+import {
   EMPTY_DM_PROFILE_FORM,
   hasAnyData,
   hasUnsavedChanges,
@@ -60,6 +64,7 @@ export function useDmPlayerProfileController() {
   const fileInputRef = useRef(null);
   const [requestsRef] = useAutoAnimate({ duration: 200 });
   const [profilePresets, setProfilePresets] = useState([]);
+  const [profileCatalogs, setProfileCatalogs] = useState(DEFAULT_PROFILE_CATALOGS);
   const [players, setPlayers] = useState([]);
   const quickAccess = useQuickAccess("dm_player_profiles", players);
   const { trackRecent } = quickAccess;
@@ -130,8 +135,10 @@ export function useDmPlayerProfileController() {
     try {
       const response = await api.dmProfilePresets();
       setProfilePresets(Array.isArray(response?.presets) ? response.presets : []);
+      setProfileCatalogs(normalizeProfileCatalogs(response?.catalogs));
     } catch {
       setProfilePresets([]);
+      setProfileCatalogs(DEFAULT_PROFILE_CATALOGS);
     }
   }, []);
 
@@ -387,6 +394,7 @@ export function useDmPlayerProfileController() {
     playerRequestsAll,
     profile,
     profilePresets,
+    profileCatalogs,
     quickAccess,
     readOnly,
     reject,

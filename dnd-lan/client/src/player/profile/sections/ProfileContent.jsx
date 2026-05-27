@@ -4,10 +4,12 @@ import { EmptyState, Skeleton } from "../../../foundation/primitives/index.js";
 import { StatsView } from "../../../components/profile/StatsEditor.jsx";
 import PolaroidFrame from "../../../components/vintage/PolaroidFrame.jsx";
 import {
+  PROFILE_HIDDEN_STAT_KEYS,
   PUBLIC_PROFILE_FIELD_OPTIONS,
   formatChangeFields,
   formatReputation,
   formatReputationLabel,
+  getProfileRoleMeta,
   getReputationTier
 } from "../../profileDomain.js";
 import {
@@ -314,7 +316,7 @@ function OriginPanel({ canEditStats, onEdit, raceBonus, raceBonusLabel, raceHint
 
       <div className="profile-origin-summary" title={raceHint} aria-label={raceHint}>
         <div className="profile-origin-top">
-          <span className="badge secondary">{raceProfile?.raceLabel || "Раса"}</span>
+          <span className="badge secondary">{raceProfile?.raceLabel || "Происхождение"}</span>
           {showRaceBonus ? (
             <span className={`badge ${raceBonus > 0 ? "ok" : "off"}`}>
               вес {raceBonusLabel}
@@ -344,6 +346,7 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
   const specialization = getSpecializationByKey(profile?.classKey, profile?.specializationKey);
   const specializationRole = getSpecializationRole(profile);
   const specializationTags = getSpecializationTags(profile);
+  const roleMeta = getProfileRoleMeta(profile?.stats);
   const classRoles = getBaseClassRoles(baseClass);
   const classTags = getBaseClassTags(baseClass);
   const xp = Math.max(0, Number(profile?.xp || 0));
@@ -368,8 +371,15 @@ function ClassPathPanel({ profile, readOnly, saving, onSave }) {
       {!baseClass ? (
         <>
           <div className="small note-hint profile-hint">
-            Класс выбирает игрок. До специализации его можно поменять.
+            {roleMeta?.description || "Класс выбирает игрок. До специализации его можно поменять."}
           </div>
+          {roleMeta?.tags?.length ? (
+            <div className="profile-class-subtags">
+              {roleMeta.tags.map((tag) => (
+                <span key={tag} className="badge secondary profile-role-chip">{tag}</span>
+              ))}
+            </div>
+          ) : null}
           <div className="profile-class-grid">
             {CLASS_CATALOG.map((item) => (
               <button
@@ -528,7 +538,7 @@ function PublicProfilePreview({
     { key: "classRole", label: "Класс / роль", value: profile?.classRole || "не заполнено" },
     { key: "level", label: "Уровень", value: profile?.level != null ? `ур. ${profile.level}` : "не заполнено" },
     { key: "reputation", label: "Репутация", value: formatReputationLabel(profile?.reputation) },
-    { key: "race", label: "Раса", value: preview.race || "не заполнено" },
+    { key: "race", label: "Происхождение / вид", value: preview.race || "не заполнено" },
     { key: "publicBlurb", label: "Публичное описание", value: publicSettingsDraft?.publicBlurb || "не заполнено" }
   ];
   const openOptional = optionalFields.filter((field) => preview.publicFieldSet.has(field.key));
@@ -708,7 +718,7 @@ function ExtraProfilePanel({
               </button>
             ) : null}
             <div className="profile-section-body">
-              <StatsView stats={profile.stats} />
+              <StatsView stats={profile.stats} hiddenKeys={PROFILE_HIDDEN_STAT_KEYS} />
             </div>
           </div>
         </details>
@@ -842,7 +852,13 @@ function createPublicProfilePreview(profile, raceLabel, publicSettingsDraft) {
   const publicFields = normalizePublicFields(publicSettingsDraft?.publicFields ?? profile?.publicFields);
   const publicFieldSet = new Set(publicFields);
   const publicBlurbDraft = publicSettingsDraft?.publicBlurb ?? profile?.publicBlurb ?? "";
-  const hasRace = Boolean(String(profile?.stats?.race || profile?.stats?.raceVariant || "").trim());
+  const hasRace = Boolean(String(
+    profile?.stats?.originName
+    || profile?.stats?.originKey
+    || profile?.stats?.race
+    || profile?.stats?.raceVariant
+    || ""
+  ).trim());
   return {
     publicFields,
     publicFieldSet,
@@ -863,7 +879,7 @@ function getPublicSummary(preview) {
   if (preview.classRole) summary.push("класс");
   if (preview.level != null) summary.push("уровень");
   if (preview.reputation != null) summary.push("репутацию");
-  if (preview.race) summary.push("расу");
+  if (preview.race) summary.push("происхождение");
   if (preview.publicBlurb) summary.push("описание");
   return summary;
 }

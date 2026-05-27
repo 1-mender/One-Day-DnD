@@ -11,8 +11,15 @@ import {
   setRaceInStats,
   setRaceVariantInStats
 } from "../../../shared/raceCatalog.js";
+import {
+  PROFILE_HIDDEN_STAT_KEYS,
+  getProfileOriginMeta,
+  getProfileRoleMeta,
+  joinProfileTags
+} from "../../../shared/profileCatalogs.js";
 
 export {
+  PROFILE_HIDDEN_STAT_KEYS,
   RACE_OPTIONS,
   getRaceBonus,
   getRaceDisplayLabel,
@@ -25,6 +32,8 @@ export {
   setRaceInStats,
   setRaceVariantInStats
 };
+
+export { getProfileOriginMeta, getProfileRoleMeta, joinProfileTags };
 
 export const EMPTY_PROFILE_DRAFT = {
   characterName: "",
@@ -45,7 +54,7 @@ export const PUBLIC_PROFILE_FIELD_OPTIONS = [
   { key: "classRole", label: "Класс / роль" },
   { key: "level", label: "Уровень" },
   { key: "reputation", label: "Репутация" },
-  { key: "race", label: "Раса" },
+  { key: "race", label: "Происхождение / вид" },
   { key: "publicBlurb", label: "Публичное описание" }
 ];
 
@@ -127,6 +136,25 @@ export function formatRaceBonus(bonus) {
   return value > 0 ? `+${value}` : String(value);
 }
 
+export function resolveProfileOrigin(stats) {
+  const customOrigin = getProfileOriginMeta(stats);
+  if (customOrigin?.name) {
+    return {
+      kind: "custom",
+      displayName: customOrigin.name,
+      carryBonus: Number(customOrigin.carryBonus || 0),
+      trait: customOrigin.name,
+      variantDescription: customOrigin.description,
+      description: customOrigin.description,
+      tags: customOrigin.tags,
+      raceLabel: "Происхождение",
+      raceKey: customOrigin.key || "custom_origin",
+      variantKey: ""
+    };
+  }
+  return getRaceProfile(stats);
+}
+
 export function diffProfile(current, next) {
   const out = {};
   if (String(current.characterName || "") !== String(next.characterName || "")) out.characterName = next.characterName || "";
@@ -152,6 +180,11 @@ export function mergePreset(prev, preset) {
   const nextStats = { ...(data.stats || {}) };
   if (!Object.hasOwn(nextStats, "race")) nextStats.race = prev?.stats?.race;
   if (!Object.hasOwn(nextStats, "raceVariant")) nextStats.raceVariant = prev?.stats?.raceVariant;
+  for (const key of PROFILE_HIDDEN_STAT_KEYS) {
+    if (!Object.hasOwn(nextStats, key) && Object.hasOwn(prev?.stats || {}, key)) {
+      nextStats[key] = prev.stats[key];
+    }
+  }
   return {
     ...prev,
     ...data,

@@ -4,14 +4,17 @@ import { getDb, getPartySettings, getSingleParty, setPartySettings } from "../db
 import {
   buildProfilePayload,
   DEFAULT_PRESET_ACCESS,
+  DEFAULT_PROFILE_CATALOGS,
   EDITABLE_FIELDS,
   LIMITS,
   mapPublicProfile,
   mapProfile,
   normalizeEditableFields,
+  normalizeProfileCatalogs,
   normalizePresetAccess,
   PRESET_LIMITS,
   sanitizePatch,
+  sanitizeProfileCatalogs,
   sanitizePreset,
   sanitizeRequestChanges,
   validateAndFinalizePatch,
@@ -92,11 +95,12 @@ profileRouter.get("/profile-presets", (req, res) => {
   const settings = getPartySettings(party.id);
   let presets = jsonParse(settings.profile_presets, []);
   const access = normalizePresetAccess(jsonParse(settings.profile_presets_access, {}));
+  const catalogs = normalizeProfileCatalogs(jsonParse(settings.profile_catalogs, DEFAULT_PROFILE_CATALOGS));
   presets = Array.isArray(presets) ? presets : [];
   if (!dm && me && (!access.enabled || (!access.playerEdit && !access.playerRequest))) {
     presets = [];
   }
-  res.json({ presets, access });
+  res.json({ presets, access, catalogs });
 });
 
 profileRouter.get("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
@@ -104,7 +108,8 @@ profileRouter.get("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
   const settings = getPartySettings(party.id);
   const presets = jsonParse(settings.profile_presets, []);
   const access = normalizePresetAccess(jsonParse(settings.profile_presets_access, {}));
-  res.json({ presets: Array.isArray(presets) ? presets : [], access });
+  const catalogs = normalizeProfileCatalogs(jsonParse(settings.profile_catalogs, DEFAULT_PROFILE_CATALOGS));
+  res.json({ presets: Array.isArray(presets) ? presets : [], access, catalogs });
 });
 
 profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
@@ -115,13 +120,15 @@ profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
   if (body.reset) {
     setPartySettings(party.id, {
       profile_presets: "[]",
-      profile_presets_access: JSON.stringify(DEFAULT_PRESET_ACCESS)
+      profile_presets_access: JSON.stringify(DEFAULT_PRESET_ACCESS),
+      profile_catalogs: JSON.stringify(DEFAULT_PROFILE_CATALOGS)
     });
     emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId: party.id });
-    return res.json({ presets: [], access: DEFAULT_PRESET_ACCESS });
+    return res.json({ presets: [], access: DEFAULT_PRESET_ACCESS, catalogs: DEFAULT_PROFILE_CATALOGS });
   }
 
   const access = normalizePresetAccess(body.access);
+  const catalogs = sanitizeProfileCatalogs(body.catalogs);
   const rawPresets = Array.isArray(body.presets) ? body.presets : [];
   const presets = [];
   for (const preset of rawPresets) {
@@ -134,10 +141,11 @@ profileRouter.put("/profile-presets/dm", dmAuthMiddleware, (req, res) => {
 
   setPartySettings(party.id, {
     profile_presets: JSON.stringify(presets),
-    profile_presets_access: JSON.stringify(access)
+    profile_presets_access: JSON.stringify(access),
+    profile_catalogs: JSON.stringify(catalogs)
   });
   emitSinglePartyEvent(req.app.locals.io, "settings:updated", undefined, { partyId: party.id });
-  res.json({ presets, access });
+  res.json({ presets, access, catalogs });
 });
 
 profileRouter.get("/players/:id/profile", (req, res) => {

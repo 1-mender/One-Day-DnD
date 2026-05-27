@@ -11,6 +11,12 @@ import {
   setRaceInStats,
   setRaceVariantInStats
 } from "../../../shared/raceCatalog.js";
+import {
+  getProfileOriginMeta,
+  normalizeProfileCatalogKey,
+  parseProfileCarryBonus,
+  splitProfileTags
+} from "../../../shared/profileCatalogs.js";
 
 export const EDITABLE_FIELDS = new Set([
   "characterName",
@@ -43,8 +49,8 @@ export const LIMITS = {
   reputationMin: -100,
   reputationMax: 100,
   statKey: 24,
-  statValue: 64,
-  maxStats: 20
+  statValue: 280,
+  maxStats: 32
 };
 
 export const PRESET_LIMITS = {
@@ -53,11 +59,24 @@ export const PRESET_LIMITS = {
   maxPresets: 30
 };
 
+export const PROFILE_CATALOG_LIMITS = {
+  maxRoles: 24,
+  maxOrigins: 24,
+  label: 80,
+  description: 500,
+  maxTags: 8
+};
+
 export const DEFAULT_PRESET_ACCESS = {
   enabled: true,
   playerEdit: true,
   playerRequest: true,
   hideLocal: false
+};
+
+export const DEFAULT_PROFILE_CATALOGS = {
+  roles: [],
+  origins: []
 };
 
 export function mapProfile(row) {
@@ -104,6 +123,7 @@ export function mapPublicProfile(row) {
   const publicBlurb = String(row.public_blurb ?? row.publicBlurb ?? "").trim();
   const hasRace = Boolean(String(stats?.race || stats?.raceVariant || "").trim());
   const raceProfile = getRaceProfile(stats);
+  const customOrigin = getProfileOriginMeta(stats);
 
   const profile = {};
   if (characterName) profile.characterName = characterName;
@@ -118,11 +138,21 @@ export function mapPublicProfile(row) {
     if (Number.isFinite(level)) profile.level = level;
   }
   if (publicFields.includes("reputation")) profile.reputation = reputation;
-  if (publicFields.includes("race") && hasRace) {
-    profile.race = raceProfile.displayName;
-    profile.raceKey = raceProfile.raceKey;
-    profile.raceVariantKey = raceProfile.variantKey;
-    profile.raceTrait = raceProfile.trait;
+  if (publicFields.includes("race")) {
+    if (customOrigin?.name) {
+      profile.race = customOrigin.name;
+      profile.raceTrait = customOrigin.description;
+      profile.raceTags = customOrigin.tags;
+      profile.raceCarryBonus = customOrigin.carryBonus;
+      profile.originKey = customOrigin.key;
+    } else if (hasRace) {
+      profile.race = raceProfile.displayName;
+      profile.raceKey = raceProfile.raceKey;
+      profile.raceVariantKey = raceProfile.variantKey;
+      profile.raceTrait = raceProfile.trait;
+      profile.raceTags = raceProfile.tags;
+      profile.raceCarryBonus = raceProfile.carryBonus;
+    }
   }
   if (publicFields.includes("publicBlurb") && publicBlurb) profile.publicBlurb = publicBlurb;
   return profile;
@@ -214,6 +244,57 @@ export function normalizePresetAccess(value) {
     playerRequest: typeof current.playerRequest === "boolean" ? current.playerRequest : DEFAULT_PRESET_ACCESS.playerRequest,
     hideLocal: typeof current.hideLocal === "boolean" ? current.hideLocal : DEFAULT_PRESET_ACCESS.hideLocal
   };
+}
+
+export function normalizeProfileCatalogs(value) {
+  const source = value && typeof value === "object" ? value : {};
+  const roles = Array.isArray(source.roles) ? source.roles : [];
+  const origins = Array.isArray(source.origins) ? source.origins : [];
+  return {
+    roles: roles.map((item) => ({ ...item })),
+    origins: origins.map((item) => ({ ...item }))
+  };
+}
+
+export function sanitizeProfileCatalogs(raw) {
+  const source = raw && typeof raw === "object" ? raw : {};
+  return {
+    roles: sanitizeProfileCatalogList(source.roles, "role", PROFILE_CATALOG_LIMITS.maxRoles),
+    origins: sanitizeProfileCatalogList(source.origins, "origin", PROFILE_CATALOG_LIMITS.maxOrigins)
+  };
+}
+
+function sanitizeProfileCatalogList(list, prefix, limit) {
+  if (!Array.isArray(list)) return [];
+  const out = [];
+  for (const item of list) {
+    if (out.length >= limit) break;
+    const normalized = sanitizeProfileCatalogEntry(item, prefix, out.length + 1);
+    if (!normalized) continue;
+    if (normalized.error) return [];
+    out.push(normalized);
+  }
+  return out;
+}
+
+function sanitizeProfileCatalogEntry(item, prefix, index) {
+  if (!item || typeof item !== "object") return null;
+  const label = String(item.label || item.name || "").trim().slice(0, PROFILE_CATALOG_LIMITS.label);
+  if (!label) return null;
+  const key = normalizeProfileCatalogKey(item.key, label) || `${prefix}_${index}_${randId(4)}`;
+  const description = String(item.description || "").trim().slice(0, PROFILE_CATALOG_LIMITS.description);
+  const tags = splitProfileTags(item.tags).slice(0, PROFILE_CATALOG_LIMITS.maxTags);
+  const base = {
+    id: String(item.id || key || `${prefix}_${index}`).trim().slice(0, 48) || `${prefix}_${index}_${randId(4)}`,
+    key,
+    label,
+    description,
+    tags
+  };
+  if (prefix === "origin") {
+    base.carryBonus = parseProfileCarryBonus(item.carryBonus);
+  }
+  return base;
 }
 
 function normalizePresetData(raw) {
