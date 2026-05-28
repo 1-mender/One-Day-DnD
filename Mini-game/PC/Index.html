@@ -51,7 +51,10 @@
         .screen {
             width: 100%;
             height: 100%;
-            background: #000; /* В iPhone OS 1 не было обоев на рабочем столе */
+            background-color: #000;
+            background-image: url(./asset/d857b25587aaecb2a255e0ad7be83d75.png);
+            background-size: cover;
+            background-position: center;
             border: 2px solid #111;
             position: relative;
             overflow: hidden;
@@ -85,13 +88,13 @@
 
         /* Нижняя панель (Dock) */
         .dock {
-            height: 80px;
-            background: linear-gradient(to bottom, rgba(255,255,255,0.2), rgba(255,255,255,0));
+            height: 110px;
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.521), rgba(0, 0, 0, 0.267));
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 10px;
             padding: 10px;
-            border-top: 1px solid rgba(255,255,255,0.3);
+            border-top: 1px solid rgba(255, 255, 255, 0.13);
             box-sizing: border-box;
         }
 
@@ -127,18 +130,18 @@
             right: 0;
             height: 50%;
             background: linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.1) 100%);
-            border-top-left-radius: 12px;
-            border-top-right-radius: 12px;
+            border-top-left-radius: 35px;
+            border-top-right-radius: 35px;
         }
 
         /* Иконки оставшихся приложений */
-        .icon-gallery { background: linear-gradient(45deg, #ffeb3b, #f44336, #2196f3); }
-        .icon-documents { background-color: #f1c40f; }
-        .icon-settings { background-color: #95a5a6; }
-        .icon-contacts { background-color: #2ecc71; }
+        .icon-gallery {background-image: url(./asset/album_18778472.png);}
+        .icon-documents {background-image: url(./asset/album_18778472.png);}
+        .icon-settings {background-image: url(./asset/album_18778472.png);}
+        .icon-contacts {background-image: url(./asset/album_18778472.png);}
 
         .app-name {
-            color: white;
+            color: rgb(255, 255, 255);
             font-size: 14px;
             margin-top: 5px;
             text-shadow: 0 1px 2px black;
@@ -182,7 +185,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: white;
+            background: rgb(0, 0, 0);
             z-index: 10;
             display: none;
             flex-direction: column;
@@ -220,6 +223,135 @@
             aspect-ratio: 1 / 1;
             object-fit: cover;
             background: #ccc;
+        }
+
+        /* Стили для Контактов */
+        .contact-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .contact-item {
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .contact-item .phone {
+            font-size: 13px;
+            color: #888;
+            margin-top: 4px;
+            font-weight: normal;
+        }
+
+        /* Стили для Настроек */
+        .settings-list {
+            background: #efeff4;
+            height: 100%;
+            padding-top: 20px;
+        }
+        .settings-item {
+            background: #fff;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: -1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+        }
+        .toggle {
+            width: 50px;
+            height: 30px;
+            background: #e5e5ea;
+            border-radius: 15px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 26px;
+            height: 26px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: left 0.3s;
+        }
+        .toggle.on {
+            background: #4cd964;
+        }
+        .toggle.on::after {
+            left: 22px;
+        }
+
+        /* Стили для экрана разговора (Звонка/Чата) */
+        .dialogue-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #e5e5ea;
+        }
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .message {
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 80%;
+            font-size: 15px;
+            line-height: 1.3;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+        }
+        .message.contact-msg {
+            background: #fff;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        .message.user-msg {
+            background: #4cd964;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        .question-buttons {
+            background: #f9f9f9;
+            padding: 10px;
+            border-top: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .q-btn {
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #007aff;
+            color: #007aff;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+        }
+        .q-btn:active {
+            background: #007aff;
+            color: #fff;
+        }
+        .contact-item {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .contact-item:active {
+            background: #d1d1d6;
         }
 
         .close-btn {
@@ -310,6 +442,27 @@
         const appNameDisplay = document.getElementById('appNameDisplay');
         const appContent = document.getElementById('appContent');
 
+        // База данных контактов и диалогов для мини-игры
+        const contactsData = {
+            "1 (555) 000-0000": {
+                phone: "+1 (555) 000-0000",
+                greeting: "Ты всё-таки нашёл этот телефон... Я ждал.",
+                dialogue: [
+                    { q: "Кто ты?", a: "Тот, кто хочет помочь тебе выбраться из этой комнаты." },
+                    { q: "Что мне нужно делать?", a: "Ищи подсказки в файлах. И не верь системным настройкам, они могут лгать." },
+                    { q: "Какой пароль от двери?", a: "Я не могу сказать тебе всё. Посмотри внимательно на фотографии в Галерее." }
+                ]
+            },
+            "Мама": {
+                phone: "+7 (999) 123-45-67",
+                greeting: "Алло? Солнышко, ты поел?",
+                dialogue: [
+                    { q: "Да, мам. Где я?", a: "Опять в свои игры играешь? Одень шапку, на улице 2007 год!" },
+                    { q: "Мам, это срочно, мне нужна помощь!", a: "Помощь нужна мне, на даче картошку копать. Ладно, посмотри в документах, может там есть ответ." }
+                ]
+            }
+        };
+
         function openApp(appName) {
             appNameDisplay.textContent = appName;
             
@@ -320,11 +473,64 @@
                 }
                 galleryHTML += '</div>';
                 appContent.innerHTML = galleryHTML;
+            } else if (appName === 'Контакты') {
+                let contactsHTML = '<ul class="contact-list">';
+                for (let name in contactsData) {
+                    contactsHTML += `<li class="contact-item" onclick="startCall('${name}')">${name}<div class="phone">${contactsData[name].phone}</div></li>`;
+                }
+                contactsHTML += '</ul>';
+                appContent.innerHTML = contactsHTML;
+            } else if (appName === 'Настройки') {
+                appContent.innerHTML = `
+                    <div class="settings-list">
+                        <div class="settings-item">Авиарежим <div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+                        <div class="settings-item">Wi-Fi <span style="color:#888">Подключено</span></div>
+                        <div class="settings-item">Bluetooth <span style="color:#888">Вкл</span></div>
+                    </div>
+                `;
             } else {
                 appContent.innerHTML = '<p style="text-align: center; margin-top: 50px;">В разработке...</p>';
             }
 
             appScreen.classList.add('show');
+        }
+
+        // Функция начала разговора (звонка)
+        function startCall(name) {
+            const data = contactsData[name];
+            appNameDisplay.textContent = "Разговор: " + name; // Меняем заголовок
+
+            let html = `
+                <div class="dialogue-screen">
+                    <div class="chat-history" id="chatHistory">
+                        <div class="message contact-msg">${data.greeting}</div>
+                    </div>
+                    <div class="question-buttons">
+            `;
+            
+            data.dialogue.forEach((d, index) => {
+                html += `<button class="q-btn" onclick="askQuestion('${name}', ${index})">${d.q}</button>`;
+            });
+
+            html += `</div></div>`;
+            appContent.innerHTML = html;
+        }
+
+        // Функция отправки вопроса и получения ответа
+        function askQuestion(name, qIndex) {
+            const data = contactsData[name];
+            const history = document.getElementById('chatHistory');
+            
+            // Добавляем вопрос игрока
+            history.innerHTML += `<div class="message user-msg">${data.dialogue[qIndex].q}</div>`;
+            
+            // Имитируем небольшую задержку (типа человек на том конце думает/печатает)
+            setTimeout(() => {
+                history.innerHTML += `<div class="message contact-msg">${data.dialogue[qIndex].a}</div>`;
+                history.scrollTop = history.scrollHeight; // Прокручиваем вниз
+            }, 600);
+            
+            history.scrollTop = history.scrollHeight;
         }
 
         // Закрытие приложения (можно также использовать кнопку Home)
