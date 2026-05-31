@@ -16,6 +16,7 @@ import { ActionMenu, ConfirmDialog, ErrorBanner, FilterBar, PageHeader, SectionC
 import { createImpersonationHandoffUrl } from "../lib/impersonationHandoff.js";
 import { SPECIALIZATION_ROLE_LABELS, getSpecializationRole } from "../player/classCatalog.js";
 import {
+  AVAILABLE_MINIGAMES,
   DM_PLAYER_FLAG_FILTERS,
   filterDmPlayers,
   getDmPlayerFilterSummary,
@@ -234,15 +235,17 @@ export default function DMPlayers() {
     }
   }
 
-  async function toggleShieldActivity(player) {
+ async function toggleMinigame(player, gameKey) {
     if (readOnly || !player?.id) return;
     setErr("");
     setActivityBusyId(player.id);
     try {
-      if (player.shieldActive) {
-        await api.dmClosePlayerLiveActivity(player.id, { kind: "shield" });
+      if (!gameKey) {
+        // Если передали null, значит закрываем ту игру, которая сейчас активна
+        await api.dmClosePlayerLiveActivity(player.id, { kind: player.activeMinigame || "shield" });
       } else {
-        await api.dmOpenPlayerLiveActivity(player.id, { kind: "shield" });
+        // Иначе открываем выбранную игру
+        await api.dmOpenPlayerLiveActivity(player.id, { kind: gameKey });
       }
       await loadPlayers();
     } catch (error) {
@@ -546,12 +549,11 @@ export default function DMPlayers() {
                           ] : []),
                           { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
                           // Автоматически создаем кнопки для ВСЕХ игр из нашего списка MINIGAMES
-                          ...MINIGAMES.map(game => {
-                            const isThisGameActive = player.activeMinigame === game.id;
+                          ...AVAILABLE_MINIGAMES.map(game => {
+                            const isThisGameActive = player.activeMinigame === game.key;
                             return {
                               label: isThisGameActive ? `Закрыть ${game.label}` : `Открыть ${game.label}`,
-                              // Если игра уже открыта - передаем null (закрыть). Если закрыта - передаем ее id (открыть).
-                              onClick: () => toggleMinigame(player, isThisGameActive ? null : game.id), 
+                              onClick: () => toggleMinigame(player, isThisGameActive ? null : game.key), 
                               disabled: readOnly || (activityBusyId === player.id && !isThisGameActive)
                             };
                           }),
@@ -659,11 +661,23 @@ export default function DMPlayers() {
                       Открыть заявки
                     </button>
                   ) : null}
-                  <button className="btn secondary" onClick={() => toggleShieldActivity(selectedPlayer)} disabled={readOnly || activityBusyId === selectedPlayer.id}>
-                    {activityBusyId === selectedPlayer.id
-                      ? (selectedPlayer.shieldActive ? "Закрываю..." : "Открываю...")
-                      : (selectedPlayer.shieldActive ? "Закрыть Щиток" : "Открыть Щиток")}
-                  </button>
+                  {AVAILABLE_MINIGAMES.map(game => {
+                    const isThisGameActive = selectedPlayer.activeMinigame === game.key;
+                    return (
+                      <button 
+                        key={`quick-game-${game.key}`} 
+                        className="btn secondary" 
+                        onClick={() => toggleMinigame(selectedPlayer, isThisGameActive ? null : game.key)} 
+                        disabled={readOnly || (activityBusyId === selectedPlayer.id && !isThisGameActive)}
+                      >
+                        {activityBusyId === selectedPlayer.id && isThisGameActive
+                          ? "Закрываю..." 
+                          : activityBusyId === selectedPlayer.id
+                            ? "Открываю..."
+                            : isThisGameActive ? `Закрыть ${game.label}` : `Открыть ${game.label}`}
+                      </button>
+                    )
+                  })}
                   <button className="btn secondary" onClick={() => openTickets(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuTickets")}</button>
                   <button className="btn secondary" onClick={() => startEdit(selectedPlayer)} disabled={readOnly}>{t("dmPlayers.menuEditName")}</button>
                   <button className="btn secondary" onClick={() => viewAs(selectedPlayer.id)} disabled={readOnly}>{t("dmPlayers.menuAsPlayer")}</button>

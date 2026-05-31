@@ -134,7 +134,7 @@ app.use('/minigames', express.static(minigamesDir));
     app.get(/^\/mini-game\/shield$/, (_req, res) => {
       res.redirect(302, "/mini-game/shield/");
     });
-    app.use("/mini-game/shield", allowShieldIframe, express.static(shieldStaticDir));
+    app.use("/minigames", allowShieldIframe, express.static(minigamesDir));
   }
 
   app.use(assertWritable);
