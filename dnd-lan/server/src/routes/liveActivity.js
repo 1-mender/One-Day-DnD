@@ -18,6 +18,24 @@ liveActivityRouter.get("/me", (req, res) => {
   const activity = getActivePlayerLiveActivity(me.player.id, { db: getDb() });
   return res.json({ activity });
 });
+liveActivityRouter.post("/close-me", (req, res) => {
+  const me = getPlayerContextFromRequest(req, { at: Date.now() });
+  if (!me) return res.status(401).json({ error: "not_authenticated" });
+
+  const db = getDb();
+  // Вызываем функцию закрытия для текущего игрока
+  const activity = closePlayerLiveActivity({
+    db,
+    playerId: me.player.id,
+    kind: null // Передаем null, чтобы закрыть любую текущую активную игру
+  });
+
+  // Отправляем сокет-событие игроку и обновляем список у ДМ
+  req.app.locals.io?.to(`player:${me.player.id}`).emit("player:minigame:closed", { activity, kind: null });
+  emitSinglePartyEvent(req.app.locals.io, "players:updated", undefined, { partyId: me.player.party_id });
+
+  return res.json({ ok: true, activity });
+});
 
 liveActivityRouter.post("/dm/player/:id/open", dmAuthMiddleware, (req, res) => {
   const playerId = Number(req.params.id || 0);

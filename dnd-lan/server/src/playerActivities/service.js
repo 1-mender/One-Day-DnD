@@ -3,8 +3,7 @@ import { jsonParse, now } from "../util.js";
 
 export const LIVE_ACTIVITY_KINDS = {
   SHIELD: "shield",
-  PC: "pc",
-  // LOCKPICK: "lockpick" // Сюда же будете добавлять будущие игры
+  PC: "pc"
 };
 
 const LIVE_ACTIVITY_KIND_SET = new Set(Object.values(LIVE_ACTIVITY_KINDS));
@@ -64,7 +63,7 @@ export function getActivePlayerLiveActivity(playerId, {
 export function openPlayerLiveActivity({
   playerId,
   partyId,
-  kind = LIVE_ACTIVITY_KINDS.ARCADE,
+  kind = "pc", // Исправили отсутствующий ARCADE
   payload = {},
   openedBy = "dm",
   db = getDb(),

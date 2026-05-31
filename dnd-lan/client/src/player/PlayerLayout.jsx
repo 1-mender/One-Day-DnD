@@ -10,6 +10,7 @@ import { takeImpersonationHandoff } from "../lib/impersonationHandoff.js";
 import { useSocket } from "../context/SocketContext.jsx";
 import { BookOpen, Gamepad2, Map, Package, Send, StickyNote, Store, User, Users } from "lucide-react";
 import { t } from "../i18n/index.js";
+import { AVAILABLE_MINIGAMES } from "../dm/dmPlayersDomain.js";
 
 const CORE_NAV_ROUTES = ["/app/players", "/app/profile", "/app/inventory"];
 const OPTIONAL_NAV_BASE_ORDER = ["/app/bestiary", "/app/map", "/app/shop", "/app/arcade", "/app/notes", "/app/transfers"];
@@ -49,21 +50,25 @@ const ROUTE_TO_LABEL = {
 
 function getLiveActivityRoute(activity) {
   const kind = String(activity?.kind || "");
-  if (kind === "shield") return "/app/shield";
+  const game = AVAILABLE_MINIGAMES.find(g => g.key === kind);
+  if (game) return "/app/shield"; 
   return "";
 }
 
 function getLiveActivityTitle(activity) {
   const kind = String(activity?.kind || "");
-  if (kind === "shield") return "Щиток доступен";
+  const game = AVAILABLE_MINIGAMES.find(g => g.key === kind);
+  if (game) return `${game.label} доступен`;
   return "Активность доступна";
 }
 
 function getLiveActivityCopy(activity) {
   const kind = String(activity?.kind || "");
-  if (kind === "shield") return "Мастер открыл для тебя временный доступ к Щитку. Доступ пропадёт, когда он его закроет.";
+  const game = AVAILABLE_MINIGAMES.find(g => g.key === kind);
+  if (game) return `Мастер открыл для тебя "${game.label}". Доступ пропадёт, когда он его закроет.`;
   return "Мастер открыл для тебя временную активность.";
 }
+
 export default function PlayerLayout() {
   const nav = useNavigate();
   const location = useLocation();
@@ -411,7 +416,7 @@ export default function PlayerLayout() {
               </div>
             </div>
           ) : null}
-          <Outlet context={{ socket }} />
+          <Outlet context={{ socket, activeLiveActivity }} />
         </div>
       </VintageShell>
       <BottomNav items={navItems} />

@@ -81,13 +81,14 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
              FROM inventory_items i
              WHERE i.player_id = p.id
            ), 0) as inventoryWeight,
-           EXISTS(
-             SELECT 1
+           (
+             SELECT pla.kind
              FROM player_live_activities pla
              WHERE pla.player_id = p.id
                AND pla.status='active'
-               AND pla.kind='shield'
-           ) as shieldActive,
+             ORDER BY pla.id DESC
+             LIMIT 1
+           ) as activeMinigame,
            (
              SELECT COUNT(*)
              FROM profile_change_requests pcr
@@ -113,7 +114,7 @@ playersRouter.get("/dm/list", dmAuthMiddleware, (req, res) => {
       characterName: row.characterName || "",
       classRole: row.classRole || "",
       specializationAvailable: !!row.classKey && !row.specializationKey && Number(row.xp || 0) >= 100,
-      shieldActive: !!Number(row.shieldActive || 0),
+      activeMinigame: row.activeMinigame || null,
       pendingRequestCount: Number(row.pendingRequestCount || 0)
     };
   });

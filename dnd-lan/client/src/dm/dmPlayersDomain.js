@@ -13,9 +13,7 @@ export const DM_PLAYER_FLAG_FILTERS = [
 
 export const AVAILABLE_MINIGAMES = [
   { key: "shield", label: "Щиток", folder: "Щиток" },
-  { key: "pc", label: "Терминал ПК", folder: "PC" },
-  // Сюда можно легко дописывать новые игры:
-  // { key: "lockpick", label: "Взлом замка", folder: "Lockpick" }
+  { key: "pc", label: "Терминал ПК", folder: "PC" }
 ];
 
 export function getDmPlayerSearchHaystack(player) {
@@ -60,7 +58,8 @@ export function matchesDmPlayerFlag(player, filter = "all") {
   const normalized = String(filter || "all").trim().toLowerCase();
   if (normalized === "all") return true;
   if (normalized === "no_profile") return !player?.profileExists;
-  if (normalized === "shield") return !!player?.shieldActive;
+  // Универсальная проверка любой активной игры:
+  if (normalized === "shield") return !!player?.activeMinigame; 
   if (normalized === "specialization") return !!player?.specializationAvailable;
   if (normalized === "requests") return Number(player?.pendingRequestCount || 0) > 0;
   return true;
@@ -104,7 +103,8 @@ function compareDmPlayers(a, b) {
 
 function getPriorityScore(player) {
   let score = 0;
-  if (player?.shieldActive) score += 500;
+  // Приоритет, если открыта ЛЮБАЯ игра:
+  if (player?.activeMinigame) score += 500; 
   if (player?.specializationAvailable) score += 300;
   if (Number(player?.pendingRequestCount || 0) > 0) score += 250;
   if (!player?.profileExists) score += 150;

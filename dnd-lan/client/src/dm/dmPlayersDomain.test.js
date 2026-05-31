@@ -15,7 +15,7 @@ const players = [
     classRole: "Mage",
     status: "offline",
     profileExists: true,
-    shieldActive: false,
+    activeMinigame: null, // <-- Игры нет
     specializationAvailable: false,
     pendingRequestCount: 0
   },
@@ -26,7 +26,7 @@ const players = [
     classRole: "Warrior",
     status: "online",
     profileExists: false,
-    shieldActive: true,
+    activeMinigame: "pc", // <-- Игрок сидит в Терминале ПК
     specializationAvailable: true,
     pendingRequestCount: 2
   },
@@ -37,7 +37,7 @@ const players = [
     classRole: "Rogue",
     status: "idle",
     profileExists: true,
-    shieldActive: false,
+    activeMinigame: null, // <-- Игры нет
     specializationAvailable: false,
     pendingRequestCount: 1,
     specializationRole: { key: "striker", label: "Страйкер" }
@@ -60,7 +60,11 @@ test("filterDmPlayers searches character and class role", () => {
 
 test("matchesDmPlayerFlag supports operational filters", () => {
   assert.equal(matchesDmPlayerFlag(players[1], "no_profile"), true);
-  assert.equal(matchesDmPlayerFlag(players[1], "shield"), true);
+  
+  // Этот тест всё ещё работает, потому что фильтр с ключом "shield" 
+  // в dmPlayersDomain.js теперь проверяет наличие !!player?.activeMinigame
+  assert.equal(matchesDmPlayerFlag(players[1], "shield"), true); 
+  
   assert.equal(matchesDmPlayerFlag(players[1], "specialization"), true);
   assert.equal(matchesDmPlayerFlag(players[1], "requests"), true);
   assert.equal(matchesDmPlayerFlag(players[0], "requests"), false);
