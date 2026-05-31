@@ -2,8 +2,9 @@ import { getDb } from "../db.js";
 import { jsonParse, now } from "../util.js";
 
 export const LIVE_ACTIVITY_KINDS = {
-  ARCADE: "arcade",
-  SHIELD: "shield"
+  SHIELD: "shield",
+  PC: "pc",
+  // LOCKPICK: "lockpick" // Сюда же будете добавлять будущие игры
 };
 
 const LIVE_ACTIVITY_KIND_SET = new Set(Object.values(LIVE_ACTIVITY_KINDS));
