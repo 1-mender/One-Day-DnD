@@ -7,7 +7,7 @@ export const liveActivityApi = {
   playerCloseLiveActivity: () => request("/api/live-activity/close-me", { method: "POST" }),
 
   dmOpenPlayerLiveActivity: (playerId, payload = {}) => //
-    request(`/api/live-activity/dm/player/${encodeURIComponent(playerId)}/close`, {
+    request(`/api/live-activity/dm/player/${encodeURIComponent(playerId)}/open`, {
       method: "POST",
       body: JSON.stringify(payload || {})
     })
