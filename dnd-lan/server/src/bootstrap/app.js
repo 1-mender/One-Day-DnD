@@ -118,7 +118,7 @@ app.use('/minigames', express.static(minigamesDir));
       }
     }
   }));
-  if (fs.existsSync(shieldStaticDir)) {
+  if (fs.existsSync(minigamesDir)) {
     const allowShieldIframe = (_req, res, next) => {
       res.removeHeader("Content-Security-Policy");
       res.removeHeader("X-Frame-Options");
