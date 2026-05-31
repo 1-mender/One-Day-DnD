@@ -518,15 +518,23 @@ export default function DMPlayers() {
                     ticketBalance={player.ticketBalance}
                     ticketStreak={player.ticketStreak}
                     attentionBadges={[
+                      
                       ...(player.specializationAvailable ? [{ key: "specializationAvailable", label: "СПЕЦ. ДОСТУПНА", tone: "warn" }] : []),
                       ...(!player.profileExists ? [{ key: "profileMissing", label: "БЕЗ ПРОФ.", tone: "warn" }] : []),
-                      ...(player.shieldActive ? [{ key: "shieldActive", label: "ЩИТОК", tone: "ok" }] : []),
+                      ...(player.activeMinigame 
+                      ? [{ 
+                          key: player.activeMinigame, 
+                          label: AVAILABLE_MINIGAMES.find(g => g.key === player.activeMinigame)?.label.toUpperCase() || "ИГРА", 
+                          tone: "ok" 
+                        }] 
+                      : []
+                  ),
                       ...(player.pendingRequestCount > 0 ? [{ key: "pendingRequests", label: `ЗАЯВКИ: ${player.pendingRequestCount}`, tone: "secondary" }] : [])
                     ]}
                     selected={player.id === selectedId}
                     onClick={() => selectPlayer(player.id)}
                     menu={(
-                      <ActionMenu
+                      <ActionMenu                     
                         label={t("dmPlayers.menuLabel")}
                         items={[
                           { label: t("dmPlayers.menuOpenProfile"), onClick: () => openProfile(player.id) },
@@ -537,7 +545,16 @@ export default function DMPlayers() {
                             { label: `Открыть заявки (${player.pendingRequestCount})`, onClick: () => openProfile(player.id, "dm-requests-panel") }
                           ] : []),
                           { label: isPinned(player.id) ? "Убрать из закреплённых" : "Закрепить", onClick: () => togglePinned(player.id) },
-                          { label: player.shieldActive ? "Закрыть Щиток" : "Открыть Щиток", onClick: () => toggleShieldActivity(player), disabled: readOnly || activityBusyId === player.id },
+                          // Автоматически создаем кнопки для ВСЕХ игр из нашего списка MINIGAMES
+                          ...MINIGAMES.map(game => {
+                            const isThisGameActive = player.activeMinigame === game.id;
+                            return {
+                              label: isThisGameActive ? `Закрыть ${game.label}` : `Открыть ${game.label}`,
+                              // Если игра уже открыта - передаем null (закрыть). Если закрыта - передаем ее id (открыть).
+                              onClick: () => toggleMinigame(player, isThisGameActive ? null : game.id), 
+                              disabled: readOnly || (activityBusyId === player.id && !isThisGameActive)
+                            };
+                          }),
                           { label: t("dmPlayers.menuTickets"), onClick: () => openTickets(player), disabled: readOnly }
                         ]}
                       />

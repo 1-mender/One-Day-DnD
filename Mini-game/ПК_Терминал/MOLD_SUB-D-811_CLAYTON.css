@@ -1,0 +1,102 @@
+/* Стили для окна досье Сета Клейтона */
+#clayton-dossier-window .content {
+    background-color: #0d1b2a;
+    color: #e0e1dd;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 20px;
+    border: 2px solid #415a77;
+}
+
+#clayton-dossier-window .dossier-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    color: #778da9;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #415a77;
+    padding-bottom: 20px;
+}
+
+#clayton-dossier-window .photo-placeholder {
+    width: 100px;
+    height: 120px;
+    border: 2px dashed #415a77;
+    background-color: #1b263b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #778da9;
+    font-size: 14px;
+    text-align: center;
+    object-fit: cover; /* Ensures the image covers the area without distortion */
+    filter: grayscale(100%) contrast(1.2); /* Adds a noir/dossier feel */
+}
+
+#clayton-dossier-window .dossier-header h3 {
+    color: #e0e1dd;
+    font-size: 24px;
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+#clayton-dossier-window .dossier-header .role {
+    font-size: 16px;
+    color: #778da9;
+}
+
+#clayton-dossier-window .dossier-header .slogan {
+    font-style: italic;
+    color: #e0e1dd;
+    margin-top: 10px;
+    display: block;
+}
+
+#clayton-dossier-window .section-title {
+    color: #778da9;
+    font-weight: bold;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #415a77;
+    padding-bottom: 5px;
+}
+
+#clayton-dossier-window .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+#clayton-dossier-window .stat-item {
+    background-color: #1b263b;
+    padding: 10px;
+    border-left: 3px solid #778da9;
+}
+
+#clayton-dossier-window .stat-item strong {
+    color: #e0e1dd;
+}
+
+#clayton-dossier-window .trait {
+    margin-top: 15px;
+}
+
+#clayton-dossier-window .trait-title {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+#clayton-dossier-window .trait-title.plus {
+    color: #a9d6e5;
+}
+
+#clayton-dossier-window .trait-title.minus {
+    color: #fca311;
+}
+
+#clayton-dossier-window .trait-effect {
+    color: #b1a7a6;
+    margin-top: 5px;
+    padding-left: 15px;
+    border-left: 1px dashed #415a77;
+}

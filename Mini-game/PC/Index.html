@@ -60,6 +60,7 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            transition: filter 0.3s ease;
         }
 
         /* Статус-бар (верхняя полоса) */
@@ -74,6 +75,7 @@
             font-size: 11px;
             font-weight: bold;
             border-bottom: 1px solid #555;
+            z-index: 20;
         }
 
         /* Сетка приложений */
@@ -105,10 +107,11 @@
             align-items: center;
             cursor: pointer;
             transition: transform 0.1s;
+            user-select: none;
         }
 
         .app:active {
-            transform: scale(0.9);
+            transform: scale(0.85);
         }
 
         .app-icon {
@@ -119,6 +122,11 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
             background-size: cover;
             background-position: center;
+            transition: box-shadow 0.2s;
+        }
+        
+        .app:active .app-icon {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.7);
         }
 
         /* Эффект глянца (скевоморфизм 2007 года) */
@@ -130,21 +138,24 @@
             right: 0;
             height: 50%;
             background: linear-gradient(to bottom, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.1) 100%);
-            border-top-left-radius: 35px;
-            border-top-right-radius: 35px;
+            border-top-left-radius: 13px;
+            border-top-right-radius: 13px;
         }
 
         /* Иконки оставшихся приложений */
-        .icon-gallery {background-image: url(./asset/album_18778472.png);}
-        .icon-documents {background-image: url(./asset/album_18778472.png);}
-        .icon-settings {background-image: url(./asset/album_18778472.png);}
-        .icon-contacts {background-image: url(./asset/album_18778472.png);}
+        .icon-gallery {background-image: url(./asset/free-icon-gallery-7067716.png);}
+        .icon-documents {background-image: url(./asset/free-icon-folder-8316630.png);}
+        .icon-settings {background-image: url(./asset/free-icon-settings-1055455.png);}
+        .icon-contacts {background-image: url(./asset/free-icon-contact-us-8643718.png);}
 
         .app-name {
             color: rgb(255, 255, 255);
-            font-size: 14px;
+            font-size: 12px;
             margin-top: 5px;
             text-shadow: 0 1px 2px black;
+            text-align: center;
+            max-width: 70px;
+            word-break: break-word;
         }
 
         /* Кнопка Home */
@@ -198,10 +209,15 @@
         .app-header {
             background: #e2e2e2;
             padding: 15px 0;
+            position: relative;
             text-align: center;
             font-weight: bold;
             border-bottom: 1px solid #b2b2b2;
             font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
         }
 
         .app-content {
@@ -209,6 +225,7 @@
             overflow-y: auto;
             display: flex;
             flex-direction: column;
+            background: #fff;
         }
 
         .gallery-grid {
@@ -223,6 +240,110 @@
             aspect-ratio: 1 / 1;
             object-fit: cover;
             background: #ccc;
+            cursor: pointer;
+        }
+
+        /* Стили для полноэкранного просмотра картинки */
+        .full-image-view {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            background: #000;
+            position: relative;
+            user-select: none;
+        }
+        .full-image-view img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            /* Управление курсором (grab/grabbing) теперь в JS */
+            transition: transform 0.2s ease-out;
+        }
+        .back-btn {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 20px;
+            z-index: 15;
+            transition: background 0.2s;
+        }
+        .back-btn:active {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        .rotate-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            border: none;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 20px;
+            z-index: 15;
+            transition: all 0.2s;
+            font-family: sans-serif; /* Для корректного отображения символа ↻ */
+        }
+        .rotate-btn:active {
+            background: rgba(0, 0, 0, 0.8);
+            transform: translateY(-50%) scale(0.95);
+        }
+        .nav-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            padding: 12px 16px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 20px;
+            z-index: 10;
+            transition: all 0.2s;
+        }
+        .nav-btn:active {
+            background: rgba(0, 0, 0, 0.8);
+            transform: translateY(-50%) scale(0.95);
+        }
+        .nav-btn.left { left: 10px; }
+        .nav-btn.right { right: 10px; }
+        
+        .image-note {
+            position: absolute;
+            bottom: 30px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+            border: 1px solid #444;
+            z-index: 5;
+        }
+        
+        .image-counter {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            z-index: 15;
         }
 
         /* Стили для Контактов */
@@ -236,12 +357,117 @@
             border-bottom: 1px solid #ddd;
             font-size: 16px;
             font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #000;
+        }
+        .contact-item:active {
+            background: #e8f0fe;
         }
         .contact-item .phone {
-            font-size: 13px;
+            font-size: 12px;
             color: #888;
             margin-top: 4px;
             font-weight: normal;
+        }
+        .contact-item .status {
+            font-size: 11px;
+            color: #999;
+            margin-top: 2px;
+        }
+
+        /* Вкладки для Контактов */
+        .contacts-tabs {
+            display: flex;
+            background: #f0f0f0;
+            border-bottom: 1px solid #ccc;
+            flex-shrink: 0;
+        }
+        .c-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 13px;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .c-tab:active {
+            background: #e8e8e8;
+        }
+        .c-tab.active {
+            color: #007aff;
+            font-weight: bold;
+            border-bottom: 3px solid #007aff;
+        }
+        
+        /* Клавиатура */
+        .keypad-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background: #fff;
+            flex: 1;
+        }
+        .keypad-display {
+            font-size: 36px;
+            min-height: 50px;
+            margin-bottom: 25px;
+            letter-spacing: 3px;
+            color: #000;
+            text-align: center;
+            width: 100%;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 70px);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .key-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: #e5e5ea;
+            color: #000;
+            font-size: 28px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: all 0.15s;
+            font-weight: 600;
+        }
+        .key-btn:active {
+            background: #d1d1d6;
+            transform: scale(0.95);
+        }
+        .call-btn {
+            background: #4cd964;
+            color: #fff;
+            width: 70px;
+            height: 70px;
+            font-size: 32px;
+        }
+        .call-btn:active {
+            background: #3cb052;
+            transform: scale(0.95);
+        }
+        .del-btn {
+            background: #ff3b30;
+            color: #fff;
+            font-size: 24px;
+        }
+        .del-btn:active {
+            background: #e63023;
         }
 
         /* Стили для Настроек */
@@ -260,6 +486,7 @@
             justify-content: space-between;
             align-items: center;
             font-size: 16px;
+            color: #000;
         }
         .toggle {
             width: 50px;
@@ -289,6 +516,69 @@
             left: 22px;
         }
 
+        /* Стили для Документов */
+        .document-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            background: #efeff4;
+            height: 100%;
+        }
+        .docs-search-box {
+            background: #fff;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+        .docs-search-box input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .document-item {
+            background: #fff;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: -1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 15px;
+            cursor: pointer;
+            transition: background 0.2s;
+            color: #000;
+        }
+        .document-item:active {
+            background: #f0f0f0;
+        }
+        .doc-title {
+            flex: 1;
+            font-weight: 500;
+        }
+        .document-view {
+            padding: 20px;
+            background: #fdfdfd;
+            min-height: 100%;
+            font-size: 15px;
+            line-height: 1.6;
+            flex-shrink: 0;
+            word-wrap: break-word;
+            padding-bottom: 60px;
+            overflow-y: auto;
+            color: #000;
+            box-sizing: border-box;
+        }
+        .document-view h3 {
+            margin-top: 0;
+            border-bottom: 2px solid #007aff;
+            padding-bottom: 10px;
+            color: #000;
+        }
+
         /* Стили для экрана разговора (Звонка/Чата) */
         .dialogue-screen {
             display: flex;
@@ -307,21 +597,56 @@
         .message {
             padding: 10px 15px;
             border-radius: 15px;
-            max-width: 80%;
+            max-width: 85%;
             font-size: 15px;
-            line-height: 1.3;
+            line-height: 1.4;
             box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            animation: popIn 0.4s ease-out forwards;
+            word-wrap: break-word;
+            color: #000;
         }
         .message.contact-msg {
             background: #fff;
             align-self: flex-start;
             border-bottom-left-radius: 2px;
+            transform-origin: bottom left;
         }
         .message.user-msg {
             background: #4cd964;
             color: white;
             align-self: flex-end;
             border-bottom-right-radius: 2px;
+            transform-origin: bottom right;
+        }
+        
+        /* Анимации для чата */
+        @keyframes popIn {
+            from { opacity: 0; transform: translateY(15px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .typing-indicator {
+            display: inline-flex;
+            gap: 4px;
+            padding: 12px 16px;
+            background: #fff;
+            border-radius: 15px;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            animation: popIn 0.3s ease-out forwards;
+        }
+        .typing-indicator span {
+            width: 6px;
+            height: 6px;
+            background: #888;
+            border-radius: 50%;
+            animation: typingBlink 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes typingBlink {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
         }
         .question-buttons {
             background: #f9f9f9;
@@ -330,6 +655,8 @@
             display: flex;
             flex-direction: column;
             gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
         }
         .q-btn {
             padding: 10px;
@@ -346,23 +673,93 @@
             background: #007aff;
             color: #fff;
         }
-        .contact-item {
+
+        /* Lock Screen */
+        .lock-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 999;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 120px;
             cursor: pointer;
-            transition: background 0.2s;
-        }
-        .contact-item:active {
-            background: #d1d1d6;
+            transition: opacity 0.5s ease-out;
+            color: white;
         }
 
-        .close-btn {
-            margin: 20px auto;
-            padding: 10px 20px;
-            background: #007aff;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
+        .lock-screen.unlocked {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .slide-to-unlock {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 10px 30px;
+            border-radius: 20px;
+            font-size: 20px;
+            font-weight: 300;
+            letter-spacing: 1px;
+            text-shadow: 0 1px 2px #000;
+            overflow: hidden;
+            position: relative;
+            text-transform: lowercase;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .slide-to-unlock::before {
+            content: 'slide to unlock';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to right, transparent 0%, #fff 50%, transparent 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: slide-text-glow 2.5s infinite;
+        }
+
+        @keyframes slide-text-glow {
+            0% {
+                background-position: -200px 0;
+            }
+            100% {
+                background-position: 200px 0;
+            }
+        }
+
+        /* --- Адаптация для мобильных телефонов --- */
+        @media (max-width: 480px) {
+            body {
+                display: block;
+                background-color: #000;
+            }
+
+            .iphone-body {
+                width: 100%;
+                height: 100vh;
+                border-radius: 0;
+                box-shadow: none;
+                padding: 60px 10px 70px 10px;
+            }
+
+            .earpiece {
+                top: 25px;
+            }
+
+            .home-button {
+                bottom: 10px;
+            }
         }
     </style>
 </head>
@@ -372,14 +769,12 @@
         <div class="earpiece"></div>
         
         <div class="screen">
-            <!-- Статус-бар -->
             <div class="status-bar">
-                <span>AT&T EDGE</span>
+                <span id="carrier-info">AT&T EDGE</span>
                 <span id="clock">9:41 AM</span>
                 <span>🔋 100%</span>
             </div>
 
-            <!-- Главный экран с иконками -->
             <div class="apps-grid">
                 <div class="app" data-app="Галерея">
                     <div class="app-icon icon-gallery"></div>
@@ -395,7 +790,6 @@
                 </div>
             </div>
 
-            <!-- Нижняя панель (Dock) -->
             <div class="dock">
                 <div class="app" data-app="Контакты">
                     <div class="app-icon icon-contacts"></div>
@@ -403,17 +797,20 @@
                 </div>
             </div>
 
-            <!-- Экран открытого приложения (заглушка) -->
+            <div class="lock-screen" id="lockScreen">
+                <div class="slide-to-unlock">
+                    slide to unlock
+                </div>
+            </div>
+
             <div class="active-app-screen" id="appScreen">
                 <div class="app-header" id="appNameDisplay">App Name</div>
                 <div class="app-content" id="appContent">
                     <p style="text-align: center; margin-top: 50px;">Welcome to iOS 1.0!</p>
                 </div>
-                <button class="close-btn" id="closeBtn">Close</button>
             </div>
         </div>
 
-        <!-- Кнопка Домой -->
         <div class="home-button" id="homeBtn"></div>
     </div>
 
@@ -422,134 +819,904 @@
         function updateClock() {
             const now = new Date();
             let hours = now.getHours();
-            let minutes = now.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            
-            hours = hours % 12;
-            hours = hours ? hours : 12; 
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            
-            const timeString = hours + ':' + minutes + ' ' + ampm;
-            document.getElementById('clock').textContent = timeString;
+            let minutes = now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes();
+
+            // Проверка, определен ли объект settingsState (для первого вызова до его инициализации)
+            const use24h = typeof settingsState !== 'undefined' && settingsState.timeFormat24;
+
+            if (use24h) {
+                document.getElementById('clock').textContent = (hours < 10 ? '0' + hours : hours) + ':' + minutes;
+            } else {
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12; // 0 часов это 12 AM
+                document.getElementById('clock').textContent = hours + ':' + minutes + ' ' + ampm;
+            }
         }
 
         // Обновляем часы каждую секунду
         setInterval(updateClock, 1000);
-        updateClock(); // Первичный вызов
 
         // Функции для работы с приложениями
         const appScreen = document.getElementById('appScreen');
         const appNameDisplay = document.getElementById('appNameDisplay');
         const appContent = document.getElementById('appContent');
 
+        // Состояние настроек
+        const settingsState = {
+            airplane: false,
+            wifi: true,
+            bluetooth: true,
+            sound: true,
+            vibration: true,
+            notifications: true,
+            autoLock: 60,
+            brightness: 100, // Исправлено: добавлено свойство по умолчанию
+            contrast: 100,
+            volume: 80,
+            timeFormat24: false
+        };
+        let currentPlayerCharacter = null; // 'brandon', 'amber', 'chloe', 'seth'
+        let currentWallpaperIndex = 0;
+        let currentDialedNumber = "";
+        let isAnswering = false;
+        let readNormanNotes = false; // Флаг для отслеживания прочтения документа
+
+        // Звуковая система (Web Audio API)
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playSound(type = 'click') {
+            if (typeof settingsState !== 'undefined' && !settingsState.sound) return;
+            initAudio();
+            
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            // Учитываем громкость из настроек
+            const volume = (settingsState.volume || 80) / 100;
+            
+            if (type === 'click') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+                gainNode.gain.setValueAtTime(0.3 * volume, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.05);
+            } else if (type === 'home') {
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.4 * volume, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            } else if (type === 'unlock') {
+                oscillator.type = 'triangle';
+                oscillator.frequency.setValueAtTime(1200, audioCtx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(1400, audioCtx.currentTime + 0.02);
+                gainNode.gain.setValueAtTime(0.3 * volume, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+                oscillator.start(audioCtx.currentTime);
+                oscillator.stop(audioCtx.currentTime + 0.1);
+            }
+        }
+
+        const wallpapers = [
+            './asset/d857b25587aaecb2a255e0ad7be83d75.png', 
+            'https://picsum.photos/420/800?random=1',
+            'https://picsum.photos/420/800?random=2'
+        ];
+
+        // База данных картинок для Галереи
+        const galleryImages = [
+            { src: './asset/AAa.png', note: '' },
+            { src: './asset/Бланк.png', note: '' },
+            { src: './asset/uhd82jk1.png', note: 'Кто-то обвел часть изображения красным маркером...' },
+            { src: './asset/Письмо.png', note: '' },
+        ];
+
+        // Новая база данных для сценарных диалогов
+        const characterDialogues = {
+            brandon: [
+                { from: 'player', text: 'Кто это?! Помогите мне! Я проснулся в комнате, тут стены в белых подушках, как в психушке! Меня хотят разрезать на органы?! Это Майкл Сизан устроил?! Тут темно и пахнет сыростью, за дверью кто-то ходит, я слышу шаги!' },
+                { from: 'npc', text: 'Успокойся и слушай меня. Я пытаюсь вытащить вас оттуда. Никакого Сизана тут нет. Иди по коридору прямо, в конце будет кабинет, там на столе лежит ключ от аварийного выхода. Поторопись, система блокировки перезапустится через 15 минут.' },
+                { from: 'player', text: 'Ключ?! А если он проклят? Если это ловушка для фильма ужасов?! Откуда вы знаете про кабинет? Вы маньяк? Вы смотрите на меня через скрытые камеры?! Я не пойду туда, там в углу коридора какая-то странная тень, она шевелится! О боже, у меня перехватило дыхание, где мои таблетки от паники?!' },
+                { from: 'npc', text: 'Парень, ты идиот? Какое проклятие, какой маньяк?! Я взломал охранный контур, чтобы открыть тебе чертову дверь! Тень — это кусок оторванных обоев от сквозняка. Встань и иди за ключом, иначе останешься там сгнить!' },
+                { from: 'player', text: 'Вы на меня орете?! Вы точно маньяк! Из-за вас у меня сейчас начнется приступ! А если ключ не подобающего размера? А если там за дверью собаки? Наш Сейлор Климентин обожает собак, вдруг они уличные и покусают меня?! Скажите честно, я уже умер?' },
+                { from: 'npc', text: 'Знаешь что? Иди к черту. Трясись в своих подушках дальше, раз у тебя вместо мозгов каша. Я отключаюсь.' }
+            ],
+            amber: [
+                { from: 'npc', text: 'Рад, что ты нашла телефон. В тумбочке под аппаратурой лежит распределительный щиток. Тебе нужно перерезать синий провод, чтобы обесточить магнитные замки на воротах. Делай строго по инструкции.' },
+                { from: 'player', text: 'Слышь, «помощник», поучи свою жену щи варить. Я сама разберусь, какой провод резать. Терпеть не могу, когда мне указывают. Вы, техники, вечно мните себя гениями, а на деле — ленивые кретины.' },
+                { from: 'npc', text: 'Эй, полегче на поворотах. Я рискую своей задницей, чтобы вытащить тебя из этой дыры. Если ты отрежешь красный или желтый, включится сирена и вас заблокирует наглухо. Просто послушай меня и сделай то, что я говорю.' },
+                { from: 'player', text: 'Да мне плевать, чем ты там рискуешь. Засунь свои советы себе в архив. Я Рокси Крэш, я седьмая в мировом топе, и я всю жизнь всё тащу на себе сама — от настройки басовых комбарей до этой гребаной эвакуации. Вы все беспомощные паразиты. Я уже открыла щиток и собираюсь перерубить ВСЁ.' },
+                { from: 'npc', text: 'Ты дура?! Я тебе русским языком говорю: ТОЛЬКО СИНИЙ! Ты сорвешь весь план спасения, токсичная ты дрянь!' },
+                { from: 'player', text: 'Ой, как мы запели. Обосрался от страха, админчик? Напиши об этом в блог. Всё, разговор окончен, я сама найду выход, без твоих сопливых подсказок. Чао.' }
+            ],
+            chloe: [
+                { from: 'npc', text: 'Так, Хлоя, или как тебя там. На стене справа от тебя есть кодовая панель. Введи цифры 4-4-0-9. Это откроет лифт. Быстрее, у меня мало времени.' },
+                { from: 'player', text: 'Какой отвратительный шрифт на этой панели. И этот убогий белый свитер, в котором я проснулась... Кто занимался этим дизайном? Абсолютная бездарность. И почему я должна вводить именно эти цифры? Я считаю, что комбинация 9-9-1-1 выглядит композиционно правильнее и эстетичнее. Я введу её.' },
+                { from: 'npc', text: 'Ты в своем уме?! Это не выставка арта, это код доступа! Введешь не то — панель заблокируется, и вы застрянете в этом коридоре навсегда! Живо вводи 4409!' },
+                { from: 'player', text: 'Не смей повышать на меня тон, ничтожество. Я — лучший режиссер монтажа в этом городе, моё слово — истина. Я не переношу, когда мне возражают какие-то закадровые голоса. Мой визуальный вкус безупречен. Ваша панель — дефектный материал, и я смонтирую этот побег так, как считаю нужным. Будет код 9911. И точка.' },
+                { from: 'npc', text: 'Да ты конченая эгоистка! Твой нарциссизм тебе мозг высушил?! Из-за твоих бредней сейчас погибнут все, включая Клейтона! Введи правильный код, сука!' },
+                { from: 'player', text: 'О, ультиматумы? Как примитивно. Ты уволен из моей истории. Разговаривай со стеной, если не дорос до уровня моего гения. Возражения не принимаются. Нажато 9-9-1-1.' },
+                { from: 'system', text: 'СИСТЕМА ЗАБЛОКИРОВАНА. СВЯЗЬ С ОПЕРАТОРОМ ПОТЕРЯНА' }
+            ],
+            seth: [
+                { from: 'player', text: 'Оператор, ответьте. Это Сет Клейтон. Моя команда — идиоты, я признаю это. Одна впала в панику, вторая перерезала заземление, третья заблокировала лифт своим эго. Но я бывший бухгалтер и программист, я умею считать риски. Давайте договоримся. Сколько вы хотите за удаленный сброс системы? Назовите цифру, у Сейлора Климентина безлимитный бюджет.' },
+                { from: 'npc', text: 'Знаешь что, Клейтон? Пошел ты со своими цифрами и своим бюджетом.' },
+                { from: 'player', text: 'Послушайте, это нерационально. Если мы останемся здесь, вы не получите ничего. Я панически не переношу убыточные сделки. Я могу помочь вам обойти протоколы безопасности, я знаю этот софт. Давайте обнулим конфликт и начнем сначала. Ка каков ваш интерес?' },
+                { from: 'npc', text: 'Мой интерес был — спасти вас. Но вы, голливудские твари, просто невыносимы. Один ноет, вторая плюет в колодец, третья считает себя богом. А ты... ты готов купить и продать всё на свете, даже когда у вас земля под ногами горит. Я умываю руки. Скрипты заблокированы. Питание здания отключится через минуту.' },
+                { from: 'player', text: 'Стойте! Мы договоримся! Я вычислю ваш IP, я...' },
+                { from: 'npc', text: 'Прощай, Сет. Одевай свой белый пиджак поудобнее. В темноте он тебе не поможет.' },
+                { from: 'system', text: '[АБОНЕНТ ПОКИНУЛ СЕТЬ. СВЯЗЬ ПРЕРВАНА НАВСЕГДА]' }
+            ]
+        };
+
+        // База данных текстовых файлов для Документов
+        const documentsData = [
+            { title: "АУДИОЗАПИСЬ РАЗГОВОРА <br>(Звонок на скрытый номер)<br>", content: "<br>Жертва (голос дрожит, слышны всхлипы): Стелла... Зачем? Зачем ты это сделала?! Я умоляла тебя уничтожить эти кассеты! Ты ведь обещала, что это приватный заказ, что исходники никто никогда не увидит! Моя жизнь разрушена, Стелла! Это видео уже форсят на закрытых сайтах по всему ЛА!<br><br>Стелла Новак (голос абсолютно спокойный, холодный, на заднем плане слышны щелчки монтажной клавиатуры): Послушай меня внимательно и перестань устраивать этот дешевый театр. Во-первых, я тебе ничего не обещала. Во-вторых, скажи мне «спасибо». Ты видела, как ты там выглядела до того, как material попал ко мне на стол? Ты была зажатым, нелепым куском мяса в плохом освещении.<br><br>Жертва: Ты записала меня без моего согласия! Ты смонтировала из этого откровенную порнографию и слила в сеть! Мои родители, мой юрист... мы подаем в суд! Это уголовщина, Новак! Тебя посадят!<br><br>Стелла Новак (издает короткий, презрительный смешок): В суд? Против меня? Какая же ты дура. Твой юрист не сможет даже правильно составить заявление, потому что юридически этого видео не существует, а мой e-mail защищен лучше, чем сервера Пентагона. Ты думаешь, ты первая, кто пытается мне возражать? Запомни раз и навсегда: всё, к чему прикасаются мои руки в этой монтажной  это искусство. Я сделала из тебя шедевр, который теперь продается на ура.<br><br>Жертва (срывается на крик): Это не искусство, это моя жизнь! Ты сломала мне карьеру! Удали это немедленно! Требуй, чтобы сайты убрали этот контент, ты обязана!<br><br>Стелла Новак (тон резко становится ледяным и давящим, щелчки клавиш прекращаются): Закрой свой рот. Ты сейчас разговариваешь с лучшим режиссером монтажа в этом городе. Я не переношу, когда мне указывают, что делать с моими склейками и моими файлами. Никаких «удалить» не будет. Твои возражения и твои слезы меня не волнуют это пустой шум. Если ты еще раз позвонишь мне или твой жалкий адвокат попытается отправить мне бумажку, я опубликую оставшиеся три часа дублей. И поверь мне, там есть кадры, после которых от тебя отвернется даже собственная тень.<br><br>Жертва: Стелла, пожалуйста... умоляю...<br><br>Стелла Новак: Разговор окончен. Смирись с тем, что ты просто удачный материал для моего портфолио.<br><br>(Звук коротких гудков. Связь оборвана).<br>" },
+            { title: "Интересная переписка", content: "Трагедия.<br><br>Сет Клейтон: Срочный сбор. Мне только что звонили из юридического отдела студии Paramount. Наш Сейлор снова выкинул фокус, который может стоить нам контракта на триллере.<br><br>Брэндон Миллер: Боже, что опять?! 😱 Его поймали папарацци? Сет, если съемки заморозят, мой контракт тоже аннулируют? Мне нельзя терять эту роль, я и так три месяца на таблетках из-за этих ночных смен! Нас всех уволят, да?<br><br>Сет Клейтон: Брэндон, дыши глубже. Никто никого не уволит, пока я считаю цифры в этом проекте. Проблема в другом. Сейлор Климентин решил проявить свою «любовь к животным». По-своему.<br><br>Эмбер Рид: Очередной зажравшийся бред. Нахера я вообще зашла в этот чат? У меня через час чек аппаратуры, который я, как обычно, настраиваю САМА, потому что техники  кретины. Сет, короче.<br><br>Сет Клейтон: Короче: Сейлор отказался входить в кадр, пока студия не выкупит из местного приюта всех бездомных собак и не заселит их в его пятизвездочный трейлер. Всех тридцать штук. Он заявил, что «чувствует их ментальную боль» и без них его актерская чакра закрыта.<br><br>Брэндон Миллер: Тридцать собак?! В павильоне?! Но у меня по сценарию сцена побега в темноте! А если они залают? А если они... покусают меня? Сет, это небезопасно, я читал, что уличные псы переносят бешенство! Мне уже страшно туда идти.<br><br>Хлоя Мартинес: Избавьте меня от своего нытья. Мне плевать, сколько собак Сейлор притащит в трейлер и как сильно Брэндон будет дрожать в кадре. Продюсеры уже прислали мне утренние исходники  Климентин там выглядит как кусок бревна с надутыми губами.<br><br>Сет Клейтон: Хлоя, студия просит смонтировать промо-ролик так, чтобы сгладить его капризы и показать его «гуманистом».<br><br>Хлоя Мартинес: Я уже сказала продюсеру: я смонтирую это так, как считаю нужным. Его пустой взгляд я перекрою крупными планами щенков, и это будет выглядеть гениально. Возражения не принимаются. Если хоть один придурок из студии сунется в мою монтажку со своими правками  я удаляю проект и вы останетесь со своим капризным мальчиком один на один.<br><br>Эмбер Рид: Гениально, бть. Кинозвезда №1 спасает песиков, пока его менеджер трясется за свой процент. Тьфу. Я пошла тащить свое турне дальше. Сама. Не пишите мне.<br><br>Сет Клейтон: Эмбер, избавь меня от пассивной агрессии, твои отчисления тоже зависят от этого бренда. Хлоя  делай свой монтаж, студию я беру на себя, они не пикнут. Брэндон  запрись в трейлере и не выходи, пока собаки не уедут. Я еду покупать тридцать мешков элитного корма за счет Сейлора. Мы не потеряем этот бюджет из-за лая. За работу." },
+            { title: "NORMAN_NOTES.txt", content: "Эта безумная панк-звезда окончательно слетела с катушек во время своего детокса в клинике. Ночью она пробралась в охраняемый блок фармацевтического склада. Камеры зафиксировали, как она лично набивала карманы худи ампулами сильного опиата. Когда сработал таймер сейфа, она запаниковала и попыталась сесть за терминал дежурного бухгалтера (напрягла свои старые навыки или просто тыкала наугад), чтобы списать украденное на свою историю болезни. <br>Естественно, система выплюнула ошибку доступа у неё нет админских прав для работы с наркотическим учетом.<br> <br>Когда сработал таймер сейфа, она запаниковала и попыталась сесть за терминал дежурного бухгалтера (напрягла свои старые навыки или просто тыкала наугад), чтобы списать украденное на свою историю болезни. Естественно, система выплюнула ошибку доступа у неё нет админских прав для работы с наркотическим учетом.<br> <br>Сет Клейтон примчался через 20 минут.<br> <br>Он рвал и метал, орал на главврача и в итоге выкупил оригиналы записей с камер за баснословные деньги.<br> <br>Студия Paramount всё замяла, чтобы не сорвать контракты Сейлора и её собственное турне.<br> <br>НО! Они не учли одну вещь. Я делал бэкап сервера в ту ночь. Все системные ошибки, логи её неудачной авторизации под учеткой врача и цифровой след попытки взлома базы данных теперь лежат у меня на этой дискете.<br> Это её билет в федеральную тюрьму за кражу и незаконный оборот веществ. <br>Сет пойдет на всё, чтобы этот файл не всплыл в прессе.<br> <br>Сохранено.<br> <br>Ждет своего часа.<br> <br>- Норман.<br>" },
+            { title: "VANCE_C_INCIDENT_04.txt", content: "<br>СТРОГО КОНФИДЕНЦИАЛЬНО // ДЛЯ М. СИЗАНА<br><br>ОБЪЕКТ: Вэнс, Кристиан «Крис» (актер, контракт #09-44)<br><br>ДАТА ИНЦИДЕНТА: 22 мая 2002 года, 02:40 AM<br><br>МЕСТО: Съемочный павильон №6 (декорации «Заброшенный подвал»)<br><br>ФАКТ НАРУШЕНИЯ: КРАЖА МЕДИКАМЕНТОВ ИЗ МЕД-ПУНКТА СТУДИИ<br><br>Объект Вэнс, находясь в состоянии сильного психоэмоционального срыва перед съемкой финальной сцены хоррора, проник в запертый шкафчик дежурного врача-координатора площадки. Камерой скрытого наблюдения зафиксировано, как объект вскрыл замок с помощью монтажных ножниц и похитил 4 упаковки рецептурного транквилизатора сильного действия (используется для купирования острых приступов паники и паранойи у персонала). На видеозаписи отчетливо видно, как объект Вэнс, трясясь от страха и оглядываясь на каждую тень, прямо на полу у шкафчик судорожно глотает три таблетки одновременно, просыпав остальное на пол, после чего прячет блистеры в карман своего окровавленного по сценарию серого худи.<br>ПРИМЕЧАНИЕ: Оригинал видеозаписи и вскрытый замок изъяты. Оповещен только М. Сизан. В полицию рапорт не направлялся по его прямому указанию.<br><br>" },
+            { title: "АУДИОЗАПИСЬ: РАЗГОВОР В ГРИМЕРКЕ", content: "<br>Майкл Сизан (с ухмылкой, вальяжно садится в кресло): Ну что, наш великий «Король крика». Как себя чувствует наша главная звезда? Монстры в темноте тебя еще не сожрали, Крисси?<br><br>Крис Вэнс (вздрагивает, прячет руки в карманы худи, голос дрожит): Майкл... Я... я готов к следующему дублю. Режиссер сказал, надо переснять сцену в подвале. Я могу идти.<br><br>Майкл Сизан (громко смеется): В подвале? О да, подвалы  это твоё место. Особенно медицинские, верно? Скажи мне, Крисси, а в сценарии было написано, что твой герой должен обворовать аптечку студии перед тем, как визжать на камеру?<br><br>Крис Вэнс (бледнеет, в глазах паника): Я... я не понимаю, о чем ты...<br><br>Майкл Сизан (резко встает, подходит вплотную и швыряет ему на колени распечатку кадра с камеры): Не понимаешь? А на этом фото кто? Моя бабушка? Посмотри на себя, ты же жалок! Дрожишь как сучка, воруешь колеса от паранойи у собственных врачей. Ты же конченый псих, Вэнс. Знаешь, что будет, если этот снимок завтра утром окажется на столе у таблоида TMZ или у боссов Paramount?<br><br>Крис Вэнс (начинает задыхаться, из глаз текут слезы, смешиваясь с бутафорской кровью): Майкл, пожалуйста! Не надо... У меня был приступ, я не спал трое суток, мне казалось, что за мной кто-то ходит... Я просто хотел, чтобы это прекратилось! Если они узнают, меня больше никто не возьмет в кино! Я всю жизнь сломаю!<br><br>Майкл Сизан (берет Криса за подбородок, заставляя смотреть на себя, на лице жестокая улыбка): Ты её уже сломал, малыш. Ты воришка и наркоман. Ты теперь принадлежишь мне. Ты снимешься в стольких дешевых ужастиках, в скольких я скажу. Ты будешь бегать в крови и орать от страха до тех пор, пока у тебя легкие не лопнут. Потому что твоя паранойя  это мои деньги. Твой настоящий страх продается просто великолепно.<br><br>Крис Вэнс (хнычет, опустив голову): Что ты хочешь от меня?..<br><br>Майкл Сизан (хлопает его по плечу, пачкая руку в фальшивой крови): Для начала  утри сопли и иди в кадр. И не вздумай пить свои таблеточки, Крисси. Мне нужен твой чистый, первобытный ужас в глазах. Покажи мне, как сильно ты боишься сгнить на улице. Пошел на площадку. Об остальном поговорим завтра в моем офисе.<br>" },
+            { title: "Файл 1: <br>CLAYTON_CLEANUP_LOG.txt<br>", content: "<br>=================================<br><br>АРХИВ: NORMAN_ADMIN // СТРОГО КОНФИДЕНЦИАЛЬНО<br><br>=================================<br><br>СУБЪЕКТ: Клейтон, Сет (Seth Clayton)  бывший программист/бухгалтер<br><br>Этот парень Сет чертовски умен. В корпорациях он научился до байта стирать цифровые следы, а теперь применяет это в Голливуде. Все думают, что он просто решает проблемы с контрактами, но я знаю, ЧТО именно он прячет под ковер, чтобы спасти карьеру Сейлора Климентина и других дойных коров индустрии.<br><br>Я зафиксировал как минимум три случая, где Сет Клейтон выступил не просто как менеджер, а как соучастник и ликвидатор улик.<br><br>ДЕЛО №1: Инцидент в отеле Chateau Marmont (Ноябрь 2003)<br><br>- Жертва: Линдси Корр, 21 год, начинающая актриса.<br><br>- Что случилось: Передозировка во время закрытой вечеринки в люксе Сейлора. Но Сейлор не просто оставил её  эксперты шептались, что доза была введена насильно, чтобы заткнуть ей рот после ссоры.<br><br>- Роль Сета: Прибыл на место ДО полиции. Мои логи показывают, что Сет через локальный прокси полностью удалил записи с камер видеонаблюдения коридора за 4 часа. Он лично вынес её телефон и дневники. Официальный вердикт коронёра: 'Несчастный случай'. Сет спас Сейлора от пожизненного.<br><br>ДЕЛО №2: 'Исчезновение на малхолланд-драйв' (Февраль 2004)<br><br>- Жертва: Томас Крейг, папарацци-сталкер.<br><br>- Что случилось: Крейг откопал что-то очень серьезное на Сейлора и пытался шантажировать команду. Его машину нашли пустой на обочине Малхолланд-драйв. Тело так и не нашли.<br><br>- Роль Сета: Я отследил транзакции с подставных счетов, которые Сет вел как бывший бухгалтер. За два дня до «исчезновения» Крейга, Сет перевел 50 тысяч долларов на счет известного чистильщика из криминальных кварталов Восточного ЛА. Сет стер геолокацию телефона Крейга через соты провайдера, используя свои старые хакерские скрипты.<br><br>ДЕЛО №3: 'Передозировка дублера' (Август 2004)<br><br>- Жертва: Марк Доусон, каскадер и дублер на съемочной площадке Paramount.<br><br>- Что случилось: Доусон слишком много видел и угрожал пойти в полицию с заявлением о том, что на студии творится удерживание людей и насилие. Был найден мертвым в своем трейлере с проломленной головой. Студия заявила, что он 'упал во время несчастного случая на съемках'.<br><br>- Роль Сета: Сет Клейтон лично подделал внутренние отчеты по технике безопасности на сервере студии задним числом. Он изменил таймкоды цифровых журналов, чтобы доказать, что в момент смерти Доусона Сейлор и вся верхушка были на банкете. Я сохранил оригинальные логи сервера до того, как Сет залил туда свои отредактированные базы данных.<br><br>=================================<br><br>МЕТКА: Все оригиналы удаленных Сетом видеофайлов и исходные логи баз данных скопированы мной на зеркальный сервер. Сет думает, что он идеальный призрак. Но против хорошего сисадмина его фокусы не пройдут.<br><br>=================================<br><br><br><br><br>" },
+            { title: "N_BACKUP_121004.zip", content: "ЛОГ АВТОРИЗАЦИИ: 12.10.2004 02:55:14 - ПОПЫТКА ВХОДА В СИСТЕМУ УЧЕТА МЕДИКАМЕНТОВ. УЧЕТНАЯ ЗАПИСЬ: 'dr_stephens'. IP: 192.168.1.45 (Терминал бухгалтерии). СТАТУС: ОТКАЗ (НЕВЕРНЫЙ ПАРОЛЬ).<br><br>ЛОГ АВТОРИЗАЦИИ: 12.10.2004 02:57:01 - ПОПЫТКА ВХОДА В СИСТЕМУ УЧЕТА МЕДИКАМЕНТОВ. УЧЕТНАЯ ЗАПИСЬ: 'admin'. IP: 192.168.1.45. СТАТУС: ОТКАЗ (НЕВЕРНЫЙ ПАРОЛЬ).<br><br>СИСТЕМНАЯ ОШИБКА: 12.10.2004 02:59:33 - МНОЖЕСТВЕННЫЕ НЕУДАЧНЫЕ ПОПЫТКИ ВХОДА С IP 192.168.1.45. ВРЕМЕННАЯ БЛОКИРОВКА УЧЕТНОЙ ЗАПИСИ 'admin' НА 15 МИНУТ.<br><br>ЛОГ ДОСТУПА К СЕЙФУ: 12.10.2004 03:01:05 - АВАРИЙНОЕ СРАБАТЫВАНИЕ СИГНАЛИЗАЦИИ. СЕЙФ #3 (ФАРМАЦЕВТИЧЕСКИЙ СКЛАД). ПРИЧИНА: ПРЕВЫШЕНИЕ ВРЕМЕНИ ОТКРЫТИЯ.", hidden: true }
+        ];
+
         // База данных контактов и диалогов для мини-игры
         const contactsData = {
-            "1 (555) 000-0000": {
-                phone: "+1 (555) 000-0000",
-                greeting: "Ты всё-таки нашёл этот телефон... Я ждал.",
+            "Скрытый терминал (Архив)": {
+                phone: "8492",
+                hidden: true, 
+                greeting: "ВНИМАНИЕ. ВВЕДЕН КОД '8492'. Протокол 'АРХИВ' активирован. Система безопасности 'ЦЕРБЕР' слушает.",
+                asked: [],
                 dialogue: [
-                    { q: "Кто ты?", a: "Тот, кто хочет помочь тебе выбраться из этой комнаты." },
-                    { q: "Что мне нужно делать?", a: "Ищи подсказки в файлах. И не верь системным настройкам, они могут лгать." },
-                    { q: "Какой пароль от двери?", a: "Я не могу сказать тебе всё. Посмотри внимательно на фотографии в Галерее." }
-                ]
-            },
-            "Мама": {
-                phone: "+7 (999) 123-45-67",
-                greeting: "Алло? Солнышко, ты поел?",
-                dialogue: [
-                    { q: "Да, мам. Где я?", a: "Опять в свои игры играешь? Одень шапку, на улице 2007 год!" },
-                    { q: "Мам, это срочно, мне нужна помощь!", a: "Помощь нужна мне, на даче картошку копать. Ладно, посмотри в документах, может там есть ответ." }
+                    { id: 'who_is_this', q: "Кто это?", a: "Автоматизированная система охраны 'ЦЕРБЕР'. Разработано студией Paramount. Укажите цель запроса." },
+                    { id: 'disable_lock', q: "Отключить блокировку двери.", a: "ОТКАЗ. Требуется голосовое подтверждение администратора уровня 'АЛЬФА': Новак, Стелла или Сизан, Майкл. Ваш уровень доступа: 'ГОСТЬ'." },
+                    { id: 'where_is_norman', q: "Где Норман?", a: "Сотрудник Норман, ID 734, числится пропавшим без вести с 12 октября 2004 года. Последняя зафиксированная активность: серверная комната, 03:15 ночи. Запрос на доступ к его файлам отклонен." },
+                    { id: 'info_novak', q: "Запрос: информация по Стелле Новак.", a: "Новак, Стелла. Должность: Главный режиссер монтажа. Уровень доступа: 'АЛЬФА'. Статус: Активен. ПРИМЕЧАНИЕ: Зафиксировано 14 жалоб на неэтичное поведение и превышение полномочий. Все жалобы аннулированы администратором Сизаном." },
+                    { id: 'info_sizan', q: "Запрос: информация по Майклу Сизану.", a: "Сизан, Майкл. Должность: Исполнительный продюсер. Уровень доступа: 'АЛЬФА'. Статус: Активен. ПРИМЕЧАНИЕ: Имеет полный контроль над системой безопасности 'ЦЕРБЕР' и права на редактирование любых логов." },
+                    { id: 'norman_backups', q: "Запрос: доступ к бэкапам сервера от 12 октября 2004.", a: "ОБРАБОТКА... НАЙДЕН АРХИВ 'N_BACKUP_121004.zip'. ДОСТУП РАЗРЕШЕН. ФАЙЛ СКОПИРОВАН В ПАПКУ 'ДОКУМЕНТЫ'.", requiresFlag: 'readNormanNotes', hides: true }
                 ]
             }
+        
         };
 
         function openApp(appName) {
+            playSound('click');
             appNameDisplay.textContent = appName;
             
             if (appName === 'Галерея') {
-                let galleryHTML = '<div class="gallery-grid">';
-                for (let i = 1; i <= 15; i++) {
-                    galleryHTML += `<img src="https://picsum.photos/150?random=${i}" alt="Photo ${i}" loading="lazy">`;
-                }
-                galleryHTML += '</div>';
-                appContent.innerHTML = galleryHTML;
+                renderGallery();
+            } else if (appName === 'Документы') {
+                renderDocumentsList();
             } else if (appName === 'Контакты') {
-                let contactsHTML = '<ul class="contact-list">';
-                for (let name in contactsData) {
-                    contactsHTML += `<li class="contact-item" onclick="startCall('${name}')">${name}<div class="phone">${contactsData[name].phone}</div></li>`;
-                }
-                contactsHTML += '</ul>';
-                appContent.innerHTML = contactsHTML;
+                renderContacts();
             } else if (appName === 'Настройки') {
-                appContent.innerHTML = `
-                    <div class="settings-list">
-                        <div class="settings-item">Авиарежим <div class="toggle" onclick="this.classList.toggle('on')"></div></div>
-                        <div class="settings-item">Wi-Fi <span style="color:#888">Подключено</span></div>
-                        <div class="settings-item">Bluetooth <span style="color:#888">Вкл</span></div>
-                    </div>
-                `;
+                renderSettings();
             } else {
-                appContent.innerHTML = '<p style="text-align: center; margin-top: 50px;">В разработке...</p>';
+                appContent.innerHTML = '<p style="text-align: center; margin-top: 50px; color:#000;">В разработке...</p>';
             }
 
             appScreen.classList.add('show');
         }
 
-        // Функция начала разговора (звонка)
-        function startCall(name) {
-            const data = contactsData[name];
-            appNameDisplay.textContent = "Разговор: " + name; // Меняем заголовок
+        // Функционал Контактов и Клавиатуры
+        function renderContacts() {
+            // Если персонаж не выбран, показываем экран выбора
+            if (!currentPlayerCharacter) {
+                renderCharacterSelection();
+                return;
+            }
 
+            appNameDisplay.innerHTML = 'Телефон';
             let html = `
-                <div class="dialogue-screen">
-                    <div class="chat-history" id="chatHistory">
-                        <div class="message contact-msg">${data.greeting}</div>
-                    </div>
-                    <div class="question-buttons">
+                <div class="contacts-tabs">
+                    <div class="c-tab active" onclick="playSound('click'); renderContacts()">Контакты</div>
+                    <div class="c-tab" onclick="playSound('click'); renderKeypad()">Клавиатура</div>
+                </div>
+                <ul class="contact-list" style="flex:1; overflow-y:auto; background: #fff;">
             `;
-            
-            data.dialogue.forEach((d, index) => {
-                html += `<button class="q-btn" onclick="askQuestion('${name}', ${index})">${d.q}</button>`;
-            });
-
-            html += `</div></div>`;
+            for (let name in contactsData) {
+                if (!contactsData[name].hidden) {
+                    html += `<li class="contact-item" onclick="playSound('click'); startCall('${name}')" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div>${name}</div>
+                            <div class="phone">${contactsData[name].phone}</div>
+                        </div>
+                        <span style="color: #007aff; font-size: 18px;">→</span>
+                    </li>`;
+                }
+            }
+            html += '</ul>';
             appContent.innerHTML = html;
         }
 
-        // Функция отправки вопроса и получения ответа
-        function askQuestion(name, qIndex) {
+        function renderCharacterSelection() {
+            appNameDisplay.innerHTML = 'Выбор персонажа';
+            appContent.innerHTML = `
+                <div class="settings-list" style="padding-top: 0;">
+                    <div style="padding: 20px; text-align: center; background: #fff; border-bottom: 1px solid #ddd; color: #000; line-height: 1.4;">
+                        Выберите, от чьего лица вы будете вести диалог с Неизвестным. <br>Этот выбор нельзя будет изменить.
+                    </div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="selectCharacter('brandon')">Брэндон Миллер (Крис) <span style="color:#888">></span></div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="selectCharacter('amber')">Эмбер Рид (Рокси) <span style="color:#888">></span></div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="selectCharacter('chloe')">Хлоя Мартинес (Стелла) <span style="color:#888">></span></div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="selectCharacter('seth')">Сет Клейтон <span style="color:#888">></span></div>
+                </div>
+            `;
+        }
+
+        function selectCharacter(character) {
+            playSound('click');
+            currentPlayerCharacter = character;
+            
+            // Добавляем контакт "Неизвестный" в список после выбора
+            contactsData["Неизвестный"] = {
+                phone: "???-????",
+                isScripted: true, // Флаг для запуска сценарного диалога
+                history: [],      // Для сохранения истории чата
+                currentMessageIndex: 0 // Для отслеживания прогресса
+            };
+            renderContacts(); // Перерисовываем список контактов
+        }
+
+        function renderKeypad() {
+            appNameDisplay.innerHTML = 'Телефон';
+            currentDialedNumber = "";
+            appContent.innerHTML = `
+                <div class="contacts-tabs">
+                    <div class="c-tab" onclick="playSound('click'); renderContacts()">Список</div>
+                    <div class="c-tab active" onclick="playSound('click'); renderKeypad()">Клавиатура</div>
+                </div>
+                <div class="keypad-container">
+                    <div class="keypad-display" id="keypadDisplay"></div>
+                    <div class="keypad-grid">
+                        <button class="key-btn" onclick="dialNum('1')">1</button>
+                        <button class="key-btn" onclick="dialNum('2')">2</button>
+                        <button class="key-btn" onclick="dialNum('3')">3</button>
+                        <button class="key-btn" onclick="dialNum('4')">4</button>
+                        <button class="key-btn" onclick="dialNum('5')">5</button>
+                        <button class="key-btn" onclick="dialNum('6')">6</button>
+                        <button class="key-btn" onclick="dialNum('7')">7</button>
+                        <button class="key-btn" onclick="dialNum('8')">8</button>
+                        <button class="key-btn" onclick="dialNum('9')">9</button>
+                        <button class="key-btn" onclick="dialNum('*')">*</button>
+                        <button class="key-btn" onclick="dialNum('0')">0</button>
+                        <button class="key-btn" onclick="dialNum('#')">#</button>
+                    </div>
+                    <div style="display: flex; gap: 15px; align-items: center;">
+                        <button class="key-btn del-btn" onclick="deleteLast()" style="width: 70px;">⌫</button>
+                        <button class="key-btn call-btn" onclick="makeCall()">📞</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function dialNum(n) {
+            playSound('click');
+            currentDialedNumber += n;
+            document.getElementById('keypadDisplay').innerText = currentDialedNumber;
+        }
+        
+        function deleteLast() {
+            playSound('click');
+            currentDialedNumber = currentDialedNumber.slice(0, -1);
+            document.getElementById('keypadDisplay').innerText = currentDialedNumber;
+        }
+
+        function makeCall() {
+            playSound('click');
+            let found = null;
+            for (let name in contactsData) {
+                if (contactsData[name].phone === currentDialedNumber || name === currentDialedNumber) {
+                    found = name;
+                    break;
+                }
+            }
+            
+            if (found) {
+                contactsData[found].hidden = false; 
+                startCall(found);
+            } else {
+                document.getElementById('keypadDisplay').innerHTML = '<span style="color:red; font-size:20px;">Недоступен</span>';
+                setTimeout(() => {
+                    currentDialedNumber = "";
+                    const display = document.getElementById('keypadDisplay');
+                    if (display) display.innerText = currentDialedNumber;
+                }, 1500);
+            }
+        }
+
+        // Рендерит кнопки с вопросами в диалоге, учитывая зависимости
+        function renderQuestionButtons(name) {
             const data = contactsData[name];
+            const buttonsContainer = document.querySelector('.question-buttons');
+            if (!buttonsContainer) return;
+
+            let buttonsHTML = '';
+            // Проверяем, используется ли новая структура с ID
+            if (data.dialogue.some(d => d.id)) {
+                data.dialogue.forEach((d, index) => {
+                    const isAsked = data.asked && data.asked.includes(d.id);
+                    const dependencyMet = !d.dependsOn || (data.asked && data.asked.includes(d.dependsOn));
+                    // Проверяем, выполнен ли флаг (например, прочтение документа)
+                    const flagMet = !d.requiresFlag || (d.requiresFlag === 'readNormanNotes' && readNormanNotes);
+
+                    // Не показывать вопрос, если он одноразовый и уже был задан
+                    if (d.hides && isAsked) {
+                        return;
+                    }
+
+                    // Показать, если все зависимости удовлетворены
+                    if (dependencyMet && flagMet) {
+                        buttonsHTML += `<button class="q-btn" onclick="askQuestion('${name}', ${index})">${d.q}</button>`;
+                    }
+                });
+            } else { // Обратная совместимость для старой структуры диалогов
+                data.dialogue.forEach((d, index) => {
+                    buttonsHTML += `<button class="q-btn" onclick="askQuestion('${name}', ${index})">${d.q}</button>`;
+                });
+            }
+
+            buttonsContainer.innerHTML = buttonsHTML;
+        }
+
+        // --- Новая система для интерактивных сценарных диалогов ---
+
+        // Создает HTML-код для одного сообщения
+        function createMessageHTML(message) {
+            if (message.from === 'system') {
+                const style = message.text.includes('ЗАБЛОКИРОВАНА') 
+                    ? 'background: #ff3b30; color: white;' 
+                    : 'background: #8e8e93; color: white;';
+                return `<div class="message" style="${style} align-self: center; text-align: center; max-width: 90%;">${message.text}</div>`;
+            } else {
+                const messageClass = message.from === 'player' ? 'user-msg' : 'contact-msg';
+                return `<div class="message ${messageClass}">${message.text}</div>`;
+            }
+        }
+
+        // Основная функция для отрисовки и продолжения сценарного диалога
+        function renderScriptedDialogue(name) {
+            const data = contactsData[name];
+            
+            // Устанавливаем заголовок и UI
+            appNameDisplay.innerHTML = `<button class="back-btn" onclick="playSound('click'); renderContacts()">◀ Назад</button><span style="flex: 1; text-align: center;">${name}</span>`;
+            appContent.innerHTML = `
+                <div class="dialogue-screen">
+                    <div class="chat-history" id="chatHistory"></div>
+                    <div class="question-buttons" id="scriptedActionContainer"></div>
+                </div>
+            `;
+            const historyContainer = document.getElementById('chatHistory');
+            
+            // Восстанавливаем сохраненную историю чата
+            data.history.forEach(msg => {
+                historyContainer.innerHTML += createMessageHTML(msg);
+            });
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+
+            // Продолжаем диалог с того места, где остановились
+            advanceScript(name);
+        }
+
+        // Логика продвижения по скрипту
+        function advanceScript(name) {
+            const data = contactsData[name];
+            const script = characterDialogues[currentPlayerCharacter];
+            const historyContainer = document.getElementById('chatHistory');
+            const actionContainer = document.getElementById('scriptedActionContainer');
+
+            if (!historyContainer || !actionContainer) return; // Вышли из приложения
+
+            if (data.currentMessageIndex >= script.length) {
+                actionContainer.innerHTML = ''; // Диалог завершен
+                return;
+            }
+
+            const nextMessage = script[data.currentMessageIndex];
+
+            if (nextMessage.from === 'player') {
+                // Очередь игрока: показываем кнопку для ответа
+                actionContainer.innerHTML = `<button class="q-btn" onclick="postPlayerMessage('${name}')">${nextMessage.text}</button>`;
+            } else {
+                // Очередь NPC: показываем сообщение автоматически
+                actionContainer.innerHTML = ''; // Убираем кнопки
+                const typingId = 'typing-' + Date.now();
+                historyContainer.innerHTML += `<div class="typing-indicator" id="${typingId}"><span></span><span></span><span></span></div>`;
+                historyContainer.scrollTop = historyContainer.scrollHeight;
+
+                setTimeout(() => {
+                    const typingEl = document.getElementById(typingId);
+                    if (typingEl) typingEl.remove();
+
+                    historyContainer.innerHTML += createMessageHTML(nextMessage);
+                    historyContainer.scrollTop = historyContainer.scrollHeight;
+                    
+                    data.history.push(nextMessage);
+                    data.currentMessageIndex++;
+
+                    // Сразу же проверяем следующий шаг (может быть, это кнопка для игрока)
+                    advanceScript(name);
+                }, 1500);
+            }
+        }
+
+        // Вызывается при нажатии игроком на кнопку ответа
+        function postPlayerMessage(name) {
+            playSound('click');
+            const data = contactsData[name];
+            const script = characterDialogues[currentPlayerCharacter];
+            const historyContainer = document.getElementById('chatHistory');
+            const actionContainer = document.getElementById('scriptedActionContainer');
+
+            if (data.currentMessageIndex >= script.length) return;
+
+            const playerMessage = script[data.currentMessageIndex];
+            
+            historyContainer.innerHTML += createMessageHTML(playerMessage);
+            historyContainer.scrollTop = historyContainer.scrollHeight;
+            data.history.push(playerMessage);
+            data.currentMessageIndex++;
+
+            actionContainer.innerHTML = ''; // Убираем кнопку
+
+            // Запускаем следующий шаг (ответ NPC)
+            advanceScript(name);
+        }
+
+        function startCall(name) {
+            const data = contactsData[name];
+            // Инициализируем массив 'asked', если его нет, для сохранения прогресса диалога
+            if (!data.asked) {
+                data.asked = [];
+            }
+            appNameDisplay.innerHTML = `<button class="back-btn" onclick="playSound('click'); renderContacts()">◀ Назад</button><span style="flex: 1; text-align: center;">${name}</span>`;
+            
+            // Проверяем, является ли диалог сценарным
+            if (data.isScripted) {
+                renderScriptedDialogue(name);
+            } else {
+                // Стандартная логика для интерактивных диалогов
+                appContent.innerHTML = `
+                    <div class="dialogue-screen">
+                        <div class="chat-history" id="chatHistory">
+                            <div class="message contact-msg" style="margin-bottom: 20px;">${data.greeting}</div>
+                        </div>
+                        <div class="question-buttons"></div>
+                    </div>
+                `;
+                renderQuestionButtons(name);
+            }
+        }
+
+        function askQuestion(name, qIndex) {
+            if (isAnswering) return;
+            isAnswering = true;
+            playSound('click');
+            const data = contactsData[name];
+            const question = data.dialogue[qIndex];
             const history = document.getElementById('chatHistory');
             
-            // Добавляем вопрос игрока
-            history.innerHTML += `<div class="message user-msg">${data.dialogue[qIndex].q}</div>`;
-            
-            // Имитируем небольшую задержку (типа человек на том конце думает/печатает)
-            setTimeout(() => {
-                history.innerHTML += `<div class="message contact-msg">${data.dialogue[qIndex].a}</div>`;
-                history.scrollTop = history.scrollHeight; // Прокручиваем вниз
-            }, 600);
-            
+            history.innerHTML += `<div class="message user-msg">${question.q}</div>`;
             history.scrollTop = history.scrollHeight;
+            
+            // Если у вопроса есть ID, добавляем его в список заданных
+            if (question.id && data.asked && !data.asked.includes(question.id)) {
+                data.asked.push(question.id);
+            }
+
+            // Особое действие: если задан вопрос про бэкапы, делаем видимым новый документ
+            if (question.id === 'norman_backups') {
+                const backupDoc = documentsData.find(doc => doc.title === "N_BACKUP_121004.zip");
+                if (backupDoc) {
+                    backupDoc.hidden = false;
+                }
+            }
+            
+            const typingId = 'typing-' + Date.now();
+            history.innerHTML += `
+                <div class="typing-indicator" id="${typingId}">
+                    <span></span><span></span><span></span>
+                </div>
+            `;
+            history.scrollTop = history.scrollHeight;
+            
+            setTimeout(() => {
+                const typingEl = document.getElementById(typingId);
+                if (typingEl) typingEl.remove();
+                
+                history.innerHTML += `<div class="message contact-msg">${question.a}</div>`;
+                history.scrollTop = history.scrollHeight; 
+                
+                renderQuestionButtons(name); // Обновляем список вопросов
+
+                setTimeout(() => {
+                    isAnswering = false;
+                }, 300); // Уменьшаем задержку для более быстрого отклика
+            }, 1500);
         }
 
-        // Закрытие приложения (можно также использовать кнопку Home)
-        function closeApp() {
-            appScreen.classList.remove('show');
+        // Функционал настроек
+        function toggleSetting(setting) {
+            playSound('click');
+            settingsState[setting] = !settingsState[setting];
+            
+            if (setting === 'airplane') {
+                const carrier = document.getElementById('carrier-info');
+                if (settingsState.airplane) {
+                    carrier.textContent = "✈️ Нет сети";
+                    settingsState.wifi = false; 
+                    settingsState.bluetooth = false;
+                } else {
+                    carrier.textContent = "AT&T EDGE";
+                }
+            }
+
+            if (setting === 'timeFormat24') {
+                updateClock();
+            }
+
+            if (appNameDisplay.textContent === 'Настройки') {
+                renderSettings();
+            }
         }
 
-        // Назначаем обработчики событий (безопасный метод без onclick в HTML)
-        document.querySelectorAll('.app').forEach(app => {
-            app.addEventListener('click', function() {
-                const appName = this.getAttribute('data-app');
-                if (appName) {
-                    openApp(appName);
+        function applyScreenFilters() {
+            // Исправлено: Фильтры теперь применяются ко всему экрану телефона стабильно
+            const screen = document.querySelector('.screen');
+            if (screen) {
+                screen.style.filter = `brightness(${settingsState.brightness}%) contrast(${settingsState.contrast}%)`;
+            }
+        }
+
+        function changeBrightness() {
+            settingsState.brightness -= 25;
+            if (settingsState.brightness < 25) settingsState.brightness = 100;
+            applyScreenFilters();
+            playSound('click');
+            renderSettings();
+        }
+
+        function changeContrast() {
+            settingsState.contrast -= 25;
+            if (settingsState.contrast < 50) settingsState.contrast = 100;
+            applyScreenFilters();
+            playSound('click');
+            renderSettings();
+        }
+
+        function changeVolume() {
+            settingsState.volume -= 20;
+            if (settingsState.volume < 0) settingsState.volume = 100;
+            playSound('click');
+            renderSettings();
+        }
+
+        function changeAutoLock() {
+            const times = [15, 30, 60, 120];
+            const idx = times.indexOf(settingsState.autoLock);
+            settingsState.autoLock = times[(idx + 1) % times.length];
+            playSound('click');
+            renderSettings();
+        }
+
+        function changeWallpaper() {
+            currentWallpaperIndex = (currentWallpaperIndex + 1) % wallpapers.length;
+            document.querySelector('.screen').style.backgroundImage = `url('${wallpapers[currentWallpaperIndex]}')`;
+            playSound('click');
+        }
+
+        function renderSettings() {
+            appContent.innerHTML = `
+                <div class="settings-list">
+                    <div style="padding: 15px 15px 5px; font-weight: bold; background: #d1d1d6; font-size: 13px; color: #666;">Сеть</div>
+                    <div class="settings-item">Авиарежим <div class="toggle ${settingsState.airplane ? 'on' : ''}" onclick="toggleSetting('airplane')"></div></div>
+                    <div class="settings-item">Wi-Fi <div class="toggle ${settingsState.wifi ? 'on' : ''}" onclick="toggleSetting('wifi')"></div></div>
+                    <div class="settings-item">Bluetooth <div class="toggle ${settingsState.bluetooth ? 'on' : ''}" onclick="toggleSetting('bluetooth')"></div></div>
+                    
+                    <div style="padding: 15px 15px 5px; font-weight: bold; background: #d1d1d6; font-size: 13px; color: #666; margin-top: 10px;">Звук</div>
+                    <div class="settings-item">Звук <div class="toggle ${settingsState.sound ? 'on' : ''}" onclick="toggleSetting('sound')"></div></div>
+                    <div class="settings-item">Вибрация <div class="toggle ${settingsState.vibration ? 'on' : ''}" onclick="toggleSetting('vibration')"></div></div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="changeVolume()">Громкость <span style="color:#888">${settingsState.volume}% ></span></div>
+                    
+                    <div style="padding: 15px 15px 5px; font-weight: bold; background: #d1d1d6; font-size: 13px; color: #666; margin-top: 10px;">Уведомления</div>
+                    <div class="settings-item">Уведомления <div class="toggle ${settingsState.notifications ? 'on' : ''}" onclick="toggleSetting('notifications')"></div></div>
+                    
+                    <div style="padding: 15px 15px 5px; font-weight: bold; background: #d1d1d6; font-size: 13px; color: #666; margin-top: 10px;">Дисплей</div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="changeBrightness()">Яркость <span style="color:#888">${settingsState.brightness}% ></span></div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="changeContrast()">Контрастность <span style="color:#888">${settingsState.contrast}% ></span></div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="changeWallpaper()">Сменить обои <span style="color:#888">></span></div>
+                    
+                    <div style="padding: 15px 15px 5px; font-weight: bold; background: #d1d1d6; font-size: 13px; color: #666; margin-top: 10px;">Безопасность</div>
+                    <div class="settings-item" style="cursor:pointer;" onclick="changeAutoLock()">Автоблокировка <span style="color:#888">${settingsState.autoLock}с ></span></div>
+                    
+                    <div style="padding: 15px 15px 5px; font-weight: bold; background: #d1d1d6; font-size: 13px; color: #666; margin-top: 10px;">Основное</div>
+                    <div class="settings-item">24-часовой формат <div class="toggle ${settingsState.timeFormat24 ? 'on' : ''}" onclick="toggleSetting('timeFormat24')"></div></div>
+                </div>
+            `;
+        }
+
+        // Функционал Галереи
+        function renderGallery() {
+            appNameDisplay.innerHTML = 'Галерея'; 
+            let galleryHTML = '<div class="gallery-grid">';
+            galleryImages.forEach((imgObj, index) => {
+                galleryHTML += `<img src="${imgObj.src}" alt="Photo ${index}" loading="lazy" onclick="playSound('click'); viewImage(${index})" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">`;
+            });
+            galleryHTML += '</div>';
+            appContent.innerHTML = galleryHTML;
+        }
+
+        function viewImage(index) {
+            // Помещаем все элементы управления в заголовок для консистентности
+            const imgObj = galleryImages[index];
+            appNameDisplay.innerHTML = `
+                <button class="back-btn" onclick="playSound('click'); renderGallery()">◀ Назад</button>
+                <span style="flex:1; text-align:center;">${index + 1}/${galleryImages.length}</span>
+                <button class="rotate-btn" id="rotateBtn">↻</button>
+            `;
+            
+            let contentHTML = `
+                <div class="full-image-view">
+                    <img src="${imgObj.src}" alt="Full Photo" id="fullScreenImage">
+            `;
+            
+            if (index > 0) {
+                contentHTML += `<button class="nav-btn left" onclick="playSound('click'); viewImage(${index - 1})">◀</button>`;
+            }
+            if (index < galleryImages.length - 1) {
+                contentHTML += `<button class="nav-btn right" onclick="playSound('click'); viewImage(${index + 1})">▶</button>`;
+            }
+            
+            if (imgObj.note) {
+                contentHTML += `<div class="image-note">${imgObj.note}</div>`;
+            }
+            
+            contentHTML += `</div>`;
+            appContent.innerHTML = contentHTML;
+
+            // --- Новая логика для зума и поворота ---
+            const img = document.getElementById('fullScreenImage');
+            const rotateBtn = document.getElementById('rotateBtn');
+
+            let transformState = { scale: 1, translateX: 0, translateY: 0, rotate: 0 };
+            let isPanning = false;
+            let startX, startY;
+            
+            // Переменные для зума касанием
+            let initialPinchDistance = null;
+            let baseScale = 1;
+
+            function applyTransform() {
+                img.style.transform = `translate(${transformState.translateX}px, ${transformState.translateY}px) scale(${transformState.scale}) rotate(${transformState.rotate}deg)`;
+            }
+
+            rotateBtn.addEventListener('click', () => {
+                playSound('click');
+                transformState.rotate = (transformState.rotate + 90) % 360;
+                applyTransform();
+            });
+
+            // Зум колесиком мыши (для ПК)
+            img.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scaleFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                const newScale = transformState.scale * scaleFactor;
+                transformState.scale = Math.max(1, Math.min(newScale, 5)); // Ограничение от 1x до 5x
+
+                if (transformState.scale <= 1.01) {
+                    transformState.scale = 1;
+                    transformState.translateX = 0;
+                    transformState.translateY = 0;
+                    img.style.cursor = 'default';
+                } else {
+                    img.style.cursor = 'grab';
+                }
+                applyTransform();
+            });
+
+            // Перемещение мышью (для ПК)
+            img.addEventListener('mousedown', (e) => {
+                if (transformState.scale > 1) {
+                    isPanning = true;
+                    startX = e.clientX - transformState.translateX;
+                    startY = e.clientY - transformState.translateY;
+                    img.style.cursor = 'grabbing';
                 }
             });
-        });
 
-        document.getElementById('closeBtn').addEventListener('click', closeApp);
-        document.getElementById('homeBtn').addEventListener('click', closeApp);
+            const stopPanning = () => {
+                if (isPanning) {
+                    isPanning = false;
+                    img.style.cursor = transformState.scale > 1 ? 'grab' : 'default';
+                }
+            };
+
+            img.addEventListener('mousemove', (e) => {
+                if (isPanning) {
+                    e.preventDefault(); // Предотвратить выделение текста при перетаскивании
+                    transformState.translateX = e.clientX - startX;
+                    transformState.translateY = e.clientY - startY;
+                    applyTransform();
+                }
+            });
+
+            img.addEventListener('mouseup', stopPanning);
+            img.addEventListener('mouseleave', stopPanning);
+
+            // --- Логика для сенсорных экранов (телефоны) ---
+            function getDistance(touches) {
+                const touch1 = touches[0];
+                const touch2 = touches[1];
+                const dx = touch2.clientX - touch1.clientX;
+                const dy = touch2.clientY - touch1.clientY;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            img.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 1 && transformState.scale > 1) {
+                    isPanning = true;
+                    startX = e.touches[0].clientX - transformState.translateX;
+                    startY = e.touches[0].clientY - transformState.translateY;
+                } else if (e.touches.length === 2) {
+                    isPanning = false; // Остановить панорамирование при зуме
+                    initialPinchDistance = getDistance(e.touches);
+                    baseScale = transformState.scale;
+                }
+            }, { passive: false });
+
+            img.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 1 && isPanning) {
+                    transformState.translateX = e.touches[0].clientX - startX;
+                    transformState.translateY = e.touches[0].clientY - startY;
+                    applyTransform();
+                } else if (e.touches.length === 2 && initialPinchDistance) {
+                    const newDistance = getDistance(e.touches);
+                    const scaleFactor = newDistance / initialPinchDistance;
+                    const newScale = baseScale * scaleFactor;
+                    transformState.scale = Math.max(1, Math.min(newScale, 5));
+
+                    if (transformState.scale <= 1.01) {
+                        transformState.scale = 1;
+                        transformState.translateX = 0;
+                        transformState.translateY = 0;
+                    }
+                    applyTransform();
+                }
+            }, { passive: false });
+
+            img.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) {
+                    initialPinchDistance = null;
+                }
+                if (e.touches.length < 1) {
+                    isPanning = false;
+                }
+            });
+        }
+
+        // Функционал Документов
+        let searchQuery = "";
+
+        // Исправлено: Полностью переписана логика рендеринга списка документов. 
+        // Поле ввода теперь не перерисовывается при вводе символов.
+        function renderDocumentsList() {
+            appNameDisplay.innerHTML = 'Документы';
+            
+            // Если инпута еще нет в контейнере приложения — создаем структуру один раз
+            if (!document.getElementById('docsSearchInput')) {
+                appContent.innerHTML = `
+                    <div class="docs-search-box">
+                        <input type="text" placeholder="Поиск..." id="docsSearchInput" 
+                               onkeyup="updateDocSearch(this.value)" value="${searchQuery}">
+                    </div>
+                    <ul class="document-list" id="documentList" style="overflow-y: auto; flex: 1; background:#efeff4;"></ul>
+                `;
+            }
+            
+            // Фильтруем и обновляем только внутренности тега <ul>
+            const listContainer = document.getElementById('documentList');
+            const filtered = documentsData.filter(doc => 
+                !doc.hidden && doc.title.toLowerCase().includes(searchQuery.toLowerCase())
+            );
+            
+            let docsHTML = '';
+            filtered.forEach((doc) => {
+                const originalIndex = documentsData.indexOf(doc);
+                docsHTML += `<li class="document-item" onclick="playSound('click'); viewDocument(${originalIndex})">
+                    <div class="doc-title">${doc.title}</div>
+                    <span style="color:#888">></span>
+                </li>`;
+            });
+            
+            if (listContainer) {
+                listContainer.innerHTML = docsHTML;
+            }
+        }
+        
+        function updateDocSearch(value) {
+            searchQuery = value;
+            renderDocumentsList();
+        }
+
+        function viewDocument(index) {
+            const doc = documentsData[index];
+            // Если игрок читает заметки Нормана, устанавливаем флаг
+            if (doc.title === "NORMAN_NOTES.txt") {
+                readNormanNotes = true;
+            }
+
+            appNameDisplay.innerHTML = `<button class="back-btn" onclick="playSound('click'); renderDocumentsList()">◀ Назад</button> Заметка`;
+            appContent.innerHTML = `
+                <div class="document-view">
+                    <h3>${doc.title}</h3>
+                    <p>${doc.content}</p>
+                </div>
+            `;
+        }
+
+        function closeApp() {
+            playSound('home');
+            appScreen.classList.remove('show');
+            // При закрытии приложения сбрасываем структуру поиска, чтобы она сгенерировалась заново при следующем открытии
+            searchQuery = "";
+        }
+
+        // Обработчики событий и инициализация
+        function initializeEventHandlers() {
+            document.querySelectorAll('.app').forEach(app => {
+                app.addEventListener('click', function() {
+                    const appName = this.getAttribute('data-app');
+                    if (appName) {
+                        openApp(appName);
+                    }
+                });
+            });
+
+            const homeBtn = document.getElementById('homeBtn');
+            
+            if (homeBtn) homeBtn.addEventListener('click', closeApp);
+        }
+
+        // Инициализируем при загрузке страницы
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeEventHandlers();
+
+            const lockScreen = document.getElementById('lockScreen');
+            if (lockScreen) {
+                lockScreen.addEventListener('click', () => {
+                    // Audio context must be resumed by user action
+                    initAudio(); 
+                    playSound('unlock');
+                    
+                    lockScreen.classList.add('unlocked');
+                    
+                    // Hide the element after animation to prevent interference
+                    setTimeout(() => {
+                        if (lockScreen) lockScreen.style.display = 'none';
+                    }, 500); // Must match CSS transition duration
+                }, { once: true }); // Ensure this only runs once
+            }
+        });
     </script>
 </body>
 </html>

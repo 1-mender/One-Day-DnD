@@ -1,0 +1,94 @@
+/* Стили для окна досье Криса Вэнса */
+#vance-dossier-window .content {
+    background-color: #003049;
+    color: #e0e1dd;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 20px;
+    border: 2px solid #669bbc;
+}
+
+#vance-dossier-window .dossier-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    color: #c1121f;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #669bbc;
+    padding-bottom: 20px;
+}
+
+#vance-dossier-window .photo-placeholder {
+    width: 100px;
+    height: 120px;
+    border: 2px dashed #c1121f;
+    background-color: #001d3d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #c1121f;
+    font-size: 14px;
+    text-align: center;
+    object-fit: cover;
+    filter: grayscale(100%) contrast(1.2);
+}
+
+#vance-dossier-window .dossier-header h3 {
+    color: #e0e1dd;
+    font-size: 24px;
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+#vance-dossier-window .dossier-header .role {
+    font-size: 16px;
+    color: #c1121f;
+}
+
+#vance-dossier-window .dossier-header .slogan {
+    font-style: italic;
+    color: #e0e1dd;
+    margin-top: 10px;
+    display: block;
+}
+
+#vance-dossier-window .section-title {
+    color: #c1121f;
+    font-weight: bold;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #669bbc;
+    padding-bottom: 5px;
+}
+
+#vance-dossier-window .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+#vance-dossier-window .stat-item {
+    background-color: #001d3d;
+    padding: 10px;
+    border-left: 3px solid #c1121f;
+}
+
+#vance-dossier-window .stat-item strong {
+    color: #e0e1dd;
+}
+
+#vance-dossier-window .trait {
+    margin-top: 15px;
+}
+
+#vance-dossier-window .trait-title {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+#vance-dossier-window .trait-effect {
+    color: #b1a7a6;
+    margin-top: 5px;
+    padding-left: 15px;
+    border-left: 1px dashed #669bbc;
+}

@@ -1,0 +1,94 @@
+/* Стили для окна досье Рокси Кеннеди */
+#kennedy-dossier-window .content {
+    background-color: #1c1124;
+    color: #e0e1dd;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 20px;
+    border: 2px solid #5a189a;
+}
+
+#kennedy-dossier-window .dossier-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    color: #9d4edd;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #5a189a;
+    padding-bottom: 20px;
+}
+
+#kennedy-dossier-window .photo-placeholder {
+    width: 100px;
+    height: 120px;
+    border: 2px dashed #9d4edd;
+    background-color: #10002b;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9d4edd;
+    font-size: 14px;
+    text-align: center;
+    object-fit: cover;
+    filter: grayscale(100%) contrast(1.2);
+}
+
+#kennedy-dossier-window .dossier-header h3 {
+    color: #e0e1dd;
+    font-size: 24px;
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+#kennedy-dossier-window .dossier-header .role {
+    font-size: 16px;
+    color: #9d4edd;
+}
+
+#kennedy-dossier-window .dossier-header .slogan {
+    font-style: italic;
+    color: #e0e1dd;
+    margin-top: 10px;
+    display: block;
+}
+
+#kennedy-dossier-window .section-title {
+    color: #9d4edd;
+    font-weight: bold;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #5a189a;
+    padding-bottom: 5px;
+}
+
+#kennedy-dossier-window .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+#kennedy-dossier-window .stat-item {
+    background-color: #10002b;
+    padding: 10px;
+    border-left: 3px solid #9d4edd;
+}
+
+#kennedy-dossier-window .stat-item strong {
+    color: #e0e1dd;
+}
+
+#kennedy-dossier-window .trait {
+    margin-top: 15px;
+}
+
+#kennedy-dossier-window .trait-title {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+#kennedy-dossier-window .trait-effect {
+    color: #b1a7a6;
+    margin-top: 5px;
+    padding-left: 15px;
+    border-left: 1px dashed #5a189a;
+}

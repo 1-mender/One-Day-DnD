@@ -1,0 +1,94 @@
+/* Стили для окна досье Эмилии Новак */
+#novak-dossier-window .content {
+    background-color: #1a1a1a;
+    color: #e0e1dd;
+    font-family: 'Courier New', Courier, monospace;
+    padding: 20px;
+    border: 2px solid #6d0000;
+}
+
+#novak-dossier-window .dossier-header {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    color: #a4161a;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #6d0000;
+    padding-bottom: 20px;
+}
+
+#novak-dossier-window .photo-placeholder {
+    width: 100px;
+    height: 120px;
+    border: 2px dashed #a4161a;
+    background-color: #0b090a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a4161a;
+    font-size: 14px;
+    text-align: center;
+    object-fit: cover;
+    filter: grayscale(100%) contrast(1.2);
+}
+
+#novak-dossier-window .dossier-header h3 {
+    color: #e0e1dd;
+    font-size: 24px;
+    margin: 0;
+    border: none;
+    padding: 0;
+}
+
+#novak-dossier-window .dossier-header .role {
+    font-size: 16px;
+    color: #a4161a;
+}
+
+#novak-dossier-window .dossier-header .slogan {
+    font-style: italic;
+    color: #e0e1dd;
+    margin-top: 10px;
+    display: block;
+}
+
+#novak-dossier-window .section-title {
+    color: #a4161a;
+    font-weight: bold;
+    margin-top: 25px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #6d0000;
+    padding-bottom: 5px;
+}
+
+#novak-dossier-window .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+#novak-dossier-window .stat-item {
+    background-color: #0b090a;
+    padding: 10px;
+    border-left: 3px solid #a4161a;
+}
+
+#novak-dossier-window .stat-item strong {
+    color: #e0e1dd;
+}
+
+#novak-dossier-window .trait {
+    margin-top: 15px;
+}
+
+#novak-dossier-window .trait-title {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+#novak-dossier-window .trait-effect {
+    color: #b1a7a6;
+    margin-top: 5px;
+    padding-left: 15px;
+    border-left: 1px dashed #6d0000;
+}

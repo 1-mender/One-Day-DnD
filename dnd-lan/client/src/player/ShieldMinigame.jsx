@@ -1,49 +1,29 @@
-import React, { useState } from "react";
+import React from 'react';
+import { MINIGAMES } from '../dm/dmPlayersDomain';
 
-const SHIELD_MINIGAME_BASE_SRC = "/mini-game/shield/?embed=1&v=20260417";
+// Сюда должен приходить ID игры, которую включил мастер (например, "pc" или "shield")
+export const MinigameWindow = ({ activeMinigameId }) => {
+  // Находим данные игры в нашем списке
+  const gameInfo = MINIGAMES.find(game => game.id === activeMinigameId);
 
-function buildShieldMinigameSrc(version) {
-  return `${SHIELD_MINIGAME_BASE_SRC}&reload=${version}`;
-}
-
-export default function ShieldMinigame() {
-  const [reloadVersion, setReloadVersion] = useState(() => Date.now());
-  const iframeSrc = buildShieldMinigameSrc(reloadVersion);
+  // Если игра не найдена или выключена, ничего не показываем
+  if (!gameInfo) return null;
 
   return (
-    <div className="shield-minigame-shell">
-      <div className="shield-minigame-bar">
-        <div className="shield-minigame-status">
-          <span className="eyebrow">Live activity</span>
-          <strong>Щиток открыт мастером</strong>
-        </div>
-        <div className="shield-minigame-actions">
-          <button
-            className="shield-minigame-action"
-            type="button"
-            onClick={() => setReloadVersion(Date.now())}
-          >
-            Перезагрузить
-          </button>
-          <a
-            className="shield-minigame-action"
-            href={iframeSrc}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Открыть отдельно
-          </a>
-        </div>
+    <div className="minigame-overlay">
+      <div className="minigame-header">
+        <strong>{gameInfo.label} открыт мастером</strong>
       </div>
-      <div className="shield-minigame-frame-wrap">
-        <iframe
-          key={reloadVersion}
-          className="shield-minigame-frame"
-          src={iframeSrc}
-          title="Щиток"
-          allow="autoplay"
-        />
-      </div>
+      
+      {/* 
+        Сам "движок" мини-игры. Iframe просто открывает HTML файл. 
+        gameInfo.folder подставит правильное имя папки.
+      */}
+      <iframe 
+        src={`/minigames/${gameInfo.folder}/index.html`} 
+        title={gameInfo.label}
+        style={{ width: '100%', height: '80vh', border: 'none' }}
+      ></iframe>
     </div>
   );
-}
+};

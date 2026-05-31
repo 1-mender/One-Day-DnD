@@ -7,9 +7,15 @@ const STATUS_PRIORITY = {
 export const DM_PLAYER_FLAG_FILTERS = [
   { key: "all", label: "Все" },
   { key: "no_profile", label: "Без профиля" },
-  { key: "shield", label: "Щиток" },
   { key: "specialization", label: "Специализация" },
   { key: "requests", label: "Заявки" }
+];
+
+export const AVAILABLE_MINIGAMES = [
+  { key: "shield", label: "Щиток", folder: "Щиток" },
+  { key: "pc", label: "Терминал ПК", folder: "PC" },
+  // Сюда можно легко дописывать новые игры:
+  // { key: "lockpick", label: "Взлом замка", folder: "Lockpick" }
 ];
 
 export function getDmPlayerSearchHaystack(player) {

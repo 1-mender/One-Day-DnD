@@ -60,7 +60,11 @@ function buildCspDirectives() {
 
 export function createApp() {
   const app = express();
-  const shieldStaticDir = path.resolve(publicDir, "..", "..", "..", "Mini-game", "Щиток");
+  // Указываем путь к общему корню всех мини-игр
+const minigamesDir = path.resolve(publicDir, "..", "..", "..", "Mini-game");
+
+// Раздаем статическую папку под общим префиксом /minigames
+app.use('/minigames', express.static(minigamesDir));
   app.use(helmet({
     contentSecurityPolicy: CSP_DISABLED
       ? false
