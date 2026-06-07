@@ -14,7 +14,7 @@ export const DM_PLAYER_FLAG_FILTERS = [
 export const AVAILABLE_MINIGAMES = [
   { key: "shield", label: "Щиток", folder: "Щиток" },
   { key: "pc", label: "Телефон", folder: "PC" },
-  { key: "pc_Terminal", label: "ПК", folder: "ПК_Терминал" },
+  { key: "pc_terminal", label: "ПК", folder: "ПК_Терминал" },
 ];
 
 export function getDmPlayerSearchHaystack(player) {

@@ -862,6 +862,22 @@
         let isAnswering = false;
         let readNormanNotes = false; // Флаг для отслеживания прочтения документа
 
+        // Функция для обновления иконок сети в статус-баре
+        function updateNetworkIcons() {
+            const wifiIcon = document.getElementById('wifi-icon');
+            const carrierInfo = document.getElementById('carrier-info');
+
+            if (!wifiIcon || !carrierInfo) return;
+
+            if (settingsState.airplane) {
+                carrierInfo.textContent = "✈️ Нет сети";
+                wifiIcon.style.display = 'none';
+            } else {
+                carrierInfo.textContent = "AT&T EDGE";
+                wifiIcon.style.display = settingsState.wifi ? 'inline' : 'none';
+            }
+        }
+
         // Звуковая система (Web Audio API)
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
@@ -918,7 +934,8 @@
         const wallpapers = [
             './asset/d857b25587aaecb2a255e0ad7be83d75.png', 
             'https://picsum.photos/420/800?random=1',
-            'https://picsum.photos/420/800?random=2'
+            'https://picsum.photos/420/800?random=2',
+            './asset/bd03398b9441af8d8d8beb13214a5407.jpg',
         ];
 
         // База данных картинок для Галереи
@@ -1359,20 +1376,27 @@
             settingsState[setting] = !settingsState[setting];
             
             if (setting === 'airplane') {
-                const carrier = document.getElementById('carrier-info');
                 if (settingsState.airplane) {
-                    carrier.textContent = "✈️ Нет сети";
+                    // When turning airplane mode ON, also turn off wifi and bluetooth
                     settingsState.wifi = false; 
                     settingsState.bluetooth = false;
-                } else {
-                    carrier.textContent = "AT&T EDGE";
                 }
+                updateNetworkIcons();
+            }
+
+            if (setting === 'wifi') {
+                // If user turns on Wi-Fi, automatically disable airplane mode
+                if (settingsState.wifi && settingsState.airplane) {
+                    settingsState.airplane = false;
+                }
+                updateNetworkIcons();
             }
 
             if (setting === 'timeFormat24') {
                 updateClock();
             }
 
+            // Redraw settings UI to reflect state changes (e.g. toggles)
             if (appNameDisplay.textContent === 'Настройки') {
                 renderSettings();
             }
@@ -1700,6 +1724,7 @@
         // Инициализируем при загрузке страницы
         document.addEventListener('DOMContentLoaded', () => {
             initializeEventHandlers();
+            updateNetworkIcons(); // Устанавливаем начальное состояние иконок сети
 
             const lockScreen = document.getElementById('lockScreen');
             if (lockScreen) {

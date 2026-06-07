@@ -4,7 +4,7 @@ import { jsonParse, now } from "../util.js";
 export const LIVE_ACTIVITY_KINDS = {
   SHIELD: "shield",
   PC: "pc",
-  PC_TERMINAL: "pc_Terminal"
+  PC_TERMINAL: "pc_terminal"
 };
 
 const LIVE_ACTIVITY_KIND_SET = new Set(Object.values(LIVE_ACTIVITY_KINDS));
